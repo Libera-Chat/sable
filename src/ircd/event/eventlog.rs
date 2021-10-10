@@ -1,26 +1,28 @@
-use crate::ircd::event::{Event,EventClock,EventDetails};
-use crate::ircd::{ServerId,LocalId,Id};
+use crate::ircd::event::*;
+use crate::ircd::*;
 
-use std::collections::{HashMap,BTreeMap};
+use std::{
+    collections::{HashMap,BTreeMap},
+    sync::Arc,
+};
 
 pub struct EventOffset(usize);
 
+#[derive(Debug)]
 pub struct EventLog {
     history: HashMap<ServerId, BTreeMap<LocalId, Event>>,
 
     log: Vec<Id>,
 
-    my_serverid: ServerId,
-    latest_localid: LocalId,
+    id_gen: Arc<IdGenerator>
 }
 
 impl EventLog {
-    pub fn new(server_id: ServerId) -> Self {
+    pub fn new(idgen: Arc<IdGenerator>) -> Self {
         Self{
             history: HashMap::new(),
             log: Vec::new(),
-            my_serverid: server_id,
-            latest_localid: 0
+            id_gen: idgen,
         }
     }
 
@@ -38,10 +40,9 @@ impl EventLog {
         self.log.push(id);
     }
 
-    pub fn create(&mut self, target: Id, details: EventDetails) -> Event {
-        self.latest_localid += 1;
+    pub fn create(&self, target: Id, details: EventDetails) -> Event {
         Event {
-            id: Id::new(self.my_serverid, self.latest_localid),
+            id: self.id_gen.next(),
             timestamp: 0,
             clock: EventClock::new(),
             target: target,

@@ -1,10 +1,12 @@
 use crate::ircd::Id;
 
+#[derive(Debug)]
 pub struct Channel {
     pub id: Id,
     pub name: String,
 }
 
+#[derive(Debug)]
 pub struct Membership {
     pub id: Id,
     pub channel: Id,

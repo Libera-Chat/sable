@@ -1,5 +1,6 @@
 use crate::ircd::Id;
 
+#[derive(Debug)]
 pub struct User {
     pub id: Id,
     pub nick: String,

@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 
 use crate::ircd::{Id,ServerId,LocalId};
 
-#[derive(Clone,Eq,PartialEq)]
+#[derive(Clone,Eq,PartialEq,Debug)]
 pub struct EventClock (HashMap<ServerId, LocalId>);
 
 impl EventClock {

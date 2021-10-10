@@ -6,3 +6,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+log = "0.4"
+simple_logger = "1"
+futures = "0.3"
+async-std = "1.7"
+triggered = "0.1"

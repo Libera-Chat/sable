@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicI64,Ordering};
+
 pub type ServerId = i64;
 pub type LocalId = i64;
 
@@ -13,18 +15,18 @@ impl Id {
     pub fn local(&self) -> &LocalId { &self.1 }
 }
 
+#[derive(Debug)]
 pub struct IdGenerator {
     server: ServerId,
-    last: LocalId
+    last: AtomicI64
 }
 
 impl IdGenerator {
     pub fn new(server: ServerId) -> IdGenerator {
-        IdGenerator{server: server, last: 0}
+        IdGenerator{server: server, last: AtomicI64::new(1)}
     }
 
-    pub fn next(&mut self) -> Id {
-        self.last += 1;
-        Id(self.server, self.last)
+    pub fn next(&self) -> Id {
+        Id(self.server, self.last.fetch_add(1, Ordering::SeqCst))
     }
 }

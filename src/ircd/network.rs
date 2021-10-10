@@ -3,6 +3,7 @@ use crate::ircd::*;
 
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Network {
     users: HashMap<Id, state::User>,
     channels: HashMap<Id, state::Channel>,
