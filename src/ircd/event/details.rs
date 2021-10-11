@@ -1,19 +1,20 @@
 use crate::ircd::Id;
 
-#[derive(Clone,Debug)]
-pub struct NewUser {
-    pub nickname: String,
-    pub username: String,
-    pub visible_hostname: String,
-}
+use ircd_macros::event_details;
 
-#[derive(Clone,Debug)]
-pub struct NewChannel {
-    pub name: String,
-}
+event_details!{
+    struct NewUser {
+        pub nickname: String,
+        pub username: String,
+        pub visible_hostname: String,
+    };
 
-#[derive(Clone,Debug)]
-pub struct ChannelJoin {
-    pub channel: Id,
-    pub user: Id,
+    struct NewChannel {
+        pub name: String,
+    };
+
+    struct ChannelJoin {
+        pub channel: Id,
+        pub user: Id,
+    };
 }

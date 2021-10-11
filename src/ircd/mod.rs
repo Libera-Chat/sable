@@ -33,7 +33,6 @@ pub mod event {
     pub use clock::EventClock;
 
     pub use event::Event;
-    pub use event::EventDetails;
     
     pub use details::*;
 
