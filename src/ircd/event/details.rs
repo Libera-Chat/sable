@@ -1,8 +1,9 @@
 use crate::ircd::*;
 
-use ircd_macros::event_details;
+use ircd_macros::{event_details,target_type};
 
 event_details!{
+    #[target_type(UserId)]
     struct NewUser {
         pub nickname: String,
         pub username: String,
@@ -10,15 +11,18 @@ event_details!{
         pub realname: String,
     }
 
+    #[target_type(ChannelId)]
     struct NewChannel {
         pub name: String,
     }
 
+    #[target_type(MembershipId)]
     struct ChannelJoin {
         pub channel: ChannelId,
         pub user: UserId,
     }
 
+    #[target_type(MessageId)]
     struct NewMessage {
         pub source: UserId,
         pub target: ObjectId, // Can be user or channel

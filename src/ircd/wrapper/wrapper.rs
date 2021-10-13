@@ -15,6 +15,16 @@ impl<'a, T: ObjectWrapper<'a>> WrapOption<'a, T> for Option<&'a T::Underlying> {
     }
 }
 
+pub trait WrapResult<'a, T: ObjectWrapper<'a>, E> {
+    fn wrap(self, network: &'a Network) -> Result<T, E>;
+}
+
+impl <'a, T: ObjectWrapper<'a>, E> WrapResult<'a, T, E> for Result<&'a T::Underlying, E> {
+    fn wrap(self, network: &'a Network) -> Result<T, E> {
+        Ok(T::wrap(network, self?))
+    }
+}
+
 pub struct WrappedObjectIterator<'a, T: ObjectWrapper<'a>, I: Iterator<Item=&'a T::Underlying>>
 {
     net: &'a Network,

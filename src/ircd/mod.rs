@@ -18,6 +18,7 @@ pub mod wrapper {
     pub use wrapper::ObjectWrapper;
     pub use wrapper::WrappedObjectIterator;
     pub use wrapper::WrapOption;
+    pub use wrapper::WrapResult;
     pub use wrapper::WrapIterator;
 
     pub use user::User;
@@ -35,6 +36,7 @@ pub mod event {
     pub use clock::EventClock;
 
     pub use event::Event;
+    pub use event::DetailType;
     
     pub use details::*;
 

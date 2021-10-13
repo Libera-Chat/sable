@@ -2,6 +2,7 @@ use crate::ircd::*;
 use super::*;
 use crate::utils::*;
 use std::cell::RefCell;
+use network::LookupError;
 
 pub struct CommandProcessor<'a>
 {
@@ -114,9 +115,7 @@ impl<'a> CommandProcessor<'a>
 
     fn translate_message_source(&self, source: &'a ClientConnection) -> Result<CommandSource<'a>, CommandError> {
         if let Some(user_id) = source.user_id {
-            self.server.network().user(user_id)
-                                 .map(|u| CommandSource::User(u))
-                                 .ok_or(CommandError::unknown(format!("Got message with unknown source ID {:?}", user_id)))
+            Ok(self.server.network().user(user_id).map(|u| CommandSource::User(u))?)
         } else if let Some(pre_client) = &source.pre_client {
             Ok(CommandSource::PreClient(pre_client))
         } else {
@@ -131,12 +130,21 @@ impl CommandError
     {
         Self::UnknownError(desc.to_string())
     }
+
+    pub fn inner(err: impl std::error::Error + Clone + 'static) -> CommandError
+    {
+        CommandError::UnderlyingError(Box::new(err.clone()))
+    }
 }
 
-impl <T: std::error::Error + 'static> From<T> for CommandError
+impl From<LookupError> for CommandError
 {
-    fn from(err: T) -> CommandError
+    fn from(e: LookupError) -> Self
     {
-        CommandError::UnderlyingError(Box::new(err))
+        match e {
+            LookupError::NoSuchNick(n) => Self::NoSuchTarget(n),
+            LookupError::NoSuchChannelName(n) => Self::NoSuchTarget(n),
+            _ => Self::UnknownError(e.to_string())
+        }
     }
 }

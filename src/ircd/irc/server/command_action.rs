@@ -14,12 +14,12 @@ impl Server
                         let new_user_id = self.user_idgen.next();
                         let register_event = self.eventlog.create(
                                                         ObjectId::User(new_user_id), 
-                                                        event::EventDetails::NewUser(event::details::NewUser {
+                                                        event::details::NewUser {
                                                             nickname: pre_client.nick.unwrap(),
                                                             username: pre_client.user.unwrap(),
                                                             visible_hostname: "example.com".to_string(),
                                                             realname: pre_client.realname.unwrap(),
-                                                        })
+                                                        }.into()
                                                     );
                         self.eventlog.add(register_event);
 

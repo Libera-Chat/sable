@@ -65,9 +65,9 @@ impl Server
         self.listeners.add(address);
     }
 
-    pub fn create_event(&self, target: ObjectId, details: event::EventDetails) -> event::Event
+    pub fn create_event<T: event::DetailType>(&self, target: <T as DetailType>::Target, details: T) -> event::Event
     {
-        self.eventlog.create(target, details)
+        self.eventlog.create(target.into(), details.into())
     }
 
     pub fn next_user_id(&self) -> UserId

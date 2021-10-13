@@ -11,17 +11,17 @@ impl CommandHandler for PrivmsgHandler
     {
         let target_name = &cmd.args[0];
         let target_id = if is_channel_name(target_name) {
-            ObjectId::Channel(server.network().channel_by_name(target_name).ok_or(CommandError::NoSuchTarget(target_name.clone()))?.id())
+            ObjectId::Channel(server.network().channel_by_name(target_name)?.id())
         } else {
-            ObjectId::User(server.network().user_by_nick(target_name).ok_or(CommandError::NoSuchTarget(target_name.clone()))?.id())
+            ObjectId::User(server.network().user_by_nick(target_name)?.id())
         };
+
         let details = event::details::NewMessage {
             source: source.id(),
             target: target_id,
             text: cmd.args[1].clone(),
         };
-        actions.push(CommandAction::StateChange(server.create_event(server.next_message_id().into(), 
-                                                                    event::details::EventDetails::NewMessage(details))));
+        actions.push(CommandAction::StateChange(server.create_event(server.next_message_id(), details)));
         Ok(())
     }
 }

@@ -10,6 +10,12 @@ pub fn event_details(input: TokenStream) -> TokenStream
     define_event_details::event_details(input)
 }
 
+#[proc_macro_attribute]
+pub fn target_type(attr: TokenStream, item: TokenStream) -> TokenStream
+{
+    define_event_details::target_type_attribute(attr, item)
+}
+
 mod define_command_handler;
 
 #[proc_macro]

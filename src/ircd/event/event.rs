@@ -1,6 +1,10 @@
 use crate::ircd::*;
 use crate::ircd::event::*;
 
+pub trait DetailType : Into<EventDetails> {
+    type Target: Into<ObjectId>;
+}
+
 #[derive(Clone,Debug)]
 pub struct Event {
     pub id: EventId,

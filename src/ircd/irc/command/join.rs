@@ -11,11 +11,11 @@ impl CommandHandler for JoinHandler
     {
         let chname = &cmd.args[0];
         let channel_id = match server.network().channel_by_name(chname) {
-            Some(channel) => channel.id(),
-            None => {
+            Ok(channel) => channel.id(),
+            Err(_) => {
                 let details = event::NewChannel { name: chname.clone() };
                 let channel_id = server.next_channel_id();
-                let event = server.create_event(channel_id.into(), event::EventDetails::NewChannel(details));
+                let event = server.create_event(channel_id, details);
                 actions.push(StateChange(event));
                 channel_id
             }
@@ -25,7 +25,7 @@ impl CommandHandler for JoinHandler
             channel: channel_id,
         };
         let membership_id = MembershipId::new(source.id(), channel_id);
-        let event = server.create_event(membership_id.into(), event::EventDetails::ChannelJoin(details));
+        let event = server.create_event(membership_id, details);
         actions.push(StateChange(event));
         Ok(())
     }
