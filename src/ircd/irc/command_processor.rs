@@ -2,6 +2,7 @@ use crate::ircd::*;
 use super::*;
 use log::error;
 use crate::utils::*;
+use std::cell::RefCell;
 
 pub struct CommandProcessor<'a>
 {
@@ -11,7 +12,7 @@ pub struct CommandProcessor<'a>
 
 pub enum CommandAction {
     StateChange(event::Event),
-    RegisterClient(Id),
+    RegisterClient(ConnectionId),
 }
 
 pub enum CommandError
@@ -26,7 +27,7 @@ pub enum CommandError
 
 pub enum CommandSource<'a>
 {
-    PreClient(&'a PreClient),
+    PreClient(&'a RefCell<PreClient>),
     User(wrapper::User<'a>),
 }
 
@@ -68,19 +69,19 @@ impl<'a> CommandProcessor<'a>
                         error!("Error occurred handling command {} from {:?}: {}", command, conn.id(), desc);
                     }
                     CommandError::InvalidCommand => {
-                        conn.connection.send(&format!(":{} 421 * {} :Unknown command", self.server.name(), command)).await
+                        conn.connection.send(&format!(":{} 421 * {} :Unknown command\r\n", self.server.name(), command)).await
                                 .or_log("sending error numeric");
                     },
                     CommandError::NotEnoughParameters => {
-                        conn.connection.send(&format!(":{} 461 * {} :Not enough parameters", self.server.name(), command)).await
+                        conn.connection.send(&format!(":{} 461 * {} :Not enough parameters\r\n", self.server.name(), command)).await
                         .or_log("sending error numeric");
                     },
                     CommandError::NotRegistered => {
-                        conn.connection.send(&format!(":{} 451 * :You have not registered", self.server.name())).await
+                        conn.connection.send(&format!(":{} 451 * :You have not registered\r\n", self.server.name())).await
                         .or_log("sending error numeric");
                     },
                     CommandError::AlreadyRegistered => {
-                        conn.connection.send(&format!(":{} 462 * :You are already connected and cannot handshake again", self.server.name())).await
+                        conn.connection.send(&format!(":{} 462 * :You are already connected and cannot handshake again\r\n", self.server.name())).await
                         .or_log("sending error numeric");
                     },
                 }
@@ -92,7 +93,7 @@ impl<'a> CommandProcessor<'a>
 
     fn do_process_message(&mut self, connection: &ClientConnection, message: ClientMessage) -> Result<(), CommandError>
     {
-        if let Some(handler) = command::resolve_command(&message.command) {
+        if let Some(handler) = self.server.command_dispatcher().resolve_command(&message.command) {
             let cmd = ClientCommand {
                  connection: connection, 
                  source: self.translate_message_source(connection)?,

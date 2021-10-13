@@ -8,6 +8,10 @@ pub struct User<'a> {
 }
 
 impl User<'_> {
+    pub fn id(&self) -> UserId {
+        self.data.id
+    }
+    
     pub fn nick(&self) -> &str {
         &self.data.nick
     }

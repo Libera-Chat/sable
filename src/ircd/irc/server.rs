@@ -1,7 +1,7 @@
 use crate::ircd::*;
 use super::*;
 use std::{
-    sync::Arc,
+//    sync::Arc,
     collections::HashMap,
 };
 use async_std::{
@@ -9,21 +9,27 @@ use async_std::{
     channel,
     net::SocketAddr
 };
+use crate::ircd::event::*;
 use crate::ircd::irc::connection::EventDetail::*;
 use log::{info,error};
-
+use async_broadcast;
+use futures::{select,FutureExt};
 
 pub struct Server
 {
     my_id: ServerId,
     name: String,
     net: Network,
-    id_gen: Arc<IdGenerator>,
+    user_idgen: UserIdGenerator,
+    channel_idgen: ChannelIdGenerator,
+    //id_gen: Arc<IdGenerator>,
     eventlog: event::EventLog,
-    event_offset: event::EventOffset,
+    event_receiver: async_broadcast::Receiver<Event>,
     listeners: ListenerCollection,
     connection_events: channel::Receiver<connection::ConnectionEvent>,
-    client_connections: HashMap<Id, ClientConnection>,
+    client_connections: HashMap<ConnectionId, ClientConnection>,
+    user_connections: HashMap<UserId, ConnectionId>,
+    command_dispatcher: command::CommandDispatcher,
 }
 
 impl Server
@@ -31,20 +37,24 @@ impl Server
     pub fn new(id: ServerId, name: String) -> Self
     {
         let (connevent_send, connevent_recv) = channel::unbounded::<connection::ConnectionEvent>();
-        let idgen = Arc::new(IdGenerator::new(id));
-        let eventlog = event::EventLog::new(Arc::clone(&idgen));
-        let event_offset = eventlog.get_offset();
+        //let idgen = Arc::new(IdGenerator::new());
+        let mut eventlog = event::EventLog::new(EventIdGenerator::new(id, 1));
+        let event_receiver = eventlog.attach();
 
         Self {
             my_id: id,
             name: name,
             net: Network::new(),
-            id_gen: Arc::clone(&idgen),
+            user_idgen: UserIdGenerator::new(id, 1),
+            channel_idgen: ChannelIdGenerator::new(id, 1),
+            //id_gen: Arc::clone(&idgen),
             eventlog: eventlog,
-            event_offset: event_offset,
+            event_receiver: event_receiver,
             listeners: ListenerCollection::new(connevent_send),
             connection_events: connevent_recv,
             client_connections: HashMap::new(),
+            user_connections: HashMap::new(),
+            command_dispatcher: command::CommandDispatcher::new(),
         }
     }
 
@@ -53,14 +63,19 @@ impl Server
         self.listeners.add(address);
     }
 
-    pub fn create_event(&self, target: Id, details: event::EventDetails) -> event::Event
+    pub fn create_event(&self, target: ObjectId, details: event::EventDetails) -> event::Event
     {
         self.eventlog.create(target, details)
     }
 
-    pub fn create_id(&self) -> Id
+    pub fn next_user_id(&self) -> UserId
     {
-        self.id_gen.next()
+        self.user_idgen.next()
+    }
+
+    pub fn next_channel_id(&self) -> ChannelId
+    {
+        self.channel_idgen.next()
     }
 
     pub fn network(&self) -> &Network
@@ -78,73 +93,68 @@ impl Server
         self.my_id
     }
 
-    pub fn find_connection(&self, id: Id) -> Option<&ClientConnection>
+    pub fn command_dispatcher(&self) -> &command::CommandDispatcher
+    {
+        &self.command_dispatcher
+    }
+
+    pub fn find_connection(&self, id: ConnectionId) -> Option<&ClientConnection>
     {
         self.client_connections.get(&id)
     }
 
     pub async fn run(&mut self)
     {
-        while let Some(msg) = self.connection_events.next().await {
-            match msg.detail {
-                NewConnection(conn) => {
-                    info!("Got new connection {:?}", msg.source);
-                    self.client_connections.insert(msg.source, ClientConnection::new(conn));
-                },
-                Message(m) => { 
-                    info!("Got message from connection {:?}: {}", msg.source, m);
+        loop {
+            select! {
+                res = self.connection_events.next().fuse() => {
+                    match res {
+                        Some(msg) => {
+                            match msg.detail {
+                                NewConnection(conn) => {
+                                    info!("Got new connection {:?}", msg.source);
+                                    self.client_connections.insert(msg.source, ClientConnection::new(conn));
+                                },
+                                Message(m) => { 
+                                    info!("Got message from connection {:?}: {}", msg.source, m);
 
-                    if let Some(message) = ClientMessage::parse(msg.source, &m)
-                    {
-                        let mut processor = CommandProcessor::new(&self);
-                        processor.process_message(message).await;
-                        
-                        for action in processor.actions()
-                        {
-                            self.apply_action(action)
-                        }
-
-                        while let Some(event) = self.eventlog.next_for(&mut self.event_offset)
-                        {
-                            self.net.apply(event);
+                                    if let Some(message) = ClientMessage::parse(msg.source, &m)
+                                    {
+                                        let mut processor = CommandProcessor::new(&self);
+                                        processor.process_message(message).await;
+                                        
+                                        for action in processor.actions()
+                                        {
+                                            self.apply_action(action)
+                                        }
+                                    }
+                                },
+                                Error(e) => {
+                                    error!("Got error from connection {:?}: {:?}", msg.source, e);
+                                    self.client_connections.remove(&msg.source);
+                                }
+                            }
+                        },
+                        None => {
+                            // TODO
                         }
                     }
                 },
-                Error(e) => {
-                    error!("Got error from connection {:?}: {:?}", msg.source, e);
-                    self.client_connections.remove(&msg.source);
+                res = self.event_receiver.next().fuse() => {
+                    match res {
+                        Some(event) => { 
+                            self.net.apply(&event);
+                            self.handle_event(&event).await;
+                        },
+                        None => { 
+                            // TODO
+                        }
+                    }
                 }
-            }
-        }
-    }
-
-    pub fn apply_action(&mut self, action: CommandAction)
-    {
-        match action {
-            CommandAction::RegisterClient(id) => {
-                if let Some(conn) = self.client_connections.get_mut(&id)
-                {
-                    let pre_client = match &mut conn.pre_client {
-                        None => { return; },
-                        Some(pc) => pc
-                    };
-                    let new_user_id = self.id_gen.next();
-                    let register_event = self.eventlog.create(
-                                                    new_user_id, 
-                                                    event::EventDetails::NewUser(event::details::NewUser {
-                                                        nickname: pre_client.nick.replace(None).unwrap(),
-                                                        username: pre_client.user.replace(None).unwrap(),
-                                                        visible_hostname: "example.com".to_string()
-                                                    })
-                                                );
-                    self.eventlog.add(register_event);
-                    conn.pre_client = None;
-                    conn.user_id = Some(new_user_id);
-                }
-            },
-            CommandAction::StateChange(event) => {
-                self.eventlog.add(event);
             }
         }
     }
 }
+
+mod command_action;
+mod event_handler;

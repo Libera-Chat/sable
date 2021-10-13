@@ -2,14 +2,14 @@ use crate::ircd::*;
 
 pub struct ClientMessage
 {
-    pub source: Id,
+    pub source: ConnectionId,
     pub command: String,
     pub args: Vec<String>
 }
 
 impl ClientMessage
 {
-    pub fn parse(source: Id, raw: &str) -> Option<Self>
+    pub fn parse(source: ConnectionId, raw: &str) -> Option<Self>
     {
         let mut args = Vec::new();
         let offset = match raw.find(" ") {
@@ -63,10 +63,16 @@ mod tests
 {
     use super::*;
 
+    fn get_connid() -> ConnectionId
+    {
+        let listener_id = ListenerIdGenerator::new(0).next();
+        ConnectionIdGenerator::new(listener_id, 0).next()
+    }
+
     #[test]
     fn no_args()
     {
-        let msg = ClientMessage::parse(Id::new(0,0), "command").unwrap();
+        let msg = ClientMessage::parse(get_connid(), "command").unwrap();
         assert_eq!(msg.command, "command");
         assert_eq!(msg.args.len(), 0);
     }
@@ -74,7 +80,7 @@ mod tests
     #[test]
     fn simple_args()
     {
-        let msg = ClientMessage::parse(Id::new(0,0), "command arg1 arg2 :arg three").unwrap();
+        let msg = ClientMessage::parse(get_connid(), "command arg1 arg2 :arg three").unwrap();
         
         assert_eq!(msg.command, "command");
         assert_eq!(msg.args, &["arg1", "arg2", "arg three"]);
@@ -83,7 +89,7 @@ mod tests
     #[test]
     fn ending_space()
     {
-        let msg = ClientMessage::parse(Id::new(0,0), "command arg1 arg2 ").unwrap();
+        let msg = ClientMessage::parse(get_connid(), "command arg1 arg2 ").unwrap();
 
         assert_eq!(msg.args, &["arg1", "arg2"]);
     }
@@ -91,7 +97,7 @@ mod tests
     #[test]
     fn ending_colon()
     {
-        let msg = ClientMessage::parse(Id::new(0,0), "command arg1 arg2 :").unwrap();
+        let msg = ClientMessage::parse(get_connid(), "command arg1 arg2 :").unwrap();
 
         assert_eq!(msg.args, &["arg1", "arg2"]);
 
@@ -100,7 +106,7 @@ mod tests
     #[test]
     fn double_space()
     {
-        let msg = ClientMessage::parse(Id::new(0,0), "command arg1  arg2").unwrap();
+        let msg = ClientMessage::parse(get_connid(), "command arg1  arg2").unwrap();
 
         assert_eq!(msg.args, &["arg1", "arg2"]);
     }
@@ -108,7 +114,7 @@ mod tests
     #[test]
     fn colon_space()
     {
-        let msg = ClientMessage::parse(Id::new(0,0), "command arg1 : arg2").unwrap();
+        let msg = ClientMessage::parse(get_connid(), "command arg1 : arg2").unwrap();
 
         assert_eq!(msg.args, &["arg1", " arg2"]);
     }

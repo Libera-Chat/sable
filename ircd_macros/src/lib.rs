@@ -1,52 +1,27 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use proc_macro2;
-use quote::quote;
-use syn::{parse_macro_input, Result, Token, ItemStruct, Ident};
-use syn::parse::{Parse, ParseStream};
-use syn::punctuated::Punctuated;
 
-struct ItemStructList {
-    items: Punctuated<ItemStruct, Token![;]>
-}
-
-impl Parse for ItemStructList {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ItemStructList {
-            items: input.parse_terminated(ItemStruct::parse)?
-        })
-    }
-}
-
+mod define_event_details;
 
 #[proc_macro]
 pub fn event_details(input: TokenStream) -> TokenStream
 {
-    let items = parse_macro_input!(input as ItemStructList);
-    
-    let mut output = proc_macro2::TokenStream::new();
-    let mut names = Vec::<Ident>::new();
+    define_event_details::event_details(input)
+}
 
-    for item in &items.items
-    {
-        let name = item.ident.clone();
-        names.push(name);
+mod define_command_handler;
 
-        let defn = quote!(
-            #[derive(Debug,Clone)]
-            pub #item
-        );
+#[proc_macro]
+pub fn command_handler(input: TokenStream) -> TokenStream
+{
+    define_command_handler::command_handler(input)
+}
 
-        output.extend(defn);
-    }
+mod define_object_id;
 
-    output.extend(quote!(
-        #[derive(Debug,Clone)]
-        pub enum EventDetails {
-            #( #names(#names) ),*
-        }
-    ));
-
-    output.into()
+#[proc_macro]
+pub fn object_ids(input: TokenStream) -> TokenStream
+{
+    define_object_id::object_ids(input)
 }

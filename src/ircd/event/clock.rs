@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::cmp::Ordering;
 
-use crate::ircd::{Id,ServerId,LocalId};
+use crate::ircd::{EventId,ServerId,LocalId};
 
 #[derive(Clone,Eq,PartialEq,Debug)]
 pub struct EventClock (HashMap<ServerId, LocalId>);
@@ -20,8 +20,8 @@ impl EventClock {
         }
     }
 
-    pub fn update_with_id(&mut self, id: Id) {
-        self.update_with(*id.server(), *id.local());
+    pub fn update_with_id(&mut self, id: EventId) {
+        self.update_with(id.server(), id.local());
     }
 
     pub fn update_with_clock(&mut self, other: &EventClock) {

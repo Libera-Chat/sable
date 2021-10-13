@@ -8,7 +8,11 @@ pub struct Membership<'a> {
 }
 
 impl Membership<'_> {
-    pub fn user_id(&self) -> Id {
+    pub fn id(&self) -> MembershipId {
+        self.data.id
+    }
+    
+    pub fn user_id(&self) -> UserId {
         self.data.user
     }
 
@@ -16,7 +20,7 @@ impl Membership<'_> {
         self.network.user(self.data.user)
     }
 
-    pub fn channel_id(&self) -> Id {
+    pub fn channel_id(&self) -> ChannelId {
         self.data.channel
     }
 

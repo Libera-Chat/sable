@@ -1,4 +1,4 @@
-use crate::ircd::Id;
+use crate::ircd::*;
 
 use ircd_macros::event_details;
 
@@ -7,14 +7,15 @@ event_details!{
         pub nickname: String,
         pub username: String,
         pub visible_hostname: String,
-    };
+        pub realname: String,
+    }
 
     struct NewChannel {
         pub name: String,
-    };
+    }
 
     struct ChannelJoin {
-        pub channel: Id,
-        pub user: Id,
-    };
+        pub channel: ChannelId,
+        pub user: UserId,
+    }
 }

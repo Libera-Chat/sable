@@ -5,9 +5,9 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Network {
-    users: HashMap<Id, state::User>,
-    channels: HashMap<Id, state::Channel>,
-    memberships: HashMap<Id, state::Membership>,
+    users: HashMap<UserId, state::User>,
+    channels: HashMap<ChannelId, state::Channel>,
+    memberships: HashMap<MembershipId, state::Membership>,
 }
 
 impl Network {
@@ -20,13 +20,13 @@ impl Network {
     }
 
     pub fn apply(&mut self, event: &Event) {
-        match &event.details {
-            EventDetails::NewUser(details) => self.new_user(event, details),
-            EventDetails::NewChannel(details) => self.new_channel(event, details),
-            EventDetails::ChannelJoin(details) => self.user_joined_channel(event, details),
+        match (event.target, &event.details) {
+            (ObjectId::User(target), EventDetails::NewUser(details)) => self.new_user(target, event, details),
+            (ObjectId::Channel(target), EventDetails::NewChannel(details)) => self.new_channel(target, event, details),
+            (ObjectId::Membership(target), EventDetails::ChannelJoin(details)) => self.user_joined_channel(target, event, details),
+            _ => panic!("Network received event with wrong target type: {:?}, {:?}", event.target, event.details)
         }
     }
-
 }
 
 mod accessors;

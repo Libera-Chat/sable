@@ -4,7 +4,7 @@ use crate::ircd::*;
 use crate::ircd::wrapper::*;
 
 impl Network {
-    pub fn user(&self, id: Id) -> Option<wrapper::User> {
+    pub fn user(&self, id: UserId) -> Option<wrapper::User> {
         self.users.get(&id).wrap(&self)
     }
 
@@ -16,7 +16,7 @@ impl Network {
         self.users.values()
     }
 
-    pub fn channel(&self, id: Id) -> Option<wrapper::Channel> {
+    pub fn channel(&self, id: ChannelId) -> Option<wrapper::Channel> {
         self.channels.get(&id).wrap(self)
     }
 
@@ -28,7 +28,12 @@ impl Network {
         self.channels.values()
     }
 
-    pub fn membership(&self, id: Id) -> Option<wrapper::Membership> {
+    pub fn channel_by_name(&self, name: &str) -> Option<wrapper::Channel>
+    {
+        self.channels.values().filter(|x| x.name() == name).next().wrap(self)
+    }
+
+    pub fn membership(&self, id: MembershipId) -> Option<wrapper::Membership> {
         self.memberships.get(&id).wrap(self)
     }
 

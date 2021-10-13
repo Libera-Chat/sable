@@ -8,6 +8,10 @@ pub struct Channel<'a> {
 }
 
 impl Channel<'_> {
+    pub fn id(&self) -> ChannelId {
+        self.data.id
+    }
+    
     pub fn name(&self) -> &str {
         &self.data.name
     }

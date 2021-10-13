@@ -1,13 +1,12 @@
-use crate::ircd::Id;
-use crate::ircd::event::EventClock;
-use crate::ircd::event::details::EventDetails;
+use crate::ircd::*;
+use crate::ircd::event::*;
 
 #[derive(Clone,Debug)]
 pub struct Event {
-    pub id: Id,
+    pub id: EventId,
     pub timestamp: i64,
     pub clock: EventClock,
-    pub target: Id,
+    pub target: ObjectId,
 
     pub details: EventDetails,
 }

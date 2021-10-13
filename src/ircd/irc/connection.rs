@@ -10,19 +10,25 @@ use async_std::{
 };
 use futures::{select,FutureExt};
 use log::info;
+use thiserror::Error;
 
 static SEND_QUEUE_LEN:usize = 100;
 
 #[derive(Debug)]
 pub struct Connection {
-    pub id: Id,
+    pub id: ConnectionId,
     control_channel: channel::Sender<ConnectionControl>,
     conn: Arc<TcpStream>
 }
 
-#[derive(Debug)]
+#[derive(Error,Debug)]
 pub enum ConnectionError {
-    Closed
+    #[error("Connection closed")]
+    Closed,
+    #[error("I/O Error: {0}")]
+    IoError(#[from]std::io::Error),
+    #[error("Couldn't send to control channel: {0}")]
+    ControlSendError(#[from] channel::SendError<ConnectionControl>),
 }
 
 #[derive(Debug)]
@@ -34,24 +40,24 @@ pub enum EventDetail {
 
 #[derive(Debug)]
 pub struct ConnectionEvent {
-    pub source: Id,
+    pub source: ConnectionId,
     pub detail: EventDetail
 }
 
 struct ConnectionTask {
-    id: Id,
+    id: ConnectionId,
     conn: Arc<TcpStream>,
     control_channel: channel::Receiver<ConnectionControl>,
     event_channel: channel::Sender<ConnectionEvent>
 }
 
-enum ConnectionControl {
+pub enum ConnectionControl {
     Close
 }
 
 impl Connection
 {
-    pub fn new(id: Id, stream: TcpStream, events: channel::Sender<ConnectionEvent>) -> Self
+    pub fn new(id: ConnectionId, stream: TcpStream, events: channel::Sender<ConnectionEvent>) -> Self
     {
         let (control_send, control_recv) = channel::bounded(SEND_QUEUE_LEN);
         let stream = Arc::new(stream);
@@ -66,7 +72,7 @@ impl Connection
         }
     }
 
-    pub fn id(&self) -> Id
+    pub fn id(&self) -> ConnectionId
     {
         self.id
     }
@@ -93,28 +99,19 @@ impl Drop for Connection
     }
 }
 
-impl<T> From<T> for ConnectionError
-    where T: std::error::Error
-{
-    fn from(_: T) -> ConnectionError
-    {
-        ConnectionError::Closed
-    }
-}
-
 impl ConnectionEvent
 {
-    pub fn message(id: Id, message: String) -> Self
+    pub fn message(id: ConnectionId, message: String) -> Self
     {
         Self { source: id, detail: EventDetail::Message(message) }
     }
 
-    pub fn error(id: Id, error: ConnectionError) -> Self
+    pub fn error(id: ConnectionId, error: ConnectionError) -> Self
     {
         Self { source: id, detail: EventDetail::Error(error) }
     }
 
-    pub fn new(id: Id, conn: Connection) -> Self
+    pub fn new(id: ConnectionId, conn: Connection) -> Self
     {
         Self { source: id, detail: EventDetail::NewConnection(conn) }
     }
@@ -122,7 +119,7 @@ impl ConnectionEvent
 
 impl ConnectionTask
 {
-    fn new(id: Id, 
+    fn new(id: ConnectionId, 
         stream: Arc<TcpStream>, 
         control: channel::Receiver<ConnectionControl>,
         events: channel::Sender<ConnectionEvent>) -> Self

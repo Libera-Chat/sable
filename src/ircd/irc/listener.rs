@@ -6,7 +6,6 @@ use async_std::{
     channel,
     task,
 };
-use std::sync::atomic::{AtomicI64,Ordering};
 use futures::{select,FutureExt};
 use log::error;
 use super::connection;
@@ -24,18 +23,18 @@ pub struct Listener {
 
 #[derive(Debug)]
 pub struct ListenerCollection {
-    last_id: AtomicI64,
+    id_gen: ListenerIdGenerator,
     event_channel: channel::Sender<connection::ConnectionEvent>,
     listeners: Vec<Listener>
 }
 
 impl Listener
 {
-    pub fn new(address: SocketAddr, channel: channel::Sender<connection::ConnectionEvent>, listener_id: ServerId) -> Self
+    pub fn new(address: SocketAddr, channel: channel::Sender<connection::ConnectionEvent>, listener_id: ListenerId) -> Self
     {
         let (control_send, control_receive) = channel::unbounded::<ListenerControl>();
 
-        task::spawn(Self::listen_and_log(channel, control_receive, address, IdGenerator::new(listener_id)));
+        task::spawn(Self::listen_and_log(channel, control_receive, address, ConnectionIdGenerator::new(listener_id, 1)));
 
         Self {
             address: address,
@@ -47,7 +46,7 @@ impl Listener
         event_channel: channel::Sender<connection::ConnectionEvent>,
         control_channel: channel::Receiver<ListenerControl>,
         address: SocketAddr,
-        id_gen: IdGenerator
+        id_gen: ConnectionIdGenerator
     )
     {
         match Self::listen_loop(event_channel, control_channel, address, id_gen).await
@@ -61,7 +60,7 @@ impl Listener
         event_channel: channel::Sender<connection::ConnectionEvent>,
         mut control_channel: channel::Receiver<ListenerControl>,
         address: SocketAddr,
-        id_gen: IdGenerator
+        id_gen: ConnectionIdGenerator
     ) -> Result<(), std::io::Error>
     {
         let listener = TcpListener::bind(address).await?;
@@ -113,7 +112,7 @@ impl ListenerCollection
     pub fn new(channel: channel::Sender<connection::ConnectionEvent>) -> Self
     {
         Self {
-            last_id: AtomicI64::new(1),
+            id_gen: ListenerIdGenerator::new(1),
             event_channel: channel,
             listeners: Vec::new()
         }
@@ -123,6 +122,6 @@ impl ListenerCollection
     {
         self.listeners.push(Listener::new(addr, 
                             self.event_channel.clone(), 
-                            self.last_id.fetch_add(1, Ordering::SeqCst)));
+                            self.id_gen.next()));
     }
 }

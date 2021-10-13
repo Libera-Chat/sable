@@ -1,20 +1,20 @@
-use crate::ircd::Id;
+use crate::ircd::*;
 
 #[derive(Debug)]
 pub struct Channel {
-    pub id: Id,
+    pub id: ChannelId,
     pub name: String,
 }
 
 #[derive(Debug)]
 pub struct Membership {
-    pub id: Id,
-    pub channel: Id,
-    pub user: Id,
+    pub id: MembershipId,
+    pub channel: ChannelId,
+    pub user: UserId,
 }
 
 impl Channel {
-    pub fn new(id: Id, name: &str) -> Channel {
+    pub fn new(id: ChannelId, name: &str) -> Channel {
         Channel{ id: id, name: name.to_string() }
     }
 
@@ -24,15 +24,15 @@ impl Channel {
 }
 
 impl Membership {
-    pub fn new(id: Id, user: Id, channel: Id) -> Membership {
+    pub fn new(id: MembershipId, user: UserId, channel: ChannelId) -> Membership {
         Membership{ id: id, user: user, channel: channel }
     }
 
-    pub fn user(&self) -> Id {
+    pub fn user(&self) -> UserId {
         self.user
     }
 
-    pub fn channel(&self) -> Id {
+    pub fn channel(&self) -> ChannelId {
         self.channel
     }
 }
