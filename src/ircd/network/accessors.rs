@@ -16,6 +16,11 @@ impl Network {
         self.users.values()
     }
 
+    pub fn user_by_nick(&self, nick: &str) -> Option<wrapper::User>
+    {
+        self.users.values().filter(|x| x.nick == nick).next().wrap(self)
+    }
+
     pub fn channel(&self, id: ChannelId) -> Option<wrapper::Channel> {
         self.channels.get(&id).wrap(self)
     }

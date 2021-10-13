@@ -22,6 +22,7 @@ pub struct Server
     net: Network,
     user_idgen: UserIdGenerator,
     channel_idgen: ChannelIdGenerator,
+    message_idgen: MessageIdGenerator,
     //id_gen: Arc<IdGenerator>,
     eventlog: event::EventLog,
     event_receiver: async_broadcast::Receiver<Event>,
@@ -47,6 +48,7 @@ impl Server
             net: Network::new(),
             user_idgen: UserIdGenerator::new(id, 1),
             channel_idgen: ChannelIdGenerator::new(id, 1),
+            message_idgen: MessageIdGenerator::new(id, 1),
             //id_gen: Arc::clone(&idgen),
             eventlog: eventlog,
             event_receiver: event_receiver,
@@ -76,6 +78,11 @@ impl Server
     pub fn next_channel_id(&self) -> ChannelId
     {
         self.channel_idgen.next()
+    }
+
+    pub fn next_message_id(&self) -> MessageId
+    {
+        self.message_idgen.next()
     }
 
     pub fn network(&self) -> &Network

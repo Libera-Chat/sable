@@ -10,6 +10,7 @@ object_ids! {
     Membership: (UserId, ChannelId);
     Listener: (LocalId,) sequential;
     Connection: (ListenerId, LocalId,) sequential;
+    Message: (ServerId, LocalId) sequential;
 }
 
 impl EventId {

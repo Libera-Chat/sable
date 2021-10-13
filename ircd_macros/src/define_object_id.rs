@@ -107,6 +107,13 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
             {
                 pub fn new(#( #arg_list ),*) -> Self { Self(#( #arg_names ), *) }
             }
+
+            impl From<#id_typename> for ObjectId
+            {
+                fn from(id: #id_typename) -> Self {
+                    Self::#typename(id)
+                }
+            }
         ));
 
         if item.is_sequential.is_some()

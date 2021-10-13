@@ -18,4 +18,10 @@ event_details!{
         pub channel: ChannelId,
         pub user: UserId,
     }
+
+    struct NewMessage {
+        pub source: UserId,
+        pub target: ObjectId, // Can be user or channel
+        pub text: String,
+    }
 }

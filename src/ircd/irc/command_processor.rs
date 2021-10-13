@@ -1,6 +1,5 @@
 use crate::ircd::*;
 use super::*;
-use log::error;
 use crate::utils::*;
 use std::cell::RefCell;
 
@@ -23,6 +22,7 @@ pub enum CommandError
     NotEnoughParameters,
     NotRegistered,
     AlreadyRegistered,
+    NoSuchTarget(String),
 }
 
 pub enum CommandSource<'a>
@@ -63,10 +63,10 @@ impl<'a> CommandProcessor<'a>
             {
                 match err {
                     CommandError::UnderlyingError(err) => {
-                        error!("Error occurred handling command {} from {:?}: {}", command, conn.id(), err);
+                        panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), err);
                     },
                     CommandError::UnknownError(desc) => {
-                        error!("Error occurred handling command {} from {:?}: {}", command, conn.id(), desc);
+                        panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), desc);
                     }
                     CommandError::InvalidCommand => {
                         conn.connection.send(&format!(":{} 421 * {} :Unknown command\r\n", self.server.name(), command)).await
@@ -84,10 +84,14 @@ impl<'a> CommandProcessor<'a>
                         conn.connection.send(&format!(":{} 462 * :You are already connected and cannot handshake again\r\n", self.server.name())).await
                         .or_log("sending error numeric");
                     },
+                    CommandError::NoSuchTarget(target) => {
+                        conn.connection.send(&format!(":{} 401 * {} :No such nick/channel", self.server.name(), target)).await
+                        .or_log("sending error numeric");
+                    }
                 }
             }
         } else {
-            error!("Got message '{}' from unknown source?", message.command);
+            panic!("Got message '{}' from unknown source?", message.command);
         }
     }
 

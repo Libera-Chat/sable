@@ -24,6 +24,7 @@ impl Server
             EventDetails::NewUser(detail) => self.handle_new_user(event, detail).await,
             EventDetails::NewChannel(detail) => self.handle_new_channel(event, detail).await,
             EventDetails::ChannelJoin(detail) => self.handle_join(event, detail).await,
+            EventDetails::NewMessage(detail) => self.handle_new_message(event, detail).await,
         };
         if let Err(e) = res
         {
@@ -82,5 +83,50 @@ impl Server
             }
         }
         Ok(())
+    }
+
+    async fn handle_new_message(&self, _event: &Event, detail: &NewMessage) -> HandleResult
+    {
+        let source = self.net.user(detail.source).ok_or("Message from nonexistent user")?;
+
+        if let ObjectId::Channel(channel_id) = detail.target
+        {
+            let channel = self.net.channel(channel_id).ok_or("Message to nonexistent channel")?;
+
+            for m in channel.members() {
+                let member = m.user().ok_or("Nonexistent user in channel")?;
+                if let Some(connid) = self.user_connections.get(&member.id()) {
+                    if let Some(conn) = self.client_connections.get(&connid) {
+                        conn.connection.send(&format!(":{}!{}@{} PRIVMSG {} :{}\r\n",
+                                            source.nick(),
+                                            source.user(),
+                                            source.visible_host(),
+                                            channel.name(),
+                                            detail.text
+                        )).await?;
+                    }
+                }
+            }
+            Ok(())
+        }
+        else if let ObjectId::User(user_id) = detail.target
+        {
+            let user = self.net.user(user_id).ok_or("Message to nonexistent user")?;
+            if let Some(connid) = self.user_connections.get(&user.id()) {
+                if let Some(conn) = self.client_connections.get(&connid) {
+                    conn.connection.send(&format!(":{}!{}@{} PRIVMSG {} :{}\r\n",
+                                        source.nick(),
+                                        source.user(),
+                                        source.visible_host(),
+                                        user.nick(),
+                                        detail.text
+                    )).await?;
+                }
+            }
+            Ok(())
+        }
+        else {
+            Err(HandlerError::InternalError(format!("Message to neither user nor channel: {:?}", detail.target)))
+        }
     }
 }

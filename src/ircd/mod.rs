@@ -1,10 +1,12 @@
 pub mod state {
     mod user;
     mod channel;
+    mod message;
 
     pub use user::User;
     pub use channel::Channel;
     pub use channel::Membership;
+    pub use message::Message;
 }
 
 pub mod wrapper {
