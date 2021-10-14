@@ -1,5 +1,7 @@
 use crate::ircd::event::*;
 use crate::ircd::*;
+use crate::utils::OrLog;
+use ircd_macros::dispatch_event;
 
 use std::collections::HashMap;
 
@@ -22,7 +24,7 @@ impl Network {
             messages: HashMap::new(),
         }
     }
-
+/*
     pub fn apply(&mut self, event: &Event) {
         match (event.target, &event.details) {
             (ObjectId::User(target), EventDetails::NewUser(details)) => self.new_user(target, event, details),
@@ -31,6 +33,17 @@ impl Network {
             (ObjectId::Message(target), EventDetails::NewMessage(details)) => self.new_message(target, event, details),
             _ => panic!("Network received event with wrong target type: {:?}, {:?}", event.target, event.details)
         }
+    }
+*/
+
+    pub fn apply(&mut self, event: &Event) {
+        dispatch_event!(event => {
+            NewUser => self.new_user,
+            UserQuit => self.user_quit,
+            NewChannel => self.new_channel,
+            ChannelJoin => self.user_joined_channel,
+            NewMessage => self.new_message,
+        }).or_log("Mismatched object ID type?");
     }
 }
 

@@ -23,7 +23,6 @@ pub struct Server
     user_idgen: UserIdGenerator,
     channel_idgen: ChannelIdGenerator,
     message_idgen: MessageIdGenerator,
-    //id_gen: Arc<IdGenerator>,
     eventlog: event::EventLog,
     event_receiver: async_broadcast::Receiver<Event>,
     listeners: ListenerCollection,
@@ -38,7 +37,6 @@ impl Server
     pub fn new(id: ServerId, name: String) -> Self
     {
         let (connevent_send, connevent_recv) = channel::unbounded::<connection::ConnectionEvent>();
-        //let idgen = Arc::new(IdGenerator::new());
         let mut eventlog = event::EventLog::new(EventIdGenerator::new(id, 1));
         let event_receiver = eventlog.attach();
 
@@ -49,7 +47,6 @@ impl Server
             user_idgen: UserIdGenerator::new(id, 1),
             channel_idgen: ChannelIdGenerator::new(id, 1),
             message_idgen: MessageIdGenerator::new(id, 1),
-            //id_gen: Arc::clone(&idgen),
             eventlog: eventlog,
             event_receiver: event_receiver,
             listeners: ListenerCollection::new(connevent_send),
@@ -143,18 +140,18 @@ impl Server
                             }
                         },
                         None => {
-                            // TODO
+                            panic!("what to do here?");
                         }
                     }
                 },
                 res = self.event_receiver.next().fuse() => {
                     match res {
-                        Some(event) => { 
+                        Some(event) => {
                             self.net.apply(&event);
                             self.handle_event(&event).await;
                         },
                         None => { 
-                            // TODO
+                            panic!("what to do here?");
                         }
                     }
                 }

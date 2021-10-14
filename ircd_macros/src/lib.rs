@@ -16,6 +16,20 @@ pub fn target_type(attr: TokenStream, item: TokenStream) -> TokenStream
     define_event_details::target_type_attribute(attr, item)
 }
 
+mod dispatch_event;
+
+#[proc_macro]
+pub fn dispatch_event(input: TokenStream) -> TokenStream
+{
+    dispatch_event::dispatch_event(input, false)
+}
+
+#[proc_macro]
+pub fn dispatch_event_async(input: TokenStream) -> TokenStream
+{
+    dispatch_event::dispatch_event(input, true)
+}
+
 mod define_command_handler;
 
 #[proc_macro]

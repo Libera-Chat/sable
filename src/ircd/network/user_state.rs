@@ -7,4 +7,8 @@ impl Network {
         let user = state::User::new(target, &user.nickname, &user.username, &user.visible_hostname, &user.realname);
         self.users.insert(user.id, user);
     }
+
+    pub fn user_quit(&mut self, target: UserId, _event: &Event, quit: &details::UserQuit) {
+        
+    }
 }

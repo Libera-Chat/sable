@@ -2,6 +2,8 @@ use crate::ircd::*;
 
 use ircd_macros::{event_details,target_type};
 
+pub struct WrongEventTypeError;
+
 event_details!{
     #[target_type(UserId)]
     struct NewUser {
@@ -9,6 +11,11 @@ event_details!{
         pub username: String,
         pub visible_hostname: String,
         pub realname: String,
+    }
+
+    #[target_type(UserId)]
+    struct UserQuit {
+        pub message: String,
     }
 
     #[target_type(ChannelId)]

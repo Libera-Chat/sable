@@ -114,6 +114,18 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
                     Self::#typename(id)
                 }
             }
+
+            impl std::convert::TryFrom<ObjectId> for #id_typename
+            {
+                type Error = crate::ircd::id::WrongIdTypeError;
+
+                fn try_from(id: ObjectId) -> Result<Self, crate::ircd::id::WrongIdTypeError> {
+                    match id {
+                        ObjectId::#typename(x) => Ok(x),
+                        _ => Err(crate::ircd::id::WrongIdTypeError)
+                    }
+                }
+            }
         ));
 
         if item.is_sequential.is_some()
@@ -173,21 +185,6 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
         pub enum ObjectId {
             #( #enum_variants ),*
         }
-
-        /*
-        #[derive(Default,Debug)]
-        pub struct IdGenerator {
-            #( #generator_fields ),*
-        }
-
-        impl IdGenerator {
-            pub fn new() -> Self {
-                Default::default()
-            }
-
-            #( #generator_methods )*
-        }
-        */
     ));
 
     output

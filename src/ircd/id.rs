@@ -3,6 +3,20 @@ use ircd_macros::object_ids;
 pub type ServerId = i64;
 pub type LocalId = i64;
 
+#[derive(Debug)]
+pub struct WrongIdTypeError;
+
+impl std::fmt::Display for WrongIdTypeError
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result
+    {
+        f.write_str("Mismatched object ID type for event")?;
+        Ok(())
+    }
+}
+
+impl std::error::Error for WrongIdTypeError { }
+
 object_ids! {
     Event: (ServerId, LocalId) sequential;
     User: (ServerId, LocalId) sequential;
