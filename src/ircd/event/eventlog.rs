@@ -41,13 +41,13 @@ impl EventLog {
         self.broadcast(self.history.get(&s).unwrap().get(&id.local()).unwrap());
     }
 
-    pub fn create(&self, target: ObjectId, details: EventDetails) -> Event {
+    pub fn create(&self, target: impl Into<ObjectId>, details: impl Into<EventDetails>) -> Event {
         Event {
             id: self.id_gen.next(),
             timestamp: 0,
             clock: EventClock::new(),
-            target: target,
-            details: details
+            target: target.into(),
+            details: details.into()
         }
     }
 

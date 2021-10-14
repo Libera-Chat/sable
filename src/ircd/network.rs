@@ -47,10 +47,6 @@ impl Network {
     }
 }
 
-mod errors;
-pub use errors::LookupError;
-pub use errors::LookupResult;
-
 mod accessors;
 
 mod user_state;

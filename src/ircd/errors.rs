@@ -14,6 +14,8 @@ pub enum LookupError
     NoSuchNick(String),
     #[error("No such channel name {0}")]
     NoSuchChannelName(String),
+    #[error("Connection id not found")]
+    NoSuchConnectionId,
 }
 
 pub type LookupResult<T> = std::result::Result<T, LookupError>;

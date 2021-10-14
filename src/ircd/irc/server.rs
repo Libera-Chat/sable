@@ -15,6 +15,9 @@ use log::{info,error};
 use async_broadcast;
 use futures::{select,FutureExt};
 
+mod connection_collection;
+use connection_collection::ConnectionCollection;
+
 pub struct Server
 {
     my_id: ServerId,
@@ -27,9 +30,8 @@ pub struct Server
     event_receiver: async_broadcast::Receiver<Event>,
     listeners: ListenerCollection,
     connection_events: channel::Receiver<connection::ConnectionEvent>,
-    client_connections: HashMap<ConnectionId, ClientConnection>,
-    user_connections: HashMap<UserId, ConnectionId>,
     command_dispatcher: command::CommandDispatcher,
+    connections: ConnectionCollection,
 }
 
 impl Server
@@ -51,8 +53,7 @@ impl Server
             event_receiver: event_receiver,
             listeners: ListenerCollection::new(connevent_send),
             connection_events: connevent_recv,
-            client_connections: HashMap::new(),
-            user_connections: HashMap::new(),
+            connections: ConnectionCollection::new(),
             command_dispatcher: command::CommandDispatcher::new(),
         }
     }
@@ -104,7 +105,7 @@ impl Server
 
     pub fn find_connection(&self, id: ConnectionId) -> Option<&ClientConnection>
     {
-        self.client_connections.get(&id)
+        self.connections.get(id).ok()
     }
 
     pub async fn run(&mut self)
@@ -117,7 +118,7 @@ impl Server
                             match msg.detail {
                                 NewConnection(conn) => {
                                     info!("Got new connection {:?}", msg.source);
-                                    self.client_connections.insert(msg.source, ClientConnection::new(conn));
+                                    self.connections.add(msg.source, ClientConnection::new(conn));
                                 },
                                 Message(m) => { 
                                     info!("Got message from connection {:?}: {}", msg.source, m);
@@ -135,7 +136,16 @@ impl Server
                                 },
                                 Error(e) => {
                                     error!("Got error from connection {:?}: {:?}", msg.source, e);
-                                    self.client_connections.remove(&msg.source);
+                                    if let Ok(conn) = self.connections.get(msg.source) {
+                                        if let Some(userid) = conn.user_id {
+                                            self.apply_action(CommandAction::StateChange(
+                                                self.eventlog.create(userid, EventDetails::UserQuit(details::UserQuit {
+                                                    message: format!("I/O error: {}", e)
+                                                }))
+                                            ));
+                                        }
+                                    }
+                                    self.connections.remove(msg.source);
                                 }
                             }
                         },

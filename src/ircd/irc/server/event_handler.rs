@@ -10,7 +10,7 @@ enum HandlerError {
     #[error("Connection error: {0}")]
     ConnectionError(#[from]ConnectionError),
     #[error("Object lookup failed: {0}")]
-    LookupError(#[from] network::LookupError),
+    LookupError(#[from] LookupError),
     #[error("Mismatched object ID type")]
     WrongIdType(#[from] WrongIdTypeError),
 }
@@ -41,21 +41,18 @@ impl Server
 
     async fn handle_new_user(&mut self, user_id: UserId, _event: &Event, _detail: &NewUser) -> HandleResult
     {
-        if let Some(connection_id) = self.user_connections.get(&user_id)
+        if let Ok(connection) = self.connections.get_user_mut(user_id)
         {
-            if let Some(connection) = self.client_connections.get_mut(&connection_id)
-            {
-                let user = self.net.user(user_id)?;
-                connection.pre_client = None;
-                connection.user_id = Some(user_id);
+            let user = self.net.user(user_id)?;
+            connection.pre_client = None;
+            connection.user_id = Some(user_id);
 
-                connection.connection.send(&format!(":{} 001 {} :Welcome to the {} IRC network, {}\r\n", 
-                                                self.name,
-                                                user.nick(),
-                                                "test",
-                                                user.nick()
-                                            )).await.unwrap();
-            }
+            connection.connection.send(&format!(":{} 001 {} :Welcome to the {} IRC network, {}\r\n", 
+                                            self.name,
+                                            user.nick(),
+                                            "test",
+                                            user.nick()
+                                        )).await.unwrap();
         }
         Ok(())
     }
@@ -81,15 +78,13 @@ impl Server
                 continue;
             }
             let member = m.user()?;
-            if let Some(connid) = self.user_connections.get(&member.id()) {
-                if let Some(conn) = self.client_connections.get(&connid) {
-                    conn.connection.send(&format!(":{}!{}@{} JOIN :{}\r\n",
-                                        user.nick(),
-                                        user.user(),
-                                        user.visible_host(),
-                                        channel.name()
-                    )).await?;
-                }
+            if let Ok(conn) = self.connections.get_user(member.id()) {
+                conn.connection.send(&format!(":{}!{}@{} JOIN :{}\r\n",
+                                    user.nick(),
+                                    user.user(),
+                                    user.visible_host(),
+                                    channel.name()
+                )).await?;
             }
         }
         Ok(())
@@ -105,32 +100,28 @@ impl Server
 
                 for m in channel.members() {
                     let member = m.user()?;
-                    if let Some(connid) = self.user_connections.get(&member.id()) {
-                        if let Some(conn) = self.client_connections.get(&connid) {
-                            conn.connection.send(&format!(":{}!{}@{} PRIVMSG {} :{}\r\n",
-                                                source.nick(),
-                                                source.user(),
-                                                source.visible_host(),
-                                                channel.name(),
-                                                detail.text
-                            )).await?;
-                        }
+                    if let Ok(conn) = self.connections.get_user(member.id()) {
+                        conn.connection.send(&format!(":{}!{}@{} PRIVMSG {} :{}\r\n",
+                                            source.nick(),
+                                            source.user(),
+                                            source.visible_host(),
+                                            channel.name(),
+                                            detail.text
+                        )).await?;
                     }
                 }
                 Ok(())
             },
             ObjectId::User(user_id) => {
                 let user = self.net.user(user_id)?;
-                if let Some(connid) = self.user_connections.get(&user.id()) {
-                    if let Some(conn) = self.client_connections.get(&connid) {
-                        conn.connection.send(&format!(":{}!{}@{} PRIVMSG {} :{}\r\n",
-                                            source.nick(),
-                                            source.user(),
-                                            source.visible_host(),
-                                            user.nick(),
-                                            detail.text
-                        )).await?;
-                    }
+                if let Ok(conn) = self.connections.get_user(user_id) {
+                    conn.connection.send(&format!(":{}!{}@{} PRIVMSG {} :{}\r\n",
+                                        source.nick(),
+                                        source.user(),
+                                        source.visible_host(),
+                                        user.nick(),
+                                        detail.text
+                    )).await?;
                 }
                 Ok(())
             },

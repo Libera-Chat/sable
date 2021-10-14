@@ -6,25 +6,30 @@ impl Server
     {
         match action {
             CommandAction::RegisterClient(id) => {
-                if let Some(conn) = self.client_connections.get_mut(&id)
+                let should_add_user = if let Ok(conn) = self.connections.get_mut(id)
                 {
                     if let Some(pre_client_rc) = conn.pre_client.take()
                     {
                         let pre_client = pre_client_rc.into_inner();
                         let new_user_id = self.user_idgen.next();
                         let register_event = self.eventlog.create(
-                                                        ObjectId::User(new_user_id), 
+                                                        new_user_id, 
                                                         event::details::NewUser {
                                                             nickname: pre_client.nick.unwrap(),
                                                             username: pre_client.user.unwrap(),
                                                             visible_hostname: "example.com".to_string(),
                                                             realname: pre_client.realname.unwrap(),
-                                                        }.into()
+                                                        }
                                                     );
                         self.eventlog.add(register_event);
 
-                        self.user_connections.insert(new_user_id, conn.id());
-                    }
+                        Some((new_user_id, conn.id()))
+                    } else { None }
+                } else { None };
+
+                if let Some((user_id, conn_id)) = should_add_user
+                {
+                    self.connections.add_user(user_id, conn_id);
                 }
             },
             CommandAction::StateChange(event) => {

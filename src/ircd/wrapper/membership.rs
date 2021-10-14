@@ -16,7 +16,7 @@ impl Membership<'_> {
         self.data.user
     }
 
-    pub fn user(&self) -> network::LookupResult<User> {
+    pub fn user(&self) -> LookupResult<User> {
         self.network.user(self.data.user)
     }
 
@@ -24,7 +24,7 @@ impl Membership<'_> {
         self.data.channel
     }
 
-    pub fn channel(&self) -> network::LookupResult<Channel> {
+    pub fn channel(&self) -> LookupResult<Channel> {
         self.network.channel(self.data.channel)
     }
 }

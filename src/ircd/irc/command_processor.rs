@@ -2,7 +2,6 @@ use crate::ircd::*;
 use super::*;
 use crate::utils::*;
 use std::cell::RefCell;
-use network::LookupError;
 
 pub struct CommandProcessor<'a>
 {

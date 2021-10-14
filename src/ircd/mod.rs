@@ -46,6 +46,10 @@ pub mod event {
 mod id;
 pub use id::*;
 
+mod errors;
+pub use errors::LookupError;
+pub use errors::LookupResult;
+
 mod network;
 pub use network::Network;
 
