@@ -124,4 +124,19 @@ mod tests
 
         assert_eq!(msg.args, &["arg1", " arg2"]);
     }
+
+    #[test]
+    fn empty()
+    {
+        assert!(ClientMessage::parse(get_connid(), "").is_none());
+    }
+
+    #[test]
+    fn leading_space()
+    {
+        let msg = ClientMessage::parse(get_connid(), "    command arg1 arg2 :arg three").unwrap();
+
+        assert_eq!(msg.command, "command");
+        assert_eq!(msg.args, &["arg1", "arg2", "arg three"]);
+    }
 }
