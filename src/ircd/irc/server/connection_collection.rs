@@ -36,6 +36,14 @@ impl ConnectionCollection
         self.client_connections.remove(&id);
     }
 
+    pub fn remove_user(&mut self, id: UserId)
+    {
+        if let Some(connid) = self.user_to_connid.remove(&id)
+        {
+            self.client_connections.remove(&connid);
+        }
+    }
+
     pub fn get(&self, id: ConnectionId) -> Result<&ClientConnection, LookupError>
     {
         self.client_connections.get(&id).ok_or(LookupError::NoSuchConnectionId)

@@ -12,6 +12,7 @@ pub struct CommandProcessor<'a>
 pub enum CommandAction {
     StateChange(event::Event),
     RegisterClient(ConnectionId),
+    DisconnectUser(UserId),
 }
 
 pub enum CommandError

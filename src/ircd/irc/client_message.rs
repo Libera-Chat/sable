@@ -12,6 +12,12 @@ impl ClientMessage
     pub fn parse(source: ConnectionId, raw: &str) -> Option<Self>
     {
         let mut args = Vec::new();
+        let raw = raw.trim_start();
+        if raw.is_empty()
+        {
+            return None;
+        }
+
         let offset = match raw.find(" ") {
             Some(offset) => offset,
             None => {

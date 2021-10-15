@@ -32,6 +32,9 @@ impl Server
                     self.connections.add_user(user_id, conn_id);
                 }
             },
+            CommandAction::DisconnectUser(user_id) => {
+                self.connections.remove_user(user_id);
+            }
             CommandAction::StateChange(event) => {
                 self.eventlog.add(event);
             }

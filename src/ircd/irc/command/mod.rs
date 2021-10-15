@@ -79,3 +79,4 @@ mod nick;
 mod user;
 mod join;
 mod message;
+mod quit;

@@ -9,8 +9,9 @@ impl Network {
         self.users.insert(user.id, user);
     }
 
-    pub fn user_quit(&mut self, target: UserId, _event: &Event, quit: &details::UserQuit)
+    pub fn user_quit(&mut self, target: UserId, _event: &Event, _quit: &details::UserQuit)
     {
-        
+        self.memberships.retain(|_, v| v.user != target);
+        self.users.remove(&target);
     }
 }

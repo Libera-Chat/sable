@@ -157,8 +157,11 @@ impl Server
                 res = self.event_receiver.next().fuse() => {
                     match res {
                         Some(event) => {
-                            self.net.apply(&event);
+                            // Notify handlers run before it's applied to the network state. If it's a
+                            // deletion event of some sort, the handler needs to know what was there before
+                            // in order to know who to notify.
                             self.handle_event(&event).await;
+                            self.net.apply(&event);
                         },
                         None => { 
                             panic!("what to do here?");

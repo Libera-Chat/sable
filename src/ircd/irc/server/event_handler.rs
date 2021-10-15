@@ -2,6 +2,7 @@ use super::*;
 use thiserror::Error;
 use ircd_macros::dispatch_event_async;
 use crate::utils::FlattenResult;
+use std::collections::HashSet;
 
 #[derive(Debug,Error)]
 enum HandlerError {
@@ -39,19 +40,18 @@ impl Server
         }
    }
 
-    async fn handle_new_user(&mut self, user_id: UserId, _event: &Event, _detail: &NewUser) -> HandleResult
+    async fn handle_new_user(&mut self, user_id: UserId, _event: &Event, detail: &NewUser) -> HandleResult
     {
         if let Ok(connection) = self.connections.get_user_mut(user_id)
         {
-            let user = self.net.user(user_id)?;
             connection.pre_client = None;
             connection.user_id = Some(user_id);
 
             connection.connection.send(&format!(":{} 001 {} :Welcome to the {} IRC network, {}\r\n", 
                                             self.name,
-                                            user.nick(),
+                                            detail.nickname,
                                             "test",
-                                            user.nick()
+                                            detail.nickname
                                         )).await.unwrap();
         }
         Ok(())
@@ -59,7 +59,30 @@ impl Server
 
     async fn handle_quit(&mut self, target: UserId, _event: &Event, detail: &UserQuit) -> HandleResult
     {
-        panic!("not implemented");
+        let user = self.net.user(target)?;
+        let mut to_notify = HashSet::new();
+
+        for m1 in user.channels()
+        {
+            for m2 in m1.channel()?.members()
+            {
+                to_notify.insert(m2.user_id());
+            }
+        }
+
+        for u in to_notify
+        {
+            if let Ok(conn) = self.connections.get_user(u)
+            {
+                conn.connection.send(&format!(":{}!{}@{} QUIT :{}\r\n",
+                                    user.nick(),
+                                    user.user(),
+                                    user.visible_host(),
+                                    detail.message
+                )).await?;
+            }
+        }
+        Ok(())
     }
 
     /// No-op. We don't need to notify clients until somebody joins it
@@ -70,6 +93,15 @@ impl Server
     {
         let user = self.net.user(detail.user)?;
         let channel = self.net.channel(detail.channel)?;
+
+        if let Ok(conn) = self.connections.get_user(detail.user) {
+            conn.connection.send(&format!(":{}!{}@{} JOIN :{}\r\n",
+                                user.nick(),
+                                user.user(),
+                                user.visible_host(),
+                                channel.name()
+            )).await?;
+        }
 
         for m in channel.members()
         {
