@@ -58,23 +58,23 @@ pub mod irc {
     pub use server::Server;
 
     pub mod connection;
-    pub use connection::Connection;
-    pub use connection::ConnectionError;
-    pub use connection::ConnectionEvent;
+//    use connection::Connection;
+    use connection::ConnectionError;
+//    use connection::ConnectionEvent;
 
     pub mod client;
-    pub use client::ClientConnection;
-    pub use client::PreClient;
+    use client::ClientConnection;
+    use client::PreClient;
 
     mod listener;
-    pub use listener::Listener;
-    pub use listener::ListenerCollection;
+    use listener::ListenerCollection;
 
     mod client_message;
-    pub use client_message::ClientMessage;
+    use client_message::ClientMessage;
 
     mod command_processor;
-    pub use command_processor::*;
+    use command_processor::*;
 
     mod command;
+    mod message;
 }

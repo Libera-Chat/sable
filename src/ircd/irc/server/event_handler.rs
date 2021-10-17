@@ -47,12 +47,7 @@ impl Server
             connection.pre_client = None;
             connection.user_id = Some(user_id);
 
-            connection.connection.send(&format!(":{} 001 {} :Welcome to the {} IRC network, {}\r\n", 
-                                            self.name,
-                                            detail.nickname,
-                                            "test",
-                                            detail.nickname
-                                        )).await.unwrap();
+            connection.send(&message::Numeric001::new(&self.name.to_string(), &detail.nickname, "test", &detail.nickname)).await?;
         }
         Ok(())
     }
@@ -74,12 +69,7 @@ impl Server
         {
             if let Ok(conn) = self.connections.get_user(u)
             {
-                conn.connection.send(&format!(":{}!{}@{} QUIT :{}\r\n",
-                                    user.nick(),
-                                    user.user(),
-                                    user.visible_host(),
-                                    detail.message
-                )).await?;
+                conn.send(&message::Quit::new(&user, &detail.message)).await?;
             }
         }
         Ok(())
@@ -95,12 +85,7 @@ impl Server
         let channel = self.net.channel(detail.channel)?;
 
         if let Ok(conn) = self.connections.get_user(detail.user) {
-            conn.connection.send(&format!(":{}!{}@{} JOIN :{}\r\n",
-                                user.nick(),
-                                user.user(),
-                                user.visible_host(),
-                                channel.name()
-            )).await?;
+            conn.send(&message::Join::new(&user, &channel)).await?;
         }
 
         for m in channel.members()
@@ -111,12 +96,7 @@ impl Server
             }
             let member = m.user()?;
             if let Ok(conn) = self.connections.get_user(member.id()) {
-                conn.connection.send(&format!(":{}!{}@{} JOIN :{}\r\n",
-                                    user.nick(),
-                                    user.user(),
-                                    user.visible_host(),
-                                    channel.name()
-                )).await?;
+                conn.send(&message::Join::new(&user, &channel)).await?;
             }
         }
         Ok(())
@@ -133,13 +113,7 @@ impl Server
                 for m in channel.members() {
                     let member = m.user()?;
                     if let Ok(conn) = self.connections.get_user(member.id()) {
-                        conn.connection.send(&format!(":{}!{}@{} PRIVMSG {} :{}\r\n",
-                                            source.nick(),
-                                            source.user(),
-                                            source.visible_host(),
-                                            channel.name(),
-                                            detail.text
-                        )).await?;
+                        conn.send(&message::Privmsg::new(&source, &channel, &detail.text)).await?;
                     }
                 }
                 Ok(())
@@ -147,13 +121,8 @@ impl Server
             ObjectId::User(user_id) => {
                 let user = self.net.user(user_id)?;
                 if let Ok(conn) = self.connections.get_user(user_id) {
-                    conn.connection.send(&format!(":{}!{}@{} PRIVMSG {} :{}\r\n",
-                                        source.nick(),
-                                        source.user(),
-                                        source.visible_host(),
-                                        user.nick(),
-                                        detail.text
-                    )).await?;
+                    conn.send(&message::Privmsg::new(&source, &user, &detail.text)).await?;
+
                 }
                 Ok(())
             },

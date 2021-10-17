@@ -45,3 +45,17 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 {
     define_object_id::object_ids(input)
 }
+
+mod define_messages;
+
+#[proc_macro]
+pub fn define_messages(input: TokenStream) -> TokenStream
+{
+    define_messages::define_messages(input)
+}
+
+#[proc_macro]
+pub fn define_numerics(input: TokenStream) -> TokenStream
+{
+    define_messages::define_numerics(input)
+}

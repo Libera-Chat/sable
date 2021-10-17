@@ -32,6 +32,11 @@ impl ClientConnection
     {
         self.connection.id
     }
+
+    pub async fn send(&self, msg: &impl message::Message) -> Result<(), ConnectionError>
+    {
+        self.connection.send(&msg.to_string()).await
+    }
 }
 
 impl PreClient {
