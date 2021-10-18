@@ -47,7 +47,7 @@ impl Server
             connection.pre_client = None;
             connection.user_id = Some(user_id);
 
-            connection.send(&message::Numeric001::new(&self.name.to_string(), &detail.nickname, "test", &detail.nickname)).await?;
+            connection.send(&numeric::Numeric001::new(&self.name.to_string(), &detail.nickname, "test", &detail.nickname)).await?;
         }
         Ok(())
     }

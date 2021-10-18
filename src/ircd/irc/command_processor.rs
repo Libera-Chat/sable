@@ -21,7 +21,7 @@ pub enum CommandError
     UnderlyingError(Box<dyn std::error::Error>),
     UnknownError(String),
     NoSuchTarget(String),
-    Numeric(Box<dyn message::Message>)
+    Numeric(Box<dyn messages::Message>)
 }
 
 pub enum CommandSource<'a>
@@ -38,7 +38,7 @@ pub struct ClientCommand<'a>
     pub args: Vec<String>,
 }
 
-impl<T: message::Message + 'static> From<T> for CommandError
+impl<T: messages::Message + 'static> From<T> for CommandError
 {
     fn from(t: T) -> Self {
         Self::Numeric(Box::new(t))
@@ -76,7 +76,7 @@ impl<'a> CommandProcessor<'a>
                     }
                     CommandError::NoSuchTarget(t) => {
                         if let Ok(source) = self.translate_message_source(conn) {
-                            conn.send(&message::NoSuchTarget::new(self.server, &source, &t)).await.or_log("sending error numeric");
+                            conn.send(&numeric::NoSuchTarget::new(self.server, &source, &t)).await.or_log("sending error numeric");
                         }
                     }
                     CommandError::Numeric(num) => {
@@ -103,7 +103,7 @@ impl<'a> CommandProcessor<'a>
             handler.validate(self.server, &cmd)?;
             handler.handle(self.server, &cmd, &mut self.actions)
         } else {
-            Err(message::Numeric421::new(self.server, &source, &message.command).into())
+            Err(numeric::UnknownCommand::new(self.server, &source, &message.command).into())
         }
     }
 

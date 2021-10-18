@@ -1,6 +1,5 @@
 use crate::ircd::*;
 use irc::Server;
-use ircd_macros::define_messages;
 
 
 pub trait MessageSource
@@ -64,20 +63,5 @@ impl MessageTarget for irc::CommandSource<'_>
 pub trait Message : std::fmt::Display + std::fmt::Debug
 { }
 
-use wrapper::*;
-
-define_messages! {
-    Join => { (chan: &Channel.name()) => ":{source} JOIN {chan}" },
-    Quit => { (message: &str) => ":{source} QUIT :{message}" },
-    Privmsg => { (target, message: &str) => ":{source} PRIVMSG {target} :{message}" },
-}
-
-define_messages! {
-    001(Welcome) => { (network_name: &str, nick: &str) => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
-
-    401(NoSuchTarget) => { (unknown: &impl MessageTarget.format()) => "{unknown} :No such nick/channel" },
-    421(UnknownCommand) => { (command: &str) => "{command} :Unknown command" },
-    451(NotRegistered) => { () => ":You have not registered" },
-    461(NotEnoughParameters) => { (command: &str) => "{command} :Not enough parameters" },
-    462(AlreadyRegistered) => { () => ":You are already connected and cannot handshake again" },
-}
+pub mod message;
+pub mod numeric;

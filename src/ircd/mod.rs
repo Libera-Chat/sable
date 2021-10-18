@@ -76,5 +76,8 @@ pub mod irc {
     use command_processor::*;
 
     mod command;
-    mod message;
+
+    mod messages;
+    pub use messages::message;
+    pub use messages::numeric;
 }

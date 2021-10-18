@@ -179,7 +179,7 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
         }
 
         let (target_arg, target_def) = if need_target {
-            (Some(quote!(target: &impl MessageTarget, )), Some(quote!(target = target.format(), )))
+            (Some(quote!(target: &impl crate::ircd::irc::messages::MessageTarget, )), Some(quote!(target = target.format(), )))
         } else {
             (None, None)
         };
@@ -197,7 +197,7 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
 
             impl #typename
             {
-                pub fn new(source: &impl MessageSource, #target_arg #( #message_args: #message_argtypes ),* ) -> Self
+                pub fn new(source: &impl crate::ircd::irc::messages::MessageSource, #target_arg #( #message_args: #message_argtypes ),* ) -> Self
                 {
                     Self(format!(concat!(#prefix #format_str, "\r\n"),
                                  source = source.format(),
@@ -215,7 +215,7 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
                 }
             }
 
-            impl crate::ircd::irc::message::Message for #typename
+            impl crate::ircd::irc::messages::Message for #typename
             { }
         ));
     }
