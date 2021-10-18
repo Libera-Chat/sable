@@ -15,15 +15,13 @@ pub enum CommandAction {
     DisconnectUser(UserId),
 }
 
+#[derive(Debug)]
 pub enum CommandError
 {
     UnderlyingError(Box<dyn std::error::Error>),
     UnknownError(String),
-    InvalidCommand,
-    NotEnoughParameters,
-    NotRegistered,
-    AlreadyRegistered,
     NoSuchTarget(String),
+    Numeric(Box<dyn message::Message>)
 }
 
 pub enum CommandSource<'a>
@@ -38,6 +36,13 @@ pub struct ClientCommand<'a>
     pub source: CommandSource<'a>,
     pub command: String,
     pub args: Vec<String>,
+}
+
+impl<T: message::Message + 'static> From<T> for CommandError
+{
+    fn from(t: T) -> Self {
+        Self::Numeric(Box::new(t))
+    }
 }
 
 impl<'a> CommandProcessor<'a>
@@ -69,25 +74,13 @@ impl<'a> CommandProcessor<'a>
                     CommandError::UnknownError(desc) => {
                         panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), desc);
                     }
-                    CommandError::InvalidCommand => {
-                        conn.connection.send(&format!(":{} 421 * {} :Unknown command\r\n", self.server.name(), command)).await
-                                .or_log("sending error numeric");
-                    },
-                    CommandError::NotEnoughParameters => {
-                        conn.connection.send(&format!(":{} 461 * {} :Not enough parameters\r\n", self.server.name(), command)).await
-                        .or_log("sending error numeric");
-                    },
-                    CommandError::NotRegistered => {
-                        conn.connection.send(&format!(":{} 451 * :You have not registered\r\n", self.server.name())).await
-                        .or_log("sending error numeric");
-                    },
-                    CommandError::AlreadyRegistered => {
-                        conn.connection.send(&format!(":{} 462 * :You are already connected and cannot handshake again\r\n", self.server.name())).await
-                        .or_log("sending error numeric");
-                    },
-                    CommandError::NoSuchTarget(target) => {
-                        conn.connection.send(&format!(":{} 401 * {} :No such nick/channel", self.server.name(), target)).await
-                        .or_log("sending error numeric");
+                    CommandError::NoSuchTarget(t) => {
+                        if let Ok(source) = self.translate_message_source(conn) {
+                            conn.send(&message::NoSuchTarget::new(self.server, &source, &t)).await.or_log("sending error numeric");
+                        }
+                    }
+                    CommandError::Numeric(num) => {
+                        conn.send(num.as_ref()).await.or_log("sending error numeric");
                     }
                 }
             }
@@ -98,10 +91,11 @@ impl<'a> CommandProcessor<'a>
 
     fn do_process_message(&mut self, connection: &ClientConnection, message: ClientMessage) -> Result<(), CommandError>
     {
+        let source = self.translate_message_source(connection)?;
         if let Some(handler) = self.server.command_dispatcher().resolve_command(&message.command) {
             let cmd = ClientCommand {
                  connection: connection, 
-                 source: self.translate_message_source(connection)?,
+                 source: source,
                  command: message.command,
                  args: message.args
             };
@@ -109,7 +103,7 @@ impl<'a> CommandProcessor<'a>
             handler.validate(self.server, &cmd)?;
             handler.handle(self.server, &cmd, &mut self.actions)
         } else {
-            Err(CommandError::InvalidCommand)
+            Err(message::Numeric421::new(self.server, &source, &message.command).into())
         }
     }
 

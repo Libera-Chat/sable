@@ -33,7 +33,7 @@ impl ClientConnection
         self.connection.id
     }
 
-    pub async fn send(&self, msg: &impl message::Message) -> Result<(), ConnectionError>
+    pub async fn send(&self, msg: &dyn message::Message) -> Result<(), ConnectionError>
     {
         self.connection.send(&msg.to_string()).await
     }

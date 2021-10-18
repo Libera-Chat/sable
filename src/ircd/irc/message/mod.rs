@@ -1,9 +1,6 @@
 use crate::ircd::*;
 use irc::Server;
-use ircd_macros::{
-    define_messages,
-    define_numerics
-};
+use ircd_macros::define_messages;
 
 
 pub trait MessageSource
@@ -51,7 +48,20 @@ impl MessageTarget for String
     fn format(&self) -> String { self.clone() }
 }
 
-pub trait Message : std::fmt::Display
+// Used when command parsing/processing fails
+impl MessageTarget for irc::CommandSource<'_>
+{
+    fn format(&self) -> String
+    {
+        match self
+        {
+            Self::User(u) => <wrapper::User as MessageTarget>::format(&u),
+            Self::PreClient(pc) => <irc::PreClient as MessageTarget>::format(&*pc.borrow())
+        }
+    }
+}
+
+pub trait Message : std::fmt::Display + std::fmt::Debug
 { }
 
 use wrapper::*;
@@ -62,6 +72,12 @@ define_messages! {
     Privmsg => { (target, message: &str) => ":{source} PRIVMSG {target} :{message}" },
 }
 
-define_numerics! {
-    001 => { (network_name: &str, nick: &str) => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" }
+define_messages! {
+    001(Welcome) => { (network_name: &str, nick: &str) => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
+
+    401(NoSuchTarget) => { (unknown: &impl MessageTarget.format()) => "{unknown} :No such nick/channel" },
+    421(UnknownCommand) => { (command: &str) => "{command} :Unknown command" },
+    451(NotRegistered) => { () => ":You have not registered" },
+    461(NotEnoughParameters) => { (command: &str) => "{command} :Not enough parameters" },
+    462(AlreadyRegistered) => { () => ":You are already connected and cannot handshake again" },
 }

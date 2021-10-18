@@ -53,9 +53,3 @@ pub fn define_messages(input: TokenStream) -> TokenStream
 {
     define_messages::define_messages(input)
 }
-
-#[proc_macro]
-pub fn define_numerics(input: TokenStream) -> TokenStream
-{
-    define_messages::define_numerics(input)
-}

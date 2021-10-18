@@ -42,9 +42,10 @@ struct MessageDefn
     is_numeric: bool,
     name: String,
     typename: Ident,
+    aliases: Option<Punctuated<Ident, Token![,]>>,
     _arrow1: Token![=>],
     _brace: token::Brace,
-      _paren: token::Paren,
+      _paren2: token::Paren,
         args: Punctuated<MessageArg, Token![,]>,
       _arrow2: Token![=>],
       value: LitStr,
@@ -54,9 +55,6 @@ struct MessageDefnList
 {
     messages: Punctuated<MessageDefn, Token![,]>
 }
-
-struct NumericDefn(MessageDefn);
-struct NumericDefnList(MessageDefnList);
 
 impl Parse for MessageArg
 {
@@ -92,43 +90,33 @@ impl Parse for MessageDefn
     {
         let content1;
         let content2;
+        let content3;
 
-        let name: Ident = input.parse()?;
+        let (is_numeric, name, typename) = if let Ok(i) = input.parse::<LitInt>() {
+            (true, i.to_string(), Ident::new(&format!("Numeric{}", i), Span::call_site()))
+        } else {
+            let ident: Ident = input.parse()?;
+            (false, ident.to_string(), ident)
+        };
 
-        Ok(Self {
-            is_numeric: false,
-            name: name.to_string(),
-            typename: name,
-            _arrow1: input.parse()?,
-            _brace: braced!(content1 in input),
-            _paren: parenthesized!(content2 in content1),
-            args: content2.parse_terminated(MessageArg::parse)?,
-            _arrow2: content1.parse()?,
-            value: content1.parse()?
-        })
-    }
-}
-
-impl NumericDefn
-{
-    fn parse(input: ParseStream) -> Result<MessageDefn>
-    {
-        let content1;
-        let content2;
-
-        let number = input.parse::<LitInt>()?.to_string();
-        let typename = Ident::new(&format!("Numeric{}", number), Span::call_site());
+        let aliases = if input.peek(token::Paren) {
+            let _paren = parenthesized!(content1 in input);
+            Some(content1.parse_terminated(Ident::parse)?)
+        } else {
+            None
+        };
 
         Ok(MessageDefn {
-            is_numeric: true,
-            name: number,
+            is_numeric: is_numeric,
+            name: name,
             typename: typename,
+            aliases: aliases,
             _arrow1: input.parse()?,
-            _brace: braced!(content1 in input),
-            _paren: parenthesized!(content2 in content1),
-            args: content2.parse_terminated(MessageArg::parse)?,
-            _arrow2: content1.parse()?,
-            value: content1.parse()?
+            _brace: braced!(content2 in input),
+            _paren2: parenthesized!(content3 in content2),
+            args: content3.parse_terminated(MessageArg::parse)?,
+            _arrow2: content2.parse()?,
+            value: content2.parse()?
         })
     }
 }
@@ -143,28 +131,11 @@ impl Parse for MessageDefnList
     }
 }
 
-impl Parse for NumericDefnList
-{
-    fn parse(input: ParseStream) -> Result<Self>
-    {
-        Ok(Self(MessageDefnList {
-            messages: input.parse_terminated(NumericDefn::parse)?
-        }))
-    }
-}
-
 pub fn define_messages(input: TokenStream) -> TokenStream
 {
     let input = parse_macro_input!(input as MessageDefnList);
 
     generate_message_list(input)
-}
-
-pub fn define_numerics(input: TokenStream) -> TokenStream
-{
-    let input = parse_macro_input!(input as NumericDefnList);
-
-    generate_message_list(input.0)
 }
 
 fn generate_message_list(input: MessageDefnList) -> TokenStream
@@ -176,6 +147,7 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
         let name = message.name;
         let typename = message.typename;
         let format_str = message.value;
+        let aliases = message.aliases.iter();
 
         let mut message_args = Vec::new();
         let mut message_argtypes = Vec::new();
@@ -219,13 +191,19 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
         };
 
         out.extend(quote!(
+            #[derive(Debug,Clone)]
             pub struct #typename(String);
+            #( pub type #aliases = #typename; )*
 
             impl #typename
             {
                 pub fn new(source: &impl MessageSource, #target_arg #( #message_args: #message_argtypes ),* ) -> Self
                 {
-                    Self(format!(concat!(#prefix #format_str, "\r\n"), source = source.format(), #target_def #( #format_args = #format_values),* ))
+                    Self(format!(concat!(#prefix #format_str, "\r\n"),
+                                 source = source.format(),
+                                 #target_def
+                                 #( #format_args = #format_values),*
+                            ))
                 }
             }
 

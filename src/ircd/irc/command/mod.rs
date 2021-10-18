@@ -11,11 +11,11 @@ pub trait CommandHandler
 {
     fn min_parameters(&self) -> usize;
 
-    fn validate(&self, _server: &Server, cmd: &ClientCommand) -> CommandResult
+    fn validate(&self, server: &Server, cmd: &ClientCommand) -> CommandResult
     {
         if cmd.args.len() < self.min_parameters()
         {
-            return Err(CommandError::NotEnoughParameters);
+            return Err(irc::message::NotEnoughParameters::new(server, &cmd.source, &cmd.command).into());
         }
         Ok(())
     }
@@ -32,14 +32,14 @@ pub trait CommandHandler
         }
     }
 
-    fn handle_preclient<'a>(&self, _server: &Server, _source: &'a RefCell<PreClient>, _cmd: &ClientCommand, _actions: &mut Vec<CommandAction>) -> CommandResult
+    fn handle_preclient<'a>(&self, server: &Server, source: &'a RefCell<PreClient>, _cmd: &ClientCommand, _actions: &mut Vec<CommandAction>) -> CommandResult
     {
-        Err(CommandError::NotRegistered)
+        Err(irc::message::NotRegistered::new(server, &*source.borrow()).into())
     }
 
-    fn handle_user<'a>(&self, _server: &Server, _source: &'a wrapper::User, _cmd: &ClientCommand, _actions: &mut Vec<CommandAction>) -> CommandResult
+    fn handle_user<'a>(&self, server: &Server, source: &'a wrapper::User, _cmd: &ClientCommand, _actions: &mut Vec<CommandAction>) -> CommandResult
     {
-        Err(CommandError::AlreadyRegistered)
+        Err(irc::message::AlreadyRegistered::new(server, source).into())
     }
 }
 
