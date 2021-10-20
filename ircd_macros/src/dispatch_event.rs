@@ -34,8 +34,13 @@ impl Parse for HandlerList
     }
 }
 
+enum EventType {
+    Event(Ident),
+    Any
+}
+
 struct Handler {
-    event_type: Ident,
+    event_type: EventType,
     _arrow: Token![=>],
     handler: Expr,
 }
@@ -44,7 +49,12 @@ impl Parse for Handler
 {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(Self {
-            event_type: input.parse()?,
+            event_type: if input.peek(Token![_]) {
+                input.parse::<Token![_]>()?;
+                EventType::Any
+            } else {
+                EventType::Event(input.parse()?)
+            },
             _arrow: input.parse()?,
             handler: input.parse()?
         })
@@ -63,23 +73,33 @@ pub fn dispatch_event(input: TokenStream, is_async: bool) -> TokenStream
 
     for item in handlers.handlers
     {
-        let event_type = item.event_type;
         let handler = item.handler;
 
-        cases.push(quote!(
-            crate::ircd::event::EventDetails::#event_type(detail) => {
-                match <crate::ircd::event::#event_type as crate::ircd::event::DetailType>::Target::try_from(#event_name.target) {
-                    Ok(id) => {
-                        Ok(#handler (
-                            id,
-                            #event_name,
-                            &detail
-                        ) #do_await)
-                    },
-                    Err(e) => Err(e)
-                }
+        match item.event_type
+        {
+            EventType::Event(event_type) => {
+                cases.push(quote!(
+                    crate::ircd::event::EventDetails::#event_type(detail) => {
+                        match <crate::ircd::event::#event_type as crate::ircd::event::DetailType>::Target::try_from(#event_name.target) {
+                            Ok(id) => {
+                                Ok(#handler (
+                                    id,
+                                    #event_name,
+                                    &detail
+                                ) #do_await)
+                            },
+                            Err(e) => Err(e)
+                        }
+                    }
+                ));
+            },
+            EventType::Any => {
+                cases.push(quote!(
+                    _ => { Ok( #handler ( #event_name ) ) }
+                ))
             }
-        ));
+        }
+
     }
 
     let out = quote!(

@@ -72,9 +72,6 @@ pub mod irc {
     mod client_message;
     use client_message::ClientMessage;
 
-    mod command_processor;
-    use command_processor::*;
-
     mod command;
 
     mod messages;

@@ -1,6 +1,6 @@
 use crate::ircd::*;
 use irc::Server;
-
+use irc::command::*;
 
 pub trait MessageSource
 {
@@ -48,7 +48,7 @@ impl MessageTarget for String
 }
 
 // Used when command parsing/processing fails
-impl MessageTarget for irc::CommandSource<'_>
+impl MessageTarget for CommandSource<'_>
 {
     fn format(&self) -> String
     {

@@ -17,6 +17,7 @@ use futures::{select,FutureExt};
 
 mod connection_collection;
 use connection_collection::ConnectionCollection;
+use command::*;
 
 pub struct Server
 {
@@ -160,8 +161,16 @@ impl Server
                             // Notify handlers run before it's applied to the network state. If it's a
                             // deletion event of some sort, the handler needs to know what was there before
                             // in order to know who to notify.
-                            self.handle_event(&event).await;
-                            self.net.apply(&event);
+                            match self.net.validate(&event) {
+                                Ok(_) => {
+                                    self.handle_event(&event);
+                                    self.net.apply(&event);
+                                },
+                                Err(e) => {
+                                    error!("Event failed validation: {}", e);
+                                    self.handle_event_failure(&event, &e);
+                                }
+                            }
                         },
                         None => { 
                             panic!("what to do here?");
@@ -175,3 +184,4 @@ impl Server
 
 mod command_action;
 mod event_handler;
+mod event_failure;

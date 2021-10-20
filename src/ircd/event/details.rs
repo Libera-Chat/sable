@@ -29,6 +29,11 @@ event_details!{
         pub user: UserId,
     }
 
+    #[target_type(MembershipId)]
+    struct ChannelPart {
+        pub message: String,
+    }
+
     #[target_type(MessageId)]
     struct NewMessage {
         pub source: UserId,

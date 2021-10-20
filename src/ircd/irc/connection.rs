@@ -1,6 +1,5 @@
 use crate::ircd::*;
 use crate::utils::*;
-use std::sync::Arc;
 use async_std::{
     prelude::*,
     net::TcpStream,
@@ -18,7 +17,7 @@ static SEND_QUEUE_LEN:usize = 100;
 pub struct Connection {
     pub id: ConnectionId,
     control_channel: channel::Sender<ConnectionControl>,
-    conn: Arc<TcpStream>
+    send_channel: channel::Sender<String>,
 }
 
 #[derive(Error,Debug)]
@@ -29,6 +28,8 @@ pub enum ConnectionError {
     IoError(#[from]std::io::Error),
     #[error("Couldn't send to control channel: {0}")]
     ControlSendError(#[from] channel::SendError<ConnectionControl>),
+    #[error("Send queue full")]
+    SendQueueFull,
 }
 
 #[derive(Debug)]
@@ -46,8 +47,9 @@ pub struct ConnectionEvent {
 
 struct ConnectionTask {
     id: ConnectionId,
-    conn: Arc<TcpStream>,
+    conn: TcpStream,
     control_channel: channel::Receiver<ConnectionControl>,
+    send_channel: channel::Receiver<String>,
     event_channel: channel::Sender<ConnectionEvent>
 }
 
@@ -60,15 +62,15 @@ impl Connection
     pub fn new(id: ConnectionId, stream: TcpStream, events: channel::Sender<ConnectionEvent>) -> Self
     {
         let (control_send, control_recv) = channel::bounded(SEND_QUEUE_LEN);
-        let stream = Arc::new(stream);
+        let (send_send, send_recv) = channel::bounded(SEND_QUEUE_LEN);
 
-        let conntask = ConnectionTask::new(id, Arc::clone(&stream), control_recv, events);
+        let conntask = ConnectionTask::new(id, stream, control_recv, send_recv, events.clone());
         task::spawn(conntask.run());
 
         Self {
             id: id,
             control_channel: control_send,
-            conn: stream
+            send_channel: send_send,
         }
     }
 
@@ -77,16 +79,15 @@ impl Connection
         self.id
     }
 
-    pub async fn close(&self) -> Result<(), ConnectionError>
+    pub fn close(&self) -> Result<(), ConnectionError>
     {
-        self.control_channel.send(ConnectionControl::Close).await?;
+        self.control_channel.try_send(ConnectionControl::Close)?;
         Ok(())
     }
 
-    pub async fn send(&self, message: &str) -> Result<(), ConnectionError>
+    pub fn send(&self, message: &str) -> Result<(), ConnectionError>
     {
-        let mut conn = &*self.conn;
-        conn.write_all(message.as_bytes()).await?;
+        self.send_channel.try_send(message.to_string())?;
         Ok(())
     }
 }
@@ -120,21 +121,23 @@ impl ConnectionEvent
 impl ConnectionTask
 {
     fn new(id: ConnectionId, 
-        stream: Arc<TcpStream>, 
+        stream: TcpStream,
         control: channel::Receiver<ConnectionControl>,
+        send: channel::Receiver<String>,
         events: channel::Sender<ConnectionEvent>) -> Self
     {
         Self {
             id: id,
             conn: stream,
             control_channel: control,
+            send_channel: send,
             event_channel: events
         }
     }
 
     async fn run(mut self)
     {
-        let reader = BufReader::new(&*self.conn);
+        let reader = BufReader::new(self.conn.clone());
         let mut lines = reader.lines();
         loop
         {
@@ -143,6 +146,14 @@ impl ConnectionTask
                 control = self.control_channel.next().fuse() => match control {
                     None => { info!("a"); break; },
                     Some(ConnectionControl::Close) => { info!("b"); break; },
+                },
+                message = self.send_channel.next().fuse() => match message {
+                    None => break,
+                    Some(msg) => {
+                        if self.conn.write_all(msg.as_bytes()).await.is_err() {
+                            break;
+                        }
+                    }
                 },
                 message = lines.next().fuse() => match message {
                     None => {info!("c"); break; },
@@ -160,5 +171,17 @@ impl ConnectionTask
         }
         info!("closing {:?}", self.id);
         self.event_channel.send(ConnectionEvent::error(self.id, ConnectionError::Closed)).await.or_log("notifying connection closed");
+    }
+}
+
+impl<T> From<channel::TrySendError<T>> for ConnectionError
+{
+    fn from(e: channel::TrySendError<T>) -> Self
+    {
+        match e
+        {
+            channel::TrySendError::Full(_) => Self::SendQueueFull,
+            channel::TrySendError::Closed(_) => Self::Closed
+        }
     }
 }

@@ -6,6 +6,7 @@ define_messages! {
 
     401(NoSuchTarget) => { (unknown: &impl MessageTarget.format()) => "{unknown} :No such nick/channel" },
     421(UnknownCommand) => { (command: &str) => "{command} :Unknown command" },
+    433(NicknameInUse) => { (nick: &str) => "{nick} :Nickname is already in use." },
     451(NotRegistered) => { () => ":You have not registered" },
     461(NotEnoughParameters) => { (command: &str) => "{command} :Not enough parameters" },
     462(AlreadyRegistered) => { () => ":You are already connected and cannot handshake again" },

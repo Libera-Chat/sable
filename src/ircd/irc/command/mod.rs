@@ -6,6 +6,9 @@ use irc::numeric;
 
 use ircd_macros::command_handler;
 
+mod processor;
+pub use processor::*;
+
 type CommandResult = Result<(), CommandError>;
 
 pub trait CommandHandler
@@ -21,24 +24,24 @@ pub trait CommandHandler
         Ok(())
     }
 
-    fn handle(&self, server: &Server, cmd: &ClientCommand, actions: &mut Vec<CommandAction>) -> CommandResult
+    fn handle(&self, server: &Server, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
     {
         match &cmd.source {
             CommandSource::PreClient(pc) => {
-                self.handle_preclient(server, pc, cmd, actions)
+                self.handle_preclient(server, pc, cmd, proc)
             },
             CommandSource::User(u) => {
-                self.handle_user(server, &u, cmd, actions)
+                self.handle_user(server, &u, cmd, proc)
             }
         }
     }
 
-    fn handle_preclient<'a>(&self, server: &Server, source: &'a RefCell<PreClient>, _cmd: &ClientCommand, _actions: &mut Vec<CommandAction>) -> CommandResult
+    fn handle_preclient<'a>(&self, server: &Server, source: &'a RefCell<PreClient>, _cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
     {
         Err(numeric::NotRegistered::new(server, &*source.borrow()).into())
     }
 
-    fn handle_user<'a>(&self, server: &Server, source: &'a wrapper::User, _cmd: &ClientCommand, _actions: &mut Vec<CommandAction>) -> CommandResult
+    fn handle_user<'a>(&self, server: &Server, source: &'a wrapper::User, _cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
     {
         Err(numeric::AlreadyRegistered::new(server, source).into())
     }
@@ -76,6 +79,7 @@ impl CommandDispatcher {
         self.handlers.get(&cmd.to_ascii_uppercase()).map(|x| *x)
     }
 }
+
 mod nick;
 mod user;
 mod join;

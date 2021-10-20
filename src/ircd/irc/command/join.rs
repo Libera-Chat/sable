@@ -1,13 +1,14 @@
 use super::*;
 use CommandAction::StateChange;
 
+
 command_handler!("JOIN", JoinHandler);
 
 impl CommandHandler for JoinHandler
 {
     fn min_parameters(&self) -> usize { 1 }
 
-    fn handle_user(&self, server: &Server, source: &wrapper::User, cmd: &ClientCommand, actions: &mut Vec<CommandAction>) -> CommandResult
+    fn handle_user(&self, server: &Server, source: &wrapper::User, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
     {
         let chname = &cmd.args[0];
         let channel_id = match server.network().channel_by_name(chname) {
@@ -16,7 +17,7 @@ impl CommandHandler for JoinHandler
                 let details = event::NewChannel { name: chname.clone() };
                 let channel_id = server.next_channel_id();
                 let event = server.create_event(channel_id, details);
-                actions.push(StateChange(event));
+                proc.action(StateChange(event)).translate(cmd)?;
                 channel_id
             }
         };
@@ -26,7 +27,7 @@ impl CommandHandler for JoinHandler
         };
         let membership_id = MembershipId::new(source.id(), channel_id);
         let event = server.create_event(membership_id, details);
-        actions.push(StateChange(event));
+        proc.action(StateChange(event)).translate(cmd)?;
         Ok(())
     }
 }

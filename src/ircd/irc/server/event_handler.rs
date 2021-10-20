@@ -1,6 +1,6 @@
 use super::*;
 use thiserror::Error;
-use ircd_macros::dispatch_event_async;
+use ircd_macros::dispatch_event;
 use crate::utils::FlattenResult;
 use std::collections::HashSet;
 
@@ -25,13 +25,14 @@ type HandleResult = Result<(), HandlerError>;
 
 impl Server
 {
-    pub(super) async fn handle_event(&mut self, event: &Event)
+    pub(super) fn handle_event(&mut self, event: &Event)
     {
-        let res = dispatch_event_async!(event => {
+        let res = dispatch_event!(event => {
             NewUser => self.handle_new_user,
             UserQuit => self.handle_quit,
             NewChannel => self.handle_new_channel,
             ChannelJoin => self.handle_join,
+            ChannelPart => self.handle_part,
             NewMessage => self.handle_new_message,
         }).flatten();
         if let Err(e) = res
@@ -40,19 +41,19 @@ impl Server
         }
    }
 
-    async fn handle_new_user(&mut self, user_id: UserId, _event: &Event, detail: &NewUser) -> HandleResult
+    fn handle_new_user(&mut self, user_id: UserId, _event: &Event, detail: &NewUser) -> HandleResult
     {
         if let Ok(connection) = self.connections.get_user_mut(user_id)
         {
             connection.pre_client = None;
             connection.user_id = Some(user_id);
 
-            connection.send(&numeric::Numeric001::new(&self.name.to_string(), &detail.nickname, "test", &detail.nickname)).await?;
+            connection.send(&numeric::Numeric001::new(&self.name.to_string(), &detail.nickname, "test", &detail.nickname))?;
         }
         Ok(())
     }
 
-    async fn handle_quit(&mut self, target: UserId, _event: &Event, detail: &UserQuit) -> HandleResult
+    fn handle_quit(&mut self, target: UserId, _event: &Event, detail: &UserQuit) -> HandleResult
     {
         let user = self.net.user(target)?;
         let mut to_notify = HashSet::new();
@@ -69,23 +70,23 @@ impl Server
         {
             if let Ok(conn) = self.connections.get_user(u)
             {
-                conn.send(&message::Quit::new(&user, &detail.message)).await?;
+                conn.send(&message::Quit::new(&user, &detail.message))?;
             }
         }
         Ok(())
     }
 
     /// No-op. We don't need to notify clients until somebody joins it
-    async fn handle_new_channel(&self, _target: ChannelId, _event: &Event, _detail: &NewChannel) -> HandleResult
+    fn handle_new_channel(&self, _target: ChannelId, _event: &Event, _detail: &NewChannel) -> HandleResult
     { Ok(()) }
 
-    async fn handle_join(&self, _target: MembershipId, _event: &Event, detail: &ChannelJoin) -> HandleResult
+    fn handle_join(&self, _target: MembershipId, _event: &Event, detail: &ChannelJoin) -> HandleResult
     {
         let user = self.net.user(detail.user)?;
         let channel = self.net.channel(detail.channel)?;
 
         if let Ok(conn) = self.connections.get_user(detail.user) {
-            conn.send(&message::Join::new(&user, &channel)).await?;
+            conn.send(&message::Join::new(&user, &channel))?;
         }
 
         for m in channel.members()
@@ -96,13 +97,29 @@ impl Server
             }
             let member = m.user()?;
             if let Ok(conn) = self.connections.get_user(member.id()) {
-                conn.send(&message::Join::new(&user, &channel)).await?;
+                conn.send(&message::Join::new(&user, &channel))?;
             }
         }
         Ok(())
     }
 
-    async fn handle_new_message(&self, _target: MessageId, _event: &Event, detail: &NewMessage) -> HandleResult
+    fn handle_part(&self, target: MembershipId, _event: &Event, detail: &ChannelPart) -> HandleResult
+    {
+        let membership = self.net.membership(target)?;
+        let source = membership.user()?;
+        let channel = membership.channel()?;
+
+        for m in channel.members()
+        {
+            if let Ok(conn) = self.connections.get_user(m.user()?.id())
+            {
+                conn.send(&message::Part::new(&source, &channel, &detail.message))?;
+            }
+        }
+        Ok(())
+    }
+
+    fn handle_new_message(&self, _target: MessageId, _event: &Event, detail: &NewMessage) -> HandleResult
     {
         let source = self.net.user(detail.source)?;
 
@@ -113,7 +130,7 @@ impl Server
                 for m in channel.members() {
                     let member = m.user()?;
                     if let Ok(conn) = self.connections.get_user(member.id()) {
-                        conn.send(&message::Privmsg::new(&source, &channel, &detail.text)).await?;
+                        conn.send(&message::Privmsg::new(&source, &channel, &detail.text))?;
                     }
                 }
                 Ok(())
@@ -121,7 +138,7 @@ impl Server
             ObjectId::User(user_id) => {
                 let user = self.net.user(user_id)?;
                 if let Ok(conn) = self.connections.get_user(user_id) {
-                    conn.send(&message::Privmsg::new(&source, &user, &detail.text)).await?;
+                    conn.send(&message::Privmsg::new(&source, &user, &detail.text))?;
 
                 }
                 Ok(())

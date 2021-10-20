@@ -33,9 +33,16 @@ impl ClientConnection
         self.connection.id
     }
 
-    pub async fn send(&self, msg: &dyn messages::Message) -> Result<(), ConnectionError>
+    pub fn send(&self, msg: &dyn messages::Message) -> Result<(), ConnectionError>
     {
-        self.connection.send(&msg.to_string()).await
+        self.connection.send(&msg.to_string())
+    }
+
+    pub fn error(&self, msg: &str)
+    {
+        // Can't do much if this does fail, because we're already tearing down the connection
+        let _res = self.connection.send(&format!("ERROR :{}", msg));
+        let _res = self.connection.close();
     }
 }
 

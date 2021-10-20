@@ -7,7 +7,7 @@ impl CommandHandler for PrivmsgHandler
 {
     fn min_parameters(&self) -> usize { 2 }
 
-    fn handle_user(&self, server: &Server, source: &wrapper::User, cmd: &ClientCommand, actions: &mut Vec<CommandAction>) -> CommandResult
+    fn handle_user(&self, server: &Server, source: &wrapper::User, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
     {
         let target_name = &cmd.args[0];
         let target_id = if is_channel_name(target_name) {
@@ -21,7 +21,7 @@ impl CommandHandler for PrivmsgHandler
             target: target_id,
             text: cmd.args[1].clone(),
         };
-        actions.push(CommandAction::StateChange(server.create_event(server.next_message_id(), details)));
+        proc.action(CommandAction::StateChange(server.create_event(server.next_message_id(), details))).translate(cmd)?;
         Ok(())
     }
 }

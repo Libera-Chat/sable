@@ -1,9 +1,22 @@
 use crate::ircd::event::*;
 use crate::ircd::*;
-use crate::utils::OrLog;
+use crate::utils::{OrLog,FlattenResult};
 use ircd_macros::dispatch_event;
+use thiserror::Error;
 
 use std::collections::HashMap;
+
+#[derive(Error,Debug)]
+pub enum ValidationError
+{
+    #[error("Nickname {0} already in use")]
+    NickInUse(String),
+    #[error("Object not found: {0}")]
+    ObjectNotFound(#[from] LookupError),
+    #[error("Wrong object ID type: {0}")]
+    WrongTypeId(#[from] WrongIdTypeError)
+}
+pub type ValidationResult = Result<(), ValidationError>;
 
 #[derive(Debug)]
 pub struct Network {
@@ -24,17 +37,6 @@ impl Network {
             messages: HashMap::new(),
         }
     }
-/*
-    pub fn apply(&mut self, event: &Event) {
-        match (event.target, &event.details) {
-            (ObjectId::User(target), EventDetails::NewUser(details)) => self.new_user(target, event, details),
-            (ObjectId::Channel(target), EventDetails::NewChannel(details)) => self.new_channel(target, event, details),
-            (ObjectId::Membership(target), EventDetails::ChannelJoin(details)) => self.user_joined_channel(target, event, details),
-            (ObjectId::Message(target), EventDetails::NewMessage(details)) => self.new_message(target, event, details),
-            _ => panic!("Network received event with wrong target type: {:?}, {:?}", event.target, event.details)
-        }
-    }
-*/
 
     pub fn apply(&mut self, event: &Event) {
         dispatch_event!(event => {
@@ -42,8 +44,17 @@ impl Network {
             UserQuit => self.user_quit,
             NewChannel => self.new_channel,
             ChannelJoin => self.user_joined_channel,
+            ChannelPart => self.user_left_channel,
             NewMessage => self.new_message,
         }).or_log("Mismatched object ID type?");
+    }
+
+    pub fn validate(&self, event: &Event) -> ValidationResult
+    {
+        dispatch_event!(event => {
+            NewUser => self.validate_new_user,
+            _ => (|_| { Ok(()) })
+        }).flatten()
     }
 }
 
