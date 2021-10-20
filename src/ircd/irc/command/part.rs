@@ -1,0 +1,31 @@
+use super::*;
+use CommandAction::StateChange;
+
+
+command_handler!("Part", PartHandler);
+
+impl CommandHandler for PartHandler
+{
+    fn min_parameters(&self) -> usize { 1 }
+
+    fn handle_user(&self, server: &Server, source: &wrapper::User, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
+    {
+        let chname = &cmd.args[0];
+        let channel = match server.network().channel_by_name(chname) {
+            Ok(c) => c,
+            Err(_) => { return Err(numeric::NoSuchChannel::new(server, source, chname).into()); }
+        };
+        let msg = cmd.args.get(1).unwrap_or(&"".to_string()).clone();
+
+        let membership_id = MembershipId::new(source.id(), channel.id());
+        if server.network().membership(membership_id).is_ok()
+        {
+            let details = event::ChannelPart{ message: msg };
+            let event = server.create_event(membership_id, details);
+            proc.action(StateChange(event)).translate(cmd)?;
+        } else {
+            cmd.connection.send(&numeric::NotOnChannel::new(server, source, &channel))?;
+        }
+        Ok(())
+    }
+}

@@ -83,5 +83,6 @@ impl CommandDispatcher {
 mod nick;
 mod user;
 mod join;
+mod part;
 mod message;
 mod quit;
