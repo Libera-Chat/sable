@@ -129,6 +129,9 @@ impl Server
 
                 for m in channel.members() {
                     let member = m.user()?;
+                    if member.id() == source.id() {
+                        continue;
+                    }
                     if let Ok(conn) = self.connections.get_user(member.id()) {
                         conn.send(&message::Privmsg::new(&source, &channel, &detail.text))?;
                     }
