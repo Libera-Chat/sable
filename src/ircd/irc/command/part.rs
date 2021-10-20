@@ -1,8 +1,7 @@
 use super::*;
 use CommandAction::StateChange;
 
-
-command_handler!("Part", PartHandler);
+command_handler!("PART", PartHandler);
 
 impl CommandHandler for PartHandler
 {
