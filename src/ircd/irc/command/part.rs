@@ -24,7 +24,7 @@ impl CommandHandler for PartHandler
             let event = server.create_event(membership_id, details);
             proc.action(StateChange(event)).translate(cmd)?;
         } else {
-            cmd.connection.send(&numeric::NotOnChannel::new(server, source, &channel))?;
+            return Err(numeric::NotOnChannel::new(server, source, &channel).into());
         }
         Ok(())
     }
