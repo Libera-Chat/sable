@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::cmp::Ordering;
+use serde::{Serialize,Deserialize};
 
 use crate::ircd::{EventId,ServerId,LocalId};
 
-#[derive(Clone,Eq,PartialEq,Debug)]
+#[derive(Clone,Eq,PartialEq,Debug,Serialize,Deserialize)]
 pub struct EventClock (HashMap<ServerId, LocalId>);
 
 impl EventClock {

@@ -100,7 +100,7 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
         all_typenames.push(typename.clone());
 
         output.extend(quote!(
-            #[derive(PartialEq,Eq,Hash,Debug,Clone,Copy)]
+            #[derive(PartialEq,Eq,Hash,Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
             pub struct #id_typename #contents;
 
             impl #id_typename
@@ -181,7 +181,7 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
     }
 
     output.extend(quote!(
-        #[derive(PartialEq,Eq,Hash,Debug,Clone,Copy)]
+        #[derive(PartialEq,Eq,Hash,Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
         pub enum ObjectId {
             #( #enum_variants ),*
         }

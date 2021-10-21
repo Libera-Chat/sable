@@ -45,7 +45,7 @@ pub fn event_details(input: TokenStream) -> TokenStream
 
         let defn = quote!(
             #( #attrs )*
-            #[derive(Debug,Clone)]
+            #[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
             pub struct #name
             #fields
         );
@@ -54,7 +54,7 @@ pub fn event_details(input: TokenStream) -> TokenStream
     }
 
     output.extend(quote!(
-        #[derive(Debug,Clone)]
+        #[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
         pub enum EventDetails {
             #( #names(#names) ),*
         }

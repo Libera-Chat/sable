@@ -144,8 +144,8 @@ impl ConnectionTask
             select!
             {
                 control = self.control_channel.next().fuse() => match control {
-                    None => { info!("a"); break; },
-                    Some(ConnectionControl::Close) => { info!("b"); break; },
+                    None => { break; },
+                    Some(ConnectionControl::Close) => { break; },
                 },
                 message = self.send_channel.next().fuse() => match message {
                     None => break,
@@ -156,13 +156,11 @@ impl ConnectionTask
                     }
                 },
                 message = lines.next().fuse() => match message {
-                    None => {info!("c"); break; },
+                    None => { break; },
                     Some(Ok(m)) => {
-                        info!("got message");
                         self.event_channel.send(ConnectionEvent::message(self.id, m)).await.or_log("notifying socket message");
                     }
                     Some(Err(e)) => {
-                        info!("got error");
                         self.event_channel.send(ConnectionEvent::error(self.id, ConnectionError::from(e))).await.or_log("notifying socket error");
                         return;
                     }

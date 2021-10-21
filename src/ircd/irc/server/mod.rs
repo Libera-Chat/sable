@@ -19,6 +19,12 @@ mod connection_collection;
 use connection_collection::ConnectionCollection;
 use command::*;
 
+struct ChannelPair<T>
+{
+    send: channel::Sender<T>,
+    recv: channel::Receiver<T>,
+}
+
 pub struct Server
 {
     my_id: ServerId,
@@ -29,6 +35,8 @@ pub struct Server
     message_idgen: MessageIdGenerator,
     eventlog: event::EventLog,
     event_receiver: async_broadcast::Receiver<Event>,
+    from_network: ChannelPair<Event>,
+    to_network: channel::Sender<Event>,
     listeners: ListenerCollection,
     connection_events: channel::Receiver<connection::ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
@@ -37,9 +45,10 @@ pub struct Server
 
 impl Server
 {
-    pub fn new(id: ServerId, name: String) -> Self
+    pub fn new(id: ServerId, name: String, to_network: channel::Sender<Event>) -> Self
     {
         let (connevent_send, connevent_recv) = channel::unbounded::<connection::ConnectionEvent>();
+        let (net_send, net_recv) = channel::unbounded::<Event>();
         let mut eventlog = event::EventLog::new(EventIdGenerator::new(id, 1));
         let event_receiver = eventlog.attach();
 
@@ -52,6 +61,8 @@ impl Server
             message_idgen: MessageIdGenerator::new(id, 1),
             eventlog: eventlog,
             event_receiver: event_receiver,
+            from_network: ChannelPair { send: net_send, recv: net_recv },
+            to_network: to_network,
             listeners: ListenerCollection::new(connevent_send),
             connection_events: connevent_recv,
             connections: ConnectionCollection::new(),
@@ -64,9 +75,20 @@ impl Server
         self.listeners.add(address);
     }
 
+    fn submit_event(&mut self, event: Event)
+    {
+        self.eventlog.add(event.clone());
+        self.to_network.try_send(event).unwrap();
+    }
+
     pub fn create_event<T: event::DetailType>(&self, target: <T as DetailType>::Target, details: T) -> event::Event
     {
         self.eventlog.create(target.into(), details.into())
+    }
+
+    pub fn get_event_sender(&self) -> channel::Sender<Event>
+    {
+        self.from_network.send.clone()
     }
 
     pub fn next_user_id(&self) -> UserId
@@ -174,6 +196,14 @@ impl Server
                         },
                         None => { 
                             panic!("what to do here?");
+                        }
+                    }
+                },
+                res = self.from_network.recv.next().fuse() => {
+                    match res {
+                        Some(event) => self.eventlog.add(event),
+                        None => {
+                            panic!("What to do here?");
                         }
                     }
                 }

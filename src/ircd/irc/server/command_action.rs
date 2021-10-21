@@ -23,6 +23,7 @@ impl Server
                                                             realname: pre_client.realname.as_ref().unwrap().clone(),
                                                         }
                                                     );
+                        self.to_network.try_send(register_event.clone()).unwrap();
                         self.eventlog.add(register_event);
 
                         Some((new_user_id, conn.id()))
@@ -38,7 +39,7 @@ impl Server
                 self.connections.remove_user(user_id);
             }
             CommandAction::StateChange(event) => {
-                self.eventlog.add(event);
+                self.submit_event(event);
             }
         }
     }

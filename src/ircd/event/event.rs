@@ -1,11 +1,12 @@
 use crate::ircd::*;
 use crate::ircd::event::*;
+use serde::{Serialize,Deserialize};
 
 pub trait DetailType : Into<EventDetails> {
     type Target: Into<ObjectId>;
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct Event {
     pub id: EventId,
     pub timestamp: i64,
@@ -14,5 +15,3 @@ pub struct Event {
 
     pub details: EventDetails,
 }
-
-
