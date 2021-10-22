@@ -10,8 +10,8 @@ impl CommandHandler for JoinHandler
 
     fn handle_user(&self, server: &Server, source: &wrapper::User, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
     {
-        let chname = &cmd.args[0];
-        let channel_id = match server.network().channel_by_name(chname) {
+        let chname = ChannelName::new(cmd.args[0].clone()).translate(cmd)?;
+        let channel_id = match server.network().channel_by_name(&chname) {
             Ok(channel) => channel.id(),
             Err(_) => {
                 let details = event::NewChannel { name: chname.clone() };

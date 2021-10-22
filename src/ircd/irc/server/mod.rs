@@ -186,7 +186,9 @@ impl Server
                             match self.net.validate(&event) {
                                 Ok(_) => {
                                     self.handle_event(&event);
-                                    self.net.apply(&event);
+                                    if let Err(e) = self.net.apply(&event) {
+                                        panic!("Event validated but failed to apply: {}", e);
+                                    }
                                 },
                                 Err(e) => {
                                     error!("Event failed validation: {}", e);

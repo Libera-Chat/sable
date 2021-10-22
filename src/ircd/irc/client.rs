@@ -12,8 +12,8 @@ pub struct ClientConnection
 
 pub struct PreClient
 {
-    pub user: Option<String>,
-    pub nick: Option<String>,
+    pub user: Option<Username>,
+    pub nick: Option<Nickname>,
     pub realname: Option<String>,
 }
 

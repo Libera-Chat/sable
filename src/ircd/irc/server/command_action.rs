@@ -19,7 +19,7 @@ impl Server
                                                         event::details::NewUser {
                                                             nickname: pre_client.nick.as_ref().unwrap().clone(),
                                                             username: pre_client.user.as_ref().unwrap().clone(),
-                                                            visible_hostname: "example.com".to_string(),
+                                                            visible_hostname: Hostname::new("example.com".to_string()).unwrap(),
                                                             realname: pre_client.realname.as_ref().unwrap().clone(),
                                                         }
                                                     );

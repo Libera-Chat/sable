@@ -19,9 +19,9 @@ impl Network {
         self.users.values()
     }
 
-    pub fn user_by_nick(&self, nick: &str) -> LookupResult<wrapper::User>
+    pub fn user_by_nick(&self, nick: &Nickname) -> LookupResult<wrapper::User>
     {
-        self.users.values().filter(|x| x.nick == nick).next().ok_or(NoSuchNick(nick.to_string())).wrap(self)
+        self.users.values().filter(|x| &x.nick == nick.value()).next().ok_or(NoSuchNick(nick.to_string())).wrap(self)
     }
 
     pub fn channel(&self, id: ChannelId) -> LookupResult<wrapper::Channel> {
@@ -36,9 +36,9 @@ impl Network {
         self.channels.values()
     }
 
-    pub fn channel_by_name(&self, name: &str) -> LookupResult<wrapper::Channel>
+    pub fn channel_by_name(&self, name: &ChannelName) -> LookupResult<wrapper::Channel>
     {
-        self.channels.values().filter(|x| x.name() == name).next().ok_or(NoSuchChannelName(name.to_string())).wrap(self)
+        self.channels.values().filter(|x| x.name() == name.value()).next().ok_or(NoSuchChannelName(name.to_string())).wrap(self)
     }
 
     pub fn membership(&self, id: MembershipId) -> LookupResult<wrapper::Membership> {

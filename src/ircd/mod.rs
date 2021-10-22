@@ -46,6 +46,9 @@ pub mod event {
 mod id;
 pub use id::*;
 
+mod validated;
+pub use validated::*;
+
 mod errors;
 pub use errors::LookupError;
 pub use errors::LookupResult;

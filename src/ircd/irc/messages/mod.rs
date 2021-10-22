@@ -42,9 +42,9 @@ impl MessageTarget for irc::client::PreClient
     fn format(&self) -> String { "*".to_string() }
 }
 
-impl MessageTarget for String
+impl MessageTarget for Nickname
 {
-    fn format(&self) -> String { self.clone() }
+    fn format(&self) -> String { self.value().clone() }
 }
 
 // Used when command parsing/processing fails

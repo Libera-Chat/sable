@@ -1,21 +1,23 @@
 use crate::ircd::id::UserId;
+use crate::ircd::validated::*;
 
 #[derive(Debug)]
 pub struct User {
     pub id: UserId,
-    pub nick: String,
-    pub user: String,
-    pub visible_host: String,
+    pub nick: Nickname,
+    pub user: Username,
+    pub visible_host: Hostname,
     pub realname: String,
 }
 
 impl User {
-    pub fn new(id: UserId, nick: &str, user: &str, visible_host: &str, realname: &str) -> User {
-        User {
+    pub fn new(id: UserId, nick: &Nickname, user: &Username, visible_host: &Hostname, realname: &str) -> Self
+    {
+        Self {
             id: id,
-            nick: nick.to_string(),
-            user: user.to_string(),
-            visible_host: visible_host.to_string(),
+            nick: nick.clone(),
+            user: user.clone(),
+            visible_host: visible_host.clone(),
             realname: realname.to_string(),
         }
     }

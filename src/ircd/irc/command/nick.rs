@@ -8,11 +8,13 @@ impl CommandHandler for NickHandler
 
     fn handle_preclient(&self, server: &Server, source: &RefCell<PreClient>, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
     {
-        let nick = cmd.args[0].clone();
+        let nick = Nickname::new(cmd.args[0].clone()).translate(cmd)?;
         if server.network().user_by_nick(&nick).is_ok()
         {
             cmd.connection.send(&numeric::NicknameInUse::new(server, &*source.borrow(), &nick))?;
-        } else {
+        }
+        else
+        {
             let mut c = source.borrow_mut();
             c.nick = Some(nick);
             if c.can_register()

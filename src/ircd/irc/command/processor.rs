@@ -1,6 +1,6 @@
 use crate::ircd::*;
 use super::*;
-use network::{ValidationError,ValidationResult};
+use network::{ValidationError};
 use crate::utils::*;
 
 use std::cell::RefCell;
@@ -126,46 +126,63 @@ impl<'a> CommandProcessor<'a>
     }
 }
 
-impl ClientCommand<'_>
+pub trait TranslateCommandResult<T>
 {
-    pub fn translate_error(&self, e: ValidationError) -> CommandError
+    fn translate(self, c: &ClientCommand) -> Result<T, CommandError>;
+}
+
+impl TranslateCommandResult<Nickname> for <Nickname as Validated>::Result
+{
+    fn translate(self, c: &ClientCommand) -> Result<Nickname, CommandError>
     {
-        match e
+        match self {
+            Ok(n) => Ok(n),
+            Err(e) => Err(numeric::ErroneousNickname::new(c.server, &c.source, &e.0).into())
+        }
+    }
+}
+
+impl TranslateCommandResult<ChannelName> for <ChannelName as Validated>::Result
+{
+    fn translate(self, c: &ClientCommand) -> Result<ChannelName, CommandError>
+    {
+        match self {
+            Ok(n) => Ok(n),
+            Err(e) => Err(numeric::InvalidChannelName::new(c.server, &c.source, &e.0).into())
+        }
+    }
+}
+
+impl<T> TranslateCommandResult<T> for Result<T, ValidationError>
+{
+    fn translate(self, c: &ClientCommand) -> Result<T, CommandError>
+    {
+        match self
         {
-            ValidationError::NickInUse(n) => numeric::NicknameInUse::new(self.server, &self.source, &n).into(),
-            ValidationError::ObjectNotFound(le) => {
-                match le
+            Ok(x) => Ok(x),
+            Err(e) => Err(match e
                 {
-                    LookupError::NoSuchNick(n) | LookupError::NoSuchChannelName(n) => {
-                        numeric::NoSuchTarget::new(self.server, &self.source, &n).into()
+                    ValidationError::NickInUse(n) => numeric::NicknameInUse::new(c.server, &c.source, &n).into(),
+                    ValidationError::ObjectNotFound(le) => {
+                        match le
+                        {
+                            LookupError::NoSuchNick(n) | LookupError::NoSuchChannelName(n) => {
+                                numeric::NoSuchTarget::new(c.server, &c.source, &n).into()
+                            },
+                            _ => CommandError::UnknownError(le.to_string())
+                        }
+                    }
+                    ValidationError::InvalidNickname(e) => {
+                        numeric::ErroneousNickname::new(c.server, &c.source, &e.0).into()
                     },
-                    _ => CommandError::UnknownError(le.to_string())
-                }
-            }
-            ValidationError::WrongTypeId(e) => CommandError::UnknownError(e.to_string())
+                    ValidationError::InvalidChannelName(e) => {
+                        numeric::InvalidChannelName::new(c.server, &c.source, &e.0).into()
+                    }
+                    ValidationError::InvalidUsername(e) => CommandError::UnknownError(e.0.to_string()),
+                    ValidationError::InvalidHostname(e) => CommandError::UnknownError(e.0.to_string()),
+                    ValidationError::WrongTypeId(e) => CommandError::UnknownError(e.to_string())
+                })
         }
-    }
-
-    pub fn translate(&self, r: ValidationResult) -> CommandResult
-    {
-        match r
-        {
-            Ok(()) => Ok(()),
-            Err(e) => Err(self.translate_error(e))
-        }
-    }
-}
-
-pub trait TranslateCommandResult
-{
-    fn translate(self, c: &ClientCommand) -> CommandResult;
-}
-
-impl TranslateCommandResult for Result<(), ValidationError>
-{
-    fn translate(self, c: &ClientCommand) -> CommandResult
-    {
-        c.translate(self)
     }
 }
 

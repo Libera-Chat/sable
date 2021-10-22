@@ -1,5 +1,4 @@
 use super::*;
-use crate::utils::is_channel_name;
 
 command_handler!("PRIVMSG", PrivmsgHandler);
 
@@ -10,10 +9,12 @@ impl CommandHandler for PrivmsgHandler
     fn handle_user(&self, server: &Server, source: &wrapper::User, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
     {
         let target_name = &cmd.args[0];
-        let target_id = if is_channel_name(target_name) {
-            ObjectId::Channel(server.network().channel_by_name(target_name)?.id())
+        let target_id = if let Ok(chname) = ChannelName::new(target_name.clone()) {
+            ObjectId::Channel(server.network().channel_by_name(&chname)?.id())
+        } else if let Ok(nick) = Nickname::new(target_name.clone()) {
+            ObjectId::User(server.network().user_by_nick(&nick)?.id())
         } else {
-            ObjectId::User(server.network().user_by_nick(target_name)?.id())
+            return Err(numeric::NoSuchTarget::new(server, &cmd.source, &target_name).into());
         };
 
         let details = event::details::NewMessage {

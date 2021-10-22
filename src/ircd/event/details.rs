@@ -7,9 +7,9 @@ pub struct WrongEventTypeError;
 event_details!{
     #[target_type(UserId)]
     struct NewUser {
-        pub nickname: String,
-        pub username: String,
-        pub visible_hostname: String,
+        pub nickname: Nickname,
+        pub username: Username,
+        pub visible_hostname: Hostname,
         pub realname: String,
     }
 
@@ -20,7 +20,7 @@ event_details!{
 
     #[target_type(ChannelId)]
     struct NewChannel {
-        pub name: String,
+        pub name: ChannelName,
     }
 
     #[target_type(MembershipId)]

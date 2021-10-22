@@ -1,6 +1,6 @@
 use crate::ircd::event::*;
 use crate::ircd::*;
-use crate::utils::{OrLog,FlattenResult};
+use crate::utils::{FlattenResult};
 use ircd_macros::dispatch_event;
 use thiserror::Error;
 
@@ -10,11 +10,19 @@ use std::collections::HashMap;
 pub enum ValidationError
 {
     #[error("Nickname {0} already in use")]
-    NickInUse(String),
+    NickInUse(Nickname),
     #[error("Object not found: {0}")]
     ObjectNotFound(#[from] LookupError),
     #[error("Wrong object ID type: {0}")]
-    WrongTypeId(#[from] WrongIdTypeError)
+    WrongTypeId(#[from] WrongIdTypeError),
+    #[error("{0}")]
+    InvalidNickname(#[from]InvalidNicknameError),
+    #[error("{0}")]
+    InvalidUsername(#[from]InvalidUsernameError),
+    #[error("{0}")]
+    InvalidHostname(#[from]InvalidHostnameError),
+    #[error("{0}")]
+    InvalidChannelName(#[from]InvalidChannelNameError),
 }
 pub type ValidationResult = Result<(), ValidationError>;
 
@@ -38,7 +46,7 @@ impl Network {
         }
     }
 
-    pub fn apply(&mut self, event: &Event) {
+    pub fn apply(&mut self, event: &Event) -> Result<(),WrongIdTypeError> {
         dispatch_event!(event => {
             NewUser => self.new_user,
             UserQuit => self.user_quit,
@@ -46,7 +54,7 @@ impl Network {
             ChannelJoin => self.user_joined_channel,
             ChannelPart => self.user_left_channel,
             NewMessage => self.new_message,
-        }).or_log("Mismatched object ID type?");
+        })
     }
 
     pub fn validate(&self, event: &Event) -> ValidationResult

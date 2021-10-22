@@ -53,3 +53,11 @@ pub fn define_messages(input: TokenStream) -> TokenStream
 {
     define_messages::define_messages(input)
 }
+
+mod define_validated;
+
+#[proc_macro]
+pub fn define_validated(input: TokenStream) -> TokenStream
+{
+    define_validated::define_validated(input)
+}

@@ -10,7 +10,7 @@ impl Network {
 
     pub(super) fn validate_new_user(&self, _target: UserId, _event: &Event, user: &details::NewUser) -> ValidationResult
     {
-        if self.users.iter().filter(|u| u.1.nick == user.nickname).count() > 0 {
+        if self.users.iter().filter(|u| &u.1.nick == user.nickname.value()).count() > 0 {
             Err(ValidationError::NickInUse(user.nickname.clone()))
         } else {
             Ok(())

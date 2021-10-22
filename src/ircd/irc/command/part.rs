@@ -9,10 +9,10 @@ impl CommandHandler for PartHandler
 
     fn handle_user(&self, server: &Server, source: &wrapper::User, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
     {
-        let chname = &cmd.args[0];
-        let channel = match server.network().channel_by_name(chname) {
+        let chname = ChannelName::new(cmd.args[0].clone()).translate(cmd)?;
+        let channel = match server.network().channel_by_name(&chname) {
             Ok(c) => c,
-            Err(_) => { return Err(numeric::NoSuchChannel::new(server, source, chname).into()); }
+            Err(_) => { return Err(numeric::NoSuchChannel::new(server, source, &chname).into()); }
         };
         let msg = cmd.args.get(1).unwrap_or(&"".to_string()).clone();
 

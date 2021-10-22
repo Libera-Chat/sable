@@ -12,15 +12,15 @@ impl User<'_> {
         self.data.id
     }
     
-    pub fn nick(&self) -> &str {
+    pub fn nick(&self) -> &Nickname {
         &self.data.nick
     }
 
-    pub fn user(&self) -> &str {
+    pub fn user(&self) -> &Username {
         &self.data.user
     }
 
-    pub fn visible_host(&self) -> &str {
+    pub fn visible_host(&self) -> &Hostname {
         &self.data.visible_host
     }
 

@@ -24,6 +24,7 @@ impl gossip::UpdateHandler for UpdateHandler
     {
         if let Ok(event) = serde_json::from_slice::<Event>(update.content())
         {
+            log::debug!("Got incoming event: {:?}", event);
             // Panic if we can't send the event for processing
             self.send_channel.try_send(event).unwrap();
         }
@@ -35,6 +36,7 @@ async fn run_push_task(channel: channel::Receiver<Event>, service: gossip::Gossi
     let mut channel = channel;
     while let Some(event) = channel.next().await
     {
+        log::debug!("Sending outgoing event: {:?}", event);
         service.submit(serde_json::to_vec(&event).unwrap()).unwrap();
     }
 }
@@ -53,7 +55,9 @@ fn main()
 
     let peer_init = || { peer.map(|x| vec!(Peer::new(x))) };
 
-    SimpleLogger::new().with_level(log::LevelFilter::Info).init().unwrap();
+    SimpleLogger::new().with_level(log::LevelFilter::Debug)
+                       .with_module_level("gossip", log::LevelFilter::Error)
+                       .init().unwrap();
 
     task::block_on(async {
         let (evt_send, evt_recv) = channel::unbounded::<Event>();

@@ -13,7 +13,7 @@ impl Channel<'_> {
     }
     
     pub fn name(&self) -> &str {
-        &self.data.name
+        &self.data.name.value()
     }
 
     pub fn members(&self) -> impl Iterator<Item=Membership> {
