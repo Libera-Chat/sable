@@ -10,11 +10,13 @@ impl CommandHandler for PrivmsgHandler
     {
         let target_name = &cmd.args[0];
         let target_id = if let Ok(chname) = ChannelName::new(target_name.clone()) {
-            ObjectId::Channel(server.network().channel_by_name(&chname)?.id())
+            let channel = server.network().channel_by_name(&chname)?;
+            channel.can_send(source)?;
+            ObjectId::Channel(channel.id())
         } else if let Ok(nick) = Nickname::new(target_name.clone()) {
             ObjectId::User(server.network().user_by_nick(&nick)?.id())
         } else {
-            return Err(numeric::NoSuchTarget::new(server, &cmd.source, &target_name).into());
+            return Err(numeric::NoSuchTarget::new(&target_name).into());
         };
 
         let details = event::details::NewMessage {
@@ -22,7 +24,7 @@ impl CommandHandler for PrivmsgHandler
             target: target_id,
             text: cmd.args[1].clone(),
         };
-        proc.action(CommandAction::StateChange(server.create_event(server.next_message_id(), details))).translate(cmd)?;
+        proc.action(CommandAction::StateChange(server.create_event(server.next_message_id(), details)))?;
         Ok(())
     }
 }

@@ -33,6 +33,7 @@ pub struct Server
     user_idgen: UserIdGenerator,
     channel_idgen: ChannelIdGenerator,
     message_idgen: MessageIdGenerator,
+    cmode_idgen: CModeIdGenerator,
     eventlog: event::EventLog,
     event_receiver: async_broadcast::Receiver<Event>,
     from_network: ChannelPair<Event>,
@@ -59,6 +60,7 @@ impl Server
             user_idgen: UserIdGenerator::new(id, 1),
             channel_idgen: ChannelIdGenerator::new(id, 1),
             message_idgen: MessageIdGenerator::new(id, 1),
+            cmode_idgen: CModeIdGenerator::new(id, 1),
             eventlog: eventlog,
             event_receiver: event_receiver,
             from_network: ChannelPair { send: net_send, recv: net_recv },
@@ -99,6 +101,11 @@ impl Server
     pub fn next_channel_id(&self) -> ChannelId
     {
         self.channel_idgen.next()
+    }
+
+    pub fn next_cmode_id(&self) -> CModeId
+    {
+        self.cmode_idgen.next()
     }
 
     pub fn next_message_id(&self) -> MessageId

@@ -3,16 +3,16 @@ pub mod state {
     mod channel;
     mod message;
 
-    pub use user::User;
-    pub use channel::Channel;
-    pub use channel::Membership;
-    pub use message::Message;
+    pub use user::*;
+    pub use channel::*;
+    pub use message::*;
 }
 
 pub mod wrapper {
     mod wrapper;
     mod user;
     mod channel;
+    mod channel_mode;
     mod membership;
 
     pub use wrapper::ObjectWrapper;
@@ -23,6 +23,7 @@ pub mod wrapper {
 
     pub use user::User;
     pub use channel::Channel;
+    pub use channel_mode::ChannelMode;
     pub use membership::Membership;
 }
 
@@ -53,6 +54,9 @@ mod errors;
 pub use errors::LookupError;
 pub use errors::LookupResult;
 
+mod flags;
+pub use flags::*;
+
 mod network;
 pub use network::Network;
 
@@ -76,6 +80,8 @@ pub mod irc {
     use client_message::ClientMessage;
 
     mod command;
+    pub use command::CommandError;
+    pub use command::CommandResult;
 
     mod messages;
     pub use messages::message;

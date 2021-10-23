@@ -30,6 +30,8 @@ pub type ValidationResult = Result<(), ValidationError>;
 pub struct Network {
     users: HashMap<UserId, state::User>,
     channels: HashMap<ChannelId, state::Channel>,
+    channel_modes: HashMap<CModeId, state::ChannelMode>,
+
     memberships: HashMap<MembershipId, state::Membership>,
 
     messages: HashMap<MessageId, state::Message>,
@@ -40,6 +42,7 @@ impl Network {
         Network{
             users: HashMap::new(),
             channels: HashMap::new(),
+            channel_modes: HashMap::new(),
             memberships: HashMap::new(),
 
             messages: HashMap::new(),
@@ -51,6 +54,7 @@ impl Network {
             NewUser => self.new_user,
             UserQuit => self.user_quit,
             NewChannel => self.new_channel,
+            NewChannelMode => self.new_channel_mode,
             ChannelJoin => self.user_joined_channel,
             ChannelPart => self.user_left_channel,
             NewMessage => self.new_message,

@@ -1,3 +1,4 @@
+use crate::ircd::*;
 use crate::ircd::id::*;
 use crate::ircd::validated::*;
 
@@ -5,6 +6,7 @@ use crate::ircd::validated::*;
 pub struct Channel {
     pub id: ChannelId,
     pub name: ChannelName,
+    pub mode: CModeId,
 }
 
 #[derive(Debug)]
@@ -14,14 +16,23 @@ pub struct Membership {
     pub user: UserId,
 }
 
-impl Channel {
-    pub fn new(id: ChannelId, name: &ChannelName) -> Self
-    {
-        Channel{ id: id, name: name.clone() }
-    }
+#[derive(Debug)]
+pub struct ChannelMode {
+    pub id: CModeId,
+    pub modes: ChannelModeFlags,
+}
 
-    pub fn name(&self) -> &str {
-        &self.name.value()
+impl Channel {
+    pub fn new(id: ChannelId, name: &ChannelName, mode: CModeId) -> Self
+    {
+        Channel{ id: id, name: name.clone(), mode: mode }
+    }
+}
+
+impl ChannelMode {
+    pub fn new(id: CModeId, modes: ChannelModeFlags) -> Self
+    {
+        ChannelMode{ id: id, modes: modes }
     }
 }
 
@@ -29,13 +40,5 @@ impl Membership {
     pub fn new(id: MembershipId, user: UserId, channel: ChannelId) -> Membership 
     {
         Membership{ id: id, user: user, channel: channel }
-    }
-
-    pub fn user(&self) -> UserId {
-        self.user
-    }
-
-    pub fn channel(&self) -> ChannelId {
-        self.channel
     }
 }

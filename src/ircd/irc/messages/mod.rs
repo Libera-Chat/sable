@@ -63,5 +63,16 @@ impl MessageTarget for CommandSource<'_>
 pub trait Message : std::fmt::Display + std::fmt::Debug
 { }
 
+#[derive(Debug)]
+pub struct TargetedNumeric(String);
+
+impl std::fmt::Display for TargetedNumeric { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.0.fmt(f) } }
+impl Message for TargetedNumeric { }
+
+pub trait Numeric : std::fmt::Debug
+{
+    fn format_for(&self, source: &dyn MessageSource, target: &dyn MessageTarget) -> TargetedNumeric;
+}
+
 pub mod message;
 pub mod numeric;

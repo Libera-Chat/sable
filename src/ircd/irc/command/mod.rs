@@ -9,17 +9,17 @@ use ircd_macros::command_handler;
 mod processor;
 pub use processor::*;
 
-type CommandResult = Result<(), CommandError>;
+pub type CommandResult = Result<(), CommandError>;
 
 pub trait CommandHandler
 {
     fn min_parameters(&self) -> usize;
 
-    fn validate(&self, server: &Server, cmd: &ClientCommand) -> CommandResult
+    fn validate(&self, _server: &Server, cmd: &ClientCommand) -> CommandResult
     {
         if cmd.args.len() < self.min_parameters()
         {
-            return Err(numeric::NotEnoughParameters::new(server, &cmd.source, &cmd.command).into());
+            return Err(numeric::NotEnoughParameters::new(&cmd.command).into());
         }
         Ok(())
     }
@@ -36,14 +36,14 @@ pub trait CommandHandler
         }
     }
 
-    fn handle_preclient<'a>(&self, server: &Server, source: &'a RefCell<PreClient>, _cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
+    fn handle_preclient<'a>(&self, _server: &Server, _source: &'a RefCell<PreClient>, _cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
     {
-        Err(numeric::NotRegistered::new(server, &*source.borrow()).into())
+        Err(numeric::NotRegistered::new().into())
     }
 
-    fn handle_user<'a>(&self, server: &Server, source: &'a wrapper::User, _cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
+    fn handle_user<'a>(&self, _server: &Server, _source: &'a wrapper::User, _cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
     {
-        Err(numeric::AlreadyRegistered::new(server, source).into())
+        Err(numeric::AlreadyRegistered::new().into())
     }
 }
 
@@ -86,3 +86,4 @@ mod join;
 mod part;
 mod message;
 mod quit;
+mod mode;

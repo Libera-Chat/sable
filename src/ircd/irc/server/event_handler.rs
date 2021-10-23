@@ -31,6 +31,7 @@ impl Server
             NewUser => self.handle_new_user,
             UserQuit => self.handle_quit,
             NewChannel => self.handle_new_channel,
+            NewChannelMode => self.handle_new_cmode,
             ChannelJoin => self.handle_join,
             ChannelPart => self.handle_part,
             NewMessage => self.handle_new_message,
@@ -48,7 +49,7 @@ impl Server
             connection.pre_client = None;
             connection.user_id = Some(user_id);
 
-            connection.send(&numeric::Numeric001::new(&self.name.to_string(), &detail.nickname, "test", &detail.nickname))?;
+            connection.send(&numeric::Numeric001::new_for(&self.name.to_string(), &detail.nickname, "test", &detail.nickname))?;
         }
         Ok(())
     }
@@ -78,6 +79,9 @@ impl Server
 
     /// No-op. We don't need to notify clients until somebody joins it
     fn handle_new_channel(&self, _target: ChannelId, _event: &Event, _detail: &NewChannel) -> HandleResult
+    { Ok(()) }
+
+    fn handle_new_cmode(&self, _target: CModeId, _event: &Event, _detail: &NewChannelMode) -> HandleResult
     { Ok(()) }
 
     fn handle_join(&self, _target: MembershipId, _event: &Event, detail: &ChannelJoin) -> HandleResult

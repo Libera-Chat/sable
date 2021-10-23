@@ -38,7 +38,12 @@ impl Network {
 
     pub fn channel_by_name(&self, name: &ChannelName) -> LookupResult<wrapper::Channel>
     {
-        self.channels.values().filter(|x| x.name() == name.value()).next().ok_or(NoSuchChannelName(name.to_string())).wrap(self)
+        self.channels.values().filter(|x| &x.name == name.value()).next().ok_or(NoSuchChannelName(name.to_string())).wrap(self)
+    }
+
+    pub fn channel_mode(&self, id: CModeId) -> LookupResult<wrapper::ChannelMode>
+    {
+        self.channel_modes.get(&id).ok_or(NoSuchChannelMode(id)).wrap(self)
     }
 
     pub fn membership(&self, id: MembershipId) -> LookupResult<wrapper::Membership> {

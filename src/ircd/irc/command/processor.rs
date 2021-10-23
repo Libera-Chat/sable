@@ -1,5 +1,6 @@
 use crate::ircd::*;
 use super::*;
+use irc::numeric;
 use network::{ValidationError};
 use crate::utils::*;
 
@@ -22,10 +23,7 @@ pub enum CommandError
 {
     UnderlyingError(Box<dyn std::error::Error>),
     UnknownError(String),
-    // Needed because the various From<> conversions don't have enough info to construct
-    // a numeric message
-    NoSuchTarget(String),
-    Numeric(Box<dyn messages::Message>)
+    Numeric(Box<dyn messages::Numeric>)
 }
 
 pub enum CommandSource<'a>
@@ -38,9 +36,18 @@ pub struct ClientCommand<'a>
 {
     pub server: &'a Server,
     pub connection: &'a ClientConnection,
-    pub source: CommandSource<'a>,
+    pub source: &'a CommandSource<'a>,
     pub command: String,
     pub args: Vec<String>,
+}
+
+impl ClientCommand<'_>
+{
+    pub fn response(&self, n: &impl messages::Numeric) -> CommandResult
+    {
+        self.connection.send(&n.format_for(self.server, self.source))?;
+        Ok(())
+    }
 }
 
 impl<'a> CommandProcessor<'a>
@@ -71,8 +78,10 @@ impl<'a> CommandProcessor<'a>
     {
         if let Some(conn) = self.server.find_connection(message.source)
         {
+            let source = self.translate_message_source(conn).unwrap();
             let command = message.command.clone();
-            if let Err(err) = self.do_process_message(conn, message)
+
+            if let Err(err) = self.do_process_message(conn, &source, message)
             {
                 match err {
                     CommandError::UnderlyingError(err) => {
@@ -81,13 +90,9 @@ impl<'a> CommandProcessor<'a>
                     CommandError::UnknownError(desc) => {
                         panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), desc);
                     }
-                    CommandError::NoSuchTarget(t) => {
-                        if let Ok(source) = self.translate_message_source(conn) {
-                            conn.send(&numeric::NoSuchTarget::new(self.server, &source, &t)).or_log("sending error numeric");
-                        }
-                    }
                     CommandError::Numeric(num) => {
-                        conn.send(num.as_ref()).or_log("sending error numeric");
+                        let targeted = num.as_ref().format_for(self.server, &source);
+                        conn.send(&targeted).or_log("sending error numeric");
                     }
                 }
             }
@@ -96,9 +101,8 @@ impl<'a> CommandProcessor<'a>
         }
     }
 
-    fn do_process_message(&mut self, connection: &ClientConnection, message: ClientMessage) -> Result<(), CommandError>
+    fn do_process_message(&mut self, connection: &ClientConnection, source: &CommandSource, message: ClientMessage) -> Result<(), CommandError>
     {
-        let source = self.translate_message_source(connection)?;
         if let Some(handler) = self.server.command_dispatcher().resolve_command(&message.command) {
             let cmd = ClientCommand {
                  server: self.server,
@@ -111,7 +115,7 @@ impl<'a> CommandProcessor<'a>
             handler.validate(self.server, &cmd)?;
             handler.handle(self.server, &cmd, self)
         } else {
-            Err(numeric::UnknownCommand::new(self.server, &source, &message.command).into())
+            Err(numeric::UnknownCommand::new(&message.command).into())
         }
     }
 
@@ -126,65 +130,35 @@ impl<'a> CommandProcessor<'a>
     }
 }
 
-pub trait TranslateCommandResult<T>
+impl From<ValidationError> for CommandError
 {
-    fn translate(self, c: &ClientCommand) -> Result<T, CommandError>;
-}
-
-impl TranslateCommandResult<Nickname> for <Nickname as Validated>::Result
-{
-    fn translate(self, c: &ClientCommand) -> Result<Nickname, CommandError>
+    fn from(e: ValidationError) -> Self
     {
-        match self {
-            Ok(n) => Ok(n),
-            Err(e) => Err(numeric::ErroneousNickname::new(c.server, &c.source, &e.0).into())
-        }
-    }
-}
-
-impl TranslateCommandResult<ChannelName> for <ChannelName as Validated>::Result
-{
-    fn translate(self, c: &ClientCommand) -> Result<ChannelName, CommandError>
-    {
-        match self {
-            Ok(n) => Ok(n),
-            Err(e) => Err(numeric::InvalidChannelName::new(c.server, &c.source, &e.0).into())
-        }
-    }
-}
-
-impl<T> TranslateCommandResult<T> for Result<T, ValidationError>
-{
-    fn translate(self, c: &ClientCommand) -> Result<T, CommandError>
-    {
-        match self
+        match e
         {
-            Ok(x) => Ok(x),
-            Err(e) => Err(match e
+            ValidationError::NickInUse(n) => numeric::NicknameInUse::new(&n).into(),
+            ValidationError::ObjectNotFound(le) => {
+                match le
                 {
-                    ValidationError::NickInUse(n) => numeric::NicknameInUse::new(c.server, &c.source, &n).into(),
-                    ValidationError::ObjectNotFound(le) => {
-                        match le
-                        {
-                            LookupError::NoSuchNick(n) | LookupError::NoSuchChannelName(n) => {
-                                numeric::NoSuchTarget::new(c.server, &c.source, &n).into()
-                            },
-                            _ => CommandError::UnknownError(le.to_string())
-                        }
-                    }
-                    ValidationError::InvalidNickname(e) => {
-                        numeric::ErroneousNickname::new(c.server, &c.source, &e.0).into()
+                    LookupError::NoSuchNick(n) | LookupError::NoSuchChannelName(n) => {
+                        numeric::NoSuchTarget::new(&n).into()
                     },
-                    ValidationError::InvalidChannelName(e) => {
-                        numeric::InvalidChannelName::new(c.server, &c.source, &e.0).into()
-                    }
-                    ValidationError::InvalidUsername(e) => CommandError::UnknownError(e.0.to_string()),
-                    ValidationError::InvalidHostname(e) => CommandError::UnknownError(e.0.to_string()),
-                    ValidationError::WrongTypeId(e) => CommandError::UnknownError(e.to_string())
-                })
+                    _ => CommandError::UnknownError(le.to_string())
+                }
+            }
+            ValidationError::InvalidNickname(e) => {
+                numeric::ErroneousNickname::new(&e.0).into()
+            },
+            ValidationError::InvalidChannelName(e) => {
+                numeric::InvalidChannelName::new(&e.0).into()
+            }
+            ValidationError::InvalidUsername(e) => CommandError::UnknownError(e.0.to_string()),
+            ValidationError::InvalidHostname(e) => CommandError::UnknownError(e.0.to_string()),
+            ValidationError::WrongTypeId(e) => CommandError::UnknownError(e.to_string())
         }
     }
 }
+
 
 impl CommandError
 {
@@ -204,14 +178,26 @@ impl From<LookupError> for CommandError
     fn from(e: LookupError) -> Self
     {
         match e {
-            LookupError::NoSuchNick(n) => Self::NoSuchTarget(n),
-            LookupError::NoSuchChannelName(n) => Self::NoSuchTarget(n),
+            LookupError::NoSuchNick(n) => numeric::NoSuchTarget::new(&n).into(),
+            LookupError::NoSuchChannelName(n) => numeric::NoSuchTarget::new(&n).into(),
             _ => Self::UnknownError(e.to_string())
         }
     }
 }
 
-impl<T: messages::Message + 'static> From<T> for CommandError
+impl From<InvalidNicknameError> for CommandError
+{
+    fn from(e: InvalidNicknameError) -> Self
+    { numeric::ErroneousNickname::new(&e.0).into() }
+}
+
+impl From<InvalidChannelNameError> for CommandError
+{
+    fn from(e: InvalidChannelNameError) -> Self
+    { numeric::InvalidChannelName::new(&e.0).into() }
+}
+
+impl<T: messages::Numeric + 'static> From<T> for CommandError
 {
     fn from(t: T) -> Self {
         Self::Numeric(Box::new(t))

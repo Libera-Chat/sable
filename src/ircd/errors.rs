@@ -8,6 +8,8 @@ pub enum LookupError
     NoSuchUser(UserId),
     #[error("No such channel id {0:?}")]
     NoSuchChannel(ChannelId),
+    #[error("No such channel mode id {0:?}")]
+    NoSuchChannelMode(CModeId),
     #[error("No such membership id {0:?}")]
     NoSuchMembership(MembershipId),
     #[error("No such nickname {0}")]

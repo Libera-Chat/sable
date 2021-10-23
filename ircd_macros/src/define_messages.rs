@@ -19,11 +19,13 @@ use proc_macro2::Span;
 
 mod kw
 {
+    syn::custom_keyword!(source);
     syn::custom_keyword!(target);
 }
 
 enum MessageArg
 {
+    Source(kw::source),
     Target(kw::target),
     Arg(MessageArgDefn),
 }
@@ -61,10 +63,16 @@ impl Parse for MessageArg
     fn parse(input: ParseStream) -> Result<Self>
     {
         let lookahead = input.lookahead1();
-        if lookahead.peek(kw::target)
+        if lookahead.peek(kw::source)
+        {
+            Ok(Self::Source(input.parse()?))
+        }
+        else if lookahead.peek(kw::target)
         {
             Ok(Self::Target(input.parse()?))
-        } else {
+        }
+        else
+        {
             Ok(Self::Arg(input.parse()?))
         }
     }
@@ -155,11 +163,15 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
         let mut format_args = Vec::new();
         let mut format_values = Vec::new();
 
-        let mut need_target = message.is_numeric;
+        let mut need_source = false;
+        let mut need_target = false;
 
         for arg_or_targ in message.args
         {
             match arg_or_targ {
+                MessageArg::Source(_) => {
+                    need_source = true;
+                }
                 MessageArg::Target(_) => {
                     need_target = true;
                 },
@@ -178,16 +190,16 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
             }
         }
 
-        let (target_arg, target_def) = if need_target {
-            (Some(quote!(target: &impl crate::ircd::irc::messages::MessageTarget, )), Some(quote!(target = target.format(), )))
+        let (source_arg, source_def) = if need_source {
+            (Some(quote!(source: &impl crate::ircd::irc::messages::MessageSource, )), Some(quote!(source = source.format(), )))
         } else {
             (None, None)
         };
 
-        let prefix = if message.is_numeric {
-            Some(quote!(":{source} ", #name, " {target} ", ))
+        let (target_arg, target_def) = if need_target {
+            (Some(quote!(target: &impl crate::ircd::irc::messages::MessageTarget, )), Some(quote!(target = target.format(), )))
         } else {
-            None
+            (None, None)
         };
 
         out.extend(quote!(
@@ -197,27 +209,70 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
 
             impl #typename
             {
-                pub fn new(source: &impl crate::ircd::irc::messages::MessageSource, #target_arg #( #message_args: #message_argtypes ),* ) -> Self
+                pub fn new(#source_arg #target_arg #( #message_args: #message_argtypes ),* ) -> Self
                 {
-                    Self(format!(concat!(#prefix #format_str, "\r\n"),
-                                 source = source.format(),
+                    Self(format!(concat!(#format_str, "\r\n"),
+                                 #source_def
                                  #target_def
                                  #( #format_args = #format_values),*
                             ))
                 }
             }
-
-            impl std::fmt::Display for #typename
-            {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result
-                {
-                    self.0.fmt(f)
-                }
-            }
-
-            impl crate::ircd::irc::messages::Message for #typename
-            { }
         ));
+
+        if message.is_numeric
+        {
+            out.extend(quote!(
+                impl crate::ircd::irc::messages::Numeric for #typename
+                {
+                    fn format_for(&self,
+                                  source: &dyn crate::ircd::irc::messages::MessageSource,
+                                  target: &dyn crate::ircd::irc::messages::MessageTarget
+                                )
+                            -> crate::ircd::irc::messages::TargetedNumeric
+                    {
+                        crate::ircd::irc::messages::TargetedNumeric(format!(":{source} {numeric} {target} {body}",
+                                                                            source=source.format(),
+                                                                            numeric=#name,
+                                                                            target=target.format(),
+                                                                            body=self.0
+                                                                        ))
+                    }
+                }
+
+                impl #typename
+                {
+                    pub fn new_for(source: &dyn crate::ircd::irc::messages::MessageSource,
+                               target: &dyn crate::ircd::irc::messages::MessageTarget,
+                               #( #message_args: #message_argtypes ),*
+                            ) -> crate::ircd::irc::messages::TargetedNumeric
+                    {
+                        crate::ircd::irc::messages::TargetedNumeric(
+                                     format!(concat!(":{source} {numeric} {target} ", #format_str, "\r\n"),
+                                     source=source.format(),
+                                     numeric=#name,
+                                     target=target.format(),
+                                     #( #format_args = #format_values),*
+                                ))
+                    }
+                    }
+            ));
+        }
+        else
+        {
+            out.extend(quote!(
+                impl std::fmt::Display for #typename
+                {
+                    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result
+                    {
+                        self.0.fmt(f)
+                    }
+                }
+
+                impl crate::ircd::irc::messages::Message for #typename
+                { }
+            ));
+        }
     }
 
     //panic!("{}", out);

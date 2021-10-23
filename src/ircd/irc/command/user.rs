@@ -13,7 +13,7 @@ impl CommandHandler for UserHandler
         c.realname = Some(cmd.args[3].clone());
         if c.can_register()
         {
-            proc.action(CommandAction::RegisterClient(cmd.connection.id())).translate(cmd)?;
+            proc.action(CommandAction::RegisterClient(cmd.connection.id()))?;
         }
         Ok(())
     }

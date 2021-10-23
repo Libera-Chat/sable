@@ -21,6 +21,12 @@ event_details!{
     #[target_type(ChannelId)]
     struct NewChannel {
         pub name: ChannelName,
+        pub mode: CModeId,
+    }
+
+    #[target_type(CModeId)]
+    struct NewChannelMode {
+        pub mode: ChannelModeFlags,
     }
 
     #[target_type(MembershipId)]

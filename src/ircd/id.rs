@@ -21,6 +21,7 @@ object_ids! {
     Event: (ServerId, LocalId) sequential;
     User: (ServerId, LocalId) sequential;
     Channel: (ServerId, LocalId) sequential;
+    CMode: (ServerId, LocalId) sequential;
     Membership: (UserId, ChannelId);
     Listener: (LocalId,) sequential;
     Connection: (ListenerId, LocalId,) sequential;

@@ -5,8 +5,11 @@ use crate::ircd::validated::*;
 define_messages! {
     001(Welcome) => { (network_name: &str, nick: &Nickname) => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
 
+    324(ChannelModeIs) => { (chan: &Channel.name(), modes: &ChannelMode.format()) => "{chan} {modes}" },
+
     401(NoSuchTarget) => { (unknown: &str) => "{unknown} :No such nick/channel" },
     403(NoSuchChannel) => { (chname: &ChannelName) => "{chname} :No such channel" },
+    404(CannotSendToChannel) => { (chan: &Channel.name()) => "{chan} :Cannot send to channel" },
     421(UnknownCommand) => { (command: &str) => "{command} :Unknown command" },
     432(ErroneousNickname) => { (nick: &str) => "{nick} :Erroneous nickname" },
     433(NicknameInUse) => { (nick: &Nickname) => "{nick} :Nickname is already in use." },
