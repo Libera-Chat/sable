@@ -3,6 +3,7 @@ use crate::ircd::*;
 use std::collections::HashMap;
 use std::cell::RefCell;
 use irc::numeric;
+use irc::message;
 
 use ircd_macros::command_handler;
 
@@ -84,6 +85,7 @@ mod nick;
 mod user;
 mod join;
 mod part;
-mod message;
+mod privmsg;
 mod quit;
 mod mode;
+mod ping;
