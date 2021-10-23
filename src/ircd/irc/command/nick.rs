@@ -1,17 +1,14 @@
 use super::*;
 
-command_handler!("NICK", NickHandler);
-
-impl CommandHandler for NickHandler
-{
+command_handler!("NICK" => NickHandler {
     fn min_parameters(&self) -> usize { 1 }
 
-    fn handle_preclient(&self, server: &Server, source: &RefCell<PreClient>, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
+    fn handle_preclient(&mut self, source: &RefCell<PreClient>, cmd: &ClientCommand) -> CommandResult
     {
         let nick = Nickname::new(cmd.args[0].clone())?;
-        if server.network().user_by_nick(&nick).is_ok()
+        if self.server.network().user_by_nick(&nick).is_ok()
         {
-            cmd.connection.send(&numeric::NicknameInUse::new_for(server, &*source.borrow(), &nick))?;
+            cmd.connection.send(&numeric::NicknameInUse::new_for(self.server, &*source.borrow(), &nick))?;
         }
         else
         {
@@ -19,14 +16,14 @@ impl CommandHandler for NickHandler
             c.nick = Some(nick);
             if c.can_register()
             {
-                proc.action(CommandAction::RegisterClient(cmd.connection.id()))?;
+                self.action(CommandAction::RegisterClient(cmd.connection.id()))?;
             }
         }
         Ok(())
     }
 
-    fn handle_user(&self, _server: &Server, _source: &wrapper::User, _cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
+    fn handle_user(&mut self, _source: &wrapper::User, _cmd: &ClientCommand) -> CommandResult
     {
         panic!("not implemented");
     }
-}
+});

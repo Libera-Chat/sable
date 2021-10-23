@@ -1,17 +1,14 @@
 use super::*;
 
-command_handler!("MODE", ModeHandler);
-
-impl CommandHandler for ModeHandler
-{
+command_handler!("MODE" => ModeHandler {
     fn min_parameters(&self) -> usize { 1 }
 
-    fn handle_user(&self, server: &Server, _source: &wrapper::User, cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
+    fn handle_user(&mut self, _source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
         let target = cmd.args[0].clone();
         if let Ok(cname) = ChannelName::new(target)
         {
-            let chan = server.network().channel_by_name(&cname)?;
+            let chan = self.server.network().channel_by_name(&cname)?;
             let mode = chan.mode()?;
 
             let msg = numeric::ChannelModeIs::new(&chan, &mode);
@@ -23,4 +20,4 @@ impl CommandHandler for ModeHandler
         }
         Ok(())
     }
-}
+});

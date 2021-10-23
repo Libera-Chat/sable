@@ -1,18 +1,15 @@
 use super::*;
 
-command_handler!("QUIT", QuitHandler);
-
-impl CommandHandler for QuitHandler
-{
+command_handler!("QUIT" => QuitHandler {
     fn min_parameters(&self) -> usize { 0 }
 
-    fn handle_user(&self, server: &Server, source: &wrapper::User, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
+    fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        proc.action(CommandAction::DisconnectUser(source.id()))?;
-        proc.action(CommandAction::StateChange(server.create_event(
+        self.action(CommandAction::DisconnectUser(source.id()))?;
+        self.action(CommandAction::StateChange(self.server.create_event(
             source.id(),
             event::UserQuit { message: cmd.args.get(0).unwrap_or(&"Client Quit".to_string()).clone() }
         )))?;
         Ok(())
     }
-}
+});

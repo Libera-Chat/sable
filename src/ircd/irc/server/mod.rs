@@ -155,10 +155,10 @@ impl Server
 
                                     if let Some(message) = ClientMessage::parse(msg.source, &m)
                                     {
-                                        let mut processor = CommandProcessor::new(&self);
-                                        processor.process_message(message).await;
+                                        let processor = CommandProcessor::new(&self);
+                                        let actions = processor.process_message(message).await;
                                         
-                                        for action in processor.actions()
+                                        for action in actions
                                         {
                                             self.apply_action(action)
                                         }

@@ -12,11 +12,16 @@ pub use processor::*;
 
 pub type CommandResult = Result<(), CommandError>;
 
-pub trait CommandHandler
+pub trait IntoActions
+{
+    fn into_actions(&mut self) -> Vec<CommandAction>;
+}
+
+pub trait CommandHandler : IntoActions
 {
     fn min_parameters(&self) -> usize;
 
-    fn validate(&self, _server: &Server, cmd: &ClientCommand) -> CommandResult
+    fn validate(&self, cmd: &ClientCommand) -> CommandResult
     {
         if cmd.args.len() < self.min_parameters()
         {
@@ -25,38 +30,43 @@ pub trait CommandHandler
         Ok(())
     }
 
-    fn handle(&self, server: &Server, cmd: &ClientCommand, proc: &mut CommandProcessor) -> CommandResult
+    fn handle(&mut self, cmd: &ClientCommand) -> CommandResult
     {
         match &cmd.source {
             CommandSource::PreClient(pc) => {
-                self.handle_preclient(server, pc, cmd, proc)
+                self.handle_preclient(pc, cmd)
             },
             CommandSource::User(u) => {
-                self.handle_user(server, &u, cmd, proc)
+                self.handle_user(&u, cmd)
             }
         }
     }
 
-    fn handle_preclient<'a>(&self, _server: &Server, _source: &'a RefCell<PreClient>, _cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
+    fn handle_preclient<'a>(&mut self, _source: &'a RefCell<PreClient>, _cmd: &ClientCommand) -> CommandResult
     {
         Err(numeric::NotRegistered::new().into())
     }
 
-    fn handle_user<'a>(&self, _server: &Server, _source: &'a wrapper::User, _cmd: &ClientCommand, _proc: &mut CommandProcessor) -> CommandResult
+    fn handle_user<'a>(&mut self, _source: &'a wrapper::User, _cmd: &ClientCommand) -> CommandResult
     {
         Err(numeric::AlreadyRegistered::new().into())
     }
 }
 
+pub trait CommandHandlerFactory
+{
+    fn create<'a>(&self, server: &'a Server, proc: &'a CommandProcessor<'a>) -> Box<dyn CommandHandler + 'a>;
+}
+
 pub struct CommandRegistration
 {
     command: String,
-    handler: Box<dyn CommandHandler>
+    handler: Box<dyn CommandHandlerFactory>,
 }
 
 pub struct CommandDispatcher
 {
-    handlers: HashMap<String, &'static Box<dyn CommandHandler>>
+    handlers: HashMap<String, &'static Box<dyn CommandHandlerFactory>>
 }
 
 inventory::collect!(CommandRegistration);
@@ -75,7 +85,7 @@ impl CommandDispatcher {
         }
     }
 
-    pub fn resolve_command(&self, cmd: &str) -> Option<&Box<dyn CommandHandler>>
+    pub fn resolve_command(&self, cmd: &str) -> Option<&Box<dyn CommandHandlerFactory>>
     {
         self.handlers.get(&cmd.to_ascii_uppercase()).map(|x| *x)
     }
