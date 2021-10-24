@@ -51,8 +51,7 @@ mod validated;
 pub use validated::*;
 
 mod errors;
-pub use errors::LookupError;
-pub use errors::LookupResult;
+pub use errors::*;
 
 mod flags;
 pub use flags::*;
@@ -61,13 +60,14 @@ mod network;
 pub use network::Network;
 
 pub mod irc {
+    pub mod utils {
+        mod channel_names;
+        pub use channel_names::*;
+    }
     pub mod server;
     pub use server::Server;
 
     pub mod connection;
-//    use connection::Connection;
-    use connection::ConnectionError;
-//    use connection::ConnectionEvent;
 
     pub mod client;
     use client::ClientConnection;

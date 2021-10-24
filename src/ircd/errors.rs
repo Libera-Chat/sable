@@ -1,5 +1,7 @@
 use thiserror::Error;
 use crate::ircd::*;
+use irc::*;
+use async_std::channel;
 
 #[derive(Error,Debug)]
 pub enum LookupError
@@ -25,4 +27,35 @@ pub enum LookupError
 }
 
 pub type LookupResult<T> = std::result::Result<T, LookupError>;
+
+#[derive(Debug,Error)]
+pub enum HandlerError {
+    #[error("Internal error: {0}")]
+    InternalError(String),
+    #[error("Connection error: {0}")]
+    ConnectionError(#[from]ConnectionError),
+    #[error("Object lookup failed: {0}")]
+    LookupError(#[from] LookupError),
+    #[error("Mismatched object ID type")]
+    WrongIdType(#[from] WrongIdTypeError),
+}
+
+impl From<&str> for HandlerError
+{
+    fn from(msg: &str) -> Self { Self::InternalError(msg.to_string()) }
+}
+
+pub type HandleResult = Result<(), HandlerError>;
+
+#[derive(Error,Debug)]
+pub enum ConnectionError {
+    #[error("Connection closed")]
+    Closed,
+    #[error("I/O Error: {0}")]
+    IoError(#[from]std::io::Error),
+    #[error("Couldn't send to control channel: {0}")]
+    ControlSendError(#[from] channel::SendError<connection::ConnectionControl>),
+    #[error("Send queue full")]
+    SendQueueFull,
+}
 

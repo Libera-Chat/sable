@@ -9,7 +9,6 @@ use async_std::{
 };
 use futures::{select,FutureExt};
 use log::info;
-use thiserror::Error;
 
 static SEND_QUEUE_LEN:usize = 100;
 
@@ -18,18 +17,6 @@ pub struct Connection {
     pub id: ConnectionId,
     control_channel: channel::Sender<ConnectionControl>,
     send_channel: channel::Sender<String>,
-}
-
-#[derive(Error,Debug)]
-pub enum ConnectionError {
-    #[error("Connection closed")]
-    Closed,
-    #[error("I/O Error: {0}")]
-    IoError(#[from]std::io::Error),
-    #[error("Couldn't send to control channel: {0}")]
-    ControlSendError(#[from] channel::SendError<ConnectionControl>),
-    #[error("Send queue full")]
-    SendQueueFull,
 }
 
 #[derive(Debug)]

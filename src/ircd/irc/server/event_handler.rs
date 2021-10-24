@@ -1,27 +1,7 @@
 use super::*;
-use thiserror::Error;
 use ircd_macros::dispatch_event;
 use crate::utils::FlattenResult;
 use std::collections::HashSet;
-
-#[derive(Debug,Error)]
-enum HandlerError {
-    #[error("Internal error: {0}")]
-    InternalError(String),
-    #[error("Connection error: {0}")]
-    ConnectionError(#[from]ConnectionError),
-    #[error("Object lookup failed: {0}")]
-    LookupError(#[from] LookupError),
-    #[error("Mismatched object ID type")]
-    WrongIdType(#[from] WrongIdTypeError),
-}
-
-impl From<&str> for HandlerError
-{
-    fn from(msg: &str) -> Self { Self::InternalError(msg.to_string()) }
-}
-
-type HandleResult = Result<(), HandlerError>;
 
 impl Server
 {
@@ -122,6 +102,10 @@ impl Server
 
         if let Ok(conn) = self.connections.get_user(detail.user) {
             conn.send(&message::Join::new(&user, &channel))?;
+            conn.send(&numeric::ChannelModeIs::new_for(self, &user, &channel, &channel.mode()?))?;
+
+            irc::utils::send_channel_names(self, conn, &channel)?;
+
         }
 
         for m in channel.members()

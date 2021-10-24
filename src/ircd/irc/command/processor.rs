@@ -204,3 +204,10 @@ impl From<ConnectionError> for CommandError
         Self::UnderlyingError(Box::new(e))
     }
 }
+
+impl From<HandlerError> for CommandError
+{
+    fn from(e: HandlerError) -> Self {
+        Self::UnderlyingError(Box::new(e))
+    }
+}
