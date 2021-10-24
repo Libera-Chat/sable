@@ -1,6 +1,5 @@
 use ircd_macros::object_ids;
 
-pub type ServerId = i64;
 pub type LocalId = i64;
 
 #[derive(Debug)]
@@ -18,6 +17,7 @@ impl std::fmt::Display for WrongIdTypeError
 impl std::error::Error for WrongIdTypeError { }
 
 object_ids! {
+    Server: (LocalId,);
     Event: (ServerId, LocalId) sequential;
     User: (ServerId, LocalId) sequential;
     Channel: (ServerId, LocalId) sequential;

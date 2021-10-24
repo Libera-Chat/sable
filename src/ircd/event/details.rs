@@ -26,7 +26,14 @@ event_details!{
 
     #[target_type(CModeId)]
     struct NewChannelMode {
-        pub mode: ChannelModeFlags,
+        pub mode: ChannelModeSet,
+    }
+
+    #[target_type(CModeId)]
+    struct ChannelModeChange {
+        pub changed_by: ObjectId,
+        pub added: ChannelModeSet,
+        pub removed: ChannelModeSet
     }
 
     #[target_type(MembershipId)]

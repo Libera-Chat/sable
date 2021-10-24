@@ -55,6 +55,7 @@ impl Network {
             UserQuit => self.user_quit,
             NewChannel => self.new_channel,
             NewChannelMode => self.new_channel_mode,
+            ChannelModeChange => self.channel_mode_change,
             ChannelJoin => self.user_joined_channel,
             ChannelPart => self.user_left_channel,
             NewMessage => self.new_message,

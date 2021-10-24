@@ -19,7 +19,7 @@ pub struct Membership {
 #[derive(Debug)]
 pub struct ChannelMode {
     pub id: CModeId,
-    pub modes: ChannelModeFlags,
+    pub modes: ChannelModeSet,
 }
 
 impl Channel {
@@ -30,7 +30,7 @@ impl Channel {
 }
 
 impl ChannelMode {
-    pub fn new(id: CModeId, modes: ChannelModeFlags) -> Self
+    pub fn new(id: CModeId, modes: ChannelModeSet) -> Self
     {
         ChannelMode{ id: id, modes: modes }
     }

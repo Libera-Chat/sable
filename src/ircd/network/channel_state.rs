@@ -13,6 +13,14 @@ impl Network {
         self.channel_modes.insert(cmode.id, cmode);
     }
 
+    pub(super) fn channel_mode_change(&mut self, target: CModeId, _event: &Event, details: &details::ChannelModeChange) {
+        if let Some(cmode) = self.channel_modes.get_mut(&target)
+        {
+            cmode.modes |= details.added;
+            cmode.modes &= !details.removed;
+        }
+    }
+
     pub(super) fn user_joined_channel(&mut self, target: MembershipId, _event: &Event, details: &details::ChannelJoin) {
         let membership = state::Membership::new(target, details.user, details.channel);
         self.memberships.insert(membership.id, membership);

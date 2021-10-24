@@ -1,17 +1,8 @@
-use bitflags::bitflags;
+use ircd_macros::modeflags;
 
-bitflags! {
-    #[derive(serde::Serialize,serde::Deserialize)]
-    pub struct ChannelModeFlags: u32 {
-        const NO_EXTERNAL = 0x01;
+modeflags!(
+    ChannelMode {
+        NoExternal (0x01, 'n'),
+        TopicLock  (0x02, 't'),
     }
-}
-
-impl Default for ChannelModeFlags
-{
-    fn default() -> Self
-    {
-        Self::NO_EXTERNAL
-    }
-}
-
+);

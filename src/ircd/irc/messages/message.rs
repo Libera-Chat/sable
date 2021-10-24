@@ -6,6 +6,7 @@ define_messages! {
     Part => { (source, chan: &Channel.name(), msg: &str) => ":{source} PART {chan} :{msg}" },
     Quit => { (source, message: &str) => ":{source} QUIT :{message}" },
 
+    Mode => { (source, target, changes: &str) => ":{source} MODE {target} {changes}" },
     Privmsg => { (source, target, message: &str) => ":{source} PRIVMSG {target} :{message}" },
 
     Ping => { (source, target, cookie: &str) => ":{source} PING {target} :{cookie}" },

@@ -138,6 +138,15 @@ impl Server
         self.connections.get(id).ok()
     }
 
+    fn lookup_message_source(&self, id: ObjectId) -> Result<Box<dyn messages::MessageSource + '_>, LookupError>
+    {
+        match id {
+            ObjectId::User(u) => Ok(Box::new(self.net.user(u)?)),
+            ObjectId::Server(_) => Ok(Box::new(self)), // TODO
+            _ => Err(LookupError::WrongType),
+        }
+    }
+
     pub async fn run(&mut self)
     {
         loop {

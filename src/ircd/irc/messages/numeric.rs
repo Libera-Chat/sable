@@ -17,5 +17,6 @@ define_messages! {
     451(NotRegistered) => { () => ":You have not registered" },
     461(NotEnoughParameters) => { (command: &str) => "{command} :Not enough parameters" },
     462(AlreadyRegistered) => { () => ":You are already connected and cannot handshake again" },
+    472(UnknownMode) => { (c: char) => "{c} :Unknown mode character" },
     479(InvalidChannelName) => { (name: &str) => "{name} :Illegal channel name" },
 }

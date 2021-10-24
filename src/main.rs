@@ -62,7 +62,7 @@ fn main()
     task::block_on(async {
         let (evt_send, evt_recv) = channel::unbounded::<Event>();
 
-        let mut server = irc::Server::new(server_id, server_name.clone(), evt_send);
+        let mut server = irc::Server::new(ServerId::new(server_id), server_name.clone(), evt_send);
         println!("addr: {}", listen_addr);
         server.add_listener(listen_addr.parse().unwrap());
 

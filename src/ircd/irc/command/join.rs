@@ -11,7 +11,7 @@ command_handler!("JOIN" => JoinHandler {
         let channel_id = match self.server.network().channel_by_name(&chname) {
             Ok(channel) => channel.id(),
             Err(_) => {
-                let newmode_details = event::NewChannelMode { mode: ChannelModeFlags::default() };
+                let newmode_details = event::NewChannelMode { mode: ChannelModeSet::default() };
                 let cmode_id = self.server.next_cmode_id();
                 let newmode_event = self.server.create_event(cmode_id, newmode_details);
                 self.action(StateChange(newmode_event))?;

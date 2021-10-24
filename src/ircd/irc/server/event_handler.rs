@@ -32,6 +32,7 @@ impl Server
             UserQuit => self.handle_quit,
             NewChannel => self.handle_new_channel,
             NewChannelMode => self.handle_new_cmode,
+            ChannelModeChange => self.handle_cmode_change,
             ChannelJoin => self.handle_join,
             ChannelPart => self.handle_part,
             NewMessage => self.handle_new_message,
@@ -83,6 +84,36 @@ impl Server
 
     fn handle_new_cmode(&self, _target: CModeId, _event: &Event, _detail: &NewChannelMode) -> HandleResult
     { Ok(()) }
+
+    fn handle_cmode_change(&self, target: CModeId, _event: &Event, detail: &ChannelModeChange) -> HandleResult
+    {
+        let mode = self.net.channel_mode(target)?;
+        let chan = mode.channel()?;
+        let source = self.lookup_message_source(detail.changed_by)?;
+
+        let mut changes = String::new();
+        if ! detail.added.is_empty()
+        {
+            changes += "+";
+            changes += &detail.added.to_chars();
+        }
+        if ! detail.removed.is_empty()
+        {
+            changes += "-";
+            changes += &detail.removed.to_chars();
+        }
+
+        let msg = message::Mode::new(source.as_ref(), &chan, &changes);
+
+        for m in chan.members()
+        {
+            let member = m.user()?;
+            if let Ok(conn) = self.connections.get_user(member.id()) {
+                conn.send(&msg)?;
+            }
+        }
+        Ok(())
+    }
 
     fn handle_join(&self, _target: MembershipId, _event: &Event, detail: &ChannelJoin) -> HandleResult
     {

@@ -1,7 +1,8 @@
 use crate::ircd::*;
+use super::*;
 
 pub struct ChannelMode<'a> {
-    _network: &'a Network,
+    network: &'a Network,
     data: &'a state::ChannelMode,
 }
 
@@ -10,18 +11,23 @@ impl ChannelMode<'_> {
         self.data.id
     }
 
-    pub fn has_mode(&self, m: ChannelModeFlags) -> bool
+    pub fn channel(&self) -> LookupResult<Channel>
     {
-        self.data.modes & m == m
+        self.network.raw_channels()
+                    .filter(|c| c.mode == self.data.id)
+                    .next()
+                    .ok_or(LookupError::NoChannelForMode(self.data.id))
+                    .wrap(self.network)
+    }
+
+    pub fn has_mode(&self, m: ChannelModeFlag) -> bool
+    {
+        self.data.modes.is_set(m)
     }
 
     pub fn format(&self) -> String
     {
-        let mut s = "+".to_string();
-        if self.has_mode(ChannelModeFlags::NO_EXTERNAL) {
-            s += "n";
-        }
-        s
+        format!("+{}", self.data.modes.to_chars())
     }
 }
 
@@ -29,6 +35,6 @@ impl<'a> super::ObjectWrapper<'a> for ChannelMode<'a> {
     type Underlying = state::ChannelMode;
 
     fn wrap(net: &'a Network, data: &'a state::ChannelMode) -> Self {
-        Self{ _network: net, data: data }
+        Self{ network: net, data: data }
     }
 }

@@ -191,13 +191,13 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
         }
 
         let (source_arg, source_def) = if need_source {
-            (Some(quote!(source: &impl crate::ircd::irc::messages::MessageSource, )), Some(quote!(source = source.format(), )))
+            (Some(quote!(source: &(impl crate::ircd::irc::messages::MessageSource + ?Sized), )), Some(quote!(source = source.format(), )))
         } else {
             (None, None)
         };
 
         let (target_arg, target_def) = if need_target {
-            (Some(quote!(target: &impl crate::ircd::irc::messages::MessageTarget, )), Some(quote!(target = target.format(), )))
+            (Some(quote!(target: &(impl crate::ircd::irc::messages::MessageTarget + ?Sized), )), Some(quote!(target = target.format(), )))
         } else {
             (None, None)
         };

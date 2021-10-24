@@ -31,7 +31,7 @@ impl Channel<'_> {
     {
         let mem_id = MembershipId::new(user.id(), self.data.id);
         let membership = self.network.membership(mem_id);
-        if membership.is_err() && self.mode()?.has_mode(ChannelModeFlags::NO_EXTERNAL)
+        if membership.is_err() && self.mode()?.has_mode(ChannelModeFlag::NoExternal)
         {
             return Err(numeric::CannotSendToChannel::new(self).into());
         }
