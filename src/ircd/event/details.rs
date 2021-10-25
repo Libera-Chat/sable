@@ -40,6 +40,14 @@ event_details!{
     struct ChannelJoin {
         pub channel: ChannelId,
         pub user: UserId,
+        pub permissions: ChannelPermissionSet,
+    }
+
+    #[target_type(MembershipId)]
+    struct ChannelPermissionChange {
+        pub changed_by: ObjectId,
+        pub added: ChannelPermissionSet,
+        pub removed: ChannelPermissionSet,
     }
 
     #[target_type(MembershipId)]

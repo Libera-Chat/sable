@@ -109,7 +109,7 @@ impl<'a> CommandProcessor<'a>
             handler.handle(&cmd)?;
             Ok(handler.into_actions())
         } else {
-            Err(numeric::UnknownCommand::new(&message.command).into())
+            numeric_error!(UnknownCommand, &message.command)
         }
     }
 
@@ -209,5 +209,17 @@ impl From<HandlerError> for CommandError
 {
     fn from(e: HandlerError) -> Self {
         Self::UnderlyingError(Box::new(e))
+    }
+}
+
+impl From<policy::PermissionError> for CommandError
+{
+    fn from(e: policy::PermissionError) -> Self
+    {
+        match e
+        {
+            policy::PermissionError::Numeric(n) => Self::Numeric(n),
+            policy::PermissionError::InternalError(e) => Self::UnderlyingError(e)
+        }
     }
 }

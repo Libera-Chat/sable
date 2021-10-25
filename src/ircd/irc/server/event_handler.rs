@@ -13,6 +13,7 @@ impl Server
             NewChannel => self.handle_new_channel,
             NewChannelMode => self.handle_new_cmode,
             ChannelModeChange => self.handle_cmode_change,
+            ChannelPermissionChange => self.handle_chan_perm_change,
             ChannelJoin => self.handle_join,
             ChannelPart => self.handle_part,
             NewMessage => self.handle_new_message,
@@ -71,17 +72,30 @@ impl Server
         let chan = mode.channel()?;
         let source = self.lookup_message_source(detail.changed_by)?;
 
-        let mut changes = String::new();
-        if ! detail.added.is_empty()
+        let changes = utils::format_mode_changes(&detail.added, &detail.removed);
+        let msg = message::Mode::new(source.as_ref(), &chan, &changes);
+
+        for m in chan.members()
         {
-            changes += "+";
-            changes += &detail.added.to_chars();
+            let member = m.user()?;
+            if let Ok(conn) = self.connections.get_user(member.id()) {
+                conn.send(&msg)?;
+            }
         }
-        if ! detail.removed.is_empty()
-        {
-            changes += "-";
-            changes += &detail.removed.to_chars();
-        }
+        Ok(())
+    }
+
+    fn handle_chan_perm_change(&self, target: MembershipId, _event: &Event, detail: &ChannelPermissionChange) -> HandleResult
+    {
+        let membership = self.net.membership(target)?;
+        let chan = membership.channel()?;
+        let target = membership.user()?;
+        let source = self.lookup_message_source(detail.changed_by)?;
+
+        let (mut changes, args) = utils::format_channel_perm_changes(&target, &detail.added, &detail.removed);
+
+        changes += " ";
+        changes += &args.join(" ");
 
         let msg = message::Mode::new(source.as_ref(), &chan, &changes);
 
@@ -102,10 +116,19 @@ impl Server
 
         if let Ok(conn) = self.connections.get_user(detail.user) {
             conn.send(&message::Join::new(&user, &channel))?;
-            conn.send(&numeric::ChannelModeIs::new_for(self, &user, &channel, &channel.mode()?))?;
+
+            if ! detail.permissions.is_empty()
+            {
+                let (mut changes, args) = utils::format_channel_perm_changes(&user, &detail.permissions, &ChannelPermissionSet::new());
+
+                changes += " ";
+                changes += &args.join(" ");
+
+                let msg = message::Mode::new(self, &channel, &changes);
+                conn.send(&msg)?;
+            }
 
             irc::utils::send_channel_names(self, conn, &channel)?;
-
         }
 
         for m in channel.members()

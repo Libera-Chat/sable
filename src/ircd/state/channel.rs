@@ -14,6 +14,7 @@ pub struct Membership {
     pub id: MembershipId,
     pub channel: ChannelId,
     pub user: UserId,
+    pub permissions: ChannelPermissionSet,
 }
 
 #[derive(Debug)]
@@ -37,8 +38,8 @@ impl ChannelMode {
 }
 
 impl Membership {
-    pub fn new(id: MembershipId, user: UserId, channel: ChannelId) -> Membership 
+    pub fn new(id: MembershipId, user: UserId, channel: ChannelId, perms: ChannelPermissionSet) -> Membership 
     {
-        Membership{ id: id, user: user, channel: channel }
+        Membership{ id: id, user: user, channel: channel, permissions: perms }
     }
 }

@@ -1,7 +1,9 @@
-use crate::ircd::*;
 use super::*;
+use crate::ircd::*;
+use event::*;
+use irc::connection::EventDetail::*;
+use irc::policy::*;
 use std::{
-//    sync::Arc,
     collections::HashMap,
 };
 use async_std::{
@@ -9,8 +11,7 @@ use async_std::{
     channel,
     net::SocketAddr
 };
-use crate::ircd::event::*;
-use crate::ircd::irc::connection::EventDetail::*;
+
 use log::{info,error};
 use async_broadcast;
 use futures::{select,FutureExt};
@@ -42,6 +43,7 @@ pub struct Server
     connection_events: channel::Receiver<connection::ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
     connections: ConnectionCollection,
+    policy_service: StandardPolicyService,
 }
 
 impl Server
@@ -69,6 +71,7 @@ impl Server
             connection_events: connevent_recv,
             connections: ConnectionCollection::new(),
             command_dispatcher: command::CommandDispatcher::new(),
+            policy_service: StandardPolicyService::new(),
         }
     }
 
@@ -131,6 +134,11 @@ impl Server
     pub fn command_dispatcher(&self) -> &command::CommandDispatcher
     {
         &self.command_dispatcher
+    }
+
+    pub fn policy(&self) -> &dyn PolicyService
+    {
+        &self.policy_service
     }
 
     pub fn find_connection(&self, id: ConnectionId) -> Option<&ClientConnection>

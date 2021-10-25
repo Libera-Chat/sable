@@ -151,10 +151,16 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
                     pub fn new(#( #arg_list ),* #maybe_comma start: i64) -> Self {
                          Self(#( #arg_names ),* #maybe_comma std::sync::atomic::AtomicI64::new(start))
                     }
+
                     pub fn next(&self) -> #id_typename {
                         #id_typename::new(
                             #( self.#field_numbers ),* #maybe_comma 
                             self.#counter_number.fetch_add(1, std::sync::atomic::Ordering::SeqCst))
+                    }
+
+                    pub fn set_next(&self, next: i64)
+                    {
+                        self.#counter_number.store(next, std::sync::atomic::Ordering::SeqCst);
                     }
                 }
             ));

@@ -25,7 +25,7 @@ pub trait CommandHandler : IntoActions
     {
         if cmd.args.len() < self.min_parameters()
         {
-            return Err(numeric::NotEnoughParameters::new(&cmd.command).into());
+            return numeric_error!(NotEnoughParameters, &cmd.command);
         }
         Ok(())
     }
@@ -44,12 +44,12 @@ pub trait CommandHandler : IntoActions
 
     fn handle_preclient<'a>(&mut self, _source: &'a RefCell<PreClient>, _cmd: &ClientCommand) -> CommandResult
     {
-        Err(numeric::NotRegistered::new().into())
+        numeric_error!(NotRegistered)
     }
 
     fn handle_user<'a>(&mut self, _source: &'a wrapper::User, _cmd: &ClientCommand) -> CommandResult
     {
-        Err(numeric::AlreadyRegistered::new().into())
+        numeric_error!(AlreadyRegistered)
     }
 }
 

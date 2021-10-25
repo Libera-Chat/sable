@@ -61,9 +61,19 @@ pub use network::Network;
 
 pub mod irc {
     pub mod utils {
+        mod channel_modes;
+        pub use channel_modes::*;
+
         mod channel_names;
         pub use channel_names::*;
+
+        mod numeric_utils;
+        pub use numeric_utils::*;
     }
+    pub use utils::numeric_error;
+
+    pub mod policy;
+
     pub mod server;
     pub use server::Server;
 

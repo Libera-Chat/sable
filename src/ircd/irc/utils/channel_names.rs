@@ -6,23 +6,23 @@ use wrapper::*;
 pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Channel) -> HandleResult
 {
     let names = channel.members()
-                       .map(|m| { Ok(m.user()?.nick().clone()) })
-                       .collect::<Result<Vec<Nickname>, LookupError>>()?;
+                       .map(|m| { Ok((m.user()?.nick().clone(), m.permissions())) })
+                       .collect::<Result<Vec<(Nickname,ChannelPermissionSet)>, LookupError>>()?;
 
     let mut lines = Vec::new();
     let mut current_line = String::new();
     const CONTENT_LEN:usize = 300;
 
-    for n in names
+    for (n,p) in names
     {
+        let p = p.to_prefixes();
         let n = n.to_string();
         if current_line.len() + n.len() + 1 > CONTENT_LEN
         {
             lines.push(current_line);
             current_line = String::new();
         }
-        current_line += &n;
-        current_line += " ";
+        current_line += &format!("{}{} ", p, n);
     }
     lines.push(current_line);
 

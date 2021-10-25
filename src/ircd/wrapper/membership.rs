@@ -27,6 +27,10 @@ impl Membership<'_> {
     pub fn channel(&self) -> LookupResult<Channel> {
         self.network.channel(self.data.channel)
     }
+
+    pub fn permissions(&self) -> ChannelPermissionSet {
+        self.data.permissions
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for Membership<'a> {

@@ -8,8 +8,8 @@ command_handler!("JOIN" => JoinHandler {
     fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
         let chname = ChannelName::new(cmd.args[0].clone())?;
-        let channel_id = match self.server.network().channel_by_name(&chname) {
-            Ok(channel) => channel.id(),
+        let (channel_id, permissions) = match self.server.network().channel_by_name(&chname) {
+            Ok(channel) => (channel.id(), ChannelPermissionSet::new()),
             Err(_) => {
                 let newmode_details = event::NewChannelMode { mode: ChannelModeSet::default() };
                 let cmode_id = self.server.next_cmode_id();
@@ -20,12 +20,13 @@ command_handler!("JOIN" => JoinHandler {
                 let channel_id = self.server.next_channel_id();
                 let event = self.server.create_event(channel_id, details);
                 self.action(StateChange(event))?;
-                channel_id
+                (channel_id, ChannelPermissionFlag::Op.into())
             }
         };
         let details = event::ChannelJoin {
             user: source.id(),
             channel: channel_id,
+            permissions: permissions,
         };
         let membership_id = MembershipId::new(source.id(), channel_id);
         let event = self.server.create_event(membership_id, details);

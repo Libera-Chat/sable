@@ -28,6 +28,11 @@ impl User<'_> {
         let my_id = self.data.id;
         self.network.raw_memberships().filter(move|x| x.user == my_id).wrap(self.network)
     }
+
+    pub fn is_in_channel(&self, c: ChannelId) -> Option<Membership>
+    {
+        self.channels().filter(|m| m.channel_id() == c).next()
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for User<'a> {

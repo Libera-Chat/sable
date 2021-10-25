@@ -65,7 +65,7 @@ pub fn define_validated(input: TokenStream) -> TokenStream
 mod modeflags;
 
 #[proc_macro]
-pub fn modeflags(input: TokenStream) -> TokenStream
+pub fn mode_flags(input: TokenStream) -> TokenStream
 {
-    modeflags::modeflags(input)
+    modeflags::mode_flags(input)
 }

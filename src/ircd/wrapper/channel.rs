@@ -1,7 +1,4 @@
 use crate::ircd::*;
-use crate::ircd::irc::CommandResult;
-use irc::numeric;
-
 use super::*;
 
 pub struct Channel<'a> {
@@ -27,15 +24,9 @@ impl Channel<'_> {
         self.network.raw_memberships().filter(move |x| x.channel == my_id).wrap(self.network)
     }
 
-    pub fn can_send(&self, user: &User) -> CommandResult
+    pub fn has_member(&self, u: UserId) -> Option<Membership>
     {
-        let mem_id = MembershipId::new(user.id(), self.data.id);
-        let membership = self.network.membership(mem_id);
-        if membership.is_err() && self.mode()?.has_mode(ChannelModeFlag::NoExternal)
-        {
-            return Err(numeric::CannotSendToChannel::new(self).into());
-        }
-        Ok(())
+        self.members().filter(|m| m.user_id() == u).next()
     }
 }
 

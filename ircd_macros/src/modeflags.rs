@@ -21,7 +21,7 @@ struct ModeDef
     _paren: token::Paren,
     flag: LitInt,
     _comma: Token![,],
-    modechar: LitChar
+    modechars: Punctuated<LitChar, Token![,]>
 }
 
 struct ModeSet
@@ -41,7 +41,7 @@ impl Parse for ModeDef
             _paren: parenthesized!(content in input),
             flag: content.parse()?,
             _comma: content.parse()?,
-            modechar: content.parse()?
+            modechars: content.parse_terminated(LitChar::parse)?
         })
     }
 }
@@ -59,7 +59,7 @@ impl Parse for ModeSet
     }
 }
 
-pub fn modeflags(input: TokenStream) -> TokenStream
+pub fn mode_flags(input: TokenStream) -> TokenStream
 {
     let modes = parse_macro_input!(input as ModeSet);
 
@@ -72,11 +72,17 @@ pub fn modeflags(input: TokenStream) -> TokenStream
     let mut mode_chars = Vec::new();
     let mut pairs = Vec::new();
 
+    let mut mode_char_types = proc_macro2::TokenStream::new();
+    let num_chartypes = modes.items[0].modechars.len();
+    for _c in 0..num_chartypes {
+        mode_char_types.extend(quote!(char,));
+    }
+
     for item in modes.items
     {
         let name = item.name;
         let flag = item.flag;
-        let modechar = item.modechar;
+        let modechars = item.modechars;
 
         consts.push(quote!(
             #name = #flag
@@ -85,20 +91,28 @@ pub fn modeflags(input: TokenStream) -> TokenStream
             #name
         ));
         mode_chars.push(quote!(
-            #modechar
+            #modechars
         ));
         pairs.push(quote!(
-            (#name_one::#flag, #modechar)
+            (#name_one::#flag, #modechars)
         ));
     }
 
     let num_items = consts.len();
 
-    let output = quote!(
+    let mut output = quote!(
         #[derive(Debug,Clone,Copy,Eq,PartialEq)]
         pub enum #name_one
         {
             #( #consts ),*
+        }
+
+        impl #name_one
+        {
+            pub fn to_char(self) -> char
+            {
+                #name_set::char_for(self)
+            }
         }
 
         #[derive(Debug,Clone,Copy,Eq,PartialEq,serde::Serialize,serde::Deserialize)]
@@ -109,7 +123,7 @@ pub fn modeflags(input: TokenStream) -> TokenStream
 
         impl #name_set
         {
-            const ALL: [(#name_one, char); #num_items] = [ #( ( #name_one::#const_names, #mode_chars ) ),* ];
+            const ALL: [(#name_one, #mode_char_types); #num_items] = [ #( ( #name_one::#const_names, #mode_chars ) ),* ];
 
             pub fn is_set(&self, flag: #name_one) -> bool
             {
@@ -124,11 +138,11 @@ pub fn modeflags(input: TokenStream) -> TokenStream
             pub fn to_chars(&self) -> String
             {
                 let mut s = String::new();
-                for (f, c) in Self::ALL
+                for v in Self::ALL
                 {
-                    if (self.is_set(f))
+                    if (self.is_set(v.0))
                     {
-                        s.push(c);
+                        s.push(v.1);
                     }
                 }
                 return s;
@@ -136,22 +150,22 @@ pub fn modeflags(input: TokenStream) -> TokenStream
 
             pub fn new() -> Self { Self(0) }
 
-            pub fn all() -> [(#name_one, char); #num_items] { Self::ALL }
+            pub fn all() -> [(#name_one, #mode_char_types); #num_items] { Self::ALL }
 
             pub fn char_for(flag: #name_one) -> char
             {
-                for (f, c) in Self::ALL
+                for v in Self::ALL
                 {
-                    if f == flag { return c; }
+                    if v.0 == flag { return v.1; }
                 }
                 panic!("Invalid flag value?");
             }
 
             pub fn flag_for(modechar: char) -> Option<#name_one>
             {
-                for (f, c) in Self::ALL
+                for v in Self::ALL
                 {
-                    if c == modechar { return Some(f); }
+                    if v.1 == modechar { return Some(v.0); }
                 }
                 None
             }
@@ -207,5 +221,54 @@ pub fn modeflags(input: TokenStream) -> TokenStream
         }
     );
 
+    if num_chartypes > 1
+    {
+        output.extend(quote!(
+            impl #name_one
+            {
+                pub fn to_prefix(self) -> char
+                {
+                    #name_set::prefix_for(self)
+                }
+            }
+
+            impl #name_set
+            {
+                pub fn to_prefixes(&self) -> String
+                {
+                    let mut s = String::new();
+                    for v in Self::ALL
+                    {
+                        if (self.is_set(v.0))
+                        {
+                            s.push(v.2);
+                        }
+                    }
+                    return s;
+                }
+
+                pub fn prefix_for(flag: #name_one) -> char
+                {
+                    for v in Self::ALL
+                    {
+                        if v.0 == flag { return v.2; }
+                    }
+                    panic!("Invalid flag value?");
+                }
+
+                pub fn flag_for_prefix(modechar: char) -> Option<#name_one>
+                {
+                    for v in Self::ALL
+                    {
+                        if v.2 == modechar { return Some(v.0); }
+                    }
+                    None
+                }
+
+            }
+        ));
+    }
+
+    //panic!("{}", output);
     output.into()
 }

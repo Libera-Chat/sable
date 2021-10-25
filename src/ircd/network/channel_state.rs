@@ -21,8 +21,16 @@ impl Network {
         }
     }
 
+    pub(super) fn channel_permission_change(&mut self, target: MembershipId, _event: &Event, details: &details::ChannelPermissionChange) {
+        if let Some(membership) = self.memberships.get_mut(&target)
+        {
+            membership.permissions |= details.added;
+            membership.permissions &= !details.removed;
+        }
+    }
+
     pub(super) fn user_joined_channel(&mut self, target: MembershipId, _event: &Event, details: &details::ChannelJoin) {
-        let membership = state::Membership::new(target, details.user, details.channel);
+        let membership = state::Membership::new(target, details.user, details.channel, details.permissions);
         self.memberships.insert(membership.id, membership);
     }
 

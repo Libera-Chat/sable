@@ -1,11 +1,16 @@
 use super::*;
+use irc::utils::*;
 
 command_handler!("MODE" => ModeHandler {
     fn min_parameters(&self) -> usize { 1 }
 
     fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        let target = cmd.args[0].clone();
+        let mut args = cmd.args.clone().into_iter();
+        let mut next_arg = || { args.next().ok_or(make_numeric!(NotEnoughParameters, &cmd.command)) };
+
+        let target = next_arg()?;
+
         if let Ok(cname) = ChannelName::new(target)
         {
             let chan = self.server.network().channel_by_name(&cname)?;
@@ -24,7 +29,7 @@ command_handler!("MODE" => ModeHandler {
 
                 enum Direction { Add, Rem, Query }
                 let mut dir = Direction::Query;
-                for c in cmd.args[1].chars()
+                for c in next_arg()?.chars()
                 {
                     match c
                     {
@@ -32,20 +37,48 @@ command_handler!("MODE" => ModeHandler {
                         '-' => { dir = Direction::Rem; },
                         '=' => { dir = Direction::Query; },
                         _ => {
-                            match ChannelModeSet::flag_for(c)
+                            if let Some(flag) = ChannelModeSet::flag_for(c)
                             {
-                                Some(flag) => {
-                                    match dir {
-                                        Direction::Add => { added |= flag; },
-                                        Direction::Rem => { removed |= flag; },
-                                        _ => {}
-                                    }
-                                },
-                                None => {
-                                    if ! sent_unknown {
-                                        cmd.response(&numeric::UnknownMode::new(c))?;
-                                        sent_unknown = true;
-                                    }
+                                self.server.policy().can_change_mode(source, &chan, flag)?;
+                                match dir {
+                                    Direction::Add => { added |= flag; },
+                                    Direction::Rem => { removed |= flag; },
+                                    _ => {}
+                                }
+                            }
+                            else if let Some(flag) = ChannelPermissionSet::flag_for(c)
+                            {
+                                let target = self.server.network().user_by_nick(&Nickname::new(next_arg()?)?)?;
+                                let membership = target.is_in_channel(chan.id())
+                                                       .ok_or(make_numeric!(UserNotOnChannel, &target, &chan))?;
+                                let mut perm_added = ChannelPermissionSet::new();
+                                let mut perm_removed = ChannelPermissionSet::new();
+
+                                match dir {
+                                    Direction::Add => {
+                                        self.server.policy().can_grant_permission(source, &chan, &target, flag)?;
+                                        perm_added |= flag;
+                                    },
+                                    Direction::Rem => {
+                                        self.server.policy().can_remove_permission(source, &chan, &target, flag)?;
+                                        perm_removed |= flag;
+                                    },
+                                    _ => {}
+                                }
+
+                                let detail = event::ChannelPermissionChange {
+                                    changed_by: source.id().into(),
+                                    added: perm_added,
+                                    removed: perm_removed,
+                                };
+                                let event = self.server.create_event(membership.id(), detail);
+                                self.action(CommandAction::StateChange(event))?;
+                            }
+                            else
+                            {
+                                if ! sent_unknown {
+                                    cmd.response(&numeric::UnknownMode::new(c))?;
+                                    sent_unknown = true;
                                 }
                             }
                         }
