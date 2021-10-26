@@ -3,26 +3,47 @@ use ircd_macros::dispatch_event;
 use crate::utils::FlattenResult;
 use std::collections::HashSet;
 
+fn nop<I,D>(_: I, _: &Event, _: &D) -> HandleResult { Ok(()) }
+
 impl Server
 {
-    pub(super) fn handle_event(&mut self, event: &Event)
+    pub(super) fn pre_handle_event(&mut self, event: &Event)
+    {
+        let res = dispatch_event!(event => {
+            NewUser => nop,
+            UserQuit => self.pre_handle_quit,
+            NewChannel => nop,
+            NewChannelMode => nop,
+            ChannelModeChange => nop,
+            ChannelPermissionChange => nop,
+            ChannelJoin => nop,
+            ChannelPart => self.pre_handle_part,
+            NewMessage => nop,
+        }).flatten();
+        if let Err(e) = res
+        {
+            error!("Error handling network event: {}", e);
+        }
+    }
+
+    pub(super) fn post_handle_event(&mut self, event: &Event)
     {
         let res = dispatch_event!(event => {
             NewUser => self.handle_new_user,
-            UserQuit => self.handle_quit,
+            UserQuit => nop,
             NewChannel => self.handle_new_channel,
             NewChannelMode => self.handle_new_cmode,
             ChannelModeChange => self.handle_cmode_change,
             ChannelPermissionChange => self.handle_chan_perm_change,
             ChannelJoin => self.handle_join,
-            ChannelPart => self.handle_part,
+            ChannelPart => nop,
             NewMessage => self.handle_new_message,
         }).flatten();
         if let Err(e) = res
         {
             error!("Error handling network event: {}", e);
         }
-   }
+    }
 
     fn handle_new_user(&mut self, user_id: UserId, _event: &Event, detail: &NewUser) -> HandleResult
     {
@@ -36,7 +57,7 @@ impl Server
         Ok(())
     }
 
-    fn handle_quit(&mut self, target: UserId, _event: &Event, detail: &UserQuit) -> HandleResult
+    fn pre_handle_quit(&mut self, target: UserId, _event: &Event, detail: &UserQuit) -> HandleResult
     {
         let user = self.net.user(target)?;
         let mut to_notify = HashSet::new();
@@ -114,9 +135,19 @@ impl Server
         let user = self.net.user(detail.user)?;
         let channel = self.net.channel(detail.channel)?;
 
-        if let Ok(conn) = self.connections.get_user(detail.user) {
-            conn.send(&message::Join::new(&user, &channel))?;
+        for m in channel.members()
+        {
+            if m.id() == _target
+            {
+                continue;
+            }
+            let member = m.user()?;
+            if let Ok(conn) = self.connections.get_user(member.id()) {
+                conn.send(&message::Join::new(&user, &channel))?;
+            }
+        }
 
+        if let Ok(conn) = self.connections.get_user(detail.user) {
             if ! detail.permissions.is_empty()
             {
                 let (mut changes, args) = utils::format_channel_perm_changes(&user, &detail.permissions, &ChannelPermissionSet::new());
@@ -131,21 +162,10 @@ impl Server
             irc::utils::send_channel_names(self, conn, &channel)?;
         }
 
-        for m in channel.members()
-        {
-            if m.id() == _target
-            {
-                continue;
-            }
-            let member = m.user()?;
-            if let Ok(conn) = self.connections.get_user(member.id()) {
-                conn.send(&message::Join::new(&user, &channel))?;
-            }
-        }
         Ok(())
     }
 
-    fn handle_part(&self, target: MembershipId, _event: &Event, detail: &ChannelPart) -> HandleResult
+    fn pre_handle_part(&self, target: MembershipId, _event: &Event, detail: &ChannelPart) -> HandleResult
     {
         let membership = self.net.membership(target)?;
         let source = membership.user()?;

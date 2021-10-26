@@ -204,15 +204,17 @@ impl Server
                 res = self.event_receiver.next().fuse() => {
                     match res {
                         Some(event) => {
-                            // Notify handlers run before it's applied to the network state. If it's a
-                            // deletion event of some sort, the handler needs to know what was there before
-                            // in order to know who to notify.
+                            // Separate pre_handle and post-handle: some event handlers (e.g. for events that destroy
+                            // objects) need to run before the event is applied (e.g. to access the state that's about to
+                            // be removed), while most are easier to write if they run afterwards and can immediately see
+                            // the changes already applied.
                             match self.net.validate(&event) {
                                 Ok(_) => {
-                                    self.handle_event(&event);
+                                    self.pre_handle_event(&event);
                                     if let Err(e) = self.net.apply(&event) {
                                         panic!("Event validated but failed to apply: {}", e);
                                     }
+                                    self.post_handle_event(&event);
                                 },
                                 Err(e) => {
                                     error!("Event failed validation: {}", e);
