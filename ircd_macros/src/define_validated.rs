@@ -66,7 +66,7 @@ pub fn define_validated(input: TokenStream) -> TokenStream
             #[error(#error_str)]
             pub struct #error(pub String);
 
-            #[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
+            #[derive(Debug,Clone,PartialEq,serde::Serialize,serde::Deserialize)]
             pub struct #name(#typename);
 
             impl #name

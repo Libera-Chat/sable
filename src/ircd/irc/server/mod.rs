@@ -202,8 +202,11 @@ impl Server
                     }
                 },
                 res = self.event_receiver.next().fuse() => {
+
                     match res {
                         Some(event) => {
+                            log::debug!("Applying inbound event: {:?}", event);
+
                             // Separate pre_handle and post-handle: some event handlers (e.g. for events that destroy
                             // objects) need to run before the event is applied (e.g. to access the state that's about to
                             // be removed), while most are easier to write if they run afterwards and can immediately see

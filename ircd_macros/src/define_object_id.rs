@@ -135,7 +135,7 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
             arg_names.pop();
             arg_list.pop();
     
-            let field_numbers = (0..arg_types.len()).map(|i| syn::Index::from(i));
+            let field_numbers: Vec<_> = (0..arg_types.len()).map(|i| syn::Index::from(i)).collect();
             let counter_number = syn::Index::from(arg_types.len());
 
             let generator_typename = Ident::new(&format!("{}Generator", id_typename), Span::call_site());
@@ -158,7 +158,13 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
                             self.#counter_number.fetch_add(1, std::sync::atomic::Ordering::SeqCst))
                     }
 
-                    pub fn set_next(&self, next: i64)
+                    pub fn last(&self) -> #id_typename {
+                        #id_typename::new(
+                            #( self.#field_numbers ),* #maybe_comma
+                            self.#counter_number.load(std::sync::atomic::Ordering::SeqCst))
+                    }
+
+                    pub fn update_to(&self, next: i64)
                     {
                         self.#counter_number.store(next, std::sync::atomic::Ordering::SeqCst);
                     }
