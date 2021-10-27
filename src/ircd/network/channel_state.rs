@@ -35,6 +35,18 @@ impl Network {
     }
 
     pub(super) fn user_left_channel(&mut self, target: MembershipId, _event: &Event, _details: &details::ChannelPart) {
-        self.memberships.remove(&target);
+        if let Some(removed_membership) = self.memberships.remove(&target)
+        {
+            let empty = self.memberships.iter().filter(|(_,v)| v.channel == removed_membership.channel).next().is_none();
+            if empty
+            {
+                self.remove_channel(removed_membership.channel);
+            }
+        }
+    }
+
+    fn remove_channel(&mut self, id: ChannelId)
+    {
+        let _removed_channel = self.channels.remove(&id);
     }
 }
