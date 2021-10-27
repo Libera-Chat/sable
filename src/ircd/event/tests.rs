@@ -1,8 +1,8 @@
 use super::*;
 use crate::ircd::id::*;
+use async_std::channel;
 
-
-fn drain_from(log: &mut async_broadcast::Receiver<Event>) -> Vec<Event>
+fn drain_from(log: &mut channel::Receiver<Event>) -> Vec<Event>
 {
     let mut v = Vec::new();
     
@@ -18,9 +18,8 @@ fn simple()
 {
     let server_id = ServerId::new(1);
     let idgen = EventIdGenerator::new(server_id, 1);
-    let mut log = EventLog::new(idgen);
-
-    let mut receiver = log.attach();
+    let (sender, mut receiver) = channel::unbounded::<Event>();
+    let mut log = EventLog::new(idgen, Some(sender));
 
     let uid = UserId::new(server_id, 1);
 
@@ -42,9 +41,8 @@ fn out_of_order()
 {
     let server_id = ServerId::new(1);
     let idgen = EventIdGenerator::new(server_id, 1);
-    let mut log = EventLog::new(idgen);
-
-    let mut receiver = log.attach();
+    let (sender, mut receiver) = channel::unbounded::<Event>();
+    let mut log = EventLog::new(idgen, Some(sender));
 
     let uid = UserId::new(server_id, 1);
 

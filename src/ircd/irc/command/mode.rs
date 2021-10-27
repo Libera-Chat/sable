@@ -71,8 +71,7 @@ command_handler!("MODE" => ModeHandler {
                                     added: perm_added,
                                     removed: perm_removed,
                                 };
-                                let event = self.server.create_event(membership.id(), detail);
-                                self.action(CommandAction::StateChange(event))?;
+                                self.action(CommandAction::state_change(membership.id(), detail))?;
                             }
                             else
                             {
@@ -87,8 +86,7 @@ command_handler!("MODE" => ModeHandler {
                 if !added.is_empty() || !removed.is_empty()
                 {
                     let detail = event::ChannelModeChange { changed_by: source.id().into(), added: added, removed: removed };
-                    let event = self.server.create_event(mode.id(), detail);
-                    self.action(CommandAction::StateChange(event))?;
+                    self.action(CommandAction::state_change(mode.id(), detail))?;
                 }
             }
         }

@@ -58,8 +58,8 @@ pub fn command_handler(input: TokenStream) -> TokenStream
 
             pub fn action(&mut self, act: CommandAction) -> network::ValidationResult
             {
-                if let CommandAction::StateChange(e) = &act {
-                    self.server.network().validate(&e)?;
+                if let CommandAction::StateChange(i, d) = &act {
+                    self.server.network().validate(*i, d)?;
                 }
                 self.actions.push(act);
                 Ok(())

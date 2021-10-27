@@ -14,32 +14,28 @@ impl Server
                         // if someone else takes the nickname in between
                         let pre_client = pre_client_rc.borrow();
                         let new_user_id = self.user_idgen.next();
-                        let register_event = self.eventlog.create(
-                                                        new_user_id, 
-                                                        event::details::NewUser {
-                                                            nickname: pre_client.nick.as_ref().unwrap().clone(),
-                                                            username: pre_client.user.as_ref().unwrap().clone(),
-                                                            visible_hostname: Hostname::new("example.com".to_string()).unwrap(),
-                                                            realname: pre_client.realname.as_ref().unwrap().clone(),
-                                                        }
-                                                    );
-                        self.to_network.try_send(register_event.clone()).unwrap();
-                        self.eventlog.add(register_event);
+                        let details = event::details::NewUser {
+                            nickname: pre_client.nick.as_ref().unwrap().clone(),
+                            username: pre_client.user.as_ref().unwrap().clone(),
+                            visible_hostname: Hostname::new("example.com".to_string()).unwrap(),
+                            realname: pre_client.realname.as_ref().unwrap().clone(),
+                        };
 
-                        Some((new_user_id, conn.id()))
+                        Some((new_user_id, conn.id(), new_user_id, details))
                     } else { None }
                 } else { None };
 
-                if let Some((user_id, conn_id)) = should_add_user
+                if let Some((user_id, conn_id, new_user_id, details)) = should_add_user
                 {
                     self.connections.add_user(user_id, conn_id);
+                    self.submit_event(new_user_id, details);
                 }
             },
             CommandAction::DisconnectUser(user_id) => {
                 self.connections.remove_user(user_id);
             }
-            CommandAction::StateChange(event) => {
-                self.submit_event(event);
+            CommandAction::StateChange(id, detail) => {
+                self.submit_event(id, detail);
             }
         }
     }

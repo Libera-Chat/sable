@@ -1,32 +1,27 @@
 use crate::ircd::event::*;
 use crate::ircd::*;
-use async_broadcast;
-use std::cell::RefCell;
 
 use std::{
     collections::{HashMap,BTreeMap},
 };
-
-static BROADCAST_QUEUE_CAP: usize = 500;
+use async_std::channel;
 
 #[derive(Debug)]
 pub struct EventLog {
     history: HashMap<ServerId, BTreeMap<LocalId, Event>>,
     pending: HashMap<EventId, Event>,
     id_gen: EventIdGenerator,
-    event_sender: Option<async_broadcast::Sender<Event>>,
-    event_receiver: Option<RefCell<async_broadcast::Receiver<Event>>>,
+    event_sender: Option<channel::Sender<Event>>,
     last_event_clock: EventClock,
 }
 
 impl EventLog {
-    pub fn new(idgen: EventIdGenerator) -> Self {
+    pub fn new(idgen: EventIdGenerator, event_sender: Option<channel::Sender<Event>>) -> Self {
         Self{
             history: HashMap::new(),
             pending: HashMap::new(),
             id_gen: idgen,
-            event_sender: None,
-            event_receiver: None,
+            event_sender: event_sender,
             last_event_clock: EventClock::new(),
         }
     }
@@ -48,6 +43,16 @@ impl EventLog {
         }
     }
 
+    pub fn create(&self, target: impl Into<ObjectId>, details: impl Into<EventDetails>) -> Event {
+        Event {
+            id: self.id_gen.next(),
+            timestamp: 0,
+            clock: self.last_event_clock.clone(),
+            target: target.into(),
+            details: details.into()
+        }
+    }
+
     fn do_add(&mut self, e: Event)
     {
         let s = e.id.server();
@@ -57,11 +62,10 @@ impl EventLog {
             self.history.insert(s, BTreeMap::new());
         }
 
-        self.last_event_clock.update_with_clock(&e.clock);
-        self.last_event_clock.update_with_id(id);
-
         let server_map = self.history.get_mut(&s).unwrap();
         server_map.insert(e.id.local(), e);
+
+        self.last_event_clock.update_with_id(id);
 
         self.broadcast(self.history.get(&s).unwrap().get(&id.local()).unwrap());
     }
@@ -108,42 +112,11 @@ impl EventLog {
         }
     }
 
-    pub fn create(&self, target: impl Into<ObjectId>, details: impl Into<EventDetails>) -> Event {
-        Event {
-            id: self.id_gen.next(),
-            timestamp: 0,
-            clock: self.last_event_clock.clone(),
-            target: target.into(),
-            details: details.into()
-        }
-    }
-
-    pub fn attach(&mut self) -> async_broadcast::Receiver<Event>
-    {
-        if self.event_receiver.is_none()
-        {
-            let (send, recv) = async_broadcast::broadcast::<Event>(BROADCAST_QUEUE_CAP);
-
-            self.event_sender = Some(send);
-            self.event_receiver = Some(RefCell::new(recv));
-        }
-        let rc = self.event_receiver.as_ref().unwrap();
-        let receiver = rc.borrow();
-        receiver.clone()
-    }
-
     fn broadcast(&self, event: &Event)
     {
         if let Some(send) = &self.event_sender
         {
-            send.try_broadcast(event.clone()).expect("failed to broadcast event");
-        }
-        // We need to keep a receiver around to be able to clone it, but need to keep it empty
-        // so the queue doesn't back up
-        if let Some(recv) = &self.event_receiver
-        {
-            while let Ok(_event) = recv.borrow_mut().try_recv()
-            { }
+            send.try_send(event.clone()).expect("failed to broadcast event");
         }
     }
 }

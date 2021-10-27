@@ -13,18 +13,11 @@ use async_std::{
 };
 
 use log::{info,error};
-use async_broadcast;
 use futures::{select,FutureExt};
 
 mod connection_collection;
 use connection_collection::ConnectionCollection;
 use command::*;
-
-struct ChannelPair<T>
-{
-    send: channel::Sender<T>,
-    recv: channel::Receiver<T>,
-}
 
 pub struct Server
 {
@@ -35,10 +28,8 @@ pub struct Server
     channel_idgen: ChannelIdGenerator,
     message_idgen: MessageIdGenerator,
     cmode_idgen: CModeIdGenerator,
-    eventlog: event::EventLog,
-    event_receiver: async_broadcast::Receiver<Event>,
-    from_network: ChannelPair<Event>,
-    to_network: channel::Sender<Event>,
+    event_receiver: channel::Receiver<Event>,
+    event_submitter: channel::Sender<(ObjectId,EventDetails)>,
     listeners: ListenerCollection,
     connection_events: channel::Receiver<connection::ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
@@ -48,12 +39,12 @@ pub struct Server
 
 impl Server
 {
-    pub fn new(id: ServerId, name: String, to_network: channel::Sender<Event>) -> Self
+    pub fn new(id: ServerId,
+               name: String,
+               from_network: channel::Receiver<Event>,
+               to_network: channel::Sender<(ObjectId, EventDetails)>) -> Self
     {
         let (connevent_send, connevent_recv) = channel::unbounded::<connection::ConnectionEvent>();
-        let (net_send, net_recv) = channel::unbounded::<Event>();
-        let mut eventlog = event::EventLog::new(EventIdGenerator::new(id, 1));
-        let event_receiver = eventlog.attach();
 
         Self {
             my_id: id,
@@ -63,10 +54,8 @@ impl Server
             channel_idgen: ChannelIdGenerator::new(id, 1),
             message_idgen: MessageIdGenerator::new(id, 1),
             cmode_idgen: CModeIdGenerator::new(id, 1),
-            eventlog: eventlog,
-            event_receiver: event_receiver,
-            from_network: ChannelPair { send: net_send, recv: net_recv },
-            to_network: to_network,
+            event_receiver: from_network,
+            event_submitter: to_network,
             listeners: ListenerCollection::new(connevent_send),
             connection_events: connevent_recv,
             connections: ConnectionCollection::new(),
@@ -80,20 +69,9 @@ impl Server
         self.listeners.add(address);
     }
 
-    fn submit_event(&mut self, event: Event)
+    fn submit_event(&self, id: impl Into<ObjectId>, detail: impl Into<EventDetails>)
     {
-        self.eventlog.add(event.clone());
-        self.to_network.try_send(event).unwrap();
-    }
-
-    pub fn create_event<T: event::DetailType>(&self, target: <T as DetailType>::Target, details: T) -> event::Event
-    {
-        self.eventlog.create(target.into(), details.into())
-    }
-
-    pub fn get_event_sender(&self) -> channel::Sender<Event>
-    {
-        self.from_network.send.clone()
+        self.event_submitter.try_send((id.into(), detail.into())).unwrap();
     }
 
     pub fn next_user_id(&self) -> UserId
@@ -185,10 +163,11 @@ impl Server
                                     error!("Got error from connection {:?}: {:?}", msg.source, e);
                                     if let Ok(conn) = self.connections.get(msg.source) {
                                         if let Some(userid) = conn.user_id {
-                                            self.apply_action(CommandAction::StateChange(
-                                                self.eventlog.create(userid, EventDetails::UserQuit(details::UserQuit {
+                                            self.apply_action(CommandAction::state_change(
+                                                userid,
+                                                details::UserQuit {
                                                     message: format!("I/O error: {}", e)
-                                                }))
+                                                }
                                             ));
                                         }
                                     }
@@ -202,7 +181,6 @@ impl Server
                     }
                 },
                 res = self.event_receiver.next().fuse() => {
-
                     match res {
                         Some(event) => {
                             log::debug!("Applying inbound event: {:?}", event);
@@ -211,7 +189,7 @@ impl Server
                             // objects) need to run before the event is applied (e.g. to access the state that's about to
                             // be removed), while most are easier to write if they run afterwards and can immediately see
                             // the changes already applied.
-                            match self.net.validate(&event) {
+                            match self.net.validate(event.target, &event.details) {
                                 Ok(_) => {
                                     self.pre_handle_event(&event);
                                     if let Err(e) = self.net.apply(&event) {
@@ -230,14 +208,6 @@ impl Server
                         }
                     }
                 },
-                res = self.from_network.recv.next().fuse() => {
-                    match res {
-                        Some(event) => self.eventlog.add(event),
-                        None => {
-                            panic!("What to do here?");
-                        }
-                    }
-                }
             }
         }
     }

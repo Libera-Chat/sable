@@ -12,7 +12,7 @@ pub struct CommandProcessor<'a>
 }
 
 pub enum CommandAction {
-    StateChange(event::Event),
+    StateChange(ObjectId, event::EventDetails),
     RegisterClient(ConnectionId),
     DisconnectUser(UserId),
 }
@@ -38,6 +38,14 @@ pub struct ClientCommand<'a>
     pub source: &'a CommandSource<'a>,
     pub command: String,
     pub args: Vec<String>,
+}
+
+impl CommandAction
+{
+    pub fn state_change(id: impl Into<ObjectId>, detail: impl Into<event::EventDetails>) -> Self
+    {
+        Self::StateChange(id.into(), detail.into())
+    }
 }
 
 impl ClientCommand<'_>

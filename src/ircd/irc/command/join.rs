@@ -1,5 +1,4 @@
 use super::*;
-use CommandAction::StateChange;
 
 
 command_handler!("JOIN" => JoinHandler {
@@ -13,13 +12,11 @@ command_handler!("JOIN" => JoinHandler {
             Err(_) => {
                 let newmode_details = event::NewChannelMode { mode: ChannelModeSet::default() };
                 let cmode_id = self.server.next_cmode_id();
-                let newmode_event = self.server.create_event(cmode_id, newmode_details);
-                self.action(StateChange(newmode_event))?;
+                self.action(CommandAction::state_change(cmode_id, newmode_details))?;
 
                 let details = event::NewChannel { name: chname.clone(), mode: cmode_id };
                 let channel_id = self.server.next_channel_id();
-                let event = self.server.create_event(channel_id, details);
-                self.action(StateChange(event))?;
+                self.action(CommandAction::state_change(channel_id, details))?;
                 (channel_id, ChannelPermissionFlag::Op.into())
             }
         };
@@ -29,8 +26,7 @@ command_handler!("JOIN" => JoinHandler {
             permissions: permissions,
         };
         let membership_id = MembershipId::new(source.id(), channel_id);
-        let event = self.server.create_event(membership_id, details);
-        self.action(StateChange(event))?;
+        self.action(CommandAction::state_change(membership_id, details))?;
         Ok(())
     }
 });

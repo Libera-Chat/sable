@@ -1,10 +1,10 @@
 use crate::ircd::event::*;
 use crate::ircd::*;
-use crate::utils::{FlattenResult};
 use ircd_macros::dispatch_event;
 use thiserror::Error;
 
 use std::collections::HashMap;
+use std::convert::TryInto;
 
 #[derive(Error,Debug)]
 pub enum ValidationError
@@ -63,12 +63,12 @@ impl Network {
         })
     }
 
-    pub fn validate(&self, event: &Event) -> ValidationResult
+    pub fn validate(&self, id: ObjectId, detail: &EventDetails) -> ValidationResult
     {
-        dispatch_event!(event => {
-            NewUser => self.validate_new_user,
-            _ => (|_| { Ok(()) })
-        }).flatten()
+        match detail {
+            EventDetails::NewUser(newuser) => self.validate_new_user(id.try_into()?, newuser),
+            _ => Ok(())
+        }
     }
 }
 

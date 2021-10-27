@@ -1,5 +1,4 @@
 use super::*;
-use CommandAction::StateChange;
 
 command_handler!("PART" => PartHandler {
     fn min_parameters(&self) -> usize { 1 }
@@ -14,8 +13,7 @@ command_handler!("PART" => PartHandler {
         if self.server.network().membership(membership_id).is_ok()
         {
             let details = event::ChannelPart{ message: msg };
-            let event = self.server.create_event(membership_id, details);
-            self.action(StateChange(event))?;
+            self.action(CommandAction::state_change(membership_id, details))?;
         } else {
             return numeric_error!(NotOnChannel, &channel);
         }
