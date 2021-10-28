@@ -21,10 +21,7 @@ impl Server
             {
                 if let Some(pre_client) = &conn.pre_client
                 {
-                    if conn.send(&numeric::NicknameInUse::new_for(&self.name, &*pre_client.borrow(), &n)).is_ok()
-                    {
-                        return;
-                    }
+                    conn.send(&numeric::NicknameInUse::new_for(&self.name, &*pre_client.borrow(), &n))
                 }
             }
             conn.error("Internal error in registration");

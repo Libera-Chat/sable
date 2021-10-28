@@ -16,6 +16,7 @@ pub struct PreClient
     pub user: Option<Username>,
     pub nick: Option<Nickname>,
     pub realname: Option<String>,
+    pub hostname: Option<Hostname>,
 }
 
 impl ClientConnection
@@ -39,9 +40,12 @@ impl ClientConnection
         self.connection.remote_addr
     }
 
-    pub fn send(&self, msg: &dyn messages::Message) -> Result<(), ConnectionError>
+    pub fn send(&self, msg: &dyn messages::Message)
     {
-        self.connection.send(&msg.to_string())
+        if let Err(e) = self.connection.send(&msg.to_string())
+        {
+            self.error(&e.to_string())
+        }
     }
 
     pub fn error(&self, msg: &str)
@@ -59,11 +63,12 @@ impl PreClient {
             user: None,
             nick: None,
             realname: None,
+            hostname: None,
         }
     }
 
     pub fn can_register(&self) -> bool
     {
-        self.user.is_some() && self.nick.is_some()
+        self.user.is_some() && self.nick.is_some() && self.hostname.is_some()
     }
 }

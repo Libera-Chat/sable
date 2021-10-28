@@ -12,12 +12,7 @@ pub use processor::*;
 
 pub type CommandResult = Result<(), CommandError>;
 
-pub trait IntoActions
-{
-    fn into_actions(&mut self) -> Vec<CommandAction>;
-}
-
-pub trait CommandHandler : IntoActions
+pub trait CommandHandler
 {
     fn min_parameters(&self) -> usize;
 

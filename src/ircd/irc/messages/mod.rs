@@ -47,6 +47,11 @@ impl MessageTarget for irc::client::PreClient
     fn format(&self) -> String { "*".to_string() }
 }
 
+impl MessageTarget for Option<std::cell::RefCell<irc::client::PreClient>>
+{
+    fn format(&self) -> String { "*".to_string() }
+}
+
 impl MessageTarget for Nickname
 {
     fn format(&self) -> String { self.value().clone() }

@@ -2,7 +2,6 @@ use crate::ircd::*;
 use super::*;
 use irc::numeric;
 use network::{ValidationError};
-use crate::utils::*;
 
 use std::cell::RefCell;
 
@@ -52,7 +51,7 @@ impl ClientCommand<'_>
 {
     pub fn response(&self, n: &impl messages::Numeric) -> CommandResult
     {
-        self.connection.send(&n.format_for(self.server, self.source))?;
+        self.connection.send(&n.format_for(self.server, self.source));
         Ok(())
     }
 }
@@ -66,42 +65,38 @@ impl<'a> CommandProcessor<'a>
         }
     }
 
-    pub async fn process_message(&self, message: ClientMessage) -> Vec<CommandAction>
+    pub async fn process_message(&self, message: ClientMessage)
     {
         if let Some(conn) = self.server.find_connection(message.source)
         {
             let source = self.translate_message_source(conn).unwrap();
             let command = message.command.clone();
 
-            match self.do_process_message(conn, &source, message)
+            if let Err(err) = self.do_process_message(conn, &source, message)
             {
-                Ok(vec) => return vec,
-                Err(err) => {
-                    match err {
-                        CommandError::UnderlyingError(err) => {
-                            panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), err);
-                        },
-                        CommandError::UnknownError(desc) => {
-                            panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), desc);
-                        }
-                        CommandError::Numeric(num) => {
-                            let targeted = num.as_ref().format_for(self.server, &source);
-                            conn.send(&targeted).or_log("sending error numeric");
-                        }
+                match err {
+                    CommandError::UnderlyingError(err) => {
+                        panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), err);
+                    },
+                    CommandError::UnknownError(desc) => {
+                        panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), desc);
+                    }
+                    CommandError::Numeric(num) => {
+                        let targeted = num.as_ref().format_for(self.server, &source);
+                        conn.send(&targeted);
                     }
                 }
             }
         } else {
             panic!("Got message '{}' from unknown source?", message.command);
         }
-        Vec::new()
     }
 
     fn do_process_message(&self, 
                           connection: &ClientConnection,
                           source: &CommandSource,
                           message: ClientMessage
-                        ) -> Result<Vec<CommandAction>, CommandError>
+                        ) -> Result<(), CommandError>
     {
         if let Some(factory) = self.server.command_dispatcher().resolve_command(&message.command) {
             let mut handler = factory.create(self.server, self);
@@ -115,7 +110,7 @@ impl<'a> CommandProcessor<'a>
 
             handler.validate(&cmd)?;
             handler.handle(&cmd)?;
-            Ok(handler.into_actions())
+            Ok(())
         } else {
             numeric_error!(UnknownCommand, &message.command)
         }

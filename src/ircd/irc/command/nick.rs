@@ -8,7 +8,7 @@ command_handler!("NICK" => NickHandler {
         let nick = Nickname::new(cmd.args[0].clone())?;
         if self.server.network().user_by_nick(&nick).is_ok()
         {
-            cmd.connection.send(&numeric::NicknameInUse::new_for(self.server, &*source.borrow(), &nick))?;
+            cmd.connection.send(&numeric::NicknameInUse::new_for(self.server, &*source.borrow(), &nick));
         }
         else
         {

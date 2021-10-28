@@ -30,8 +30,8 @@ pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Chan
 
     for line in lines
     {
-        to.send(&numeric::NamesReply::new_for(server, &user, '*', &channel, &line))?;
+        to.send(&numeric::NamesReply::new_for(server, &user, '*', &channel, &line));
     }
-    to.send(&numeric::EndOfNames::new_for(server, &user, &channel))?;
+    to.send(&numeric::EndOfNames::new_for(server, &user, &channel));
     Ok(())
 }

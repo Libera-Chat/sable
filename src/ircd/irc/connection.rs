@@ -28,6 +28,7 @@ pub enum EventDetail {
     NewConnection(Connection),
     Message(String),
     Error(ConnectionError),
+    DNSLookupFinished(Option<Hostname>),
 }
 
 #[derive(Debug)]

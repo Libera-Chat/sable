@@ -52,7 +52,7 @@ impl Server
             connection.pre_client = None;
             connection.user_id = Some(user_id);
 
-            connection.send(&numeric::Numeric001::new_for(&self.name.to_string(), &detail.nickname, "test", &detail.nickname))?;
+            connection.send(&numeric::Numeric001::new_for(&self.name.to_string(), &detail.nickname, "test", &detail.nickname));
         }
         Ok(())
     }
@@ -74,7 +74,7 @@ impl Server
         {
             if let Ok(conn) = self.connections.get_user(u)
             {
-                conn.send(&message::Quit::new(&user, &detail.message))?;
+                conn.send(&message::Quit::new(&user, &detail.message));
             }
         }
         Ok(())
@@ -100,7 +100,7 @@ impl Server
         {
             let member = m.user()?;
             if let Ok(conn) = self.connections.get_user(member.id()) {
-                conn.send(&msg)?;
+                conn.send(&msg);
             }
         }
         Ok(())
@@ -124,7 +124,7 @@ impl Server
         {
             let member = m.user()?;
             if let Ok(conn) = self.connections.get_user(member.id()) {
-                conn.send(&msg)?;
+                conn.send(&msg);
             }
         }
         Ok(())
@@ -137,13 +137,9 @@ impl Server
 
         for m in channel.members()
         {
-            if m.id() == _target
-            {
-                continue;
-            }
             let member = m.user()?;
             if let Ok(conn) = self.connections.get_user(member.id()) {
-                conn.send(&message::Join::new(&user, &channel))?;
+                conn.send(&message::Join::new(&user, &channel));
             }
         }
 
@@ -156,7 +152,7 @@ impl Server
                 changes += &args.join(" ");
 
                 let msg = message::Mode::new(self, &channel, &changes);
-                conn.send(&msg)?;
+                conn.send(&msg);
             }
 
             irc::utils::send_channel_names(self, conn, &channel)?;
@@ -175,7 +171,7 @@ impl Server
         {
             if let Ok(conn) = self.connections.get_user(m.user()?.id())
             {
-                conn.send(&message::Part::new(&source, &channel, &detail.message))?;
+                conn.send(&message::Part::new(&source, &channel, &detail.message));
             }
         }
         Ok(())
@@ -195,7 +191,7 @@ impl Server
                         continue;
                     }
                     if let Ok(conn) = self.connections.get_user(member.id()) {
-                        conn.send(&message::Privmsg::new(&source, &channel, &detail.text))?;
+                        conn.send(&message::Privmsg::new(&source, &channel, &detail.text));
                     }
                 }
                 Ok(())
@@ -203,7 +199,7 @@ impl Server
             ObjectId::User(user_id) => {
                 let user = self.net.user(user_id)?;
                 if let Ok(conn) = self.connections.get_user(user_id) {
-                    conn.send(&message::Privmsg::new(&source, &user, &detail.text))?;
+                    conn.send(&message::Privmsg::new(&source, &user, &detail.text));
 
                 }
                 Ok(())

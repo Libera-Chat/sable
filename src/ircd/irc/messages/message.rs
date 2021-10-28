@@ -7,6 +7,8 @@ define_messages! {
     Quit    => { (source, message: &str)                    => ":{source} QUIT :{message}" },
 
     Mode    => { (source, target, changes: &str)            => ":{source} MODE {target} {changes}" },
+
+    Notice  => { (source, target, message: &str)            => ":{source} NOTICE {target} :{message}" },
     Privmsg => { (source, target, message: &str)            => ":{source} PRIVMSG {target} :{message}" },
 
     Ping    => { (source, target, cookie: &str)             => ":{source} PING {target} :{cookie}" },

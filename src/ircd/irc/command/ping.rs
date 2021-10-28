@@ -5,7 +5,7 @@ command_handler!("PING" => PingHandler {
 
     fn handle_user(&mut self, _source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        cmd.connection.send(&message::Pong::new(self.server, &cmd.args[0]))?;
+        cmd.connection.send(&message::Pong::new(self.server, &cmd.args[0]));
         Ok(())
     }
 });

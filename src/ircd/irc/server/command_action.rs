@@ -17,7 +17,7 @@ impl Server
                         let details = event::details::NewUser {
                             nickname: pre_client.nick.as_ref().unwrap().clone(),
                             username: pre_client.user.as_ref().unwrap().clone(),
-                            visible_hostname: Hostname::new(conn.remote_addr().to_string()).unwrap(),
+                            visible_hostname: pre_client.hostname.as_ref().unwrap().clone(),
                             realname: pre_client.realname.as_ref().unwrap().clone(),
                         };
 

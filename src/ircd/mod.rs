@@ -59,6 +59,9 @@ pub mod irc {
 
     pub mod policy;
 
+    mod dns;
+    pub use dns::DnsClient;
+
     pub mod server;
     pub use server::Server;
 

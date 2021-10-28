@@ -5,6 +5,7 @@ use irc::connection::EventDetail::*;
 use irc::policy::*;
 use std::{
     collections::HashMap,
+    sync::mpsc,
 };
 use async_std::{
     prelude::*,
@@ -30,11 +31,14 @@ pub struct Server
     cmode_idgen: CModeIdGenerator,
     event_receiver: channel::Receiver<Event>,
     event_submitter: channel::Sender<(ObjectId,EventDetails)>,
+    action_receiver: mpsc::Receiver<CommandAction>,
+    action_submitter: mpsc::Sender<CommandAction>,
     listeners: ListenerCollection,
     connection_events: channel::Receiver<connection::ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
     connections: ConnectionCollection,
     policy_service: StandardPolicyService,
+    dns_client: dns::DnsClient,
 }
 
 impl Server
@@ -45,6 +49,7 @@ impl Server
                to_network: channel::Sender<(ObjectId, EventDetails)>) -> Self
     {
         let (connevent_send, connevent_recv) = channel::unbounded::<connection::ConnectionEvent>();
+        let (action_send, action_recv) = mpsc::channel();
 
         Self {
             my_id: id,
@@ -56,11 +61,14 @@ impl Server
             cmode_idgen: CModeIdGenerator::new(id, 1),
             event_receiver: from_network,
             event_submitter: to_network,
-            listeners: ListenerCollection::new(connevent_send),
+            action_receiver: action_recv,
+            action_submitter: action_send,
+            listeners: ListenerCollection::new(connevent_send.clone()),
             connection_events: connevent_recv,
             connections: ConnectionCollection::new(),
             command_dispatcher: command::CommandDispatcher::new(),
             policy_service: StandardPolicyService::new(),
+            dns_client: DnsClient::new(connevent_send),
         }
     }
 
@@ -114,6 +122,11 @@ impl Server
         &self.command_dispatcher
     }
 
+    pub fn add_action(&self, act: CommandAction)
+    {
+        self.action_submitter.send(act).unwrap();
+    }
+
     pub fn policy(&self) -> &dyn PolicyService
     {
         &self.policy_service
@@ -136,6 +149,11 @@ impl Server
     pub async fn run(&mut self)
     {
         loop {
+            // Between each I/O event, see whether there are any actions we need to process synchronously
+            while let Ok(act) = self.action_receiver.try_recv()
+            {
+                self.apply_action(act);
+            }
             select! {
                 res = self.connection_events.next().fuse() => {
                     match res {
@@ -143,7 +161,43 @@ impl Server
                             match msg.detail {
                                 NewConnection(conn) => {
                                     info!("Got new connection {:?}", msg.source);
-                                    self.connections.add(msg.source, ClientConnection::new(conn));
+                                    let conn = ClientConnection::new(conn);
+
+                                    conn.send(&message::Notice::new(self, &conn.pre_client,
+                                                ":*** Looking up your hostname"));
+                                    self.dns_client.start_lookup(conn.id(), conn.remote_addr());
+                                    self.connections.add(msg.source, conn);
+                                },
+                                DNSLookupFinished(hostname) => {
+                                    if let Ok(conn) = self.connections.get(msg.source) {
+                                        info!("DNS lookup finished for {:?}: {}/{:?}", msg.source,
+                                                                                     conn.remote_addr(),
+                                                                                     hostname
+                                                                                     );
+                                        if let Some(pc_rc) = &conn.pre_client {
+                                            let mut pc = pc_rc.borrow_mut();
+                                            if let Some(hostname) = hostname {
+                                                conn.send(&message::Notice::new(self, &*pc,
+                                                                &format!(":*** Found your hostname: {}", hostname)));
+
+                                                pc.hostname = Some(hostname);
+                                            } else {
+                                                conn.send(&message::Notice::new(self, &*pc,
+                                                                ":*** Couldn't look up your hostname"));
+                                                let no_hostname = Hostname::new(conn.remote_addr().to_string());
+                                                match no_hostname {
+                                                    Ok(n) => pc.hostname = Some(n),
+                                                    Err(e) => conn.error(&e.to_string())
+                                                }
+                                            }
+                                            if pc.can_register() {
+                                                let res = self.action_submitter.send(CommandAction::RegisterClient(conn.id()));
+                                                if let Err(e) = res {
+                                                    conn.error(&e.to_string());
+                                                }
+                                            }
+                                        }
+                                    }
                                 },
                                 Message(m) => { 
                                     info!("Got message from connection {:?}: {}", msg.source, m);
@@ -151,12 +205,7 @@ impl Server
                                     if let Some(message) = ClientMessage::parse(msg.source, &m)
                                     {
                                         let processor = CommandProcessor::new(&self);
-                                        let actions = processor.process_message(message).await;
-                                        
-                                        for action in actions
-                                        {
-                                            self.apply_action(action)
-                                        }
+                                        processor.process_message(message).await;
                                     }
                                 },
                                 Error(e) => {

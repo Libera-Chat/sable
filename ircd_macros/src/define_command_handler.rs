@@ -46,14 +46,13 @@ pub fn command_handler(input: TokenStream) -> TokenStream
         {
             server: &'a Server,
             processor: &'a CommandProcessor<'a>,
-            actions: Vec<CommandAction>,
         }
 
         impl<'a> #name<'a>
         {
             pub fn new(server: &'a Server, proc: &'a CommandProcessor<'a>) -> Self
             {
-                Self{ server: server, processor: proc, actions: Vec::new() }
+                Self{ server: server, processor: proc }
             }
 
             pub fn action(&mut self, act: CommandAction) -> network::ValidationResult
@@ -61,19 +60,13 @@ pub fn command_handler(input: TokenStream) -> TokenStream
                 if let CommandAction::StateChange(i, d) = &act {
                     self.server.network().validate(*i, d)?;
                 }
-                self.actions.push(act);
+                self.server.add_action(act);
                 Ok(())
             }
         }
 
         impl<'a> CommandHandler for #name<'a>
         #body
-
-        impl IntoActions for #name<'_>
-        {
-            fn into_actions(&mut self) -> Vec<CommandAction>
-            { std::mem::take(&mut self.actions) }
-        }
 
         struct #factory;
 
