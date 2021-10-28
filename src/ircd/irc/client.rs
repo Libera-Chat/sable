@@ -2,6 +2,7 @@ use crate::ircd::*;
 use super::*;
 
 use std::cell::RefCell;
+use async_std::net::IpAddr;
 
 pub struct ClientConnection
 {
@@ -31,6 +32,11 @@ impl ClientConnection
     pub fn id(&self) -> ConnectionId
     {
         self.connection.id
+    }
+
+    pub fn remote_addr(&self) -> IpAddr
+    {
+        self.connection.remote_addr
     }
 
     pub fn send(&self, msg: &dyn messages::Message) -> Result<(), ConnectionError>

@@ -76,8 +76,10 @@ impl Listener
                             match s {
                                 Ok(stream) => {
                                     let id = id_gen.next();
-                                    let conn = connection::Connection::new(id,stream,event_channel.clone());
-                                    event_channel.send(connection::ConnectionEvent::new(id, conn)).await.or_log(format!("reporting new connection on {}", address));
+                                    match connection::Connection::new(id,stream,event_channel.clone()) {
+                                        Ok(conn) => event_channel.send(connection::ConnectionEvent::new(id, conn)).await.or_log(format!("reporting new connection on {}", address)),
+                                        Err(e) => error!("Error opening connection for {}: {}", address, e)
+                                    }
                                 },
                                 Err(e) => error!("Listener error on {}: {}", address, e)
                             }

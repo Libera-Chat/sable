@@ -2,7 +2,10 @@ use crate::ircd::*;
 use crate::utils::*;
 use async_std::{
     prelude::*,
-    net::TcpStream,
+    net::{
+        TcpStream,
+        IpAddr,
+    },
     io::BufReader,
     channel,
     task
@@ -15,6 +18,7 @@ static SEND_QUEUE_LEN:usize = 100;
 #[derive(Debug)]
 pub struct Connection {
     pub id: ConnectionId,
+    pub remote_addr: IpAddr,
     control_channel: channel::Sender<ConnectionControl>,
     send_channel: channel::Sender<String>,
 }
@@ -46,19 +50,22 @@ pub enum ConnectionControl {
 
 impl Connection
 {
-    pub fn new(id: ConnectionId, stream: TcpStream, events: channel::Sender<ConnectionEvent>) -> Self
+    pub fn new(id: ConnectionId, stream: TcpStream, events: channel::Sender<ConnectionEvent>) -> Result<Self,ConnectionError>
     {
         let (control_send, control_recv) = channel::bounded(SEND_QUEUE_LEN);
         let (send_send, send_recv) = channel::bounded(SEND_QUEUE_LEN);
 
+        let addr = stream.peer_addr()?.ip();
+
         let conntask = ConnectionTask::new(id, stream, control_recv, send_recv, events.clone());
         task::spawn(conntask.run());
 
-        Self {
+        Ok(Self {
             id: id,
+            remote_addr: addr,
             control_channel: control_send,
             send_channel: send_send,
-        }
+        })
     }
 
     pub fn id(&self) -> ConnectionId
