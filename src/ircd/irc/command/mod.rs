@@ -95,3 +95,4 @@ mod quit;
 mod mode;
 mod ping;
 mod names;
+mod who;

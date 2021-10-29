@@ -4,6 +4,9 @@ use irc::utils::*;
 pub trait ChannelPolicyService
 {
     fn can_send(&self, user: &User, channel: &Channel, msg: &str) -> PermissionResult;
+
+    fn can_see_user_on_channel(&self, user: &User, member: &Membership) -> PermissionResult;
+
     fn can_change_mode(&self, user: &User, channel: &Channel, mode: ChannelModeFlag) -> PermissionResult;
     fn can_grant_permission(&self, user: &User, channel: &Channel, target: &User, flag: ChannelPermissionFlag) -> PermissionResult;
     fn can_remove_permission(&self, user: &User, channel: &Channel, target: &User, flag: ChannelPermissionFlag) -> PermissionResult;
@@ -33,6 +36,24 @@ impl ChannelPolicyService for StandardPolicyService
             && user.is_in_channel(channel.id()).is_none()
         {
             return numeric_error!(CannotSendToChannel, channel);
+        }
+        Ok(())
+    }
+
+    fn can_see_user_on_channel(&self, user: &User, member: &Membership) -> PermissionResult
+    {
+        let chan = member.channel()?;
+        let user_is_on_chan = user.is_in_channel(chan.id()).is_some();
+        if user_is_on_chan
+        {
+            return Ok(());
+        }
+
+        let chan_is_secret = chan.mode()?.has_mode(ChannelModeFlag::Secret);
+        let user_is_invis = member.user()?.mode()?.has_mode(UserModeFlag::Invisible);
+        if chan_is_secret || user_is_invis
+        {
+            return numeric_error!(NotOnChannel, &chan);
         }
         Ok(())
     }

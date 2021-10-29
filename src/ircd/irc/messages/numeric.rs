@@ -1,11 +1,16 @@
 use ircd_macros::define_messages;
 use crate::wrapper::*;
+use crate::irc::Server;
 use crate::ircd::validated::*;
 
 define_messages! {
     001(Welcome)    => { (network_name: &str, nick: &Nickname) => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
 
+    315(EndOfWho)               => { (arg: &str) => "{arg} :End of /WHO list" },
     324(ChannelModeIs)          => { (chan: &Channel.name(), modes: &ChannelMode.format())  => "{chan} {modes}" },
+    352(WhoReply)               => { (chname: &str, user: &Username, host: &Hostname, server: &Server.name(),
+                                      nick: &Nickname, status: &str, hopcount: usize, realname: &str)
+                                    => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },
     353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)   => "{is_pub} {chan} :{content}" },
     366(EndOfNames)             => { (chan: &Channel.name())                                => "{chan} :End of names list" },
 

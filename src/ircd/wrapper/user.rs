@@ -24,6 +24,10 @@ impl User<'_> {
         &self.data.visible_host
     }
 
+    pub fn realname(&self) -> &str {
+        &self.data.realname
+    }
+
     pub fn mode(&self) -> LookupResult<UserMode> {
         self.network.user_mode(self.data.mode_id)
     }
