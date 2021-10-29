@@ -11,11 +11,24 @@ event_details!{
         pub username: Username,
         pub visible_hostname: Hostname,
         pub realname: String,
+        pub mode_id: UModeId,
     }
 
     #[target_type(UserId)]
     struct UserQuit {
         pub message: String,
+    }
+
+    #[target_type(UModeId)]
+    struct NewUserMode {
+        pub mode: UserModeSet,
+    }
+
+    #[target_type(UModeId)]
+    struct UserModeChange {
+        pub changed_by: ObjectId,
+        pub added: UserModeSet,
+        pub removed: UserModeSet,
     }
 
     #[target_type(ChannelId)]

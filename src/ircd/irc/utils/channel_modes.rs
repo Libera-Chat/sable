@@ -1,7 +1,7 @@
 use crate::ircd::wrapper::*;
 use crate::ircd::flags::*;
 
-pub fn format_mode_changes(added: &ChannelModeSet, removed: &ChannelModeSet) -> String
+pub fn format_cmode_changes(added: &ChannelModeSet, removed: &ChannelModeSet) -> String
 {
     let mut changes = String::new();
     if ! added.is_empty()

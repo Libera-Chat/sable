@@ -11,7 +11,7 @@ command_handler!("MODE" => ModeHandler {
 
         let target = next_arg()?;
 
-        if let Ok(cname) = ChannelName::new(target)
+        if let Ok(cname) = ChannelName::new(target.clone())
         {
             let chan = self.server.network().channel_by_name(&cname)?;
             let mode = chan.mode()?;
@@ -92,7 +92,51 @@ command_handler!("MODE" => ModeHandler {
         }
         else
         {
-            log::error!("User modes not implemented");
+            if source.nick() != &target
+            {
+                return numeric_error!(CantChangeOtherUserMode);
+            }
+
+            let mode = source.mode()?;
+
+            let mut sent_unknown = false;
+            let mut added = UserModeSet::new();
+            let mut removed = UserModeSet::new();
+
+            enum Direction { Add, Rem, Query }
+            let mut dir = Direction::Query;
+
+            for c in next_arg()?.chars()
+            {
+                match c
+                {
+                    '+' => { dir = Direction::Add; },
+                    '-' => { dir = Direction::Rem; },
+                    '=' => { dir = Direction::Query; },
+                    _ => {
+                        if let Some(flag) = UserModeSet::flag_for(c)
+                        {
+                            match dir {
+                                Direction::Add => { added |= flag; },
+                                Direction::Rem => { removed |= flag; },
+                                _ => {}
+                            }
+                        }
+                        else
+                        {
+                            if ! sent_unknown {
+                                cmd.response(&numeric::UnknownMode::new(c))?;
+                                sent_unknown = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if !added.is_empty() || !removed.is_empty()
+            {
+                let detail = event::UserModeChange { changed_by: source.id().into(), added: added, removed: removed };
+                self.action(CommandAction::state_change(mode.id(), detail))?;
+            }
         }
         Ok(())
     }

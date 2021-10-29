@@ -11,6 +11,7 @@ pub mod state {
 pub mod wrapper {
     mod wrapper;
     mod user;
+    mod user_mode;
     mod channel;
     mod channel_mode;
     mod membership;
@@ -22,6 +23,7 @@ pub mod wrapper {
     pub use wrapper::WrapIterator;
 
     pub use user::User;
+    pub use user_mode::UserMode;
     pub use channel::Channel;
     pub use channel_mode::ChannelMode;
     pub use membership::Membership;
@@ -48,6 +50,9 @@ pub mod irc {
     pub mod utils {
         mod channel_modes;
         pub use channel_modes::*;
+
+        mod user_modes;
+        pub use user_modes::*;
 
         mod channel_names;
         pub use channel_names::*;

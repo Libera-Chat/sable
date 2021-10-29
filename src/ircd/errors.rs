@@ -10,6 +10,10 @@ pub enum LookupError
     WrongType,
     #[error("No such user id {0:?}")]
     NoSuchUser(UserId),
+    #[error("No such user mode id {0:?}")]
+    NoSuchUserMode(UModeId),
+    #[error("No user with mode id {0:?}")]
+    NoUserForMode(UModeId),
     #[error("No such channel id {0:?}")]
     NoSuchChannel(ChannelId),
     #[error("No such channel mode id {0:?}")]

@@ -24,4 +24,6 @@ define_messages! {
     472(UnknownMode)            => { (c: char)                  => "{c} :Unknown mode character" },
     479(InvalidChannelName)     => { (name: &str)               => "{name} :Illegal channel name" },
     482(ChanOpPrivsNeeded)      => { (chan: &Channel.name())    => "{chan} :You're not a channel operator" },
+
+    502(CantChangeOtherUserMode) => { ()                => ":Can't change mode for other users" },
 }

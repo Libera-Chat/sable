@@ -24,6 +24,11 @@ impl Network {
         self.users.values().filter(|x| &x.nick == nick.value()).next().ok_or(NoSuchNick(nick.to_string())).wrap(self)
     }
 
+    pub fn user_mode(&self, id: UModeId) -> LookupResult<wrapper::UserMode>
+    {
+        self.user_modes.get(&id).ok_or(NoSuchUserMode(id)).wrap(self)
+    }
+
     pub fn channel(&self, id: ChannelId) -> LookupResult<wrapper::Channel> {
         self.channels.get(&id).ok_or(NoSuchChannel(id)).wrap(self)
     }

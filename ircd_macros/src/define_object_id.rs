@@ -8,6 +8,7 @@ use syn::{
     Result,
     Token,
     Ident,
+    Type,
     TypeTuple,
     token
 };
@@ -74,6 +75,7 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
     let mut all_typenames = Vec::new();
     let mut generator_fields = Vec::new();
     let mut generator_methods = Vec::new();
+    let mut generator_initargs = Vec::new();
 
     for item in input.items
     {
@@ -171,31 +173,53 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
                 }
             ));
 
-            let generator_method_name = Ident::new(&format!("next_{}", &typename).to_ascii_lowercase(), Span::call_site());
-            let generator_field_name = Ident::new(&format!("{}_generator_field", &typename), Span::call_site());
-            let generator_access_name = Ident::new(&format!("{}_generator", &typename).to_ascii_lowercase(), Span::call_site());
+            let serverid_type = syn::parse::<Type>(quote!(ServerId).into()).unwrap();
+            if arg_types.len() == 1 && arg_types[0] == serverid_type
+            {
+                let generator_method_name = Ident::new(&format!("next_{}", &typename).to_ascii_lowercase(), Span::call_site());
+                let generator_field_name = Ident::new(&format!("{}_generator_field", &typename), Span::call_site());
+                let generator_access_name = Ident::new(&format!("{}_generator", &typename).to_ascii_lowercase(), Span::call_site());
 
-            generator_methods.push(quote!(
-                pub fn #generator_method_name (&self) -> #id_typename {
-                    self. #generator_field_name . next()
-                }
+                generator_methods.push(quote!(
+                    pub fn #generator_method_name (&self) -> #id_typename {
+                        self. #generator_field_name . next()
+                    }
 
-                pub fn #generator_access_name (&self) -> std::sync::Arc<#generator_typename> {
-                    std::sync::Arc::clone(&self. #generator_field_name)
-                }
-            ));
+                    pub fn #generator_access_name (&self) -> std::sync::Arc<#generator_typename> {
+                        std::sync::Arc::clone(&self. #generator_field_name)
+                    }
+                ));
 
-            generator_fields.push(quote!(
-                #generator_field_name : std::sync::Arc<#generator_typename>
-            ))
+                generator_fields.push(quote!(
+                    #generator_field_name : std::sync::Arc<#generator_typename>
+                ));
+
+                generator_initargs.push(quote!(
+                    #generator_field_name: std::sync::Arc::new(#generator_typename::new(server_id, 1))
+                ));
+            }
         }
-
     }
 
     output.extend(quote!(
         #[derive(PartialEq,Eq,Hash,Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
         pub enum ObjectId {
             #( #enum_variants ),*
+        }
+
+        pub struct IdGenerator {
+            #( #generator_fields ),*
+        }
+
+        impl IdGenerator {
+            #( #generator_methods )*
+
+            pub fn new(server_id: ServerId) -> Self
+            {
+                Self {
+                    #( #generator_initargs ),*
+                }
+            }
         }
     ));
 

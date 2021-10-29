@@ -25,10 +25,7 @@ pub struct Server
     my_id: ServerId,
     name: String,
     net: Network,
-    user_idgen: UserIdGenerator,
-    channel_idgen: ChannelIdGenerator,
-    message_idgen: MessageIdGenerator,
-    cmode_idgen: CModeIdGenerator,
+    id_generator: IdGenerator,
     event_receiver: channel::Receiver<Event>,
     event_submitter: channel::Sender<(ObjectId,EventDetails)>,
     action_receiver: mpsc::Receiver<CommandAction>,
@@ -55,10 +52,7 @@ impl Server
             my_id: id,
             name: name,
             net: Network::new(),
-            user_idgen: UserIdGenerator::new(id, 1),
-            channel_idgen: ChannelIdGenerator::new(id, 1),
-            message_idgen: MessageIdGenerator::new(id, 1),
-            cmode_idgen: CModeIdGenerator::new(id, 1),
+            id_generator: IdGenerator::new(id),
             event_receiver: from_network,
             event_submitter: to_network,
             action_receiver: action_recv,
@@ -84,22 +78,22 @@ impl Server
 
     pub fn next_user_id(&self) -> UserId
     {
-        self.user_idgen.next()
+        self.id_generator.next_user()
     }
 
     pub fn next_channel_id(&self) -> ChannelId
     {
-        self.channel_idgen.next()
+        self.id_generator.next_channel()
     }
 
     pub fn next_cmode_id(&self) -> CModeId
     {
-        self.cmode_idgen.next()
+        self.id_generator.next_cmode()
     }
 
     pub fn next_message_id(&self) -> MessageId
     {
-        self.message_idgen.next()
+        self.id_generator.next_message()
     }
 
     pub fn network(&self) -> &Network

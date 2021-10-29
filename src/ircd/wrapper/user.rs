@@ -24,6 +24,10 @@ impl User<'_> {
         &self.data.visible_host
     }
 
+    pub fn mode(&self) -> LookupResult<UserMode> {
+        self.network.user_mode(self.data.mode_id)
+    }
+
     pub fn channels(&self) -> impl Iterator<Item=Membership> {
         let my_id = self.data.id;
         self.network.raw_memberships().filter(move|x| x.user == my_id).wrap(self.network)

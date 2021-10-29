@@ -29,6 +29,8 @@ pub type ValidationResult = Result<(), ValidationError>;
 #[derive(Debug)]
 pub struct Network {
     users: HashMap<UserId, state::User>,
+    user_modes: HashMap<UModeId, state::UserMode>,
+
     channels: HashMap<ChannelId, state::Channel>,
     channel_modes: HashMap<CModeId, state::ChannelMode>,
 
@@ -41,6 +43,8 @@ impl Network {
     pub fn new() -> Network {
         Network{
             users: HashMap::new(),
+            user_modes: HashMap::new(),
+
             channels: HashMap::new(),
             channel_modes: HashMap::new(),
             memberships: HashMap::new(),
@@ -52,6 +56,8 @@ impl Network {
     pub fn apply(&mut self, event: &Event) -> Result<(),WrongIdTypeError> {
         dispatch_event!(event => {
             NewUser => self.new_user,
+            NewUserMode => self.new_user_mode,
+            UserModeChange => self.user_mode_change,
             UserQuit => self.user_quit,
             NewChannel => self.new_channel,
             NewChannelMode => self.new_channel_mode,

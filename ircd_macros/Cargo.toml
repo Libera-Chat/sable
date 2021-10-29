@@ -13,4 +13,4 @@ proc-macro2 = "1"
 
 [dependencies.syn]
 version = "1"
-features = [ "full" ]
+features = [ "full", "extra-traits" ]

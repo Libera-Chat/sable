@@ -13,3 +13,9 @@ mode_flags!(
         Voice   (0x02, 'v', '+'),
     }
 );
+
+mode_flags!(
+    UserMode {
+        Invisible   (0x01, 'i'),
+    }
+);

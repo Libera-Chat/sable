@@ -11,6 +11,8 @@ impl Server
     {
         let res = dispatch_event!(event => {
             NewUser => nop,
+            NewUserMode => nop,
+            UserModeChange => nop,
             UserQuit => self.pre_handle_quit,
             NewChannel => nop,
             NewChannelMode => nop,
@@ -30,9 +32,11 @@ impl Server
     {
         let res = dispatch_event!(event => {
             NewUser => self.handle_new_user,
+            NewUserMode => nop,
+            UserModeChange => self.handle_umode_change,
             UserQuit => nop,
-            NewChannel => self.handle_new_channel,
-            NewChannelMode => self.handle_new_cmode,
+            NewChannel => nop,
+            NewChannelMode => nop,
             ChannelModeChange => self.handle_cmode_change,
             ChannelPermissionChange => self.handle_chan_perm_change,
             ChannelJoin => self.handle_join,
@@ -53,6 +57,21 @@ impl Server
             connection.user_id = Some(user_id);
 
             connection.send(&numeric::Numeric001::new_for(&self.name.to_string(), &detail.nickname, "test", &detail.nickname));
+        }
+        Ok(())
+    }
+
+    fn handle_umode_change(&mut self, umode_id: UModeId, _event: &Event, detail: &UserModeChange) -> HandleResult
+    {
+        let mode = self.net.user_mode(umode_id)?;
+        let user = mode.user()?;
+        let source = self.lookup_message_source(detail.changed_by)?;
+
+        if let Ok(conn) = self.connections.get_user(user.id())
+        {
+            conn.send(&message::Mode::new(source.as_ref(),
+                                          &user,
+                                          &utils::format_umode_changes(&detail.added,&detail.removed)));
         }
         Ok(())
     }
@@ -80,20 +99,13 @@ impl Server
         Ok(())
     }
 
-    /// No-op. We don't need to notify clients until somebody joins it
-    fn handle_new_channel(&self, _target: ChannelId, _event: &Event, _detail: &NewChannel) -> HandleResult
-    { Ok(()) }
-
-    fn handle_new_cmode(&self, _target: CModeId, _event: &Event, _detail: &NewChannelMode) -> HandleResult
-    { Ok(()) }
-
     fn handle_cmode_change(&self, target: CModeId, _event: &Event, detail: &ChannelModeChange) -> HandleResult
     {
         let mode = self.net.channel_mode(target)?;
         let chan = mode.channel()?;
         let source = self.lookup_message_source(detail.changed_by)?;
 
-        let changes = utils::format_mode_changes(&detail.added, &detail.removed);
+        let changes = utils::format_cmode_changes(&detail.added, &detail.removed);
         let msg = message::Mode::new(source.as_ref(), &chan, &changes);
 
         for m in chan.members()
