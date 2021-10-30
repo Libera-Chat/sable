@@ -66,6 +66,11 @@ pub fn define_validated(input: TokenStream) -> TokenStream
             #[error(#error_str)]
             pub struct #error(pub String);
 
+            impl From<StringValidationError> for #error
+            {
+                fn from(e: StringValidationError) -> Self { Self(e.0) }
+            }
+
             #[derive(Debug,Clone,PartialEq,serde::Serialize,serde::Deserialize)]
             pub struct #name(#typename);
 

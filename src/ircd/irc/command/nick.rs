@@ -1,4 +1,5 @@
 use super::*;
+use event::*;
 
 command_handler!("NICK" => NickHandler {
     fn min_parameters(&self) -> usize { 1 }
@@ -22,8 +23,15 @@ command_handler!("NICK" => NickHandler {
         Ok(())
     }
 
-    fn handle_user(&mut self, _source: &wrapper::User, _cmd: &ClientCommand) -> CommandResult
+    fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        panic!("not implemented");
+        let newnick = Nickname::new(cmd.args[0].clone())?;
+        let detail = details::UserNickChange{ new_nick: newnick };
+
+        self.server.network().validate(source.id().into(), &detail.clone().into())?;
+
+        self.action(CommandAction::state_change(source.id(), detail))?;
+
+        Ok(())
     }
 });

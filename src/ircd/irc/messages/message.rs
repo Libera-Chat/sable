@@ -1,7 +1,9 @@
 use crate::ircd::wrapper::*;
+use crate::ircd::validated::*;
 use ircd_macros::define_messages;
 
 define_messages! {
+    Nick    => { (source, newnick: &Nickname)               => ":{source} NICK {newnick}" },
     Join    => { (source, chan: &Channel.name())            => ":{source} JOIN {chan}" },
     Part    => { (source, chan: &Channel.name(), msg: &str) => ":{source} PART {chan} :{msg}" },
     Quit    => { (source, message: &str)                    => ":{source} QUIT :{message}" },

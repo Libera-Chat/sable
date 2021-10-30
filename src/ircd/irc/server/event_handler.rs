@@ -11,9 +11,10 @@ impl Server
     {
         let res = dispatch_event!(event => {
             NewUser => nop,
+            UserNickChange => self.pre_handle_nick_change,
+            UserQuit => self.pre_handle_quit,
             NewUserMode => nop,
             UserModeChange => nop,
-            UserQuit => self.pre_handle_quit,
             NewChannel => nop,
             NewChannelMode => nop,
             ChannelModeChange => nop,
@@ -32,9 +33,10 @@ impl Server
     {
         let res = dispatch_event!(event => {
             NewUser => self.handle_new_user,
+            UserNickChange => nop,
+            UserQuit => nop,
             NewUserMode => nop,
             UserModeChange => self.handle_umode_change,
-            UserQuit => nop,
             NewChannel => nop,
             NewChannelMode => nop,
             ChannelModeChange => self.handle_cmode_change,
@@ -58,6 +60,37 @@ impl Server
 
             connection.send(&numeric::Numeric001::new_for(&self.name.to_string(), &detail.nickname, "test", &detail.nickname));
         }
+        Ok(())
+    }
+
+    fn pre_handle_nick_change(&mut self, user_id: UserId, _event: &Event, detail: &UserNickChange) -> HandleResult
+    {
+        let source = self.net.user(user_id)?;
+        let message = message::Nick::new(&source, &detail.new_nick);
+        let mut notified = HashSet::new();
+
+        if let Ok(conn) = self.connections.get_user(user_id)
+        {
+            notified.insert(conn.id());
+            conn.send(&message);
+        }
+
+        for membership in source.channels()
+        {
+            let chan = membership.channel()?;
+            for m2 in chan.members()
+            {
+                if let Ok(conn) = self.connections.get_user(m2.user_id())
+                {
+                    if ! notified.contains(&conn.id())
+                    {
+                        notified.insert(conn.id());
+                        conn.send(&message);
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 

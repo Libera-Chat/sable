@@ -23,6 +23,23 @@ impl Network {
         }
     }
 
+    pub(super) fn user_nick_change(&mut self, target: UserId, _event: &Event, detail: &details::UserNickChange)
+    {
+        if let Some(user) = self.users.get_mut(&target)
+        {
+            user.nick = detail.new_nick.clone();
+        }
+    }
+
+    pub(super) fn validate_nick_change(&self, _target: UserId, change: &details::UserNickChange) -> ValidationResult
+    {
+        if self.users.iter().filter(|u| &u.1.nick == change.new_nick.value()).count() > 0 {
+            Err(ValidationError::NickInUse(change.new_nick.clone()))
+        } else {
+            Ok(())
+        }
+    }
+
     pub(super) fn new_user_mode(&mut self, target: UModeId, _event: &Event, mode: &details::NewUserMode)
     {
         let mode = state::UserMode::new(target, mode.mode);

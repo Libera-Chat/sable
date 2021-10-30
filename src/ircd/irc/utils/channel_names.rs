@@ -11,6 +11,12 @@ pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Chan
     let mut current_line = String::new();
     const CONTENT_LEN:usize = 300;
 
+    let pub_or_secret = if channel.mode()?.has_mode(ChannelModeFlag::Secret) {
+        '@'
+    } else {
+        '='
+    };
+
     for member in channel.members()
     {
         if server.policy().can_see_user_on_channel(&user, &member).is_err()
@@ -31,7 +37,7 @@ pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Chan
 
     for line in lines
     {
-        to.send(&numeric::NamesReply::new_for(server, &user, '*', &channel, &line));
+        to.send(&numeric::NamesReply::new_for(server, &user, pub_or_secret, &channel, &line));
     }
     to.send(&numeric::EndOfNames::new_for(server, &user, &channel));
     Ok(())

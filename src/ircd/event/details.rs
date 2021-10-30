@@ -15,6 +15,11 @@ event_details!{
     }
 
     #[target_type(UserId)]
+    struct UserNickChange {
+        pub new_nick: Nickname
+    }
+
+    #[target_type(UserId)]
     struct UserQuit {
         pub message: String,
     }

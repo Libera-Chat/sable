@@ -56,9 +56,10 @@ impl Network {
     pub fn apply(&mut self, event: &Event) -> Result<(),WrongIdTypeError> {
         dispatch_event!(event => {
             NewUser => self.new_user,
+            UserNickChange => self.user_nick_change,
+            UserQuit => self.user_quit,
             NewUserMode => self.new_user_mode,
             UserModeChange => self.user_mode_change,
-            UserQuit => self.user_quit,
             NewChannel => self.new_channel,
             NewChannelMode => self.new_channel_mode,
             ChannelModeChange => self.channel_mode_change,
@@ -73,6 +74,7 @@ impl Network {
     {
         match detail {
             EventDetails::NewUser(newuser) => self.validate_new_user(id.try_into()?, newuser),
+            EventDetails::UserNickChange(nickchange) => self.validate_nick_change(id.try_into()?, nickchange),
             _ => Ok(())
         }
     }

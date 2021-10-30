@@ -13,21 +13,49 @@ pub trait Validated : TryFrom<Self::Underlying> + Into<Self::Underlying> where S
     fn value(&self) -> &Self::Underlying;
 }
 
+struct StringValidationError(String);
+type StringValidationResult = Result<(), StringValidationError>;
+
+fn check_allowed_chars(value: &str, allowed_chars: &[&str]) -> StringValidationResult
+{
+    for c in value.chars() {
+        if ! allowed_chars.iter().any(|s| s.contains(c)) {
+            return Err(StringValidationError(value.to_string()));
+        }
+    }
+    Ok(())
+}
+
+const LOWER: &str = "abcdefghijklmnopqrstuvwxyz";
+const UPPER: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const DIGIT: &str = "0123456789";
+
+fn check_max_length(value: &str, max_len: usize) -> StringValidationResult
+{
+    if value.len() > max_len {
+        Err(StringValidationError(value.to_string()))
+    } else {
+        Ok(())
+    }
+}
+
 define_validated! {
     Nickname {
-        if value.len() > 9 {
-            Self::error(value)
+        check_max_length(value, 9)?;
+        check_allowed_chars(value, &[LOWER, UPPER, DIGIT])?;
+        if let Some(first) = value.chars().next() {
+            if DIGIT.contains(first) {
+                return Self::error(value);
+            }
         } else {
-            Ok(())
+            return Self::error(value);
         }
+        Ok(())
     }
 
     Username {
-        if value.len() > 10 {
-            Self::error(value)
-        } else {
-            Ok(())
-        }
+        check_max_length(value, 10)?;
+        Ok(())
     }
 
     Hostname {
