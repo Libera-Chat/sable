@@ -55,7 +55,7 @@ pub fn command_handler(input: TokenStream) -> TokenStream
                 Self{ server: server, processor: proc }
             }
 
-            pub fn action(&mut self, act: CommandAction) -> network::ValidationResult
+            pub fn action(&mut self, act: CommandAction) -> irc_network::ValidationResult
             {
                 if let CommandAction::StateChange(i, d) = &act {
                     self.server.network().validate(*i, d)?;

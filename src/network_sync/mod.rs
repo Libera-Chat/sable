@@ -1,4 +1,4 @@
-use crate::ircd::event::*;
+use irc_network::event::*;
 
 use gossip::*;
 use async_std::{

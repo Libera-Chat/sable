@@ -650,15 +650,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
 
 [[package]]
+name = "irc_network"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "futures",
+ "inventory",
+ "ircd_macros",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "irc_server"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "async-std-resolver",
+ "futures",
+ "inventory",
+ "irc_network",
+ "ircd_macros",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "ircd"
 version = "0.1.0"
 dependencies = [
  "async-broadcast",
  "async-std",
- "async-std-resolver",
  "futures",
  "gossip",
- "inventory",
+ "irc_network",
+ "irc_server",
  "ircd_macros",
  "log",
  "serde",

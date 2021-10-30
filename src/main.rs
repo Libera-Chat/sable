@@ -1,8 +1,6 @@
-pub mod ircd;
-mod utils;
 mod network_sync;
 
-use ircd::*;
+use irc_network::*;
 use event::*;
 use network_sync::NetworkSync;
 
@@ -95,7 +93,7 @@ fn main()
         }
     });
 
-    let mut server = irc::Server::new(server_id,
+    let mut server = irc_server::Server::new(server_id,
                                         server_name.clone(),
                                         server_recv,
                                         new_send);

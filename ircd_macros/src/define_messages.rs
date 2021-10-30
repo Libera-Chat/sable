@@ -191,13 +191,13 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
         }
 
         let (source_arg, source_def) = if need_source {
-            (Some(quote!(source: &(impl crate::ircd::irc::messages::MessageSource + ?Sized), )), Some(quote!(source = source.format(), )))
+            (Some(quote!(source: &(impl MessageSource + ?Sized), )), Some(quote!(source = source.format(), )))
         } else {
             (None, None)
         };
 
         let (target_arg, target_def) = if need_target {
-            (Some(quote!(target: &(impl crate::ircd::irc::messages::MessageTarget + ?Sized), )), Some(quote!(target = target.format(), )))
+            (Some(quote!(target: &(impl MessageTarget + ?Sized), )), Some(quote!(target = target.format(), )))
         } else {
             (None, None)
         };
@@ -223,15 +223,15 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
         if message.is_numeric
         {
             out.extend(quote!(
-                impl crate::ircd::irc::messages::Numeric for #typename
+                impl Numeric for #typename
                 {
                     fn format_for(&self,
-                                  source: &dyn crate::ircd::irc::messages::MessageSource,
-                                  target: &dyn crate::ircd::irc::messages::MessageTarget
+                                  source: &dyn MessageSource,
+                                  target: &dyn MessageTarget
                                 )
-                            -> crate::ircd::irc::messages::TargetedNumeric
+                            -> TargetedNumeric
                     {
-                        crate::ircd::irc::messages::TargetedNumeric(format!(":{source} {numeric} {target} {body}",
+                        TargetedNumeric(format!(":{source} {numeric} {target} {body}",
                                                                             source=source.format(),
                                                                             numeric=#name,
                                                                             target=target.format(),
@@ -242,12 +242,12 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
 
                 impl #typename
                 {
-                    pub fn new_for(source: &dyn crate::ircd::irc::messages::MessageSource,
-                               target: &dyn crate::ircd::irc::messages::MessageTarget,
+                    pub fn new_for(source: &dyn MessageSource,
+                               target: &dyn MessageTarget,
                                #( #message_args: #message_argtypes ),*
-                            ) -> crate::ircd::irc::messages::TargetedNumeric
+                            ) -> TargetedNumeric
                     {
-                        crate::ircd::irc::messages::TargetedNumeric(
+                        TargetedNumeric(
                                      format!(concat!(":{source} {numeric} {target} ", #format_str, "\r\n"),
                                      source=source.format(),
                                      numeric=#name,
@@ -269,7 +269,7 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
                     }
                 }
 
-                impl crate::ircd::irc::messages::Message for #typename
+                impl Message for #typename
                 { }
             ));
         }

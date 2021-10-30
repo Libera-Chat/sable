@@ -82,7 +82,7 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                 }
             }
 
-            impl crate::ircd::validated::Validated for #name
+            impl crate::validated::Validated for #name
             {
                 type Underlying = #typename;
                 type Error = #error;

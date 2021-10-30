@@ -1,0 +1,16 @@
+[package]
+name = "irc_network"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ircd_macros = { path = "../ircd_macros" }
+log = "0.4"
+futures = "0.3"
+async-std = "1.7"
+inventory = "0.1"
+thiserror = "1"
+serde = "1"
+serde_json = "1"

@@ -119,12 +119,12 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
 
             impl std::convert::TryFrom<ObjectId> for #id_typename
             {
-                type Error = crate::ircd::id::WrongIdTypeError;
+                type Error = crate::id::WrongIdTypeError;
 
-                fn try_from(id: ObjectId) -> Result<Self, crate::ircd::id::WrongIdTypeError> {
+                fn try_from(id: ObjectId) -> Result<Self, crate::id::WrongIdTypeError> {
                     match id {
                         ObjectId::#typename(x) => Ok(x),
-                        _ => Err(crate::ircd::id::WrongIdTypeError)
+                        _ => Err(crate::id::WrongIdTypeError)
                     }
                 }
             }

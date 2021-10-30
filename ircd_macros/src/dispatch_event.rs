@@ -79,8 +79,8 @@ pub fn dispatch_event(input: TokenStream, is_async: bool) -> TokenStream
         {
             EventType::Event(event_type) => {
                 cases.push(quote!(
-                    crate::ircd::event::EventDetails::#event_type(detail) => {
-                        match <crate::ircd::event::#event_type as crate::ircd::event::DetailType>::Target::try_from(#event_name.target) {
+                    irc_network::event::EventDetails::#event_type(detail) => {
+                        match <irc_network::event::#event_type as irc_network::event::DetailType>::Target::try_from(#event_name.target) {
                             Ok(id) => {
                                 Ok(#handler (
                                     id,

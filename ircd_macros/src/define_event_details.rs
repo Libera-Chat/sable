@@ -67,12 +67,12 @@ pub fn event_details(input: TokenStream) -> TokenStream
 
             impl std::convert::TryFrom<EventDetails> for #names
             {
-                type Error = crate::ircd::event::details::WrongEventTypeError;
-                fn try_from(e: EventDetails) -> Result<Self, crate::ircd::event::details::WrongEventTypeError>
+                type Error = crate::event::details::WrongEventTypeError;
+                fn try_from(e: EventDetails) -> Result<Self, crate::event::details::WrongEventTypeError>
                 {
                     match e {
                         EventDetails::#names(x) => Ok(x),
-                        _ => Err(crate::ircd::event::details::WrongEventTypeError)
+                        _ => Err(crate::event::details::WrongEventTypeError)
                     }
                 }
             }
@@ -92,7 +92,7 @@ pub fn target_type_attribute(attr: TokenStream, item: TokenStream) -> TokenStrea
     quote!(
         #item
 
-        impl crate::ircd::event::DetailType for #name
+        impl crate::event::DetailType for #name
         {
             type Target = #target_typename;
         }
