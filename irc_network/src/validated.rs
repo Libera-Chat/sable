@@ -42,9 +42,9 @@ fn check_max_length(value: &str, max_len: usize) -> StringValidationResult
 define_validated! {
     Nickname {
         check_max_length(value, 9)?;
-        check_allowed_chars(value, &[LOWER, UPPER, DIGIT])?;
+        check_allowed_chars(value, &[LOWER, UPPER, DIGIT, "-_\\|[]{}^`"])?;
         if let Some(first) = value.chars().next() {
-            if DIGIT.contains(first) {
+            if DIGIT.contains(first) || first == '-' {
                 return Self::error(value);
             }
         } else {
