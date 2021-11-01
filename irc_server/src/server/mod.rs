@@ -10,8 +10,10 @@ use std::{
 use async_std::{
     prelude::*,
     channel,
-    net::SocketAddr
+    net::SocketAddr,
+    stream,
 };
+use std::time::Duration;
 
 use log::{info,error};
 use futures::{select,FutureExt};
@@ -31,6 +33,7 @@ pub struct Server
     my_id: ServerId,
     name: ServerName,
     net: Network,
+    epoch: EpochId,
     id_generator: ObjectIdGenerator,
     event_receiver: channel::Receiver<Event>,
     event_submitter: channel::Sender<EventLogUpdate>,
@@ -54,10 +57,13 @@ impl Server
         let (connevent_send, connevent_recv) = channel::unbounded::<connection::ConnectionEvent>();
         let (action_send, action_recv) = mpsc::channel();
 
+        let epoch = EpochId::new(utils::now());
+
         Self {
             my_id: id,
             name: name,
             net: Network::new(),
+            epoch: epoch,
             id_generator: ObjectIdGenerator::new(id, EpochId::new(0)),
             event_receiver: from_network,
             event_submitter: to_network,
@@ -117,6 +123,11 @@ impl Server
         self.my_id
     }
 
+    pub fn me(&self) -> LookupResult<wrapper::Server>
+    {
+        self.net.server(self.my_id)
+    }
+
     pub fn command_dispatcher(&self) -> &command::CommandDispatcher
     {
         &self.command_dispatcher
@@ -171,29 +182,9 @@ impl Server
 
     pub async fn run(&mut self, mut shutdown_channel: channel::Receiver<()>)
     {
-        // Pump inbound network messages first to catch up to current state, then introduce ourselves
-        // Keep track of events sent previously by our server ID, so we can update the epoch and
-        // not collide.
-        let mut my_epoch = EpochId::new(0);
-
-        while let Ok(event) = self.event_receiver.try_recv()
-        {
-            info!("Processing bootstrap event {:?}", event.id);
-            if event.id.server() == self.my_id && event.id.epoch() > my_epoch
-            {
-                info!("Updating epoch: {:?}", event.id);
-                my_epoch = event.id.epoch();
-            }
-            self.apply_event(event);
-        }
-
-        // Now we know what's happened before, we can set ourselves a new epoch to avoid ID collisions,
-        // and introduce ourselves appropriately
-        let new_epoch = my_epoch.next();
-
-        self.id_generator.set_epoch(new_epoch);
-        self.event_submitter.try_send(EventLogUpdate::EpochUpdate(new_epoch)).expect("failed to submit epoch update");
-        self.submit_event(self.my_id, details::NewServer{name: self.name.clone(), ts: utils::now() });
+        self.event_submitter.try_send(EventLogUpdate::EpochUpdate(self.epoch)).expect("failed to submit epoch update");
+        self.submit_event(self.my_id, details::NewServer{ epoch: self.epoch, name: self.name.clone(), ts: utils::now() });
+        let mut check_ping_timer = stream::interval(Duration::from_secs(5));
 
         loop {
             // Between each I/O event, see whether there are any actions we need to process synchronously
@@ -286,6 +277,9 @@ impl Server
                         }
                     }
                 },
+                _ = check_ping_timer.next().fuse() => {
+                    self.check_pings();
+                },
                 _ = shutdown_channel.next().fuse() => {
                     break;
                 },
@@ -300,3 +294,4 @@ impl Server
 mod command_action;
 mod event_handler;
 mod event_failure;
+mod pings;

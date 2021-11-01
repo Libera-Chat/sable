@@ -1,28 +1,7 @@
-[package]
-name = "ircd"
-version = "0.1.0"
-edition = "2018"
-
 [workspace]
-members = [ "ircd_macros", "irc_network", "irc_server" ]
+members = [ "ircd_macros", "irc_network", "irc_server", "ircd" ]
 
 # Incremental builds break inventory
 [profile.dev]
 incremental = false
 
-[dependencies]
-
-ircd_macros = { path = "ircd_macros" }
-irc_network = { path = "irc_network" }
-irc_server = { path = "irc_server" }
-
-log = "0.4"
-simple_logger = "1"
-futures = "0.3"
-async-std = "1.7"
-async-broadcast = "0.3"
-thiserror = "1"
-gossip = "0.0.3"
-serde = "1"
-serde_json = "1"
-ctrlc = "3"

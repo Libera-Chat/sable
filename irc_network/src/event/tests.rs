@@ -22,7 +22,7 @@ fn simple()
     let (sender, mut receiver) = channel::unbounded::<Event>();
     let mut log = EventLog::new(idgen, Some(sender));
 
-    let uid = UserId::new(server_id, 1);
+    let uid = UserId::new(server_id, epoch_id, 1);
 
     let e1 = log.create(uid, details::UserQuit{ message: "aaa".to_string() });
     log.add(e1.clone());
@@ -46,7 +46,7 @@ fn out_of_order()
     let (sender, mut receiver) = channel::unbounded::<Event>();
     let mut log = EventLog::new(idgen, Some(sender));
 
-    let uid = UserId::new(server_id, 1);
+    let uid = UserId::new(server_id, epoch_id, 1);
 
     let e1 = log.create(uid, details::UserQuit{ message: "aaa".to_string() });
     let mut e2 = log.create(uid, details::UserQuit{ message: "bbb".to_string() });
@@ -73,7 +73,7 @@ fn epochs()
     let (sender, mut receiver) = channel::unbounded::<Event>();
     let mut log = EventLog::new(idgen, Some(sender));
 
-    let uid = UserId::new(server_id, 1);
+    let uid = UserId::new(server_id, epoch_one, 1);
 
     let e1 = log.create(uid, details::UserQuit{ message: "aaa".to_string() });
     let mut e2 = log.create(uid, details::UserQuit{ message: "bbb".to_string() });

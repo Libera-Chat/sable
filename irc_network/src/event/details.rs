@@ -83,6 +83,7 @@ event_details!{
 
     #[target_type(ServerId)]
     struct NewServer {
+        pub epoch: EpochId,
         pub name: ServerName,
         pub ts: i64,
     }

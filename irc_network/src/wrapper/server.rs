@@ -11,6 +11,10 @@ impl Server<'_> {
         self.data.id
     }
 
+    pub fn epoch(&self) -> EpochId {
+        self.data.epoch
+    }
+
     pub fn name(&self) -> &ServerName {
         &self.data.name
     }

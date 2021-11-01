@@ -1,19 +1,29 @@
 use ircd_macros::define_messages;
 use irc_network::wrapper::*;
 use irc_network::validated::*;
-use crate::Server;
 use super::*;
 
 define_messages! {
     001(Welcome)    => { (network_name: &str, nick: &Nickname) => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
 
-    315(EndOfWho)               => { (arg: &str) => "{arg} :End of /WHO list" },
-    324(ChannelModeIs)          => { (chan: &Channel.name(), modes: &ChannelMode.format())  => "{chan} {modes}" },
+    311(WhoisUser)              => { (nick: &User.nick(), user: &User.user(), host: &User.visible_host(), realname: &User.realname())
+                                                                => "{nick} {user} {host} * :{realname}" },
+    312(WhoisServer)            => { (nick: &User.nick(), servername: &Server.name(), info: &Server.id())
+                                                                => "{nick} {servername} :{info:?}"},
+    315(EndOfWho)               => { (arg: &str)                => "{arg} :End of /WHO list" },
+    318(EndOfWhois)             => { (user: &User.nick())       => "{user} :End of /WHOIS" },
+    319(WhoisChannels)          => { (user: &User.nick(), chanlist: &str)
+                                                                => "{user} :{chanlist}" },
+
+    324(ChannelModeIs)          => { (chan: &Channel.name(), modes: &ChannelMode.format())
+                                                                => "{chan} {modes}" },
     352(WhoReply)               => { (chname: &str, user: &Username, host: &Hostname, server: &Server.name(),
                                       nick: &Nickname, status: &str, hopcount: usize, realname: &str)
-                                    => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },
-    353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)   => "{is_pub} {chan} :{content}" },
-    366(EndOfNames)             => { (chan: &Channel.name())                                => "{chan} :End of names list" },
+                                                => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },
+    353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)
+                                                                => "{is_pub} {chan} :{content}" },
+    366(EndOfNames)             => { (chan: &Channel.name())    => "{chan} :End of names list" },
+
 
     401(NoSuchTarget)           => { (unknown: &str)            => "{unknown} :No such nick/channel" },
     403(NoSuchChannel)          => { (chname: &ChannelName)     => "{chname} :No such channel" },

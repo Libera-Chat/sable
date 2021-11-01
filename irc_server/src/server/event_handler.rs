@@ -22,7 +22,7 @@ impl Server
             ChannelJoin => nop,
             ChannelPart => self.pre_handle_part,
             NewMessage => nop,
-            NewServer => nop,
+            NewServer => self.pre_handle_new_server,
             ServerPing => nop,
             ServerQuit => self.pre_handle_server_quit,
         }).flatten();
@@ -257,6 +257,21 @@ impl Server
             },
             _ => Err(HandlerError::InternalError(format!("Message to neither user nor channel: {:?}", detail.target)))
         }
+    }
+
+    fn pre_handle_new_server(&self, target: ServerId, _event: &Event, detail: &NewServer) -> HandleResult
+    {
+        if let Ok(existing) = self.net.server(target)
+        {
+            if existing.epoch() < detail.epoch
+            {
+                // If it already exists, but it's reintroducing itself with a new epoch,
+                // then it's restarted and all the existing state is gone, so notify clients
+                // of that
+                self.pre_handle_server_quit(target, _event, &details::ServerQuit{ introduced_by: existing.introduced_by() })?;
+            }
+        }
+        Ok(())
     }
 
     fn pre_handle_server_quit(&self, target: ServerId, _event: &Event, _detail: &ServerQuit) -> HandleResult

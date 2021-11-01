@@ -4,13 +4,17 @@ impl Network
 {
     pub(super) fn new_server(&mut self, target: ServerId, event: &Event, detail: &details::NewServer)
     {
-        if self.servers.contains_key(&target)
+        if let Some(existing_epoch) = self.servers.get(&target).map(|s| s.epoch)
         {
-            self.delete_server(target);
+            if existing_epoch != detail.epoch
+            {
+                self.delete_server(target);
+            }
         }
 
         let server = state::Server {
             id: target,
+            epoch: detail.epoch,
             name: detail.name.clone(),
             last_ping: detail.ts,
             introduced_by: event.id,

@@ -5,6 +5,7 @@ use crate::validated::*;
 pub struct Server
 {
     pub id: ServerId,
+    pub epoch: EpochId,
     pub name: ServerName,
     pub last_ping: i64,
     pub introduced_by: EventId,

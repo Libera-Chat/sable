@@ -66,4 +66,9 @@ impl Network {
     pub fn server(&self, id: ServerId) -> LookupResult<wrapper::Server> {
         self.servers.get(&id).ok_or(NoSuchServer(id)).wrap(self)
     }
+
+    pub fn servers(&self) -> impl std::iter::Iterator<Item=wrapper::Server>
+    {
+        self.servers.values().wrap(self)
+    }
 }

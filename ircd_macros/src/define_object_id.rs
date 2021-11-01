@@ -77,11 +77,7 @@ impl Parse for ObjectIdList
 pub fn object_ids(input: TokenStream) -> TokenStream
 {
     let input = parse_macro_input!(input as ObjectIdList);
-    object_ids_impl(input).into()
-}
 
-fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
-{
     let mut output = proc_macro2::TokenStream::new();
     let enum_name = input.enum_name;
     let generator_name = Ident::new(&format!("{}Generator", enum_name), Span::call_site());
@@ -252,39 +248,5 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
         }
     ));
 
-    output
-}
-
-#[cfg(test)]
-mod test
-{
-    use super::*;
-    
-    #[test]
-    fn simple_object_id()
-    {
-        let input = syn::parse_str::<ObjectIdList>("A: (i64,);").unwrap();
-        let output = object_ids_impl(input);
-        let s = format!("{}", output);
-        assert_eq!(s, "a");
-    }
-
-    #[test]
-    fn sequential_object_id()
-    {
-        let input = syn::parse_str::<ObjectIdList>("A: (i64,) sequential;").unwrap();
-        let output = object_ids_impl(input);
-        let s = format!("{}", output);
-        assert_eq!(s, "a");
-    }
-
-    #[test]
-    fn multiple_sequential_object_ids()
-    {
-        let input = syn::parse_str::<ObjectIdList>("A: (i64,) sequential; B: (i64, i64) sequential;").unwrap();
-        let output = object_ids_impl(input);
-        let s = format!("{}", output);
-        assert_eq!(s, "a");
-    }
-
+    output.into()
 }

@@ -1,5 +1,4 @@
 use irc_network::*;
-use crate::Server;
 use crate::command::*;
 use crate::client;
 
@@ -13,12 +12,12 @@ pub trait MessageTarget
     fn format(&self) -> String;
 }
 
-impl MessageSource for &Server
+impl MessageSource for &crate::Server
 {
     fn format(&self) -> String { self.name().to_string() }
 }
 
-impl MessageSource for Server
+impl MessageSource for crate::Server
 {
     fn format(&self) -> String { self.name().to_string() }
 }
