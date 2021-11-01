@@ -53,6 +53,12 @@ impl EventLog {
         }
     }
 
+    pub fn set_epoch(&mut self, new_epoch: EpochId)
+    {
+        self.id_gen.set_epoch(new_epoch);
+        self.id_gen.update_to(1);
+    }
+
     fn do_add(&mut self, e: Event)
     {
         let s = e.id.server();

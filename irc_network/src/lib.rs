@@ -2,10 +2,12 @@ pub mod state {
     mod user;
     mod channel;
     mod message;
+    mod server;
 
     pub use user::*;
     pub use channel::*;
     pub use message::*;
+    pub use server::*;
 }
 
 pub mod wrapper {
@@ -15,6 +17,7 @@ pub mod wrapper {
     mod channel;
     mod channel_mode;
     mod membership;
+    mod server;
 
     pub use wrapper::ObjectWrapper;
     pub use wrapper::WrappedObjectIterator;
@@ -27,6 +30,7 @@ pub mod wrapper {
     pub use channel::Channel;
     pub use channel_mode::ChannelMode;
     pub use membership::Membership;
+    pub use server::Server;
 }
 
 pub mod event;

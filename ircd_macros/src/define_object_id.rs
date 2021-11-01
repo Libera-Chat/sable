@@ -35,7 +35,7 @@ impl Parse for ObjectIdDefn
         Ok(Self {
             typename: input.parse()?,
             _colon: input.parse()?,
-            contents: input.parse()?,
+            contents: if input.peek(kw::sequential) { syn::parse_str("(ServerId,EpochId,LocalId)")? } else { input.parse()? },
             is_sequential: input.parse()?,
             _semi: input.parse()?,
         })
@@ -44,6 +44,9 @@ impl Parse for ObjectIdDefn
 
 struct ObjectIdList
 {
+    enum_name: Ident,
+    _comma: Token![,],
+    _brace: token::Brace,
     items: Vec<ObjectIdDefn>
 }
 
@@ -52,13 +55,22 @@ impl Parse for ObjectIdList
     fn parse(input: ParseStream) -> Result<Self>
     {
         let mut items = Vec::new();
+        let enum_name = input.parse()?;
+        let _comma = input.parse()?;
+        let content;
+        let _brace = syn::braced!(content in input);
 
-        while !input.is_empty()
+        while !content.is_empty()
         {
-            items.push(input.parse::<ObjectIdDefn>()?);
+            items.push(content.parse::<ObjectIdDefn>()?);
         }
 
-        Ok(Self{items: items})
+        Ok(Self {
+            enum_name: enum_name,
+            _comma: _comma,
+            _brace: _brace,
+            items: items
+        })
     }
 }
 
@@ -71,9 +83,12 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
 {
     let mut output = proc_macro2::TokenStream::new();
+    let enum_name = input.enum_name;
+    let generator_name = Ident::new(&format!("{}Generator", enum_name), Span::call_site());
     let mut enum_variants = Vec::new();
     let mut all_typenames = Vec::new();
     let mut generator_fields = Vec::new();
+    let mut generator_field_names = Vec::new();
     let mut generator_methods = Vec::new();
     let mut generator_initargs = Vec::new();
 
@@ -102,7 +117,7 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
         all_typenames.push(typename.clone());
 
         output.extend(quote!(
-            #[derive(PartialEq,Eq,Hash,Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
+            #[derive(PartialEq,Eq,PartialOrd,Hash,Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
             pub struct #id_typename #contents;
 
             impl #id_typename
@@ -110,20 +125,20 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
                 pub fn new(#( #arg_list ),*) -> Self { Self(#( #arg_names ), *) }
             }
 
-            impl From<#id_typename> for ObjectId
+            impl From<#id_typename> for #enum_name
             {
                 fn from(id: #id_typename) -> Self {
                     Self::#typename(id)
                 }
             }
 
-            impl std::convert::TryFrom<ObjectId> for #id_typename
+            impl std::convert::TryFrom<#enum_name> for #id_typename
             {
                 type Error = crate::id::WrongIdTypeError;
 
-                fn try_from(id: ObjectId) -> Result<Self, crate::id::WrongIdTypeError> {
+                fn try_from(id: #enum_name) -> Result<Self, crate::id::WrongIdTypeError> {
                     match id {
-                        ObjectId::#typename(x) => Ok(x),
+                        #enum_name::#typename(x) => Ok(x),
                         _ => Err(crate::id::WrongIdTypeError)
                     }
                 }
@@ -174,28 +189,37 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
             ));
 
             let serverid_type = syn::parse::<Type>(quote!(ServerId).into()).unwrap();
-            if arg_types.len() == 1 && arg_types[0] == serverid_type
+            let epochid_type = syn::parse::<Type>(quote!(EpochId).into()).unwrap();
+
+            if arg_types.len() == 2 && arg_types[0] == serverid_type && arg_types[1] == epochid_type
             {
                 let generator_method_name = Ident::new(&format!("next_{}", &typename).to_ascii_lowercase(), Span::call_site());
                 let generator_field_name = Ident::new(&format!("{}_generator_field", &typename), Span::call_site());
-                let generator_access_name = Ident::new(&format!("{}_generator", &typename).to_ascii_lowercase(), Span::call_site());
 
                 generator_methods.push(quote!(
                     pub fn #generator_method_name (&self) -> #id_typename {
                         self. #generator_field_name . next()
                     }
-
-                    pub fn #generator_access_name (&self) -> std::sync::Arc<#generator_typename> {
-                        std::sync::Arc::clone(&self. #generator_field_name)
-                    }
                 ));
 
                 generator_fields.push(quote!(
-                    #generator_field_name : std::sync::Arc<#generator_typename>
+                    #generator_field_name : #generator_typename
                 ));
 
+                generator_field_names.push(generator_field_name.clone());
+
                 generator_initargs.push(quote!(
-                    #generator_field_name: std::sync::Arc::new(#generator_typename::new(server_id, 1))
+                    #generator_field_name: #generator_typename::new(server_id, epoch_id, 1)
+                ));
+
+                output.extend(quote!(
+                    impl #generator_typename
+                    {
+                        pub fn set_epoch(&mut self, new_epoch: EpochId)
+                        {
+                            self.1 = new_epoch;
+                        }
+                    }
                 ));
             }
         }
@@ -203,22 +227,27 @@ fn object_ids_impl(input: ObjectIdList) -> proc_macro2::TokenStream
 
     output.extend(quote!(
         #[derive(PartialEq,Eq,Hash,Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
-        pub enum ObjectId {
+        pub enum #enum_name {
             #( #enum_variants ),*
         }
 
-        pub struct IdGenerator {
+        pub struct #generator_name {
             #( #generator_fields ),*
         }
 
-        impl IdGenerator {
+        impl #generator_name {
             #( #generator_methods )*
 
-            pub fn new(server_id: ServerId) -> Self
+            pub fn new(server_id: ServerId, epoch_id: EpochId) -> Self
             {
                 Self {
                     #( #generator_initargs ),*
                 }
+            }
+
+            pub fn set_epoch(&mut self, new_epoch: EpochId)
+            {
+                #( self. #generator_field_names .set_epoch(new_epoch); )*
             }
         }
     ));

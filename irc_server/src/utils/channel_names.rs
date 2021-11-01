@@ -1,5 +1,5 @@
 use irc_network::*;
-use irc_network::wrapper::*;
+use irc_network::wrapper::Channel;
 use crate::*;
 use crate::client::*;
 

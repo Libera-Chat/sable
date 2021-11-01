@@ -22,6 +22,9 @@ impl Server
             ChannelJoin => nop,
             ChannelPart => self.pre_handle_part,
             NewMessage => nop,
+            NewServer => nop,
+            ServerPing => nop,
+            ServerQuit => self.pre_handle_server_quit,
         }).flatten();
         if let Err(e) = res
         {
@@ -44,6 +47,9 @@ impl Server
             ChannelJoin => self.handle_join,
             ChannelPart => nop,
             NewMessage => self.handle_new_message,
+            NewServer => nop,
+            ServerPing => nop,
+            ServerQuit => nop,
         }).flatten();
         if let Err(e) = res
         {
@@ -109,7 +115,7 @@ impl Server
         Ok(())
     }
 
-    fn pre_handle_quit(&mut self, target: UserId, _event: &Event, detail: &UserQuit) -> HandleResult
+    fn pre_handle_quit(&self, target: UserId, _event: &Event, detail: &UserQuit) -> HandleResult
     {
         let user = self.net.user(target)?;
         let mut to_notify = HashSet::new();
@@ -251,5 +257,19 @@ impl Server
             },
             _ => Err(HandlerError::InternalError(format!("Message to neither user nor channel: {:?}", detail.target)))
         }
+    }
+
+    fn pre_handle_server_quit(&self, target: ServerId, _event: &Event, _detail: &ServerQuit) -> HandleResult
+    {
+        let server = self.net.server(target)?;
+
+        let fake_quit_detail = UserQuit { message: "Server disconnected".to_string() };
+
+        for u in server.users()
+        {
+            self.pre_handle_quit(u.id(), _event, &fake_quit_detail)?;
+        }
+
+        Ok(())
     }
 }

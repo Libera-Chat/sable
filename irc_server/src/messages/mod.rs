@@ -23,6 +23,11 @@ impl MessageSource for Server
     fn format(&self) -> String { self.name().to_string() }
 }
 
+impl MessageSource for ServerName
+{
+    fn format(&self) -> String { self.to_string() }
+}
+
 impl MessageSource for String
 {
     fn format(&self) -> String { self.clone() }

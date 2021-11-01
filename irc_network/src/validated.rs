@@ -68,6 +68,18 @@ define_validated! {
         }
         Ok(())
     }
+
+    ServerName {
+        check_allowed_chars(value, &[UPPER, LOWER, DIGIT, "_-."])?;
+        if let Some(first) = value.chars().next() {
+            if DIGIT.contains(first) || first == '-' {
+                return Self::error(value);
+            }
+        } else {
+            return Self::error(value);
+        }
+        Ok(())
+    }
 }
 
 impl Username

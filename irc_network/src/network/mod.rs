@@ -29,7 +29,8 @@ pub enum ValidationError
 pub type ValidationResult = Result<(), ValidationError>;
 
 #[derive(Debug)]
-pub struct Network {
+pub struct Network
+{
     users: HashMap<UserId, state::User>,
     user_modes: HashMap<UModeId, state::UserMode>,
 
@@ -39,11 +40,16 @@ pub struct Network {
     memberships: HashMap<MembershipId, state::Membership>,
 
     messages: HashMap<MessageId, state::Message>,
+
+    servers: HashMap<ServerId, state::Server>,
+
+    clock: EventClock,
 }
 
 impl Network {
-    pub fn new() -> Network {
-        Network{
+    pub fn new() -> Network
+    {
+        Network {
             users: HashMap::new(),
             user_modes: HashMap::new(),
 
@@ -52,10 +58,20 @@ impl Network {
             memberships: HashMap::new(),
 
             messages: HashMap::new(),
+
+            clock: EventClock::new(),
+
+            servers: HashMap::new(),
         }
     }
 
-    pub fn apply(&mut self, event: &Event) -> Result<(),WrongIdTypeError> {
+    pub fn apply(&mut self, event: &Event) -> Result<(),WrongIdTypeError>
+    {
+        if self.clock.contains(event.id)
+        {
+            return Ok(());
+        }
+
         dispatch_event!(event => {
             NewUser => self.new_user,
             UserNickChange => self.user_nick_change,
@@ -69,7 +85,13 @@ impl Network {
             ChannelJoin => self.user_joined_channel,
             ChannelPart => self.user_left_channel,
             NewMessage => self.new_message,
-        })
+            NewServer => self.new_server,
+            ServerPing => self.server_ping,
+            ServerQuit => self.server_quit
+        })?;
+
+        self.clock.update_with_clock(&event.clock);
+        Ok(())
     }
 
     pub fn validate(&self, id: ObjectId, detail: &EventDetails) -> ValidationResult
@@ -87,3 +109,4 @@ mod accessors;
 mod user_state;
 mod channel_state;
 mod message_state;
+mod server_state;

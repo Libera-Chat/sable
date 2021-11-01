@@ -29,6 +29,7 @@ impl Server
                             visible_hostname: pre_client.hostname.as_ref().unwrap().clone(),
                             realname: pre_client.realname.as_ref().unwrap().clone(),
                             mode_id: new_user_mode_id,
+                            server: self.my_id,
                         };
                         actions.push((new_user_id.into(), details.into()));
 

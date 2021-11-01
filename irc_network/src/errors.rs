@@ -22,6 +22,8 @@ pub enum LookupError
     NoChannelForMode(CModeId),
     #[error("No such membership id {0:?}")]
     NoSuchMembership(MembershipId),
+    #[error("No such server {0:?}")]
+    NoSuchServer(ServerId),
     #[error("No such nickname {0}")]
     NoSuchNick(String),
     #[error("No such channel name {0}")]

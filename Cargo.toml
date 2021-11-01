@@ -6,6 +6,7 @@ edition = "2018"
 [workspace]
 members = [ "ircd_macros", "irc_network", "irc_server" ]
 
+# Incremental builds break inventory
 [profile.dev]
 incremental = false
 
@@ -24,3 +25,4 @@ thiserror = "1"
 gossip = "0.0.3"
 serde = "1"
 serde_json = "1"
+ctrlc = "3"

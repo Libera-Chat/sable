@@ -1,6 +1,7 @@
 mod network_sync;
 
 use irc_network::*;
+use irc_server::{Server,EventLogUpdate};
 use event::*;
 use network_sync::NetworkSync;
 
@@ -38,14 +39,16 @@ fn main()
     // inbound: events from the network to the log
     // log: events from the log to (server, network)
     // server: events to server from log
-    // create: event details from the server to be created by the log and rebroadcast
+    // new: event details from the server to be created by the log and rebroadcast
+    // shutdown: to notify server to quit
     let (outbound_send, outbound_recv) = channel::unbounded::<Event>();
     let (inbound_send, mut inbound_recv) = channel::unbounded::<Event>();
     let (log_send, mut log_recv) = channel::unbounded::<Event>();
     let (server_send, server_recv) = channel::unbounded::<Event>();
-    let (new_send, mut new_recv) = channel::unbounded::<(ObjectId,EventDetails)>();
+    let (new_send, mut new_recv) = channel::unbounded::<EventLogUpdate>();
+    let (shutdown_send, shutdown_recv) = channel::bounded::<()>(10);
 
-    let event_id_gen = EventIdGenerator::new(server_id, 1);
+    let event_id_gen = EventIdGenerator::new(server_id, EpochId::new(1), 1);
     let mut event_log = EventLog::new(event_id_gen, Some(log_send));
 
     task::spawn(async move {
@@ -67,14 +70,17 @@ fn main()
                 },
                 evt = new_recv.next().fuse() => {
                     match evt {
-                        Some((id, detail)) => {
+                        Some(EventLogUpdate::NewEvent(id, detail)) => {
                             let event = event_log.create(id, detail);
                             event_log.add(event.clone());
                             if let Err(_) = outbound_send.send(event).await
                             {
                                 break;
                             }
-                        }
+                        },
+                        Some(EventLogUpdate::EpochUpdate(new_epoch)) => {
+                            event_log.set_epoch(new_epoch);
+                        },
                         None => break
                     }
                 },
@@ -93,16 +99,25 @@ fn main()
         }
     });
 
-    let mut server = irc_server::Server::new(server_id,
-                                        server_name.clone(),
-                                        server_recv,
-                                        new_send);
+    let mut server = Server::new(server_id,
+                                 ServerName::new(server_name.clone()).expect("Invalid server name"),
+                                 server_recv,
+                                 new_send);
     println!("addr: {}", listen_addr);
     server.add_listener(listen_addr.parse().unwrap());
 
     NetworkSync::start(gossip_addr, peer_addr, inbound_send, outbound_recv);
 
+    ctrlc::set_handler(move || {
+        shutdown_send.try_send(()).expect("Failed to send shutdown command");
+    }).expect("Failed to set Ctrl+C handler");
+
     task::block_on(async {
-        server.run().await;
+        // Give the network sync some time to receive events
+        task::sleep(std::time::Duration::new(1,0)).await;
+        // Run the actual server
+        server.run(shutdown_recv).await;
+        // ...and once it shuts down, give the network sync some time to push the ServerQuit out
+        task::sleep(std::time::Duration::new(1,0)).await;
     });
 }

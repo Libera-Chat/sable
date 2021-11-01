@@ -12,6 +12,7 @@ event_details!{
         pub visible_hostname: Hostname,
         pub realname: String,
         pub mode_id: UModeId,
+        pub server: ServerId,
     }
 
     #[target_type(UserId)]
@@ -78,5 +79,21 @@ event_details!{
         pub source: UserId,
         pub target: ObjectId, // Can be user or channel
         pub text: String,
+    }
+
+    #[target_type(ServerId)]
+    struct NewServer {
+        pub name: ServerName,
+        pub ts: i64,
+    }
+
+    #[target_type(ServerId)]
+    struct ServerPing {
+        pub ts: i64,
+    }
+
+    #[target_type(ServerId)]
+    struct ServerQuit {
+        pub introduced_by: EventId,
     }
 }

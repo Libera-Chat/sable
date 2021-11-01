@@ -1,35 +1,39 @@
 use ircd_macros::object_ids;
+use thiserror::Error;
 
 pub type LocalId = i64;
 
-#[derive(Debug)]
+#[derive(Debug,Error)]
+#[error("Mismatched object ID type for event")]
 pub struct WrongIdTypeError;
 
-impl std::fmt::Display for WrongIdTypeError
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result
-    {
-        f.write_str("Mismatched object ID type for event")?;
-        Ok(())
-    }
-}
-
-impl std::error::Error for WrongIdTypeError { }
-
-object_ids! {
+object_ids!(ObjectId, {
     Server: (LocalId,);
-    Event: (ServerId, LocalId) sequential;
-    User: (ServerId, LocalId) sequential;
-    UMode: (ServerId, LocalId) sequential;
-    Channel: (ServerId, LocalId) sequential;
-    CMode: (ServerId, LocalId) sequential;
+    Epoch: (LocalId,);
+    Event: sequential;
+    User: sequential;
+    UMode: sequential;
+    Channel: sequential;
+    CMode: sequential;
+    Message: sequential;
+
     Membership: (UserId, ChannelId);
+});
+
+object_ids!(LocalObjectId, {
     Listener: (LocalId,) sequential;
-    Connection: (ListenerId, LocalId,) sequential;
-    Message: (ServerId, LocalId) sequential;
-}
+    Connection: (ListenerId,LocalId) sequential;
+});
 
 impl EventId {
     pub fn server(&self) -> ServerId { self.0 }
-    pub fn local(&self) -> LocalId { self.1 }
+    pub fn epoch(&self) -> EpochId { self.1 }
+    pub fn local(&self) -> LocalId { self.2 }
+}
+
+impl EpochId {
+    pub fn next(&self) -> Self
+    {
+        Self( self.0 + 1 )
+    }
 }

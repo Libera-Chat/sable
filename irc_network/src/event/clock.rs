@@ -3,37 +3,41 @@ use std::hash::Hash;
 use std::cmp::Ordering;
 use serde::{Serialize,Deserialize};
 
-use crate::{EventId,ServerId,LocalId};
+use crate::{EventId,ServerId};
 
 #[derive(Clone,Eq,PartialEq,Debug,Serialize,Deserialize)]
-pub struct EventClock (HashMap<ServerId, LocalId>);
+pub struct EventClock (HashMap<ServerId, EventId>);
 
 impl EventClock {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub fn update_with(&mut self, s: ServerId, i: LocalId) {
+    pub fn update_with_id(&mut self, id: EventId) {
+        let s = id.server();
         // If we already have a value for this ServerId, and the value we already have is greater
         // than the provided one, do nothing. Else update.
-        if ! matches!(self.0.get(&s), Some(current) if *current > i) {
-            self.0.insert(s, i);
+        if ! matches!(self.0.get(&s), Some(current) if *current > id) {
+            self.0.insert(s, id);
         }
-    }
-
-    pub fn update_with_id(&mut self, id: EventId) {
-        self.update_with(id.server(), id.local());
     }
 
     pub fn update_with_clock(&mut self, other: &EventClock) {
-        for (s, l) in &other.0 {
-            self.update_with(*s, *l);
+        for (_, id) in &other.0 {
+            self.update_with_id(*id);
         }
     }
 
-    pub fn with_updated_id(mut self, id: EventId) -> Self {
-        self.update_with(id.server(), id.local());
-        self
+    pub fn contains(&self, id: EventId) -> bool
+    {
+        if let Some(local) = self.0.get(&id.server())
+        {
+            local >= &id
+        }
+        else
+        {
+            false
+        }
     }
 }
 

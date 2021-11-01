@@ -5,6 +5,7 @@ impl Network {
     pub(super) fn new_user(&mut self, target: UserId, _event: &Event, user: &details::NewUser)
     {
         let user = state::User::new(target,
+                                    user.server,
                                     &user.nickname,
                                     &user.username,
                                     &user.visible_hostname,

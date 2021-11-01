@@ -5,6 +5,7 @@ use crate::flags::*;
 #[derive(Debug)]
 pub struct User {
     pub id: UserId,
+    pub server: ServerId,
 
     pub nick: Nickname,
     pub user: Username,
@@ -21,10 +22,13 @@ pub struct UserMode {
 }
 
 impl User {
-    pub fn new(id: UserId, nick: &Nickname, user: &Username, visible_host: &Hostname, realname: &str, mode_id: UModeId) -> Self
+    pub fn new(id: UserId, server: ServerId,
+               nick: &Nickname, user: &Username, visible_host: &Hostname,
+               realname: &str, mode_id: UModeId) -> Self
     {
         Self {
             id: id,
+            server: server,
             nick: nick.clone(),
             user: user.clone(),
             visible_host: visible_host.clone(),

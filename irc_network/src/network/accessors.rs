@@ -62,4 +62,8 @@ impl Network {
     pub fn raw_memberships(&self) -> impl std::iter::Iterator<Item=&state::Membership> {
         self.memberships.values()
     }
+
+    pub fn server(&self, id: ServerId) -> LookupResult<wrapper::Server> {
+        self.servers.get(&id).ok_or(NoSuchServer(id)).wrap(self)
+    }
 }
