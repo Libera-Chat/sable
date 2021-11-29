@@ -3,30 +3,31 @@ use irc_network::*;
 use event::*;
 use crate::connection::EventDetail::*;
 use crate::policy::*;
+use utils::OrLog;
+
+use tokio::{
+    sync::mpsc::{
+        Sender,
+        Receiver,
+        channel
+    },
+    time,
+    select,
+};
+
 use std::{
     collections::HashMap,
-    sync::mpsc,
-};
-use async_std::{
-    prelude::*,
-    channel,
+    time::Duration,
     net::SocketAddr,
-    stream,
 };
-use std::time::Duration;
 
 use log::{info,error};
-use futures::{select,FutureExt};
+
+use rpc::ServerRpcMessage;
 
 mod connection_collection;
 use connection_collection::ConnectionCollection;
 use command::*;
-
-pub enum EventLogUpdate
-{
-    NewEvent(ObjectId, EventDetails),
-    EpochUpdate(EpochId)
-}
 
 pub struct Server
 {
@@ -35,12 +36,12 @@ pub struct Server
     net: Network,
     epoch: EpochId,
     id_generator: ObjectIdGenerator,
-    event_receiver: channel::Receiver<Event>,
-    event_submitter: channel::Sender<EventLogUpdate>,
-    action_receiver: mpsc::Receiver<CommandAction>,
-    action_submitter: mpsc::Sender<CommandAction>,
+    rpc_receiver: Receiver<ServerRpcMessage>,
+    event_submitter: Sender<EventLogUpdate>,
+    action_receiver: std::sync::mpsc::Receiver<CommandAction>,
+    action_submitter: std::sync::mpsc::Sender<CommandAction>,
     listeners: ListenerCollection,
-    connection_events: channel::Receiver<connection::ConnectionEvent>,
+    connection_events: Receiver<connection::ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
     connections: ConnectionCollection,
     policy_service: StandardPolicyService,
@@ -51,11 +52,11 @@ impl Server
 {
     pub fn new(id: ServerId,
                name: ServerName,
-               from_network: channel::Receiver<Event>,
-               to_network: channel::Sender<EventLogUpdate>) -> Self
+               rpc_receiver: Receiver<ServerRpcMessage>,
+               to_network: Sender<EventLogUpdate>) -> Self
     {
-        let (connevent_send, connevent_recv) = channel::unbounded::<connection::ConnectionEvent>();
-        let (action_send, action_recv) = mpsc::channel();
+        let (connevent_send, connevent_recv) = channel(128);
+        let (action_send, action_recv) = std::sync::mpsc::channel();
 
         let epoch = EpochId::new(utils::now());
 
@@ -64,8 +65,8 @@ impl Server
             name: name,
             net: Network::new(),
             epoch: epoch,
-            id_generator: ObjectIdGenerator::new(id, EpochId::new(0)),
-            event_receiver: from_network,
+            id_generator: ObjectIdGenerator::new(id, epoch),
+            rpc_receiver: rpc_receiver,
             event_submitter: to_network,
             action_receiver: action_recv,
             action_submitter: action_send,
@@ -159,7 +160,7 @@ impl Server
 
     fn apply_event(&mut self, event: Event)
     {
-        log::debug!("Applying inbound event: {:?}", event);
+        log::trace!("Applying inbound event: {:?}", event);
 
         // Separate pre_handle and post-handle: some event handlers (e.g. for events that destroy
         // objects) need to run before the event is applied (e.g. to access the state that's about to
@@ -180,11 +181,11 @@ impl Server
         }
     }
 
-    pub async fn run(&mut self, mut shutdown_channel: channel::Receiver<()>)
+    pub async fn run(&mut self, mut shutdown_channel: Receiver<()>)
     {
         self.event_submitter.try_send(EventLogUpdate::EpochUpdate(self.epoch)).expect("failed to submit epoch update");
         self.submit_event(self.my_id, details::NewServer{ epoch: self.epoch, name: self.name.clone(), ts: utils::now() });
-        let mut check_ping_timer = stream::interval(Duration::from_secs(5));
+        let mut check_ping_timer = time::interval(Duration::from_secs(5));
 
         loop {
             // Between each I/O event, see whether there are any actions we need to process synchronously
@@ -193,7 +194,7 @@ impl Server
                 self.apply_action(act);
             }
             select! {
-                res = self.connection_events.next().fuse() => {
+                res = self.connection_events.recv() => {
                     match res {
                         Some(msg) => {
                             match msg.detail {
@@ -267,20 +268,31 @@ impl Server
                         }
                     }
                 },
-                res = self.event_receiver.next().fuse() => {
+                res = self.rpc_receiver.recv() => {
                     match res {
-                        Some(event) => {
+                        Some(ServerRpcMessage::NewEvent(event)) =>
+                        {
                             self.apply_event(event);
+                        },
+                        Some(ServerRpcMessage::ImportNetworkState(new_net)) =>
+                        {
+                            log::debug!("Server got state import");
+                            self.net = new_net;
+                        },
+                        Some(ServerRpcMessage::ExportNetworkState(channel)) =>
+                        {
+                            log::debug!("Server got state export request; sending");
+                            channel.send(self.net.clone()).await.or_log("Error sending network state for export");
                         },
                         None => { 
                             panic!("what to do here?");
                         }
                     }
                 },
-                _ = check_ping_timer.next().fuse() => {
+                _ = check_ping_timer.tick() => {
                     self.check_pings();
                 },
-                _ = shutdown_channel.next().fuse() => {
+                _ = shutdown_channel.recv() => {
                     break;
                 },
             }

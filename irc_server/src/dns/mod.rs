@@ -1,24 +1,26 @@
 use irc_network::*;
 use crate::connection::*;
 
-use async_std::{
-    channel,
-    net::IpAddr,
+use tokio::{
+    sync::mpsc::{
+        Sender,
+    },
     task
 };
-use async_std_resolver::AsyncStdResolver;
+use std::net::IpAddr;
+use trust_dns_resolver::TokioAsyncResolver;
 
 pub struct DnsClient
 {
-    event_channel: channel::Sender<ConnectionEvent>,
-    resolver: AsyncStdResolver,
+    event_channel: Sender<ConnectionEvent>,
+    resolver: TokioAsyncResolver,
 }
 
 impl DnsClient
 {
-    pub fn new(event_channel: channel::Sender<ConnectionEvent>) -> Self
+    pub fn new(event_channel: Sender<ConnectionEvent>) -> Self
     {
-        let resolver = task::block_on(async { async_std_resolver::resolver_from_system_conf().await.unwrap() });
+        let resolver = TokioAsyncResolver::tokio_from_system_conf().expect("Failed to create DNS resolver");
         Self {
             event_channel: event_channel,
             resolver: resolver

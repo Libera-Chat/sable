@@ -1,4 +1,5 @@
 use super::{Network,LookupError,LookupResult};
+use crate::event::*;
 use crate::*;
 
 use crate::wrapper::*;
@@ -6,6 +7,10 @@ use crate::wrapper::*;
 use LookupError::*;
 
 impl Network {
+    pub fn clock(&self) -> &EventClock {
+        &self.clock
+    }
+    
     pub fn user(&self, id: UserId) -> LookupResult<wrapper::User> {
         let r: LookupResult<&state::User> = self.users.get(&id).ok_or(NoSuchUser(id));
         r.wrap(&self)

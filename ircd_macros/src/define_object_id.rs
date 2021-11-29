@@ -113,7 +113,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
         all_typenames.push(typename.clone());
 
         output.extend(quote!(
-            #[derive(PartialEq,Eq,PartialOrd,Hash,Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
+            #[derive(PartialEq,Eq,PartialOrd,Ord,Hash,Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
             pub struct #id_typename #contents;
 
             impl #id_typename

@@ -1,6 +1,7 @@
 use irc_network::*;
 use super::*;
 use crate::numeric;
+use crate::errors::*;
 
 use std::cell::RefCell;
 
@@ -9,6 +10,7 @@ pub struct CommandProcessor<'a>
     server: &'a Server,
 }
 
+#[derive(Debug)]
 pub enum CommandAction {
     StateChange(ObjectId, event::EventDetails),
     RegisterClient(ConnectionId),

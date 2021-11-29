@@ -2,12 +2,13 @@ mod utils;
 
 pub mod policy;
 
+pub mod errors;
+
 mod dns;
 pub use dns::DnsClient;
 
 pub mod server;
 pub use server::Server;
-pub use server::EventLogUpdate;
 
 pub mod connection;
 
@@ -30,3 +31,6 @@ pub use messages::message;
 pub use messages::numeric;
 pub use messages::Message;
 pub use messages::Numeric;
+
+mod rpc;
+pub use rpc::ServerRpcMessage;

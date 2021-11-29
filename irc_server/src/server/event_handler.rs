@@ -1,6 +1,7 @@
 use super::*;
 use ircd_macros::dispatch_event;
 use crate::utils::FlattenResult;
+use crate::errors::*;
 use std::collections::HashSet;
 
 fn nop<I,D>(_: I, _: &Event, _: &D) -> HandleResult { Ok(()) }
@@ -274,10 +275,18 @@ impl Server
         Ok(())
     }
 
-    fn pre_handle_server_quit(&self, target: ServerId, _event: &Event, _detail: &ServerQuit) -> HandleResult
+    fn pre_handle_server_quit(&self, target: ServerId, _event: &Event, detail: &ServerQuit) -> HandleResult
     {
         let server = self.net.server(target)?;
-
+        if server.introduced_by() != detail.introduced_by
+        {
+            return Ok(());
+        }
+        if target == self.my_id
+        {
+            // The network thinks we're no longer alive. Shut down to avoid desyncs
+            panic!("Network thinks we're dead. Making it so");
+        }
         let fake_quit_detail = UserQuit { message: "Server disconnected".to_string() };
 
         for u in server.users()

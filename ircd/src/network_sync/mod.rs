@@ -1,15 +1,16 @@
 use irc_network::event::*;
 
 use gossip::*;
-use async_std::{
-    task,
-    channel,
-    prelude::*
+use tokio::{
+    sync::mpsc::{
+        Sender,
+        Receiver,
+    },
 };
 
 struct UpdateHandler
 {
-    send_channel: channel::Sender<Event>,
+    send_channel: Sender<Event>,
 }
 
 impl gossip::UpdateHandler for UpdateHandler
@@ -20,7 +21,7 @@ impl gossip::UpdateHandler for UpdateHandler
         {
             log::debug!("Got incoming event: {:?}", event);
             // Panic if we can't send the event for processing
-            self.send_channel.try_send(event).unwrap();
+            self.send_channel.blocking_send(event).unwrap();
         }
     }
 }
@@ -31,10 +32,10 @@ pub struct NetworkSync
 }
 
 impl NetworkSync {
-    async fn push_task(channel: channel::Receiver<Event>, service: gossip::GossipService<UpdateHandler>)
+    async fn push_task(channel: Receiver<Event>, service: gossip::GossipService<UpdateHandler>)
     {
         let mut channel = channel;
-        while let Some(event) = channel.next().await
+        while let Some(event) = channel.recv().await
         {
             log::debug!("Sending outgoing event: {:?}", event);
             service.submit(serde_json::to_vec(&event).unwrap()).unwrap();
@@ -43,8 +44,8 @@ impl NetworkSync {
 
     pub fn start(gossip_addr: String,
                  peer_addr: Option<String>,
-                 inbound_send: channel::Sender<Event>,
-                 outbound_recv: channel::Receiver<Event>,
+                 inbound_send: Sender<Event>,
+                 outbound_recv: Receiver<Event>,
                 )
     {
         let peer_init = || { peer_addr.map(|x| vec!(Peer::new(x))) };
@@ -55,6 +56,6 @@ impl NetworkSync {
 
         gossip_service.start(Box::new(peer_init), gossip_handler).unwrap();
 
-        task::spawn(Self::push_task(outbound_recv, gossip_service));
+        tokio::spawn(Self::push_task(outbound_recv, gossip_service));
     }
 }

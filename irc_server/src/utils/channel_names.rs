@@ -2,6 +2,7 @@ use irc_network::*;
 use irc_network::wrapper::Channel;
 use crate::*;
 use crate::client::*;
+use crate::errors::*;
 
 pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Channel) -> HandleResult
 {

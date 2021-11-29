@@ -1,15 +1,19 @@
 use crate::*;
 use crate::id::*;
 use crate::validated::*;
+use serde::{
+    Serialize,
+    Deserialize
+};
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Channel {
     pub id: ChannelId,
     pub name: ChannelName,
     pub mode: CModeId,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Membership {
     pub id: MembershipId,
     pub channel: ChannelId,
@@ -17,7 +21,7 @@ pub struct Membership {
     pub permissions: ChannelPermissionSet,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct ChannelMode {
     pub id: CModeId,
     pub modes: ChannelModeSet,

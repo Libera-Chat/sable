@@ -2,7 +2,7 @@ use irc_network::*;
 use super::*;
 
 use std::cell::RefCell;
-use async_std::net::IpAddr;
+use std::net::IpAddr;
 
 pub struct ClientConnection
 {

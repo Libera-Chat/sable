@@ -6,20 +6,29 @@ use serde::{Serialize,Deserialize};
 use crate::{EventId,ServerId};
 
 #[derive(Clone,Eq,PartialEq,Debug,Serialize,Deserialize)]
-pub struct EventClock (HashMap<ServerId, EventId>);
+pub struct EventClock (pub HashMap<ServerId, EventId>);
 
 impl EventClock {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
+    pub fn get(&self, server: ServerId) -> Option<EventId>
+    {
+        self.0.get(&server).map(|x| *x)
+    }
+
     pub fn update_with_id(&mut self, id: EventId) {
         let s = id.server();
         // If we already have a value for this ServerId, and the value we already have is greater
         // than the provided one, do nothing. Else update.
-        if ! matches!(self.0.get(&s), Some(current) if *current > id) {
-            self.0.insert(s, id);
+        if let Some(current) = self.0.get(&s)
+        {
+            if *current > id {
+                return;
+            }
         }
+        self.0.insert(s, id);
     }
 
     pub fn update_with_clock(&mut self, other: &EventClock) {
@@ -74,7 +83,7 @@ impl PartialOrd for EventClock {
         }
         else if keys_le
         {
-            if self.0.iter().all(|(k,v)| v < &other.0[&k])
+            if self.0.iter().all(|(k,v)| v <= &other.0[&k])
             {
                 return Some(Ordering::Less);
             } else {
@@ -83,7 +92,7 @@ impl PartialOrd for EventClock {
         }
         else if keys_ge
         {
-            if other.0.iter().all(|(k,v)| v < &self.0[&k])
+            if other.0.iter().all(|(k,v)| v <= &self.0[&k])
             {
                 return Some(Ordering::Greater);
             } else {

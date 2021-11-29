@@ -1,6 +1,10 @@
 use crate::id::*;
+use serde::{
+    Serialize,
+    Deserialize
+};
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Message
 {
     pub id: MessageId,

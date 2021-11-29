@@ -35,13 +35,13 @@ pub mod wrapper {
 
 pub mod event;
 
-mod id;
+pub mod id;
 pub use id::*;
 
 pub mod validated;
 pub use validated::*;
 
-mod errors;
+pub mod errors;
 pub use errors::*;
 
 pub mod flags;

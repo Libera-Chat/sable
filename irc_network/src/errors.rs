@@ -1,8 +1,6 @@
 use thiserror::Error;
 use crate::*;
 
-use async_std::channel;
-
 #[derive(Error,Debug)]
 pub enum LookupError
 {
@@ -34,45 +32,3 @@ pub enum LookupError
 
 pub type LookupResult<T> = std::result::Result<T, LookupError>;
 
-#[derive(Debug,Error)]
-pub enum HandlerError {
-    #[error("Internal error: {0}")]
-    InternalError(String),
-    #[error("Connection error: {0}")]
-    ConnectionError(#[from]ConnectionError),
-    #[error("Object lookup failed: {0}")]
-    LookupError(#[from] LookupError),
-    #[error("Mismatched object ID type")]
-    WrongIdType(#[from] WrongIdTypeError),
-}
-
-impl From<&str> for HandlerError
-{
-    fn from(msg: &str) -> Self { Self::InternalError(msg.to_string()) }
-}
-
-pub type HandleResult = Result<(), HandlerError>;
-
-#[derive(Error,Debug)]
-pub enum ConnectionError {
-    #[error("Connection closed")]
-    Closed,
-    #[error("I/O Error: {0}")]
-    IoError(#[from]std::io::Error),
-    #[error("Internal error")]
-    InternalError,
-    #[error("Send queue full")]
-    SendQueueFull,
-}
-
-impl<T> From<channel::TrySendError<T>> for ConnectionError
-{
-    fn from(e: channel::TrySendError<T>) -> Self
-    {
-        match e
-        {
-            channel::TrySendError::Full(_) => Self::SendQueueFull,
-            channel::TrySendError::Closed(_) => Self::Closed
-        }
-    }
-}

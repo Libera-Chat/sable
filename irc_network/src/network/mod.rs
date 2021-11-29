@@ -2,6 +2,10 @@ use crate::event::*;
 use crate::*;
 use ircd_macros::dispatch_event;
 use thiserror::Error;
+use serde::{
+    Serialize,
+    Deserialize
+};
 
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -28,7 +32,7 @@ pub enum ValidationError
 }
 pub type ValidationResult = Result<(), ValidationError>;
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Network
 {
     users: HashMap<UserId, state::User>,

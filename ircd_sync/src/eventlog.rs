@@ -1,24 +1,28 @@
-use crate::event::*;
-use crate::*;
+use irc_network::event::*;
+use irc_network::*;
 
 use std::{
     collections::{HashMap,BTreeMap},
+    ops::Bound::*
 };
-use async_std::channel;
+use tokio::sync::mpsc::{
+    Sender,
+};
+use log;
 
 #[derive(Debug)]
 pub struct EventLog {
-    history: HashMap<ServerId, BTreeMap<LocalId, Event>>,
+    history: BTreeMap<ServerId, BTreeMap<EventId, Event>>,
     pending: HashMap<EventId, Event>,
     id_gen: EventIdGenerator,
-    event_sender: Option<channel::Sender<Event>>,
+    event_sender: Option<Sender<Event>>,
     last_event_clock: EventClock,
 }
 
 impl EventLog {
-    pub fn new(idgen: EventIdGenerator, event_sender: Option<channel::Sender<Event>>) -> Self {
+    pub fn new(idgen: EventIdGenerator, event_sender: Option<Sender<Event>>) -> Self {
         Self{
-            history: HashMap::new(),
+            history: BTreeMap::new(),
             pending: HashMap::new(),
             id_gen: idgen,
             event_sender: event_sender,
@@ -27,11 +31,36 @@ impl EventLog {
     }
 
     pub fn get(&self, id: &EventId) -> Option<&Event> {
-        self.history.get(&id.server()).and_then(|x| x.get(&id.local()))
+        self.history.get(&id.server()).and_then(|x| x.get(&id))
+    }
+
+    pub fn get_since(&self, id: EventClock) -> impl Iterator<Item=&Event>
+    {
+        self.history.iter().flat_map(move |(server,list)| {
+            let begin = if let Some(got) = id.get(*server) {
+                Excluded(got)
+            } else {
+                Unbounded
+            };
+            list.range((begin, Unbounded)).map(|(_,v)| v)
+        })
+    }
+
+    pub fn clock(&self) -> &EventClock {
+        &self.last_event_clock
+    }
+
+    pub fn set_clock(&mut self, new_clock: EventClock) {
+        self.last_event_clock = new_clock;
     }
 
     pub fn add(&mut self, e: Event)
     {
+        if self.get(&e.id).is_some()
+        {
+            return;
+        }
+
         if self.has_dependencies_for(&e)
         {
             self.do_add(e);
@@ -39,6 +68,7 @@ impl EventLog {
         }
         else
         {
+            log::info!("Deferring event {:?}; event clock={:?} my clock={:?}", e.id, e.clock, self.last_event_clock);
             self.pending.insert(e.id, e);
         }
     }
@@ -69,14 +99,14 @@ impl EventLog {
         }
 
         let server_map = self.history.get_mut(&s).unwrap();
-        server_map.insert(e.id.local(), e);
+        server_map.insert(e.id, e);
 
         self.last_event_clock.update_with_id(id);
 
-        self.broadcast(self.history.get(&s).unwrap().get(&id.local()).unwrap());
+        self.broadcast(self.history.get(&s).unwrap().get(&id).unwrap());
     }
 
-    fn has_dependencies_for(&self, e: &Event) -> bool
+    pub(crate) fn has_dependencies_for(&self, e: &Event) -> bool
     {
         // <= returns true iff, for every key in e.clock, we have the same
         // key and the value is the same or higher. 
@@ -93,6 +123,20 @@ impl EventLog {
         // N.B. the incoming clock does *not* include the event's own ID - it's all
         // the events seen by the originating server *before* this event was emitted.
         e.clock <= self.last_event_clock
+    }
+
+    pub(crate) fn missing_ids_for(&self, clock: &EventClock) -> Vec<EventId>
+    {
+        let mut ret = Vec::new();
+
+        for (_,v) in clock.0.iter()
+        {
+            if self.get(v).is_none()
+            {
+                ret.push(v.clone());
+            }
+        }
+        ret
     }
 
     fn next_satisified_pending(&self) -> Option<EventId>
@@ -113,6 +157,7 @@ impl EventLog {
         {
             if let Some(event) = self.pending.remove(&id)
             {
+                log::info!("Adding satisfied deferred event {:?}", event);
                 self.do_add(event);
             }
         }

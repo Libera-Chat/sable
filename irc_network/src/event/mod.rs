@@ -1,6 +1,5 @@
 mod clock;
 mod event;
-mod eventlog;
 
 pub mod details;
 
@@ -11,7 +10,12 @@ pub use event::DetailType;
 
 pub use details::*;
 
-pub use eventlog::EventLog;
+#[derive(Debug)]
+pub enum EventLogUpdate
+{
+    NewEvent(crate::ObjectId, EventDetails),
+    EpochUpdate(crate::EpochId)
+}
 
 #[cfg(test)]
 mod tests;

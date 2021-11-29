@@ -1,17 +1,26 @@
 use irc_network::*;
 use crate::utils::*;
-use async_std::{
-    prelude::*,
+use crate::errors::*;
+use tokio::{
     net::{
         TcpStream,
-        IpAddr,
     },
-    io::BufReader,
-    channel,
-    task
+    io::{
+        BufReader,
+        AsyncBufReadExt,
+        AsyncWriteExt,
+    },
+    sync::mpsc::{
+        Sender,
+        Receiver,
+        channel
+    },
+    task,
+    select,
 };
-use futures::{select,FutureExt};
 use log::info;
+
+use std::net::IpAddr;
 
 static SEND_QUEUE_LEN:usize = 100;
 
@@ -19,8 +28,8 @@ static SEND_QUEUE_LEN:usize = 100;
 pub struct Connection {
     pub id: ConnectionId,
     pub remote_addr: IpAddr,
-    control_channel: channel::Sender<ConnectionControl>,
-    send_channel: channel::Sender<String>,
+    control_channel: Sender<ConnectionControl>,
+    send_channel: Sender<String>,
 }
 
 #[derive(Debug)]
@@ -40,9 +49,9 @@ pub struct ConnectionEvent {
 struct ConnectionTask {
     id: ConnectionId,
     conn: TcpStream,
-    control_channel: channel::Receiver<ConnectionControl>,
-    send_channel: channel::Receiver<String>,
-    event_channel: channel::Sender<ConnectionEvent>
+    control_channel: Receiver<ConnectionControl>,
+    send_channel: Receiver<String>,
+    event_channel: Sender<ConnectionEvent>
 }
 
 pub enum ConnectionControl {
@@ -51,10 +60,10 @@ pub enum ConnectionControl {
 
 impl Connection
 {
-    pub fn new(id: ConnectionId, stream: TcpStream, events: channel::Sender<ConnectionEvent>) -> Result<Self,ConnectionError>
+    pub fn new(id: ConnectionId, stream: TcpStream, events: Sender<ConnectionEvent>) -> Result<Self,ConnectionError>
     {
-        let (control_send, control_recv) = channel::bounded(SEND_QUEUE_LEN);
-        let (send_send, send_recv) = channel::bounded(SEND_QUEUE_LEN);
+        let (control_send, control_recv) = channel(SEND_QUEUE_LEN);
+        let (send_send, send_recv) = channel(SEND_QUEUE_LEN);
 
         let addr = stream.peer_addr()?.ip();
 
@@ -117,9 +126,9 @@ impl ConnectionTask
 {
     fn new(id: ConnectionId, 
         stream: TcpStream,
-        control: channel::Receiver<ConnectionControl>,
-        send: channel::Receiver<String>,
-        events: channel::Sender<ConnectionEvent>) -> Self
+        control: Receiver<ConnectionControl>,
+        send: Receiver<String>,
+        events: Sender<ConnectionEvent>) -> Self
     {
         Self {
             id: id,
@@ -132,30 +141,31 @@ impl ConnectionTask
 
     async fn run(mut self)
     {
-        let reader = BufReader::new(self.conn.clone());
+        let (reader, mut writer) = self.conn.split();
+        let reader = BufReader::new(reader);
         let mut lines = reader.lines();
         loop
         {
             select!
             {
-                control = self.control_channel.next().fuse() => match control {
+                control = self.control_channel.recv() => match control {
                     None => { break; },
                     Some(ConnectionControl::Close) => { break; },
                 },
-                message = self.send_channel.next().fuse() => match message {
+                message = self.send_channel.recv() => match message {
                     None => break,
                     Some(msg) => {
-                        if self.conn.write_all(msg.as_bytes()).await.is_err() {
+                        if writer.write_all(msg.as_bytes()).await.is_err() {
                             break;
                         }
                     }
                 },
-                message = lines.next().fuse() => match message {
-                    None => { break; },
-                    Some(Ok(m)) => {
+                message = lines.next_line() => match message {
+                    Ok(None) => { break; },
+                    Ok(Some(m)) => {
                         self.event_channel.send(ConnectionEvent::message(self.id, m)).await.or_log("notifying socket message");
                     }
-                    Some(Err(e)) => {
+                    Err(e) => {
                         self.event_channel.send(ConnectionEvent::error(self.id, ConnectionError::from(e))).await.or_log("notifying socket error");
                         return;
                     }

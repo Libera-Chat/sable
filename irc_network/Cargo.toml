@@ -8,8 +8,6 @@ edition = "2018"
 [dependencies]
 ircd_macros = { path = "../ircd_macros" }
 log = "0.4"
-futures = "0.3"
-async-std = "1.7"
 inventory = "0.1"
 thiserror = "1"
 serde_json = "1"

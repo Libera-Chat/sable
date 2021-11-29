@@ -1,8 +1,12 @@
 use crate::id::*;
 use crate::validated::*;
 use crate::flags::*;
+use serde::{
+    Serialize,
+    Deserialize
+};
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct User {
     pub id: UserId,
     pub server: ServerId,
@@ -15,7 +19,8 @@ pub struct User {
     pub mode_id: UModeId,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
+
 pub struct UserMode {
     pub id: UModeId,
     pub modes: UserModeSet,

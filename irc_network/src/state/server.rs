@@ -1,7 +1,11 @@
 use crate::id::*;
 use crate::validated::*;
+use serde::{
+    Serialize,
+    Deserialize
+};
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Server
 {
     pub id: ServerId,
