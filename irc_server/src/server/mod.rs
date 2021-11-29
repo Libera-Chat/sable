@@ -25,6 +25,9 @@ use log::{info,error};
 
 use rpc::ServerRpcMessage;
 
+pub mod command_processor;
+use command_processor::*;
+
 mod connection_collection;
 use connection_collection::ConnectionCollection;
 use command::*;

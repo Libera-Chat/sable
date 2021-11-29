@@ -7,8 +7,7 @@ use crate::message;
 
 use ircd_macros::command_handler;
 
-mod processor;
-pub use processor::*;
+use super::server::command_processor::*;
 
 pub type CommandResult = Result<(), CommandError>;
 

@@ -1,5 +1,5 @@
 use irc_network::*;
-use crate::command::*;
+use crate::server::command_processor::*;
 use crate::client;
 
 pub trait MessageSource

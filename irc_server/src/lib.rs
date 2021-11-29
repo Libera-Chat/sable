@@ -23,7 +23,6 @@ mod client_message;
 use client_message::ClientMessage;
 
 mod command;
-pub use command::CommandError;
 pub use command::CommandResult;
 
 mod messages;
