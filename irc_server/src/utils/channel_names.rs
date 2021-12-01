@@ -27,7 +27,7 @@ pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Chan
 
         let p = member.permissions().to_prefixes();
         let n = member.user()?.nick().to_string();
-        if current_line.len() + n.len() + 1 > CONTENT_LEN
+        if current_line.len() + n.len() + 2 > CONTENT_LEN
         {
             lines.push(current_line);
             current_line = String::new();
