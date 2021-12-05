@@ -10,7 +10,7 @@ command_handler!("MODE" => ModeHandler {
 
         let target = next_arg()?;
 
-        if let Ok(cname) = ChannelName::new(target.clone())
+        if let Ok(cname) = ChannelName::from_str(&target)
         {
             let chan = self.server.network().channel_by_name(&cname)?;
             let mode = chan.mode()?;
@@ -47,7 +47,7 @@ command_handler!("MODE" => ModeHandler {
                             }
                             else if let Some(flag) = ChannelPermissionSet::flag_for(c)
                             {
-                                let target = self.server.network().user_by_nick(&Nickname::new(next_arg()?)?)?;
+                                let target = self.server.network().user_by_nick(&Nickname::from_str(&next_arg()?)?)?;
                                 let membership = target.is_in_channel(chan.id())
                                                        .ok_or(make_numeric!(UserNotOnChannel, &target, &chan))?;
                                 let mut perm_added = ChannelPermissionSet::new();
@@ -91,7 +91,7 @@ command_handler!("MODE" => ModeHandler {
         }
         else
         {
-            if source.nick() != &target
+            if source.nick() != Nickname::from_str(&target)?
             {
                 return numeric_error!(CantChangeOtherUserMode);
             }

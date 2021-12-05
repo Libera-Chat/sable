@@ -59,7 +59,7 @@ impl MessageTarget for Option<std::cell::RefCell<client::PreClient>>
 
 impl MessageTarget for Nickname
 {
-    fn format(&self) -> String { self.value().clone() }
+    fn format(&self) -> String { self.value().to_string() }
 }
 
 // Used when command parsing/processing fails
@@ -75,14 +75,14 @@ impl MessageTarget for CommandSource<'_>
     }
 }
 
-pub trait Message : std::fmt::Display + std::fmt::Debug
+pub trait MessageType : std::fmt::Display + std::fmt::Debug
 { }
 
 #[derive(Debug)]
 pub struct TargetedNumeric(String);
 
 impl std::fmt::Display for TargetedNumeric { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.0.fmt(f) } }
-impl Message for TargetedNumeric { }
+impl MessageType for TargetedNumeric { }
 
 pub trait Numeric : std::fmt::Debug
 {

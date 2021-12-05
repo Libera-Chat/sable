@@ -4,7 +4,12 @@ use ircd_macros::{event_details,target_type};
 
 pub struct WrongEventTypeError;
 
-event_details!{
+event_details!(EventDetails => {
+    #[target_type(NicknameId)]
+    struct BindNickname {
+        pub user: UserId,
+    }
+
     #[target_type(UserId)]
     struct NewUser {
         pub nickname: Nickname,
@@ -13,11 +18,6 @@ event_details!{
         pub realname: String,
         pub mode_id: UModeId,
         pub server: ServerId,
-    }
-
-    #[target_type(UserId)]
-    struct UserNickChange {
-        pub new_nick: Nickname
     }
 
     #[target_type(UserId)]
@@ -97,4 +97,4 @@ event_details!{
     struct ServerQuit {
         pub introduced_by: EventId,
     }
-}
+});

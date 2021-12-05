@@ -7,11 +7,18 @@ use serde::{
 };
 
 #[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct NickBinding {
+    pub nick: Nickname,
+    pub user: UserId,
+    pub timestamp: u64,
+    pub created: EventId,
+}
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct User {
     pub id: UserId,
     pub server: ServerId,
 
-    pub nick: Nickname,
     pub user: Username,
     pub visible_host: Hostname,
     pub realname: String,
@@ -26,15 +33,22 @@ pub struct UserMode {
     pub modes: UserModeSet,
 }
 
+impl NickBinding
+{
+    pub fn new(nick: Nickname, user: UserId, timestamp: u64, created: EventId) -> Self
+    {
+        Self { nick: nick, user: user, timestamp: timestamp, created: created }
+    }
+}
+
 impl User {
     pub fn new(id: UserId, server: ServerId,
-               nick: &Nickname, user: &Username, visible_host: &Hostname,
+               user: &Username, visible_host: &Hostname,
                realname: &str, mode_id: UModeId) -> Self
     {
         Self {
             id: id,
             server: server,
-            nick: nick.clone(),
             user: user.clone(),
             visible_host: visible_host.clone(),
             realname: realname.to_string(),

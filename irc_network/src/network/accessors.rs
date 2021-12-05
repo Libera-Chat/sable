@@ -10,7 +10,7 @@ impl Network {
     pub fn clock(&self) -> &EventClock {
         &self.clock
     }
-    
+
     pub fn user(&self, id: UserId) -> LookupResult<wrapper::User> {
         let r: LookupResult<&state::User> = self.users.get(&id).ok_or(NoSuchUser(id));
         r.wrap(&self)
@@ -24,9 +24,29 @@ impl Network {
         self.users.values()
     }
 
+    pub fn nick_binding(&self, nick: &Nickname) -> LookupResult<wrapper::NickBinding>
+    {
+        self.nick_bindings.get(nick).ok_or(NoSuchNick(nick.to_string())).wrap(self)
+    }
+
+    pub fn raw_nick_bindings(&self) -> impl std::iter::Iterator<Item=&state::NickBinding>
+    {
+        self.nick_bindings.values()
+    }
+
+    pub fn nick_bindings(&self) -> impl std::iter::Iterator<Item=wrapper::NickBinding>
+    {
+        self.nick_bindings.values().wrap(&self)
+    }
+
+    pub fn nick_binding_for_user(&self, user: UserId) -> LookupResult<wrapper::NickBinding>
+    {
+        self.raw_nick_bindings().filter(|b| b.user == user).next().ok_or(NoNickForUser(user)).wrap(self)
+    }
+
     pub fn user_by_nick(&self, nick: &Nickname) -> LookupResult<wrapper::User>
     {
-        self.users.values().filter(|x| &x.nick == nick.value()).next().ok_or(NoSuchNick(nick.to_string())).wrap(self)
+        self.user(self.nick_bindings.get(nick).ok_or(NoSuchNick(nick.to_string()))?.user)
     }
 
     pub fn user_mode(&self, id: UModeId) -> LookupResult<wrapper::UserMode>
@@ -75,5 +95,10 @@ impl Network {
     pub fn servers(&self) -> impl std::iter::Iterator<Item=wrapper::Server>
     {
         self.servers.values().wrap(self)
+    }
+
+    pub fn message(&self, id: MessageId) -> LookupResult<wrapper::Message>
+    {
+        self.messages.get(&id).ok_or(NoSuchMessage(id)).wrap(self)
     }
 }

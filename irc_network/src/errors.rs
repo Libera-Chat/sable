@@ -24,8 +24,12 @@ pub enum LookupError
     NoSuchServer(ServerId),
     #[error("No such nickname {0}")]
     NoSuchNick(String),
+    #[error("Couldn't find nickname for user {0:?}")]
+    NoNickForUser(UserId),
     #[error("No such channel name {0}")]
     NoSuchChannelName(String),
+    #[error("No such message id {0:?}")]
+    NoSuchMessage(MessageId),
     #[error("Connection id not found")]
     NoSuchConnectionId,
 }

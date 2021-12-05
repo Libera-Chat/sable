@@ -1,4 +1,6 @@
-use irc_network::wrapper::*;
+use irc_network::wrapper::{
+    Channel
+};
 use irc_network::validated::*;
 use ircd_macros::define_messages;
 use super::*;

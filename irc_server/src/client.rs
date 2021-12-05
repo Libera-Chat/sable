@@ -40,7 +40,7 @@ impl ClientConnection
         self.connection.remote_addr
     }
 
-    pub fn send(&self, msg: &dyn messages::Message)
+    pub fn send(&self, msg: &dyn messages::MessageType)
     {
         if let Err(e) = self.connection.send(&msg.to_string())
         {

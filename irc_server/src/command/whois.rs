@@ -5,7 +5,7 @@ command_handler!("WHOIS" => WhoisHandler {
 
     fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        let target_nick = Nickname::new(cmd.args[0].clone())?;
+        let target_nick = Nickname::from_str(&cmd.args[0])?;
         let target = self.server.network().user_by_nick(&target_nick)?;
 
         cmd.connection.send(&make_numeric!(WhoisUser, &target, &target, &target, &target)

@@ -8,13 +8,13 @@ command_handler!("PRIVMSG" => PrivmsgHandler {
         let target_name = &cmd.args[0];
         let msg = cmd.args[1].clone();
         let target_id =
-            if let Ok(chname) = ChannelName::new(target_name.clone())
+            if let Ok(chname) = ChannelName::from_str(target_name)
             {
                 let channel = self.server.network().channel_by_name(&chname)?;
                 self.server.policy().can_send(source, &channel, &msg)?;
                 ObjectId::Channel(channel.id())
             }
-            else if let Ok(nick) = Nickname::new(target_name.clone())
+            else if let Ok(nick) = Nickname::from_str(target_name)
             {
                 ObjectId::User(self.server.network().user_by_nick(&nick)?.id())
             }

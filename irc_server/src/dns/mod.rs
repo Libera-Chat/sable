@@ -35,7 +35,7 @@ impl DnsClient
         task::spawn(async move {
             let name = match resolver.reverse_lookup(addr).await
             {
-                Ok(lookup) => lookup.iter().next().map(|n| Hostname::new(n.to_string()).ok()).flatten(),
+                Ok(lookup) => lookup.iter().next().map(|n| Hostname::convert(n).ok()).flatten(),
                 Err(_) => None
             };
             let _res = chan.send(ConnectionEvent{source: conn_id, detail: EventDetail::DNSLookupFinished(name)}).await;

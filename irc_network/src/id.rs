@@ -1,5 +1,6 @@
 use ircd_macros::object_ids;
 use thiserror::Error;
+use crate::validated::*;
 
 pub type LocalId = i64;
 
@@ -17,6 +18,8 @@ object_ids!(ObjectId, {
     CMode: sequential;
     Message: sequential;
 
+    Nickname: (Nickname,);
+
     Membership: (UserId, ChannelId);
 });
 
@@ -31,9 +34,6 @@ impl EventId {
     pub fn local(&self) -> LocalId { self.2 }
 }
 
-impl EpochId {
-    pub fn next(&self) -> Self
-    {
-        Self( self.0 + 1 )
-    }
+impl NicknameId {
+    pub fn nick(&self) -> &Nickname { &self.0 }
 }

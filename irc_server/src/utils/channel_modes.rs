@@ -23,6 +23,8 @@ pub fn format_channel_perm_changes(target: &User, added: &ChannelPermissionSet, 
     let mut changes = String::new();
     let mut args = Vec::new();
 
+    let nick = target.nick();
+
     if ! added.is_empty()
     {
         changes += "+";
@@ -30,7 +32,7 @@ pub fn format_channel_perm_changes(target: &User, added: &ChannelPermissionSet, 
         {
             if added.is_set(flag) {
                 changes += &modechar.to_string();
-                args.push(target.nick().to_string());
+                args.push(nick.to_string());
             }
         }
     }
@@ -41,7 +43,7 @@ pub fn format_channel_perm_changes(target: &User, added: &ChannelPermissionSet, 
         {
             if removed.is_set(flag) {
                 changes += &modechar.to_string();
-                args.push(target.nick().to_string());
+                args.push(nick.to_string());
             }
         }
     }

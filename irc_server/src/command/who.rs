@@ -9,7 +9,7 @@ command_handler!("WHO" => WhoHandler {
     {
         if is_channel_name(&cmd.args[0])
         {
-            let chname = ChannelName::new(cmd.args[0].clone())?;
+            let chname = ChannelName::from_str(&cmd.args[0])?;
             let channel = self.server.network().channel_by_name(&chname)?;
             
             self.do_who_channel(source, channel, cmd)
@@ -28,7 +28,7 @@ impl WhoHandler<'_>
     {
         let chname = channel.map(|c| c.name()).unwrap_or("*");
         let status = format!("H{}", membership.map(|m| m.permissions().to_prefixes()).unwrap_or("".to_string()));
-        make_numeric!(WhoReply, chname, target.user(), target.visible_host(), server, target.nick(), &status, 0, target.realname())
+        make_numeric!(WhoReply, chname, target.user(), target.visible_host(), server, &target.nick(), &status, 0, target.realname())
     }
 
     fn do_who_channel(&mut self, source: &wrapper::User, chan: wrapper::Channel, cmd: &ClientCommand) -> CommandResult

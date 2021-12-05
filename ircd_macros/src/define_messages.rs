@@ -269,7 +269,7 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
                     }
                 }
 
-                impl Message for #typename
+                impl MessageType for #typename
                 { }
             ));
         }

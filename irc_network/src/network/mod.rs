@@ -35,6 +35,7 @@ pub type ValidationResult = Result<(), ValidationError>;
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Network
 {
+    nick_bindings: HashMap<Nickname, state::NickBinding>,
     users: HashMap<UserId, state::User>,
     user_modes: HashMap<UModeId, state::UserMode>,
 
@@ -54,6 +55,7 @@ impl Network {
     pub fn new() -> Network
     {
         Network {
+            nick_bindings: HashMap::new(),
             users: HashMap::new(),
             user_modes: HashMap::new(),
 
@@ -69,16 +71,16 @@ impl Network {
         }
     }
 
-    pub fn apply(&mut self, event: &Event) -> Result<(),WrongIdTypeError>
+    pub fn apply(&mut self, event: &Event, updates: &dyn NetworkUpdateReceiver) -> Result<(),WrongIdTypeError>
     {
         if self.clock.contains(event.id)
         {
             return Ok(());
         }
 
-        dispatch_event!(event => {
+        dispatch_event!(event(updates) => {
+            BindNickname => self.bind_nickname,
             NewUser => self.new_user,
-            UserNickChange => self.user_nick_change,
             UserQuit => self.user_quit,
             NewUserMode => self.new_user_mode,
             UserModeChange => self.user_mode_change,
@@ -102,7 +104,6 @@ impl Network {
     {
         match detail {
             EventDetails::NewUser(newuser) => self.validate_new_user(id.try_into()?, newuser),
-            EventDetails::UserNickChange(nickchange) => self.validate_nick_change(id.try_into()?, nickchange),
             _ => Ok(())
         }
     }

@@ -6,7 +6,7 @@ command_handler!("JOIN" => JoinHandler {
 
     fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        let chname = ChannelName::new(cmd.args[0].clone())?;
+        let chname = ChannelName::from_str(&cmd.args[0])?;
         let (channel_id, permissions) = match self.server.network().channel_by_name(&chname) {
             Ok(channel) => (channel.id(), ChannelPermissionSet::new()),
             Err(_) => {

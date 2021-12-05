@@ -4,14 +4,39 @@ use proc_macro2;
 use quote::quote;
 use syn::{
     parse_macro_input,
+    braced,
     Result,
+    Attribute,
     ItemStruct,
-    Ident
+    Ident,
+    Token,
+    token,
 };
 use syn::parse::{Parse, ParseStream};
 
+struct DefinitionList {
+    attrs: Vec<Attribute>,
+    enum_name: Ident,
+    _arrow: Token![=>],
+    _brace: token::Brace,
+    items: ItemStructList,
+}
+
 struct ItemStructList {
     items: Vec<ItemStruct>
+}
+
+impl Parse for DefinitionList {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        Ok(Self{
+            attrs: input.call(Attribute::parse_outer)?,
+            enum_name: input.parse()?,
+            _arrow: input.parse()?,
+            _brace: braced!(content in input),
+            items: content.parse()?,
+        })
+    }
 }
 
 impl Parse for ItemStructList {
@@ -30,7 +55,10 @@ impl Parse for ItemStructList {
 
 pub fn event_details(input: TokenStream) -> TokenStream
 {
-    let items = parse_macro_input!(input as ItemStructList);
+    let input = parse_macro_input!(input as DefinitionList);
+    let attrs = input.attrs;
+    let enum_name = input.enum_name;
+    let items = input.items;
     
     let mut output = proc_macro2::TokenStream::new();
     let mut names = Vec::<Ident>::new();
@@ -45,7 +73,7 @@ pub fn event_details(input: TokenStream) -> TokenStream
 
         let defn = quote!(
             #( #attrs )*
-            #[derive(Debug,Clone,PartialEq,serde::Serialize,serde::Deserialize)]
+            #[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
             pub struct #name
             #fields
         );
@@ -54,25 +82,26 @@ pub fn event_details(input: TokenStream) -> TokenStream
     }
 
     output.extend(quote!(
-        #[derive(Debug,Clone,PartialEq,serde::Serialize,serde::Deserialize)]
-        pub enum EventDetails {
+        #( #attrs )*
+        #[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
+        pub enum #enum_name {
             #( #names(#names) ),*
         }
 
         #(
-            impl From<#names> for EventDetails
+            impl From<#names> for #enum_name
             {
                 fn from(x: #names) -> Self { Self::#names(x) }
             }
 
-            impl std::convert::TryFrom<EventDetails> for #names
+            impl std::convert::TryFrom<#enum_name> for #names
             {
-                type Error = crate::event::details::WrongEventTypeError;
-                fn try_from(e: EventDetails) -> Result<Self, crate::event::details::WrongEventTypeError>
+                type Error = WrongEventTypeError;
+                fn try_from(e: #enum_name) -> Result<Self, WrongEventTypeError>
                 {
                     match e {
-                        EventDetails::#names(x) => Ok(x),
-                        _ => Err(crate::event::details::WrongEventTypeError)
+                        #enum_name::#names(x) => Ok(x),
+                        _ => Err(WrongEventTypeError)
                     }
                 }
             }

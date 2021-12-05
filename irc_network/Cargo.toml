@@ -11,6 +11,8 @@ log = "0.4"
 inventory = "0.1"
 thiserror = "1"
 serde_json = "1"
+arrayvec = {version = "0.7", features = [ "serde" ] }
+hashers = "1"
 
 [dependencies.serde]
 version = "1"

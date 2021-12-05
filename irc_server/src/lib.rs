@@ -28,7 +28,7 @@ pub use command::CommandResult;
 mod messages;
 pub use messages::message;
 pub use messages::numeric;
-pub use messages::Message;
+pub use messages::MessageType;
 pub use messages::Numeric;
 
 mod rpc;

@@ -1,5 +1,4 @@
 use crate::*;
-
 use super::*;
 
 pub struct User<'a> {
@@ -11,9 +10,26 @@ impl User<'_> {
     pub fn id(&self) -> UserId {
         self.data.id
     }
+
+    /// Infallibly returns a nickname for this user. 
+    /// If a nickname binding exists, then the associated nick is returned; otherwise,
+    /// a fallback nick based on the hash of the user ID is used - this is the same 
+    /// computed nickname used in case of binding collisions.
+    pub fn nick(&self) -> Nickname
+    {
+        if let Ok(binding) = self.nick_binding()
+        {
+            binding.nick()
+        }
+        else
+        {
+            log::error!("Attempted to get nickname of user {:?} without a nick binding", self.data.id);
+            state_utils::hashed_nick_for(self.data.id)
+        }
+    }
     
-    pub fn nick(&self) -> &Nickname {
-        &self.data.nick
+    pub fn nick_binding(&self) -> LookupResult<NickBinding> {
+        self.network.nick_binding_for_user(self.data.id)
     }
 
     pub fn user(&self) -> &Username {

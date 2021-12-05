@@ -32,6 +32,8 @@ mod connection_collection;
 use connection_collection::ConnectionCollection;
 use command::*;
 
+mod state_change_receiver;
+
 pub struct Server
 {
     my_id: ServerId,
@@ -165,22 +167,15 @@ impl Server
     {
         log::trace!("Applying inbound event: {:?}", event);
 
-        // Separate pre_handle and post-handle: some event handlers (e.g. for events that destroy
-        // objects) need to run before the event is applied (e.g. to access the state that's about to
-        // be removed), while most are easier to write if they run afterwards and can immediately see
-        // the changes already applied.
-        match self.net.validate(event.target, &event.details) {
-            Ok(_) => {
-                self.pre_handle_event(&event);
-                if let Err(e) = self.net.apply(&event) {
-                    panic!("Event validated but failed to apply: {}", e);
-                }
-                self.post_handle_event(&event);
-            },
-            Err(e) => {
-                error!("Event failed validation: {}", e);
-                self.handle_event_failure(&event, &e);
-            }
+        let receiver = state_change_receiver::StateChangeReceiver::new();
+
+        if let Err(e) = self.net.apply(&event, &receiver) {
+            panic!("Event {:?} failed to apply: {}", event, e);
+        }
+
+        while let Ok(change) = receiver.recv.try_recv()
+        {
+            self.handle_network_update(change);
         }
     }
 
@@ -226,7 +221,7 @@ impl Server
                                             } else {
                                                 conn.send(&message::Notice::new(self, &*pc,
                                                                 ":*** Couldn't look up your hostname"));
-                                                let no_hostname = Hostname::new(conn.remote_addr().to_string());
+                                                let no_hostname = Hostname::convert(conn.remote_addr());
                                                 match no_hostname {
                                                     Ok(n) => pc.hostname = Some(n),
                                                     Err(e) => conn.error(&e.to_string())
@@ -308,5 +303,4 @@ impl Server
 
 mod command_action;
 mod event_handler;
-mod event_failure;
 mod pings;

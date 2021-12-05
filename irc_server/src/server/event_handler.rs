@@ -1,82 +1,58 @@
 use super::*;
-use ircd_macros::dispatch_event;
-use crate::utils::FlattenResult;
+use irc_network::update;
+use irc_network::NetworkStateChange;
+use irc_network::wrapper::ObjectWrapper;
 use crate::errors::*;
 use std::collections::HashSet;
 
-fn nop<I,D>(_: I, _: &Event, _: &D) -> HandleResult { Ok(()) }
-
 impl Server
 {
-    pub(super) fn pre_handle_event(&mut self, event: &Event)
+    pub(super) fn handle_network_update(&mut self, change: NetworkStateChange)
     {
-        let res = dispatch_event!(event => {
-            NewUser => nop,
-            UserNickChange => self.pre_handle_nick_change,
-            UserQuit => self.pre_handle_quit,
-            NewUserMode => nop,
-            UserModeChange => nop,
-            NewChannel => nop,
-            NewChannelMode => nop,
-            ChannelModeChange => nop,
-            ChannelPermissionChange => nop,
-            ChannelJoin => nop,
-            ChannelPart => self.pre_handle_part,
-            NewMessage => nop,
-            NewServer => self.pre_handle_new_server,
-            ServerPing => nop,
-            ServerQuit => self.pre_handle_server_quit,
-        }).flatten();
+        use NetworkStateChange::*;
+
+        let res = match &change {
+            NewUser(details) => self.handle_new_user(details),
+            UserNickChange(details) => self.handle_nick_change(details),
+            UserModeChange(details) => self.handle_umode_change(details),
+            UserQuit(details) => self.handle_user_quit(details),
+            BulkUserQuit(details) => self.handle_bulk_quit(details),
+            ChannelModeChange(details) => self.handle_cmode_change(details),
+            ChannelJoin(details) => self.handle_join(details),
+            ChannelPart(details) => self.handle_part(details),
+            ChannelPermissionChange(details) => self.handle_chan_perm_change(details),
+            NewMessage(details) => self.handle_new_message(details),
+            ServerQuit(details) => self.handle_server_quit(details),
+        };
         if let Err(e) = res
         {
-            error!("Error handling network event: {}", e);
+            log::error!("Error handling network state update {:?}: {}", change, e);
         }
     }
 
-    pub(super) fn post_handle_event(&mut self, event: &Event)
+    fn handle_new_user(&mut self, detail: &update::NewUser) -> HandleResult
     {
-        let res = dispatch_event!(event => {
-            NewUser => self.handle_new_user,
-            UserNickChange => nop,
-            UserQuit => nop,
-            NewUserMode => nop,
-            UserModeChange => self.handle_umode_change,
-            NewChannel => nop,
-            NewChannelMode => nop,
-            ChannelModeChange => self.handle_cmode_change,
-            ChannelPermissionChange => self.handle_chan_perm_change,
-            ChannelJoin => self.handle_join,
-            ChannelPart => nop,
-            NewMessage => self.handle_new_message,
-            NewServer => nop,
-            ServerPing => nop,
-            ServerQuit => nop,
-        }).flatten();
-        if let Err(e) = res
-        {
-            error!("Error handling network event: {}", e);
-        }
-    }
-
-    fn handle_new_user(&mut self, user_id: UserId, _event: &Event, detail: &NewUser) -> HandleResult
-    {
-        if let Ok(connection) = self.connections.get_user_mut(user_id)
+        let user = self.net.user(detail.user)?;
+        if let Ok(connection) = self.connections.get_user_mut(user.id())
         {
             connection.pre_client = None;
-            connection.user_id = Some(user_id);
+            connection.user_id = Some(user.id());
 
-            connection.send(&numeric::Numeric001::new_for(&self.name.to_string(), &detail.nickname, "test", &detail.nickname));
+            connection.send(&numeric::Numeric001::new_for(&self.name.to_string(), &user.nick(), "test", &user.nick()));
         }
         Ok(())
     }
 
-    fn pre_handle_nick_change(&mut self, user_id: UserId, _event: &Event, detail: &UserNickChange) -> HandleResult
+    fn handle_nick_change(&mut self, detail: &update::UserNickChange) -> HandleResult
     {
-        let source = self.net.user(user_id)?;
-        let message = message::Nick::new(&source, &detail.new_nick);
+        // This fires after the nick change is applied to the network state, so we 
+        // have to construct the n!u@h string explicitly
+        let source = self.net.user(detail.user)?;
+        let source_string = format!("{}!{}@{}", detail.old_nick, source.user(), source.visible_host());
+        let message = message::Nick::new(&source_string, &detail.new_nick);
         let mut notified = HashSet::new();
 
-        if let Ok(conn) = self.connections.get_user(user_id)
+        if let Ok(conn) = self.connections.get_user(detail.user)
         {
             notified.insert(conn.id());
             conn.send(&message);
@@ -101,28 +77,28 @@ impl Server
         Ok(())
     }
 
-    fn handle_umode_change(&mut self, umode_id: UModeId, _event: &Event, detail: &UserModeChange) -> HandleResult
+    fn handle_umode_change(&mut self, details: &update::UserModeChange) -> HandleResult
     {
-        let mode = self.net.user_mode(umode_id)?;
-        let user = mode.user()?;
-        let source = self.lookup_message_source(detail.changed_by)?;
+        let user = self.net.user(details.user_id)?;
+        let source = self.lookup_message_source(details.changed_by)?;
 
         if let Ok(conn) = self.connections.get_user(user.id())
         {
             conn.send(&message::Mode::new(source.as_ref(),
                                           &user,
-                                          &utils::format_umode_changes(&detail.added,&detail.removed)));
+                                          &utils::format_umode_changes(&details.added, &details.removed)));
         }
         Ok(())
     }
 
-    fn pre_handle_quit(&self, target: UserId, _event: &Event, detail: &UserQuit) -> HandleResult
+    fn handle_user_quit(&self, detail: &update::UserQuit) -> HandleResult
     {
-        let user = self.net.user(target)?;
+        let user: wrapper::User = ObjectWrapper::wrap(&self.net, &detail.user);
         let mut to_notify = HashSet::new();
 
-        for m1 in user.channels()
+        for m1 in &detail.memberships
         {
+            let m1: wrapper::Membership = ObjectWrapper::wrap(&self.net, m1);
             for m2 in m1.channel()?.members()
             {
                 to_notify.insert(m2.user_id());
@@ -139,9 +115,18 @@ impl Server
         Ok(())
     }
 
-    fn handle_cmode_change(&self, target: CModeId, _event: &Event, detail: &ChannelModeChange) -> HandleResult
+    fn handle_bulk_quit(&self, detail: &update::BulkUserQuit) -> HandleResult
     {
-        let mode = self.net.channel_mode(target)?;
+        for item in &detail.items
+        {
+            self.handle_user_quit(&item)?;
+        }
+        Ok(())
+    }
+
+    fn handle_cmode_change(&self, detail: &update::ChannelModeChange) -> HandleResult
+    {
+        let mode = self.net.channel_mode(detail.mode)?;
         let chan = mode.channel()?;
         let source = self.lookup_message_source(detail.changed_by)?;
 
@@ -158,9 +143,9 @@ impl Server
         Ok(())
     }
 
-    fn handle_chan_perm_change(&self, target: MembershipId, _event: &Event, detail: &ChannelPermissionChange) -> HandleResult
+    fn handle_chan_perm_change(&self, detail: &update::ChannelPermissionChange) -> HandleResult
     {
-        let membership = self.net.membership(target)?;
+        let membership = self.net.membership(detail.membership)?;
         let chan = membership.channel()?;
         let target = membership.user()?;
         let source = self.lookup_message_source(detail.changed_by)?;
@@ -182,10 +167,11 @@ impl Server
         Ok(())
     }
 
-    fn handle_join(&self, _target: MembershipId, _event: &Event, detail: &ChannelJoin) -> HandleResult
+    fn handle_join(&self, detail: &update::ChannelJoin) -> HandleResult
     {
-        let user = self.net.user(detail.user)?;
-        let channel = self.net.channel(detail.channel)?;
+        let membership = self.net.membership(detail.membership)?;
+        let user = membership.user()?;
+        let channel = membership.channel()?;
 
         for m in channel.members()
         {
@@ -195,10 +181,10 @@ impl Server
             }
         }
 
-        if let Ok(conn) = self.connections.get_user(detail.user) {
-            if ! detail.permissions.is_empty()
+        if let Ok(conn) = self.connections.get_user(user.id()) {
+            if ! membership.permissions().is_empty()
             {
-                let (mut changes, args) = utils::format_channel_perm_changes(&user, &detail.permissions, &ChannelPermissionSet::new());
+                let (mut changes, args) = utils::format_channel_perm_changes(&user, &membership.permissions(), &ChannelPermissionSet::new());
 
                 changes += " ";
                 changes += &args.join(" ");
@@ -213,11 +199,10 @@ impl Server
         Ok(())
     }
 
-    fn pre_handle_part(&self, target: MembershipId, _event: &Event, detail: &ChannelPart) -> HandleResult
+    fn handle_part(&self, detail: &update::ChannelPart) -> HandleResult
     {
-        let membership = self.net.membership(target)?;
-        let source = membership.user()?;
-        let channel = membership.channel()?;
+        let source = self.net.user(detail.membership.user)?;
+        let channel = self.net.channel(detail.membership.channel)?;
 
         for m in channel.members()
         {
@@ -229,71 +214,41 @@ impl Server
         Ok(())
     }
 
-    fn handle_new_message(&self, _target: MessageId, _event: &Event, detail: &NewMessage) -> HandleResult
+    fn handle_new_message(&self, detail: &update::NewMessage) -> HandleResult
     {
-        let source = self.net.user(detail.source)?;
+        let message = self.net.message(detail.message)?;
+        let source = message.source()?;
 
-        match detail.target {
-            ObjectId::Channel(channel_id) => {
-                let channel = self.net.channel(channel_id)?;
-
+        match message.target()? {
+            wrapper::MessageTarget::Channel(channel) => {
                 for m in channel.members() {
                     let member = m.user()?;
                     if member.id() == source.id() {
                         continue;
                     }
                     if let Ok(conn) = self.connections.get_user(member.id()) {
-                        conn.send(&message::Privmsg::new(&source, &channel, &detail.text));
+                        conn.send(&message::Privmsg::new(&source, &channel, message.text()));
                     }
                 }
                 Ok(())
             },
-            ObjectId::User(user_id) => {
-                let user = self.net.user(user_id)?;
-                if let Ok(conn) = self.connections.get_user(user_id) {
-                    conn.send(&message::Privmsg::new(&source, &user, &detail.text));
+            wrapper::MessageTarget::User(user) => {
+                if let Ok(conn) = self.connections.get_user(user.id()) {
+                    conn.send(&message::Privmsg::new(&source, &user, message.text()));
 
                 }
                 Ok(())
             },
-            _ => Err(HandlerError::InternalError(format!("Message to neither user nor channel: {:?}", detail.target)))
         }
     }
 
-    fn pre_handle_new_server(&self, target: ServerId, _event: &Event, detail: &NewServer) -> HandleResult
+    fn handle_server_quit(&self, detail: &update::ServerQuit) -> HandleResult
     {
-        if let Ok(existing) = self.net.server(target)
-        {
-            if existing.epoch() < detail.epoch
-            {
-                // If it already exists, but it's reintroducing itself with a new epoch,
-                // then it's restarted and all the existing state is gone, so notify clients
-                // of that
-                self.pre_handle_server_quit(target, _event, &details::ServerQuit{ introduced_by: existing.introduced_by() })?;
-            }
-        }
-        Ok(())
-    }
-
-    fn pre_handle_server_quit(&self, target: ServerId, _event: &Event, detail: &ServerQuit) -> HandleResult
-    {
-        let server = self.net.server(target)?;
-        if server.introduced_by() != detail.introduced_by
-        {
-            return Ok(());
-        }
-        if target == self.my_id
+        if detail.server.id == self.my_id
         {
             // The network thinks we're no longer alive. Shut down to avoid desyncs
             panic!("Network thinks we're dead. Making it so");
         }
-        let fake_quit_detail = UserQuit { message: "Server disconnected".to_string() };
-
-        for u in server.users()
-        {
-            self.pre_handle_quit(u.id(), _event, &fake_quit_detail)?;
-        }
-
         Ok(())
     }
 }

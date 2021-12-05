@@ -3,6 +3,7 @@ use quote::quote;
 use syn::{
     parse_macro_input,
     braced,
+    parenthesized,
     Token,
     Result,
     Ident,
@@ -12,12 +13,31 @@ use syn::{
 };
 use syn::parse::{Parse, ParseStream};
 
+struct ExtraArgList
+{
+    _paren: token::Paren,
+    args: Punctuated<Expr, Token![,]>
+}
+
 struct HandlerList
 {
     event_name: Ident,
+    extra_args: Option<ExtraArgList>,
     _arrow: Token![=>],
     _brace: token::Brace,
     handlers: Punctuated<Handler, Token![,]>
+}
+
+impl Parse for ExtraArgList
+{
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+
+        Ok(Self {
+            _paren: parenthesized!(content in input),
+            args: content.parse_terminated(Expr::parse)?
+        })
+    }
 }
 
 impl Parse for HandlerList
@@ -27,6 +47,11 @@ impl Parse for HandlerList
 
         Ok(Self {
             event_name: input.parse()?,
+            extra_args: if input.peek(token::Paren) {
+                    Some(input.parse()?)
+                } else {
+                    None
+                },
             _arrow: input.parse()?,
             _brace: braced!(content in input),
             handlers: content.parse_terminated(Handler::parse)?,
@@ -71,6 +96,13 @@ pub fn dispatch_event(input: TokenStream, is_async: bool) -> TokenStream
 
     let do_await = if is_async { Some(quote!(.await)) } else { None };
 
+    let extra_args = if let Some(extra) = handlers.extra_args {
+        let list = extra.args;
+        Some(quote!(, #list))
+    } else {
+        None
+    };
+
     for item in handlers.handlers
     {
         let handler = item.handler;
@@ -86,6 +118,7 @@ pub fn dispatch_event(input: TokenStream, is_async: bool) -> TokenStream
                                     id,
                                     #event_name,
                                     &detail
+                                    #extra_args
                                 ) #do_await)
                             },
                             Err(e) => Err(e)

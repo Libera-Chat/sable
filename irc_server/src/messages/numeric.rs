@@ -1,5 +1,10 @@
 use ircd_macros::define_messages;
-use irc_network::wrapper::*;
+use irc_network::wrapper::{
+    User,
+    Channel,
+    ChannelMode,
+    Server,
+};
 use irc_network::validated::*;
 use super::*;
 

@@ -6,8 +6,8 @@ command_handler!("NICK" => NickHandler {
 
     fn handle_preclient(&mut self, source: &RefCell<PreClient>, cmd: &ClientCommand) -> CommandResult
     {
-        let nick = Nickname::new(cmd.args[0].clone())?;
-        if self.server.network().user_by_nick(&nick).is_ok()
+        let nick = Nickname::from_str(&cmd.args[0])?;
+        if self.server.network().nick_binding(&nick).is_ok()
         {
             cmd.connection.send(&numeric::NicknameInUse::new_for(self.server, &*source.borrow(), &nick));
         }
@@ -25,12 +25,15 @@ command_handler!("NICK" => NickHandler {
 
     fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        let newnick = Nickname::new(cmd.args[0].clone())?;
-        let detail = details::UserNickChange{ new_nick: newnick };
+        let newnick = Nickname::from_str(&cmd.args[0])?;
+        let detail = details::BindNickname{ user: source.id() };
 
-        self.server.network().validate(source.id().into(), &detail.clone().into())?;
+        if let Ok(_) = self.server.network().nick_binding(&newnick)
+        {
+            return numeric_error!(NicknameInUse, &newnick);
+        }
 
-        self.action(CommandAction::state_change(source.id(), detail))?;
+        self.action(CommandAction::state_change(NicknameId::new(newnick), detail))?;
 
         Ok(())
     }

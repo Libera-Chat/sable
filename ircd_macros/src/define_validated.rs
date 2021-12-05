@@ -4,10 +4,13 @@ use proc_macro2;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
+    parenthesized,
     parse_macro_input,
     Result,
     Block,
+    Type,
     Ident,
+    token,
 };
 use syn::parse::{Parse, ParseStream};
 
@@ -19,6 +22,8 @@ struct ValidatedDefnList
 struct ValidatedDefn
 {
     name: Ident,
+    _paren: token::Paren,
+    utype: Type,
     body: Block,
 }
 
@@ -39,8 +44,12 @@ impl Parse for ValidatedDefn
 {
     fn parse(input: ParseStream) -> Result<Self>
     {
+        let content;
+
         Ok(Self {
             name: input.parse()?,
+            _paren: parenthesized!(content in input),
+            utype: content.parse()?,
             body: input.parse()?,
         })
     }
@@ -55,7 +64,7 @@ pub fn define_validated(input: TokenStream) -> TokenStream
     for def in input.items
     {
         let name = def.name;
-        let typename = quote!(String);
+        let typename = def.utype;
         let body = def.body;
 
         let error = Ident::new(&format!("Invalid{}Error", name), Span::call_site());
@@ -71,7 +80,7 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                 fn from(e: StringValidationError) -> Self { Self(e.0) }
             }
 
-            #[derive(Debug,Clone,PartialEq,serde::Serialize,serde::Deserialize)]
+            #[derive(Debug,Clone,Copy,PartialEq,Eq,Hash,PartialOrd,Ord,serde::Serialize,serde::Deserialize)]
             pub struct #name(#typename);
 
             impl #name
@@ -101,6 +110,23 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                 {
                     &self.0
                 }
+
+                fn from_str(arg: &str) -> Self::Result
+                {
+                    if let Ok(val) = <Self as Validated>::Underlying::try_from(arg)
+                    {
+                        Self::new(val)
+                    }
+                    else
+                    {
+                        Err(#error(arg.to_string()))
+                    }
+                }
+
+                fn convert(arg: impl std::string::ToString) -> Self::Result
+                {
+                    <Self as std::convert::TryFrom<String>>::try_from(arg.to_string())
+                }
             }
 
             impl std::convert::TryFrom<#typename> for #name
@@ -109,6 +135,31 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                 fn try_from(arg: #typename) -> Result<Self, Self::Error>
                 {
                     Self::new(arg)
+                }
+            }
+
+            impl std::convert::TryFrom<String> for #name
+            {
+                type Error = <Self as Validated>::Error;
+                fn try_from(arg: String) -> Result<Self, Self::Error>
+                {
+                    if let Ok(val) = <Self as Validated>::Underlying::try_from(arg.as_str())
+                    {
+                        Self::new(val)
+                    }
+                    else
+                    {
+                        Err(#error(arg))
+                    }
+                }
+            }
+
+            impl std::convert::TryFrom<&str> for #name
+            {
+                type Error = <Self as Validated>::Error;
+                fn try_from(arg: &str) -> Result<Self, Self::Error>
+                {
+                    Self::from_str(arg)
                 }
             }
 

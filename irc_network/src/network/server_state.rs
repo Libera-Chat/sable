@@ -1,14 +1,15 @@
 use super::*;
+use crate::update::*;
 
 impl Network
 {
-    pub(super) fn new_server(&mut self, target: ServerId, event: &Event, detail: &details::NewServer)
+    pub(super) fn new_server(&mut self, target: ServerId, event: &Event, detail: &details::NewServer, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(existing_epoch) = self.servers.get(&target).map(|s| s.epoch)
         {
             if existing_epoch != detail.epoch
             {
-                self.delete_server(target);
+                self.delete_server(target, updates);
             }
         }
 
@@ -23,7 +24,7 @@ impl Network
         self.servers.insert(target, server);
     }
 
-    pub(super) fn server_ping(&mut self, target: ServerId, _event: &Event, detail: &details::ServerPing)
+    pub(super) fn server_ping(&mut self, target: ServerId, _event: &Event, detail: &details::ServerPing, _updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(server) = self.servers.get_mut(&target)
         {
@@ -31,7 +32,7 @@ impl Network
         }
     }
 
-    pub(super) fn server_quit(&mut self, target: ServerId, _event: &Event, detail: &details::ServerQuit)
+    pub(super) fn server_quit(&mut self, target: ServerId, _event: &Event, detail: &details::ServerQuit, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(server) = self.servers.get(&target) {
             if server.introduced_by != detail.introduced_by
@@ -39,10 +40,10 @@ impl Network
                 return;
             }
         }
-        self.delete_server(target);
+        self.delete_server(target, updates);
     }
 
-    fn delete_server(&mut self, target: ServerId)
+    fn delete_server(&mut self, target: ServerId, updates: &dyn NetworkUpdateReceiver)
     {
         if self.servers.remove(&target).is_some()
         {
@@ -56,11 +57,19 @@ impl Network
                 users_to_remove.push(u);
             }
 
+            let mut quit_updates = Vec::new();
+
             for u in users_to_remove
             {
-                self.memberships.retain(|_,v| v.user != u);
-                self.users.remove(&u);
+                if let Some(update) = self.remove_user(u, "Server disconnecting".to_string())
+                {
+                    quit_updates.push(update);
+                }
             }
+
+            updates.notify(update::BulkUserQuit {
+                items: quit_updates
+            });
         }
     }
 }

@@ -6,10 +6,10 @@ pub trait DetailType : Into<EventDetails> {
     type Target: Into<ObjectId>;
 }
 
-#[derive(Clone,Debug,Serialize,Deserialize,PartialEq)]
+#[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct Event {
     pub id: EventId,
-    pub timestamp: i64,
+    pub timestamp: u64,
     pub clock: EventClock,
     pub target: ObjectId,
 

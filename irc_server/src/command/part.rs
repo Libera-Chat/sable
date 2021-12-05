@@ -5,7 +5,7 @@ command_handler!("PART" => PartHandler {
 
     fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        let chname = ChannelName::new(cmd.args[0].clone())?;
+        let chname = ChannelName::from_str(&cmd.args[0])?;
         let channel = self.server.network().channel_by_name(&chname)?;
         let msg = cmd.args.get(1).unwrap_or(&"".to_string()).clone();
 
