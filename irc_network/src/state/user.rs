@@ -10,7 +10,7 @@ use serde::{
 pub struct NickBinding {
     pub nick: Nickname,
     pub user: UserId,
-    pub timestamp: u64,
+    pub timestamp: i64,
     pub created: EventId,
 }
 
@@ -35,7 +35,7 @@ pub struct UserMode {
 
 impl NickBinding
 {
-    pub fn new(nick: Nickname, user: UserId, timestamp: u64, created: EventId) -> Self
+    pub fn new(nick: Nickname, user: UserId, timestamp: i64, created: EventId) -> Self
     {
         Self { nick: nick, user: user, timestamp: timestamp, created: created }
     }

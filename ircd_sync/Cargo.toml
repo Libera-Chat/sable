@@ -17,6 +17,7 @@ serde_json = "1"
 thiserror = "1"
 rustls = "0.20"
 rustls-pemfile = "0.2"
+chrono = "0.4"
 
 
 [dependencies.serde]

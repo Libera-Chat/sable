@@ -9,6 +9,7 @@ use tokio::sync::mpsc::{
     Sender,
 };
 use log;
+use chrono::prelude::*;
 
 #[derive(Debug)]
 pub struct EventLog {
@@ -76,7 +77,7 @@ impl EventLog {
     pub fn create(&self, target: impl Into<ObjectId>, details: impl Into<EventDetails>) -> Event {
         Event {
             id: self.id_gen.next(),
-            timestamp: 0,
+            timestamp: Utc::now().timestamp(),
             clock: self.last_event_clock.clone(),
             target: target.into(),
             details: details.into()

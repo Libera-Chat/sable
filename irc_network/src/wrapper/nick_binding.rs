@@ -18,7 +18,7 @@ impl NickBinding<'_>
         self.network.user(self.data.user)
     }
 
-    pub fn timestamp(&self) -> u64
+    pub fn timestamp(&self) -> i64
     {
         self.data.timestamp
     }
