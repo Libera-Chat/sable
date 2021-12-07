@@ -1,3 +1,5 @@
+//! This crate contains the code required to manage the ircd's event log and
+//! synchronise it with other servers.
 
 mod eventlog;
 mod network;

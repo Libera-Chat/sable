@@ -1,6 +1,9 @@
+//! Defines errors returned by the other modules
+
 use thiserror::Error;
 use crate::*;
 
+/// Types of error that can occur while looking up network objects
 #[derive(Error,Debug)]
 pub enum LookupError
 {
@@ -34,5 +37,6 @@ pub enum LookupError
     NoSuchConnectionId,
 }
 
+/// Convenience definition of a Result type used to look up network objects.
 pub type LookupResult<T> = std::result::Result<T, LookupError>;
 

@@ -83,13 +83,6 @@ impl Network {
 
     fn remove_channel(&mut self, id: ChannelId, _updates: &dyn NetworkUpdateReceiver)
     {
-/*
-        if let Some(removed_channel) = self.channels.remove(&id)
-        {
-            let update = ::ChannelDeleted(removed_channel);
-            updates.notify(update);
-        }
-*/
         self.channels.remove(&id);
     }
 }

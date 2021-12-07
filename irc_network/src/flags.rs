@@ -1,3 +1,5 @@
+//! Defines mode flag enumerations and sets
+
 use ircd_macros::mode_flags;
 
 mode_flags!(

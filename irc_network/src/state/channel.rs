@@ -6,6 +6,7 @@ use serde::{
     Deserialize
 };
 
+/// A channel
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Channel {
     pub id: ChannelId,
@@ -13,6 +14,7 @@ pub struct Channel {
     pub mode: CModeId,
 }
 
+/// A channel membership
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Membership {
     pub id: MembershipId,
@@ -21,6 +23,7 @@ pub struct Membership {
     pub permissions: ChannelPermissionSet,
 }
 
+/// A channel mode
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct ChannelMode {
     pub id: CModeId,

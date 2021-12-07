@@ -1,12 +1,14 @@
 use crate::*;
 use super::*;
 
+/// A wrapper around a [`state::User`]
 pub struct User<'a> {
     network: &'a Network,
     data: &'a state::User,
 }
 
 impl User<'_> {
+    /// Return this object's ID
     pub fn id(&self) -> UserId {
         self.data.id
     }
@@ -28,35 +30,43 @@ impl User<'_> {
         }
     }
     
+    /// Return the nickname binding currently active for this user
     pub fn nick_binding(&self) -> LookupResult<NickBinding> {
         self.network.nick_binding_for_user(self.data.id)
     }
 
+    /// The user's username
     pub fn user(&self) -> &Username {
         &self.data.user
     }
 
+    /// The user's visible hostname, for client protocol purposes
     pub fn visible_host(&self) -> &Hostname {
         &self.data.visible_host
     }
 
+    /// The user's realname
     pub fn realname(&self) -> &str {
         &self.data.realname
     }
 
+    /// The user's current modes
     pub fn mode(&self) -> LookupResult<UserMode> {
         self.network.user_mode(self.data.mode_id)
     }
 
+    /// The server through which the user is connected
     pub fn server(&self) -> LookupResult<Server> {
         self.network.server(self.data.server)
     }
 
+    /// Iterate over the user's channel memberships
     pub fn channels(&self) -> impl Iterator<Item=Membership> {
         let my_id = self.data.id;
         self.network.raw_memberships().filter(move|x| x.user == my_id).wrap(self.network)
     }
 
+    /// Test whether the user is in a given channel
     pub fn is_in_channel(&self, c: ChannelId) -> Option<Membership>
     {
         self.channels().filter(|m| m.channel_id() == c).next()

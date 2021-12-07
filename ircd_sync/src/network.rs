@@ -1,3 +1,5 @@
+//! Networking code for the sync protocol
+
 use super::*;
 use super::message::Message;
 

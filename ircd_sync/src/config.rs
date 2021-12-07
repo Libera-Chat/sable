@@ -1,3 +1,6 @@
+//! Contains definitions of the various configuration files and items required
+//! in order to run a network sync node
+
 use serde_json;
 use serde::Deserialize;
 use thiserror::Error;
@@ -16,6 +19,7 @@ use rustls::{
     PrivateKey,
 };
 
+/// Configuration of a peer in the gossip network
 #[derive(Clone,Debug,Deserialize)]
 pub struct PeerConfig
 {
@@ -23,6 +27,7 @@ pub struct PeerConfig
     pub(crate) address: SocketAddr,
 }
 
+/// Configuration of the gossip network
 #[derive(Debug,Deserialize)]
 pub struct NetworkConfig
 {
@@ -32,6 +37,7 @@ pub struct NetworkConfig
     pub(crate) ca_file: PathBuf,
 }
 
+/// Configuration for this server's node in the gossip network
 #[derive(Debug,Deserialize)]
 pub struct NodeConfig
 {
@@ -40,6 +46,7 @@ pub struct NodeConfig
     pub(crate) key_file: PathBuf,
 }
 
+/// Errors that could happen when loading or processing a config
 #[derive(Debug,Error)]
 pub enum ConfigError
 {
@@ -57,6 +64,7 @@ pub enum ConfigError
 
 impl NetworkConfig
 {
+    /// Load the network configuration from a given file path
     pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, ConfigError>
     {
         let file = File::open(filename)?;
@@ -64,6 +72,8 @@ impl NetworkConfig
         Ok(serde_json::from_reader(reader)?)
     }
 
+    /// Load and return the CA certificate for the network from the referenced
+    /// file path
     pub fn load_ca_cert(&self) -> Result<Certificate, ConfigError>
     {
         let ca_file = File::open(&self.ca_file)?;
@@ -78,6 +88,7 @@ impl NetworkConfig
 
 impl NodeConfig
 {
+    /// Load the node configuration from a given file path
     pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, ConfigError>
     {
         let file = File::open(filename)?;
@@ -85,6 +96,8 @@ impl NodeConfig
         Ok(serde_json::from_reader(reader)?)
     }
 
+    /// Load and return the client certificate and private key for this node
+    /// from the referenced file path
     pub fn load_cert_and_keys(&self) -> Result<(Vec<Certificate>, PrivateKey), ConfigError>
     {
         let cert_file = File::open(&self.cert_file)?;

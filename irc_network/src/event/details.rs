@@ -4,7 +4,10 @@ use ircd_macros::{event_details,target_type};
 
 pub struct WrongEventTypeError;
 
-event_details!(EventDetails => {
+event_details!(
+
+/// Defines the type and details of an [`Event`](event::Event).
+EventDetails => {
     #[target_type(NicknameId)]
     struct BindNickname {
         pub user: UserId,
@@ -42,7 +45,7 @@ event_details!(EventDetails => {
         pub name: ChannelName,
         pub mode: CModeId,
     }
-
+ 
     #[target_type(CModeId)]
     struct NewChannelMode {
         pub mode: ChannelModeSet,

@@ -1,3 +1,5 @@
+//! Contains types used by [`Network`](crate::Network) to notify callers of state changes
+
 use crate::state;
 use crate::validated::*;
 use crate::flags::*;

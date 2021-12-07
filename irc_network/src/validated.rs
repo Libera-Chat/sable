@@ -1,18 +1,33 @@
+//! Defines validated string types for various names and identifiers
+
 use ircd_macros::define_validated;
 use thiserror::Error;
 use arrayvec::ArrayString;
 use std::convert::{TryFrom,Into};
 
+/// Base trait for validated string types.
 pub trait Validated : TryFrom<Self::Underlying> + Into<Self::Underlying> + Sized
 {
     type Underlying;
     type Error;
     type Result;
 
+    /// Check whether the provided value is valid according to this type's
+    /// rules.
     fn validate(value: &Self::Underlying) -> Result<(), <Self as Validated>::Error>;
+
+    /// Attempt to create a new instance using the given value. Returns `Ok(_)`
+    /// if the value passes validation, and `Err(_)` if not.
     fn new(value: Self::Underlying) -> <Self as Validated>::Result;
+
+    /// Access the raw stored value
     fn value(&self) -> &Self::Underlying;
+
+    /// Attempt to convert from [&str] to the underlying type, then validate
+    /// the resulting value, and construct a new `Self` if it succeeds.
     fn from_str(value: &str) -> Self::Result;
+
+    /// Attempt to convert from anything that can be converted to a string.
     fn convert(arg: impl std::string::ToString) -> Self::Result;
 }
 
@@ -86,6 +101,8 @@ impl Nickname
 
 impl Username
 {
+    /// Coerce the provided value into a valid `Username`, by truncating to the
+    /// permitted length and removing any invalid characters.
     pub fn new_coerce(s: &str) -> Self
     {
         let mut s = s.to_string();

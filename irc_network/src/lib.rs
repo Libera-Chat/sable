@@ -1,3 +1,4 @@
+/// Defines the various state objects making up a network
 pub mod state {
     mod user;
     mod channel;
@@ -10,7 +11,10 @@ pub mod state {
     pub use server::*;
 }
 
+/// Defines wrapper objects which provide accessor methods and basic
+/// application logic for objects in [`state`]
 pub mod wrapper {
+
     mod wrapper;
     mod nick_binding;
     mod user;

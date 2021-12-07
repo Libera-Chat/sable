@@ -1,5 +1,6 @@
 use crate::*;
 
+/// A wrapper around a [`state::NickBinding`]
 pub struct NickBinding<'a>
 {
     network: &'a Network,
@@ -8,6 +9,7 @@ pub struct NickBinding<'a>
 
 impl NickBinding<'_>
 {
+    /// Return this object's ID
     pub fn nick(&self) -> Nickname
     {
         self.data.nick

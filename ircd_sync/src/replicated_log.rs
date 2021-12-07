@@ -1,3 +1,5 @@
+//! A replicated version of [`EventLog`]
+
 use super::*;
 use irc_network::event::*;
 use irc_network::id::*;
@@ -13,6 +15,10 @@ use tokio::{
     task::JoinHandle,
 };
 
+/// A replicated event log.
+/// 
+/// `ReplicatedEventLog` wraps [`EventLog`] and adds replication across a
+/// network of servers.
 pub struct ReplicatedEventLog
 {
     log: EventLog,
@@ -25,6 +31,21 @@ pub struct ReplicatedEventLog
 
 impl ReplicatedEventLog
 {
+    /// Create a new instance.
+    /// 
+    /// ## Arguments
+    /// 
+    /// - `idgen`: Event ID generator
+    /// - `server_send`: channel for [`ServerRpcMessage`]s to be processed
+    /// - `update_receiver`: channel for the log to receive [`EventLogUpdate`]
+    ///   messages
+    /// - `net_config`: global configuration for the gossip network
+    /// - `node_config`: configuration specific for this node in the network
+    /// 
+    /// New events will be notified via `server_send` as they become ready for
+    /// processing. Events to be emitted by this server should be sent via
+    /// `update_receiver` to be created, propagated, and notified back to the
+    /// server for processing.
     pub fn new(idgen: EventIdGenerator,
                server_send: Sender<ServerRpcMessage>,
                update_receiver: Receiver<EventLogUpdate>,
@@ -46,6 +67,13 @@ impl ReplicatedEventLog
         }
     }
 
+    /// Run and wait for the initial synchronisation to the network.
+    /// 
+    /// This will choose a peer from the provided network configuration,
+    /// request a copy of the current network state from that peer, send it
+    /// (via the `server_send` channel provided to the constructor) to be
+    /// imported, and update the log's event clock to the current value from
+    /// the imported state.
     pub async fn sync_to_network(&mut self)
     {
         let (send, mut recv) = channel(16);
@@ -76,6 +104,7 @@ impl ReplicatedEventLog
         tokio::spawn(async {})
     }
 
+    /// Run the main network synchronisation task.
     pub async fn sync_task(mut self)
     {
         self.net.spawn_listen_task().await;

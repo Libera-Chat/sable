@@ -6,6 +6,13 @@ use serde::{
     Deserialize
 };
 
+/// A nickname binding.
+/// 
+/// The binding denotes current ownership of a given nickname at a point in
+/// time. Although nicknames are the primary identifier for a user in the
+/// client protocol, the server protocol permits a user to exist detached from
+/// its nickname; in the case of nick collisions this is resolved by binding to
+/// a unique numeric nickname derived from the user ID.
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct NickBinding {
     pub nick: Nickname,
@@ -14,6 +21,10 @@ pub struct NickBinding {
     pub created: EventId,
 }
 
+/// A user.
+/// 
+/// Note that the user's nickname is not included here; that is stored in a
+/// separate [`NickBinding`] record.
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct User {
     pub id: UserId,
@@ -26,8 +37,9 @@ pub struct User {
     pub mode_id: UModeId,
 }
 
+/// A user mode. Changing modes does not need to update the user object, only
+/// the mode.
 #[derive(Debug,Clone,Serialize,Deserialize)]
-
 pub struct UserMode {
     pub id: UModeId,
     pub modes: UserModeSet,

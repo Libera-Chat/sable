@@ -1,3 +1,5 @@
+//! Defines the various object and event ID types
+
 use ircd_macros::object_ids;
 use thiserror::Error;
 use crate::validated::*;
@@ -19,6 +21,7 @@ object_ids!(ObjectId, {
     Message: sequential;
 
     Nickname: (Nickname,);
+    ChannelName: (ChannelName,);
 
     Membership: (UserId, ChannelId);
 });

@@ -88,7 +88,7 @@ impl Network {
         }
     }
 
-    pub fn do_bind_nickname(&mut self, target: NicknameId, user: UserId, prev_nick: Nickname, event: &Event, updates: &dyn NetworkUpdateReceiver)
+    fn do_bind_nickname(&mut self, target: NicknameId, user: UserId, prev_nick: Nickname, event: &Event, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(existing) = self.nick_bindings.remove(target.nick())
         {
@@ -167,9 +167,16 @@ impl Network {
         updates.notify(update);
     }
 
-    pub(super) fn validate_new_user(&self, _target: UserId, _user: &details::NewUser) -> ValidationResult
+    pub(super) fn validate_new_user(&self, _target: UserId, user: &details::NewUser) -> ValidationResult
     {
-        Ok(())
+        if self.nick_bindings.contains_key(&user.nickname)
+        {
+            Err(ValidationError::NickInUse(user.nickname))
+        }
+        else
+        {
+            Ok(())
+        }
     }
 
     pub(super) fn new_user_mode(&mut self, target: UModeId, _event: &Event, mode: &details::NewUserMode, _updates: &dyn NetworkUpdateReceiver)

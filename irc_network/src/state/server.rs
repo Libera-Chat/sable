@@ -5,6 +5,7 @@ use serde::{
     Deserialize
 };
 
+/// A server
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Server
 {

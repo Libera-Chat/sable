@@ -4,6 +4,7 @@ use serde::{
     Deserialize
 };
 
+/// A message
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Message
 {

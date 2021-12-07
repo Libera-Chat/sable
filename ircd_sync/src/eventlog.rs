@@ -1,3 +1,5 @@
+//! Contains the event log
+
 use irc_network::event::*;
 use irc_network::*;
 
@@ -11,6 +13,10 @@ use tokio::sync::mpsc::{
 use log;
 use chrono::prelude::*;
 
+/// An event log.
+/// 
+/// The event log contains the history of all events that have been seen and
+/// processed by the server.
 #[derive(Debug)]
 pub struct EventLog {
     history: BTreeMap<ServerId, BTreeMap<EventId, Event>>,
@@ -21,6 +27,9 @@ pub struct EventLog {
 }
 
 impl EventLog {
+    /// Construct a new `EventLog`. `event_sender`, if `Some`, will receive
+    /// notification of all new events as they are added to the log and become
+    /// ready for processing by the [`Network`](irc_network::Network).
     pub fn new(idgen: EventIdGenerator, event_sender: Option<Sender<Event>>) -> Self {
         Self{
             history: BTreeMap::new(),
@@ -31,10 +40,17 @@ impl EventLog {
         }
     }
 
+    /// Return a single event.
     pub fn get(&self, id: &EventId) -> Option<&Event> {
         self.history.get(&id.server()).and_then(|x| x.get(&id))
     }
 
+    /// Iterate over all events in the current log which do not precede the
+    /// given event clock.
+    /// 
+    /// When provided with the current event clock from a remote server, this
+    /// will produce a list of all events that this server knows about and the
+    /// remote one does not.
     pub fn get_since(&self, id: EventClock) -> impl Iterator<Item=&Event>
     {
         self.history.iter().flat_map(move |(server,list)| {
@@ -47,14 +63,30 @@ impl EventLog {
         })
     }
 
+    /// The log's current event clock
     pub fn clock(&self) -> &EventClock {
         &self.last_event_clock
     }
 
+    /// Set the clock for this log.
+    /// 
+    /// This should only be used when importing a serialized 
+    /// [Network](irc_network::Network) state, to sync the event log's view of
+    /// 'current' with that from the imported network state.
     pub fn set_clock(&mut self, new_clock: EventClock) {
         self.last_event_clock = new_clock;
     }
 
+    /// Add an event to the log.
+    /// 
+    /// - If the event ID already exists within the log, do nothing.
+    /// - If the event's dependencies (as denoted by the embedded event clock)
+    ///   are all already present in the log, then immediately add it to the
+    ///   log, update the log's event clock to reflect the newly added event,
+    ///   and notify the configured event channel of a new event.
+    /// - If the event's dependencies are not already satisfied, then hold the
+    ///   event in a pending queue until they are. Once the dependencies become
+    ///   satisfied, then it will be added and notified.
     pub fn add(&mut self, e: Event)
     {
         if self.get(&e.id).is_some()
@@ -74,6 +106,9 @@ impl EventLog {
         }
     }
 
+    /// Create an [`Event`] with the provided details. The resulting ID,
+    /// timestamp and dependency clock will be generated based on the current
+    /// state of the log.
     pub fn create(&self, target: impl Into<ObjectId>, details: impl Into<EventDetails>) -> Event {
         Event {
             id: self.id_gen.next(),
@@ -84,6 +119,7 @@ impl EventLog {
         }
     }
 
+    /// Update the epoch ID used when creating new event IDs
     pub fn set_epoch(&mut self, new_epoch: EpochId)
     {
         self.id_gen.set_epoch(new_epoch);

@@ -5,19 +5,32 @@ use serde::{Serialize,Deserialize};
 
 use crate::{EventId,ServerId};
 
+/// A vector clock defining, for each server, the most recent event from that
+/// server which has been processed.
+/// 
+/// This is primarily used in event dependency resolution - each server's event
+/// log maintains a clock of its current state, and each event contains a clock
+/// which reflects its origin server's clock when it was emitted. By comparing
+/// these, a server receiving a remote event can determine whether the incoming
+/// event can be applied immediately, or whether missing dependencies need to
+/// be requested.
 #[derive(Clone,Eq,PartialEq,Debug,Serialize,Deserialize)]
 pub struct EventClock (pub HashMap<ServerId, EventId>);
 
 impl EventClock {
+    /// Create a new empty clock.
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
+    /// Get the most recent event contained in this clock for the given
+    /// originating server.
     pub fn get(&self, server: ServerId) -> Option<EventId>
     {
         self.0.get(&server).map(|x| *x)
     }
 
+    /// Update this clock to reflect receipt of a given event ID.
     pub fn update_with_id(&mut self, id: EventId) {
         let s = id.server();
         // If we already have a value for this ServerId, and the value we already have is greater
@@ -37,6 +50,11 @@ impl EventClock {
         }
     }
 
+    /// Determine whether the given event ID has been processed.
+    /// 
+    /// Returns true if the server portion of the provided event ID is present
+    /// in the clock and the associated event ID is lexicographically greater
+    /// than or equal to that provided.
     pub fn contains(&self, id: EventId) -> bool
     {
         if let Some(local) = self.0.get(&id.server())
