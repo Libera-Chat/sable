@@ -14,6 +14,10 @@ use syn::{
 };
 //use syn::punctuated::Punctuated;
 use syn::parse::{Parse, ParseStream};
+use convert_case::{
+    Case,
+    Casing,
+};
 
 mod kw {
     syn::custom_keyword!(sequential);
@@ -189,7 +193,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 
             if arg_types.len() == 2 && arg_types[0] == serverid_type && arg_types[1] == epochid_type
             {
-                let generator_method_name = Ident::new(&format!("next_{}", &typename).to_ascii_lowercase(), Span::call_site());
+                let generator_method_name = Ident::new(&format!("next_{}", &typename).to_case(Case::Snake), Span::call_site());
                 let generator_field_name = Ident::new(&format!("{}_generator_field", &typename), Span::call_site());
 
                 generator_methods.push(quote!(

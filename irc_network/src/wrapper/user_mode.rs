@@ -9,7 +9,7 @@ pub struct UserMode<'a> {
 
 impl UserMode<'_> {
     /// Return this object's ID
-    pub fn id(&self) -> UModeId {
+    pub fn id(&self) -> UserModeId {
         self.data.id
     }
 

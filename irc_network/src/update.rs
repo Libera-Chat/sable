@@ -29,7 +29,7 @@ NetworkStateChange => {
     }
     struct UserModeChange {
         pub user_id: UserId,
-        pub mode_id: UModeId,
+        pub mode_id: UserModeId,
         pub added: UserModeSet,
         pub removed: UserModeSet,
         pub changed_by: ObjectId,
@@ -44,15 +44,21 @@ NetworkStateChange => {
     }
     struct ChannelModeChange {
         pub channel: ChannelId,
-        pub mode: CModeId,
+        pub mode: ChannelModeId,
         pub added: ChannelModeSet,
         pub removed: ChannelModeSet,
         pub changed_by: ObjectId,
     }
-    struct ChannelPermissionChange {
+    struct ChannelTopicChange {
+        pub topic: ChannelTopicId,
+        pub new_text: String,
+        pub setter: ObjectId,
+        pub timestamp: i64,
+    }
+    struct MembershipFlagChange {
         pub membership: MembershipId,
-        pub added: ChannelPermissionSet,
-        pub removed: ChannelPermissionSet,
+        pub added: MembershipFlagSet,
+        pub removed: MembershipFlagSet,
         pub changed_by: ObjectId,
     }
     struct ChannelJoin {

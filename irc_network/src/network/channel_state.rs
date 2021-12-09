@@ -10,13 +10,13 @@ impl Network {
         self.channels.insert(channel.id, channel);
     }
 
-    pub(super) fn new_channel_mode(&mut self, target: CModeId, _event: &Event, details: &details::NewChannelMode, _updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn new_channel_mode(&mut self, target: ChannelModeId, _event: &Event, details: &details::NewChannelMode, _updates: &dyn NetworkUpdateReceiver)
     {
         let cmode = state::ChannelMode::new(target, details.mode);
         self.channel_modes.insert(cmode.id, cmode);
     }
 
-    pub(super) fn channel_mode_change(&mut self, target: CModeId, _event: &Event, details: &details::ChannelModeChange, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn channel_mode_change(&mut self, target: ChannelModeId, _event: &Event, details: &details::ChannelModeChange, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(cmode) = self.channel_modes.get_mut(&target)
         {
@@ -36,14 +36,76 @@ impl Network {
         }
     }
 
-    pub(super) fn channel_permission_change(&mut self, target: MembershipId, _event: &Event, details: &details::ChannelPermissionChange, updates: &dyn NetworkUpdateReceiver)
+    fn translate_setter_info(&self, setter: ObjectId) -> String
+    {
+        match setter
+        {
+            ObjectId::User(user_id) =>
+            {
+                if let Ok(user) = self.user(user_id) {
+                    format!("{}!{}@{}", user.nick(), user.user(), user.visible_host())
+                } else {
+                    String::from("<unknown>")
+                }
+            }
+            ObjectId::Server(server_id) =>
+            {
+                if let Some(server) = self.servers.get(&server_id) {
+                    server.name.to_string()
+                } else {
+                    String::from("<unknown>")
+                }
+            }
+            _ => String::from("<unknown>")
+        }
+    }
+
+    pub(super) fn new_channel_topic(&mut self, target: ChannelTopicId, event: &Event, details: &details::NewChannelTopic, updates: &dyn NetworkUpdateReceiver)
+    {
+        if let Some(existing) = self.channel_topics.values().filter(|t| t.channel == details.channel).next()
+        {
+            // This is a conflict - we can't have two topics for one channel. Keep the newer, drop the older.
+            // As usual, use ID comparison as a tiebreaker if the timestamps are equal
+            if existing.timestamp > event.timestamp || (existing.timestamp == event.timestamp && existing.id < target)
+            {
+                // The existing one is newer and wins. Do nothing.
+                return;
+            }
+            // The new one wins. Drop the old before we process the new
+            let existing_id = existing.id;
+            self.channel_topics.remove(&existing_id);
+        }
+
+        // If there was an existing topic for this channel, there isn't any more. Carry on.
+
+        let update = update::ChannelTopicChange{
+            topic: target,
+            new_text: details.text.clone(),
+            setter: details.setter,
+            timestamp: event.timestamp,
+        };
+
+        let setter_info = self.translate_setter_info(details.setter);
+
+        let new_topic = state::ChannelTopic::new(
+            target,
+            details.channel,
+            details.text.clone(),
+            setter_info,
+            event.timestamp
+        );
+        self.channel_topics.insert(target, new_topic);
+        updates.notify(update);
+    }
+
+    pub(super) fn channel_permission_change(&mut self, target: MembershipId, _event: &Event, details: &details::MembershipFlagChange, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(membership) = self.memberships.get_mut(&target)
         {
             membership.permissions |= details.added;
             membership.permissions &= !details.removed;
 
-            updates.notify(update::ChannelPermissionChange {
+            updates.notify(update::MembershipFlagChange {
                 membership: target,
                 added: details.added,
                 removed: details.removed,
@@ -83,6 +145,14 @@ impl Network {
 
     fn remove_channel(&mut self, id: ChannelId, _updates: &dyn NetworkUpdateReceiver)
     {
-        self.channels.remove(&id);
+        if let Some(chan) = self.channels.remove(&id)
+        {
+            self.channel_modes.remove(&chan.mode);
+            if let Some(topic) = self.channel_topics.values().filter(|t| t.channel == chan.id).next()
+            {
+                let topic_id = topic.id;
+                self.channel_topics.remove(&topic_id);
+            }
+        }
     }
 }

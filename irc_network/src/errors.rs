@@ -12,15 +12,19 @@ pub enum LookupError
     #[error("No such user id {0:?}")]
     NoSuchUser(UserId),
     #[error("No such user mode id {0:?}")]
-    NoSuchUserMode(UModeId),
+    NoSuchUserMode(UserModeId),
     #[error("No user with mode id {0:?}")]
-    NoUserForMode(UModeId),
+    NoUserForMode(UserModeId),
     #[error("No such channel id {0:?}")]
     NoSuchChannel(ChannelId),
     #[error("No such channel mode id {0:?}")]
-    NoSuchChannelMode(CModeId),
+    NoSuchChannelMode(ChannelModeId),
     #[error("No channel with mode id {0:?}")]
-    NoChannelForMode(CModeId),
+    NoChannelForMode(ChannelModeId),
+    #[error("No such channel topic id {0:?}")]
+    NoSuchChannelTopic(ChannelTopicId),
+    #[error("No topic for channel id {0:?}")]
+    NoTopicForChannel(ChannelId),
     #[error("No such membership id {0:?}")]
     NoSuchMembership(MembershipId),
     #[error("No such server {0:?}")]

@@ -11,7 +11,7 @@ use serde::{
 pub struct Channel {
     pub id: ChannelId,
     pub name: ChannelName,
-    pub mode: CModeId,
+    pub mode: ChannelModeId,
 }
 
 /// A channel membership
@@ -20,32 +20,48 @@ pub struct Membership {
     pub id: MembershipId,
     pub channel: ChannelId,
     pub user: UserId,
-    pub permissions: ChannelPermissionSet,
+    pub permissions: MembershipFlagSet,
 }
 
 /// A channel mode
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct ChannelMode {
-    pub id: CModeId,
+    pub id: ChannelModeId,
     pub modes: ChannelModeSet,
 }
 
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct ChannelTopic {
+    pub id: ChannelTopicId,
+    pub channel: ChannelId,
+    pub text: String,
+    pub setter_info: String,
+    pub timestamp: i64,
+}
+
 impl Channel {
-    pub fn new(id: ChannelId, name: &ChannelName, mode: CModeId) -> Self
+    pub fn new(id: ChannelId, name: &ChannelName, mode: ChannelModeId) -> Self
     {
         Channel{ id: id, name: name.clone(), mode: mode }
     }
 }
 
 impl ChannelMode {
-    pub fn new(id: CModeId, modes: ChannelModeSet) -> Self
+    pub fn new(id: ChannelModeId, modes: ChannelModeSet) -> Self
     {
         ChannelMode{ id: id, modes: modes }
     }
 }
 
+impl ChannelTopic {
+    pub fn new(id: ChannelTopicId, channel: ChannelId, text: String, setter_info: String, timestamp: i64) -> ChannelTopic
+    {
+        ChannelTopic { id: id, channel: channel, text: text, setter_info: setter_info, timestamp: timestamp }
+    }
+}
+
 impl Membership {
-    pub fn new(id: MembershipId, user: UserId, channel: ChannelId, perms: ChannelPermissionSet) -> Membership 
+    pub fn new(id: MembershipId, user: UserId, channel: ChannelId, perms: MembershipFlagSet) -> Membership 
     {
         Membership{ id: id, user: user, channel: channel, permissions: perms }
     }

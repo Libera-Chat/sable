@@ -35,7 +35,7 @@ impl Membership<'_> {
     }
 
     /// Permission flags currently assigned to this user in this channel
-    pub fn permissions(&self) -> ChannelPermissionSet {
+    pub fn permissions(&self) -> MembershipFlagSet {
         self.data.permissions
     }
 }

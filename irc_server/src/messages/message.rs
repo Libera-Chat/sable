@@ -10,6 +10,7 @@ define_messages! {
     Join    => { (source, chan: &Channel.name())            => ":{source} JOIN {chan}" },
     Part    => { (source, chan: &Channel.name(), msg: &str) => ":{source} PART {chan} :{msg}" },
     Quit    => { (source, message: &str)                    => ":{source} QUIT :{message}" },
+    Topic   => { (source, chan: &Channel.name(), text: &str)=> ":{source} TOPIC {chan} :{text}" },
 
     Mode    => { (source, target, changes: &str)            => ":{source} MODE {target} {changes}" },
 

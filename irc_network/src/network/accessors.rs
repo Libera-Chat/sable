@@ -59,7 +59,7 @@ impl Network {
     }
 
     /// Look up a user mode object by ID
-    pub fn user_mode(&self, id: UModeId) -> LookupResult<wrapper::UserMode>
+    pub fn user_mode(&self, id: UserModeId) -> LookupResult<wrapper::UserMode>
     {
         self.user_modes.get(&id).ok_or(NoSuchUserMode(id)).wrap(self)
     }
@@ -86,9 +86,21 @@ impl Network {
     }
 
     /// Look up a channel mode by ID.
-    pub fn channel_mode(&self, id: CModeId) -> LookupResult<wrapper::ChannelMode>
+    pub fn channel_mode(&self, id: ChannelModeId) -> LookupResult<wrapper::ChannelMode>
     {
         self.channel_modes.get(&id).ok_or(NoSuchChannelMode(id)).wrap(self)
+    }
+
+    /// Look up a channel topic by ID.
+    pub fn channel_topic(&self, id: ChannelTopicId) -> LookupResult<wrapper::ChannelTopic>
+    {
+        self.channel_topics.get(&id).ok_or(NoSuchChannelTopic(id)).wrap(self)
+    }
+
+    /// Find the topic associated with a given channel, if any.
+    pub fn topic_for_channel(&self, id: ChannelId) -> LookupResult<wrapper::ChannelTopic>
+    {
+        self.channel_topics.values().filter(|t| t.channel == id).next().ok_or(NoTopicForChannel(id)).wrap(self)
     }
 
     /// Look up a membership by ID.

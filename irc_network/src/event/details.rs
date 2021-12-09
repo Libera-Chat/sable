@@ -19,7 +19,7 @@ EventDetails => {
         pub username: Username,
         pub visible_hostname: Hostname,
         pub realname: String,
-        pub mode_id: UModeId,
+        pub mode_id: UserModeId,
         pub server: ServerId,
     }
 
@@ -28,12 +28,12 @@ EventDetails => {
         pub message: String,
     }
 
-    #[target_type(UModeId)]
+    #[target_type(UserModeId)]
     struct NewUserMode {
         pub mode: UserModeSet,
     }
 
-    #[target_type(UModeId)]
+    #[target_type(UserModeId)]
     struct UserModeChange {
         pub changed_by: ObjectId,
         pub added: UserModeSet,
@@ -43,33 +43,40 @@ EventDetails => {
     #[target_type(ChannelId)]
     struct NewChannel {
         pub name: ChannelName,
-        pub mode: CModeId,
+        pub mode: ChannelModeId,
     }
  
-    #[target_type(CModeId)]
+    #[target_type(ChannelModeId)]
     struct NewChannelMode {
         pub mode: ChannelModeSet,
     }
 
-    #[target_type(CModeId)]
+    #[target_type(ChannelModeId)]
     struct ChannelModeChange {
         pub changed_by: ObjectId,
         pub added: ChannelModeSet,
         pub removed: ChannelModeSet
     }
 
+    #[target_type(ChannelTopicId)]
+    struct NewChannelTopic {
+        pub channel: ChannelId,
+        pub text: String,
+        pub setter: ObjectId,
+    }
+
     #[target_type(MembershipId)]
     struct ChannelJoin {
         pub channel: ChannelId,
         pub user: UserId,
-        pub permissions: ChannelPermissionSet,
+        pub permissions: MembershipFlagSet,
     }
 
     #[target_type(MembershipId)]
-    struct ChannelPermissionChange {
+    struct MembershipFlagChange {
         pub changed_by: ObjectId,
-        pub added: ChannelPermissionSet,
-        pub removed: ChannelPermissionSet,
+        pub added: MembershipFlagSet,
+        pub removed: MembershipFlagSet,
     }
 
     #[target_type(MembershipId)]

@@ -15,9 +15,10 @@ object_ids!(ObjectId, {
     Epoch: (LocalId,);
     Event: sequential;
     User: sequential;
-    UMode: sequential;
+    UserMode: sequential;
     Channel: sequential;
-    CMode: sequential;
+    ChannelMode: sequential;
+    ChannelTopic: sequential;
     Message: sequential;
 
     Nickname: (Nickname,);

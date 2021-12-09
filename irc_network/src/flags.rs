@@ -11,7 +11,7 @@ mode_flags!(
 );
 
 mode_flags!(
-    ChannelPermission {
+    MembershipFlag {
         Op      (0x01, 'o', '@'),
         Voice   (0x02, 'v', '+'),
     }

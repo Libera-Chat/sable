@@ -179,13 +179,13 @@ impl Network {
         }
     }
 
-    pub(super) fn new_user_mode(&mut self, target: UModeId, _event: &Event, mode: &details::NewUserMode, _updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn new_user_mode(&mut self, target: UserModeId, _event: &Event, mode: &details::NewUserMode, _updates: &dyn NetworkUpdateReceiver)
     {
         let mode = state::UserMode::new(target, mode.mode);
         self.user_modes.insert(target, mode);
     }
 
-    pub(super) fn user_mode_change(&mut self, target: UModeId, _event: &Event, mode: &details::UserModeChange, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn user_mode_change(&mut self, target: UserModeId, _event: &Event, mode: &details::UserModeChange, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(umode) = self.user_modes.get_mut(&target)
         {

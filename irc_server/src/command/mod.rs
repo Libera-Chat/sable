@@ -96,3 +96,4 @@ mod ping;
 mod names;
 mod who;
 mod whois;
+mod topic;

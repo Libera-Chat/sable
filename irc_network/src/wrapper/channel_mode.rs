@@ -9,7 +9,7 @@ pub struct ChannelMode<'a> {
 
 impl ChannelMode<'_> {
     /// Return this object's ID
-    pub fn id(&self) -> CModeId {
+    pub fn id(&self) -> ChannelModeId {
         self.data.id
     }
 

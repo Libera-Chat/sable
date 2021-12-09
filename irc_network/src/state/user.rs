@@ -34,14 +34,14 @@ pub struct User {
     pub visible_host: Hostname,
     pub realname: String,
 
-    pub mode_id: UModeId,
+    pub mode_id: UserModeId,
 }
 
 /// A user mode. Changing modes does not need to update the user object, only
 /// the mode.
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct UserMode {
-    pub id: UModeId,
+    pub id: UserModeId,
     pub modes: UserModeSet,
 }
 
@@ -56,7 +56,7 @@ impl NickBinding
 impl User {
     pub fn new(id: UserId, server: ServerId,
                user: &Username, visible_host: &Hostname,
-               realname: &str, mode_id: UModeId) -> Self
+               realname: &str, mode_id: UserModeId) -> Self
     {
         Self {
             id: id,
@@ -70,7 +70,7 @@ impl User {
 }
 
 impl UserMode {
-    pub fn new(id: UModeId, mode: UserModeSet) -> Self
+    pub fn new(id: UserModeId, mode: UserModeSet) -> Self
     {
         Self {
             id: id,

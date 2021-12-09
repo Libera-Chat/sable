@@ -45,13 +45,13 @@ command_handler!("MODE" => ModeHandler {
                                     _ => {}
                                 }
                             }
-                            else if let Some(flag) = ChannelPermissionSet::flag_for(c)
+                            else if let Some(flag) = MembershipFlagSet::flag_for(c)
                             {
                                 let target = self.server.network().user_by_nick(&Nickname::from_str(&next_arg()?)?)?;
                                 let membership = target.is_in_channel(chan.id())
                                                        .ok_or(make_numeric!(UserNotOnChannel, &target, &chan))?;
-                                let mut perm_added = ChannelPermissionSet::new();
-                                let mut perm_removed = ChannelPermissionSet::new();
+                                let mut perm_added = MembershipFlagSet::new();
+                                let mut perm_removed = MembershipFlagSet::new();
 
                                 match dir {
                                     Direction::Add => {
@@ -65,7 +65,7 @@ command_handler!("MODE" => ModeHandler {
                                     _ => {}
                                 }
 
-                                let detail = event::ChannelPermissionChange {
+                                let detail = event::MembershipFlagChange {
                                     changed_by: source.id().into(),
                                     added: perm_added,
                                     removed: perm_removed,

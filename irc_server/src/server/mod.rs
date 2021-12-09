@@ -104,14 +104,19 @@ impl Server
         self.id_generator.next_channel()
     }
 
-    pub fn next_cmode_id(&self) -> CModeId
+    pub fn next_channel_mode_id(&self) -> ChannelModeId
     {
-        self.id_generator.next_cmode()
+        self.id_generator.next_channel_mode()
     }
 
     pub fn next_message_id(&self) -> MessageId
     {
         self.id_generator.next_message()
+    }
+
+    pub fn next_topic_id(&self) -> ChannelTopicId
+    {
+        self.id_generator.next_channel_topic()
     }
 
     pub fn network(&self) -> &Network

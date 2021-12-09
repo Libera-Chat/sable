@@ -21,6 +21,7 @@ pub mod wrapper {
     mod user_mode;
     mod channel;
     mod channel_mode;
+    mod channel_topic;
     mod membership;
     mod server;
     mod message;
@@ -36,6 +37,7 @@ pub mod wrapper {
     pub use user_mode::UserMode;
     pub use channel::Channel;
     pub use channel_mode::ChannelMode;
+    pub use channel_topic::ChannelTopic;
     pub use membership::Membership;
     pub use server::Server;
     pub use message::Message;

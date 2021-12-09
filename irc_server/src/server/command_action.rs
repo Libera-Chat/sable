@@ -16,7 +16,7 @@ impl Server
                         // if someone else takes the nickname in between
                         let pre_client = pre_client_rc.borrow();
                         let new_user_id = self.id_generator.next_user();
-                        let new_user_mode_id = self.id_generator.next_umode();
+                        let new_user_mode_id = self.id_generator.next_user_mode();
 
                         let details = event::details::NewUserMode {
                             mode: UserModeSet::new()

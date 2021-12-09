@@ -17,10 +17,11 @@ impl Server
             UserModeChange(details) => self.handle_umode_change(details),
             UserQuit(details) => self.handle_user_quit(details),
             BulkUserQuit(details) => self.handle_bulk_quit(details),
-            ChannelModeChange(details) => self.handle_cmode_change(details),
+            ChannelModeChange(details) => self.handle_channel_mode_change(details),
+            ChannelTopicChange(details) => self.handle_channel_topic(details),
             ChannelJoin(details) => self.handle_join(details),
             ChannelPart(details) => self.handle_part(details),
-            ChannelPermissionChange(details) => self.handle_chan_perm_change(details),
+            MembershipFlagChange(details) => self.handle_chan_perm_change(details),
             NewMessage(details) => self.handle_new_message(details),
             ServerQuit(details) => self.handle_server_quit(details),
         };
@@ -124,7 +125,7 @@ impl Server
         Ok(())
     }
 
-    fn handle_cmode_change(&self, detail: &update::ChannelModeChange) -> HandleResult
+    fn handle_channel_mode_change(&self, detail: &update::ChannelModeChange) -> HandleResult
     {
         let mode = self.net.channel_mode(detail.mode)?;
         let chan = mode.channel()?;
@@ -143,7 +144,25 @@ impl Server
         Ok(())
     }
 
-    fn handle_chan_perm_change(&self, detail: &update::ChannelPermissionChange) -> HandleResult
+    fn handle_channel_topic(&self, detail: &update::ChannelTopicChange) -> HandleResult
+    {
+        let topic = self.net.channel_topic(detail.topic)?;
+        let chan = topic.channel()?;
+
+        let source = self.lookup_message_source(detail.setter)?;
+        let msg = message::Topic::new(source.as_ref(), &chan, &detail.new_text);
+
+        for m in chan.members()
+        {
+            let member = m.user()?;
+            if let Ok(conn) = self.connections.get_user(member.id()) {
+                conn.send(&msg);
+            }
+        }
+        Ok(())
+    }
+
+    fn handle_chan_perm_change(&self, detail: &update::MembershipFlagChange) -> HandleResult
     {
         let membership = self.net.membership(detail.membership)?;
         let chan = membership.channel()?;
@@ -184,13 +203,21 @@ impl Server
         if let Ok(conn) = self.connections.get_user(user.id()) {
             if ! membership.permissions().is_empty()
             {
-                let (mut changes, args) = utils::format_channel_perm_changes(&user, &membership.permissions(), &ChannelPermissionSet::new());
+                let (mut changes, args) = utils::format_channel_perm_changes(&user, &membership.permissions(), &MembershipFlagSet::new());
 
                 changes += " ";
                 changes += &args.join(" ");
 
                 let msg = message::Mode::new(self, &channel, &changes);
                 conn.send(&msg);
+            }
+
+            if let Ok(topic) = self.net.topic_for_channel(channel.id())
+            {
+                conn.send(&numeric::TopicIs::new(&channel, topic.text())
+                          .format_for(self, &user));
+                conn.send(&numeric::TopicSetBy::new(&channel, topic.setter(), topic.timestamp())
+                          .format_for(self, &user));
             }
 
             crate::utils::send_channel_names(self, conn, &channel)?;

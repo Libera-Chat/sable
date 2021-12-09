@@ -18,7 +18,7 @@ pub fn format_cmode_changes(added: &ChannelModeSet, removed: &ChannelModeSet) ->
     changes
 }
 
-pub fn format_channel_perm_changes(target: &User, added: &ChannelPermissionSet, removed: &ChannelPermissionSet) -> (String, Vec<String>)
+pub fn format_channel_perm_changes(target: &User, added: &MembershipFlagSet, removed: &MembershipFlagSet) -> (String, Vec<String>)
 {
     let mut changes = String::new();
     let mut args = Vec::new();
@@ -28,7 +28,7 @@ pub fn format_channel_perm_changes(target: &User, added: &ChannelPermissionSet, 
     if ! added.is_empty()
     {
         changes += "+";
-        for (flag,modechar,_) in ChannelPermissionSet::all()
+        for (flag,modechar,_) in MembershipFlagSet::all()
         {
             if added.is_set(flag) {
                 changes += &modechar.to_string();
@@ -39,7 +39,7 @@ pub fn format_channel_perm_changes(target: &User, added: &ChannelPermissionSet, 
     if ! removed.is_empty()
     {
         changes += "-";
-        for (flag,modechar,_) in ChannelPermissionSet::all()
+        for (flag,modechar,_) in MembershipFlagSet::all()
         {
             if removed.is_set(flag) {
                 changes += &modechar.to_string();

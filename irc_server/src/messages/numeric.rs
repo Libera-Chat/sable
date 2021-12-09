@@ -22,6 +22,12 @@ define_messages! {
 
     324(ChannelModeIs)          => { (chan: &Channel.name(), modes: &ChannelMode.format())
                                                                 => "{chan} {modes}" },
+    331(NoTopic)                => { (chan: &Channel.name())    => "{chan} :No topic is set"},
+    332(TopicIs)                => { (chan: &Channel.name(), text: &str)
+                                                                => "{chan} :{text}" },
+    333(TopicSetBy)             => { (chan: &Channel.name(), info: &str, timestamp: i64)
+                                                                => "{chan} {info} {timestamp}" },
+
     352(WhoReply)               => { (chname: &str, user: &Username, host: &Hostname, server: &Server.name(),
                                       nick: &Nickname, status: &str, hopcount: usize, realname: &str)
                                                 => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },

@@ -77,7 +77,7 @@ clients to be notified.
         pub username: Username,
         pub visible_hostname: Hostname,
         pub realname: String,
-        pub mode_id: UModeId,
+        pub mode_id: UserModeId,
         pub server: ServerId,
     }
 
