@@ -28,7 +28,7 @@ impl WhoHandler<'_>
     {
         let chname = channel.map(|c| c.name()).unwrap_or("*");
         let status = format!("H{}", membership.map(|m| m.permissions().to_prefixes()).unwrap_or("".to_string()));
-        make_numeric!(WhoReply, chname, target.user(), target.visible_host(), server, &target.nick(), &status, 0, target.realname())
+        make_numeric!(WhoReply, chname, target, server, &status, 0)
     }
 
     fn do_who_channel(&mut self, source: &wrapper::User, chan: wrapper::Channel, cmd: &ClientCommand) -> CommandResult

@@ -28,6 +28,7 @@ enum MessageArg
     Source(kw::source),
     Target(kw::target),
     Arg(MessageArgDefn),
+    RefArg(MessageReferenceArg),
 }
 
 struct MessageArgDefn
@@ -37,6 +38,13 @@ struct MessageArgDefn
     typename: Type,
     _dot: Option<Token![.]>,
     expr: Option<Expr>
+}
+
+struct MessageReferenceArg
+{
+    name: Ident,
+    _equal: Token![=],
+    expr: Expr,
 }
 
 struct MessageDefn
@@ -62,14 +70,17 @@ impl Parse for MessageArg
 {
     fn parse(input: ParseStream) -> Result<Self>
     {
-        let lookahead = input.lookahead1();
-        if lookahead.peek(kw::source)
+        if input.peek(kw::source)
         {
             Ok(Self::Source(input.parse()?))
         }
-        else if lookahead.peek(kw::target)
+        else if input.peek(kw::target)
         {
             Ok(Self::Target(input.parse()?))
+        }
+        else if input.peek2(Token![=])
+        {
+            Ok(Self::RefArg(input.parse()?))
         }
         else
         {
@@ -89,6 +100,18 @@ impl Parse for MessageArgDefn
         let expr = if _dot.is_some() { Some(input.parse::<Expr>()?) } else { None };
 
         Ok(Self { name: name, _colon: _colon, typename: typename, _dot: _dot, expr: expr })
+    }
+}
+
+impl Parse for MessageReferenceArg
+{
+    fn parse(input: ParseStream) -> Result<Self>
+    {
+        Ok(Self {
+            name: input.parse()?,
+            _equal: input.parse()?,
+            expr: input.parse()?,
+        })
     }
 }
 
@@ -186,6 +209,11 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
                         quote!(#fval_name)
                     };
                     format_values.push(fval_val);
+                },
+                MessageArg::RefArg(arg) => {
+                    format_args.push(arg.name.clone());
+                    let expr = &arg.expr;
+                    format_values.push(quote!(#expr));
                 }
             }
         }
@@ -274,8 +302,6 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
             ));
         }
     }
-
-    //panic!("{}", out);
 
     out.into()
 }

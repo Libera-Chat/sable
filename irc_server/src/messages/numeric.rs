@@ -11,10 +11,10 @@ use super::*;
 define_messages! {
     001(Welcome)    => { (network_name: &str, nick: &Nickname) => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
 
-    311(WhoisUser)              => { (nick: &User.nick(), user: &User.user(), host: &User.visible_host(), realname: &User.realname())
+    311(WhoisUser)              => { (nick: &User.nick(), user=nick.user(), host=nick.visible_host(), realname=nick.realname())
                                                                 => "{nick} {user} {host} * :{realname}" },
-    312(WhoisServer)            => { (nick: &User.nick(), servername: &Server.name(), info: &Server.id())
-                                                                => "{nick} {servername} :{info:?}"},
+    312(WhoisServer)            => { (nick: &User.nick(), server: &Server.name(), info=server.id())
+                                                                => "{nick} {server} :{info:?}"},
     315(EndOfWho)               => { (arg: &str)                => "{arg} :End of /WHO list" },
     318(EndOfWhois)             => { (user: &User.nick())       => "{user} :End of /WHOIS" },
     319(WhoisChannels)          => { (user: &User.nick(), chanlist: &str)
@@ -28,8 +28,8 @@ define_messages! {
     333(TopicSetBy)             => { (chan: &Channel.name(), info: &str, timestamp: i64)
                                                                 => "{chan} {info} {timestamp}" },
 
-    352(WhoReply)               => { (chname: &str, user: &Username, host: &Hostname, server: &Server.name(),
-                                      nick: &Nickname, status: &str, hopcount: usize, realname: &str)
+    352(WhoReply)               => { (chname: &str, user: &User.user(), host=user.visible_host(), server: &Server.name(),
+                                      nick=user.nick(), status: &str, hopcount: usize, realname=&user.realname())
                                                 => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },
     353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)
                                                                 => "{is_pub} {chan} :{content}" },

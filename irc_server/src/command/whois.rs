@@ -8,9 +8,8 @@ command_handler!("WHOIS" => WhoisHandler {
         let target_nick = Nickname::from_str(&cmd.args[0])?;
         let target = self.server.network().user_by_nick(&target_nick)?;
 
-        cmd.connection.send(&make_numeric!(WhoisUser, &target, &target, &target, &target)
-                                .format_for(self.server, source));
-        cmd.connection.send(&make_numeric!(WhoisServer, &target, &target.server()?, &target.server()?)
+        cmd.connection.send(&make_numeric!(WhoisUser, &target).format_for(self.server, source));
+        cmd.connection.send(&make_numeric!(WhoisServer, &target, &target.server()?)
                                 .format_for(self.server, source));
         cmd.connection.send(&make_numeric!(EndOfWhois, &target)
                                 .format_for(self.server, source));
