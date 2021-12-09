@@ -230,12 +230,20 @@ impl Server
     {
         let source = self.net.user(detail.membership.user)?;
         let channel = self.net.channel(detail.membership.channel)?;
+        let message = message::Part::new(&source, &channel, &detail.message);
+
+        // This gets called after the part is applied to the network state,
+        // so the user themselves needs to be notified separately
+        if let Ok(conn) = self.connections.get_user(source.id())
+        {
+            conn.send(&message);
+        }
 
         for m in channel.members()
         {
             if let Ok(conn) = self.connections.get_user(m.user()?.id())
             {
-                conn.send(&message::Part::new(&source, &channel, &detail.message));
+                conn.send(&message);
             }
         }
         Ok(())
