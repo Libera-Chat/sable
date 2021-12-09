@@ -8,6 +8,8 @@ pub trait ChannelPolicyService
     fn can_see_user_on_channel(&self, user: &User, member: &Membership) -> PermissionResult;
 
     fn can_change_mode(&self, user: &User, channel: &Channel, mode: ChannelModeFlag) -> PermissionResult;
+    fn can_set_topic(&self, user: &User, channel: &Channel, topic: &str) -> PermissionResult;
+
     fn can_grant_permission(&self, user: &User, channel: &Channel, target: &User, flag: MembershipFlagFlag) -> PermissionResult;
     fn can_remove_permission(&self, user: &User, channel: &Channel, target: &User, flag: MembershipFlagFlag) -> PermissionResult;
 }
@@ -61,6 +63,18 @@ impl ChannelPolicyService for StandardPolicyService
     fn can_change_mode(&self, user: &User, channel: &Channel, _mode: ChannelModeFlag) -> PermissionResult
     {
         is_channel_operator(user, channel)
+    }
+
+    fn can_set_topic(&self, user: &User, channel: &Channel, _topic: &str) -> PermissionResult
+    {
+        if channel.mode()?.has_mode(ChannelModeFlag::TopicLock)
+        {
+            is_channel_operator(user, channel)
+        }
+        else
+        {
+            Ok(())
+        }
     }
 
     fn can_grant_permission(&self, user: &User, channel: &Channel, _target: &User, _flag: MembershipFlagFlag) -> PermissionResult

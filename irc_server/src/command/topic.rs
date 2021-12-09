@@ -12,6 +12,8 @@ command_handler!("TOPIC" => TopicHandler {
         {
             let text = cmd.args[1].clone();
 
+            self.server.policy().can_set_topic(source, &channel, &text)?;
+
             let details = event::details::NewChannelTopic {
                 channel: channel.id(),
                 text: text,
