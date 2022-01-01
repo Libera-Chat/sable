@@ -3,6 +3,7 @@
 use ircd_macros::object_ids;
 use thiserror::Error;
 use crate::validated::*;
+use crate::modes::ListModeType;
 
 pub type LocalId = i64;
 
@@ -19,6 +20,8 @@ object_ids!(ObjectId, {
     Channel: sequential;
     ChannelMode: sequential;
     ChannelTopic: sequential;
+    ListMode: (ChannelModeId,ListModeType);
+    ListModeEntry: sequential;
     Message: sequential;
 
     Nickname: (Nickname,);
@@ -40,4 +43,9 @@ impl EventId {
 
 impl NicknameId {
     pub fn nick(&self) -> &Nickname { &self.0 }
+}
+
+impl ListModeId {
+    pub fn mode(&self) -> ChannelModeId { self.0 }
+    pub fn list_type(&self) -> ListModeType { self.1 }
 }

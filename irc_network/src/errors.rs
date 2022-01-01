@@ -21,6 +21,10 @@ pub enum LookupError
     NoSuchChannelMode(ChannelModeId),
     #[error("No channel with mode id {0:?}")]
     NoChannelForMode(ChannelModeId),
+    #[error("No such banlist id {0:?}")]
+    NoSuchListMode(ListModeId),
+    #[error("No channel mode corresponds to banlist id {0:?}")]
+    NoModeForList(ListModeId),
     #[error("No such channel topic id {0:?}")]
     NoSuchChannelTopic(ChannelTopicId),
     #[error("No topic for channel id {0:?}")]

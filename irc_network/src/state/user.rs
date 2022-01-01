@@ -1,6 +1,6 @@
 use crate::id::*;
 use crate::validated::*;
-use crate::flags::*;
+use crate::modes::*;
 use serde::{
     Serialize,
     Deserialize

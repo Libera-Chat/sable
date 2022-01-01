@@ -1,6 +1,7 @@
 use crate::*;
 
 use ircd_macros::{event_details,target_type};
+use irc_strings::matches::Pattern;
 
 pub struct WrongEventTypeError;
 
@@ -56,6 +57,18 @@ EventDetails => {
         pub changed_by: ObjectId,
         pub added: ChannelModeSet,
         pub removed: ChannelModeSet
+    }
+
+    #[target_type(ListModeEntryId)]
+    struct NewListModeEntry {
+        pub list: ListModeId,
+        pub pattern: Pattern,
+        pub setter: UserId,
+    }
+
+    #[target_type(ListModeEntryId)]
+    struct DelListModeEntry {
+        pub removed_by: UserId,
     }
 
     #[target_type(ChannelTopicId)]

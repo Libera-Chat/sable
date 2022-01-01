@@ -1,5 +1,5 @@
 use irc_network::wrapper::*;
-use irc_network::flags::*;
+use irc_network::modes::*;
 
 pub fn format_cmode_changes(added: &ChannelModeSet, removed: &ChannelModeSet) -> String
 {

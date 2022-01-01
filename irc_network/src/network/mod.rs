@@ -68,6 +68,8 @@ pub struct Network
 
     channels: HashMap<ChannelId, state::Channel>,
     channel_modes: HashMap<ChannelModeId, state::ChannelMode>,
+    channel_list_modes: HashMap<ListModeId, state::ListMode>,
+    list_mode_entries: HashMap<ListModeEntryId, state::ListModeEntry>,
     channel_topics: HashMap<ChannelTopicId, state::ChannelTopic>,
 
     memberships: HashMap<MembershipId, state::Membership>,
@@ -91,6 +93,8 @@ impl Network {
             channels: HashMap::new(),
             channel_modes: HashMap::new(),
             channel_topics: HashMap::new(),
+            channel_list_modes: HashMap::new(),
+            list_mode_entries: HashMap::new(),
             memberships: HashMap::new(),
 
             messages: HashMap::new(),
@@ -143,6 +147,8 @@ impl Network {
             NewChannel => self.new_channel,
             NewChannelMode => self.new_channel_mode,
             ChannelModeChange => self.channel_mode_change,
+            NewListModeEntry => self.new_list_mode_entry,
+            DelListModeEntry => self.del_list_mode_entry,
             NewChannelTopic => self.new_channel_topic,
             MembershipFlagChange => self.channel_permission_change,
             ChannelJoin => self.user_joined_channel,

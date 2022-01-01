@@ -21,6 +21,8 @@ pub mod wrapper {
     mod user_mode;
     mod channel;
     mod channel_mode;
+    mod list_mode;
+    mod list_mode_entry;
     mod channel_topic;
     mod membership;
     mod server;
@@ -37,6 +39,8 @@ pub mod wrapper {
     pub use user_mode::UserMode;
     pub use channel::Channel;
     pub use channel_mode::ChannelMode;
+    pub use list_mode::ListMode;
+    pub use list_mode_entry::ListModeEntry;
     pub use channel_topic::ChannelTopic;
     pub use membership::Membership;
     pub use server::Server;
@@ -55,8 +59,8 @@ pub use validated::*;
 pub mod errors;
 pub use errors::*;
 
-pub mod flags;
-pub use flags::*;
+pub mod modes;
+pub use modes::*;
 
 mod network;
 pub use network::*;

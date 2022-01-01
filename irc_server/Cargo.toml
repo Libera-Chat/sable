@@ -8,12 +8,14 @@ edition = "2018"
 [dependencies]
 ircd_macros = { path = "../ircd_macros" }
 irc_network = { path = "../irc_network" }
+irc_strings = { path = "../irc_strings" }
 log = "0.4"
 inventory = "0.1"
 thiserror = "1"
 serde_json = "1"
 trust-dns-resolver = "0.20"
 chrono = "0.4"
+ambassador = "0.2"
 
 [dependencies.serde]
 version = "1"

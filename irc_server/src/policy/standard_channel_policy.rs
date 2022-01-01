@@ -1,17 +1,18 @@
 use super::*;
 use crate::utils::*;
 
-pub trait ChannelPolicyService
+pub struct StandardChannelPolicy
 {
-    fn can_send(&self, user: &User, channel: &Channel, msg: &str) -> PermissionResult;
+    ban_resolver: Box<dyn BanResolver>
+}
 
-    fn can_see_user_on_channel(&self, user: &User, member: &Membership) -> PermissionResult;
-
-    fn can_change_mode(&self, user: &User, channel: &Channel, mode: ChannelModeFlag) -> PermissionResult;
-    fn can_set_topic(&self, user: &User, channel: &Channel, topic: &str) -> PermissionResult;
-
-    fn can_grant_permission(&self, user: &User, channel: &Channel, target: &User, flag: MembershipFlagFlag) -> PermissionResult;
-    fn can_remove_permission(&self, user: &User, channel: &Channel, target: &User, flag: MembershipFlagFlag) -> PermissionResult;
+impl StandardChannelPolicy {
+    pub fn new() -> Self
+    {
+        Self { 
+            ban_resolver: Box::new(StandardBanResolver::new())
+        }
+    }
 }
 
 fn is_channel_operator(user: &User, channel: &Channel) -> PermissionResult
@@ -30,16 +31,35 @@ fn is_channel_operator(user: &User, channel: &Channel) -> PermissionResult
     }
 }
 
-impl ChannelPolicyService for StandardPolicyService
+impl ChannelPolicyService for StandardChannelPolicy
 {
+    fn can_join(&self, user: &User, channel: &Channel) -> PermissionResult
+    {
+        if self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
+        {
+            numeric_error!(BannedOnChannel, channel)
+        }
+        else
+        {
+            Ok(())
+        }
+    }
+
     fn can_send(&self, user: &User, channel: &Channel, _msg: &str) -> PermissionResult
     {
         if channel.mode()?.has_mode(ChannelModeFlag::NoExternal) 
             && user.is_in_channel(channel.id()).is_none()
         {
-            return numeric_error!(CannotSendToChannel, channel);
+            numeric_error!(CannotSendToChannel, channel)
         }
-        Ok(())
+        else if self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
+        {
+            numeric_error!(CannotSendToChannel, channel)
+        }
+        else
+        {
+            Ok(())
+        }
     }
 
     fn can_see_user_on_channel(&self, user: &User, member: &Membership) -> PermissionResult
@@ -85,5 +105,20 @@ impl ChannelPolicyService for StandardPolicyService
     fn can_remove_permission(&self, user: &User, channel: &Channel, _target: &User, _flag: MembershipFlagFlag) -> PermissionResult
     {
         is_channel_operator(user, channel)
+    }
+
+    fn validate_ban_mask(&self, _mask: &str, _mode_type: ListModeType, _channel: &Channel) -> PermissionResult
+    {
+        Ok(())
+    }
+
+    fn can_set_ban(&self, user: &User, chan: &Channel, _mode_type: ListModeType, _mask: &str) -> PermissionResult
+    {
+        is_channel_operator(user, chan)
+    }
+
+    fn can_unset_ban(&self, user: &User, chan: &Channel, _mode_type: ListModeType, _mask: &str) -> PermissionResult
+    {
+        is_channel_operator(user, chan)
     }
 }

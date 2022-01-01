@@ -119,6 +119,11 @@ impl Server
         self.id_generator.next_channel_topic()
     }
 
+    pub fn next_list_mode_entry_id(&self) -> ListModeEntryId
+    {
+        self.id_generator.next_list_mode_entry()
+    }
+
     pub fn network(&self) -> &Network
     {
         &self.net
@@ -309,3 +314,4 @@ impl Server
 mod command_action;
 mod event_handler;
 mod pings;
+mod send_helpers;

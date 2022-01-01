@@ -35,6 +35,13 @@ impl ChannelMode<'_> {
     {
         format!("+{}", self.data.modes.to_chars())
     }
+
+    /// Get the list mode object belonging to this mode of the given type
+    pub fn list(&self, list_type: ListModeType) -> LookupResult<ListMode>
+    {
+        let list_id = ListModeId::new(self.data.id, list_type);
+        self.network.list_mode(list_id)
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for ChannelMode<'a> {

@@ -1,5 +1,5 @@
 [workspace]
-members = [ "ircd_macros", "ircd_sync", "irc_network", "irc_server", "ircd" ]
+members = [ "ircd_macros", "ircd_sync", "irc_network", "irc_server", "irc_strings", "ircd" ]
 
 # Incremental builds break inventory
 [profile.dev]

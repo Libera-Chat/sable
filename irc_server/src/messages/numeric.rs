@@ -3,6 +3,7 @@ use irc_network::wrapper::{
     User,
     Channel,
     ChannelMode,
+    ListModeEntry,
     Server,
 };
 use irc_network::validated::*;
@@ -53,4 +54,10 @@ define_messages! {
     482(ChanOpPrivsNeeded)      => { (chan: &Channel.name())    => "{chan} :You're not a channel operator" },
 
     502(CantChangeOtherUserMode) => { ()                => ":Can't change mode for other users" },
+
+    367(BanList)        => { (chan: &Channel.name(), entry: &ListModeEntry.pattern(), setter=entry.setter(), ts=entry.timestamp())
+                                => "{chan} {entry} {setter} {ts}"},
+    368(EndOfBanList)   => { (chan: &Channel.name())    => "{chan} :End of channel ban list" },
+
+    474(BannedOnChannel) => { (chan: &Channel.name())   => "{chan} :Cannot join channel (+b) - you are banned" },
 }

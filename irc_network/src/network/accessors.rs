@@ -91,6 +91,24 @@ impl Network {
         self.channel_modes.get(&id).ok_or(NoSuchChannelMode(id)).wrap(self)
     }
 
+    /// Look up a ban-type list by ID
+    pub fn list_mode(&self, id: ListModeId) -> LookupResult<wrapper::ListMode>
+    {
+        self.channel_list_modes.get(&id).ok_or(NoSuchListMode(id)).wrap(self)
+    }
+
+    /// Find the channel mode entry corresponding to a given banlist
+    pub fn mode_for_list(&self, id: ListModeId) -> LookupResult<wrapper::ChannelMode>
+    {
+        self.channel_modes.get(&id.mode()).ok_or(NoModeForList(id)).wrap(self)
+    }
+
+    /// The list entries belonging to a given list ID
+    pub fn entries_for_list(&self, id: ListModeId) -> impl std::iter::Iterator<Item=wrapper::ListModeEntry>
+    {
+        self.list_mode_entries.values().filter(move |x| x.list == id).wrap(self)
+    }
+
     /// Look up a channel topic by ID.
     pub fn channel_topic(&self, id: ChannelTopicId) -> LookupResult<wrapper::ChannelTopic>
     {

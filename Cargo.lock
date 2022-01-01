@@ -3,6 +3,17 @@
 version = 3
 
 [[package]]
+name = "ambassador"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61874b33258f18ca7923047c12887078ccfe95c2811b03c1a09e309c19b7e50b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -534,6 +545,7 @@ dependencies = [
  "arrayvec 0.7.2",
  "hashers",
  "inventory",
+ "irc_strings",
  "ircd_macros",
  "log",
  "serde",
@@ -545,9 +557,11 @@ dependencies = [
 name = "irc_server"
 version = "0.1.0"
 dependencies = [
+ "ambassador",
  "chrono",
  "inventory",
  "irc_network",
+ "irc_strings",
  "ircd_macros",
  "log",
  "serde",
@@ -555,6 +569,15 @@ dependencies = [
  "thiserror",
  "tokio",
  "trust-dns-resolver",
+]
+
+[[package]]
+name = "irc_strings"
+version = "0.1.0"
+dependencies = [
+ "convert_case",
+ "serde",
+ "wildmatch",
 ]
 
 [[package]]
@@ -1480,6 +1503,12 @@ name = "widestring"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c168940144dd21fd8046987c16a46a33d5fc84eec29ef9dcddc2ac9e31526b7c"
+
+[[package]]
+name = "wildmatch"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6c48bd20df7e4ced539c12f570f937c6b4884928a87fee70a479d72f031d4e0"
 
 [[package]]
 name = "winapi"

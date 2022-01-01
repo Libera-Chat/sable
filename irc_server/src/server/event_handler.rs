@@ -18,6 +18,8 @@ impl Server
             UserQuit(details) => self.handle_user_quit(details),
             BulkUserQuit(details) => self.handle_bulk_quit(details),
             ChannelModeChange(details) => self.handle_channel_mode_change(details),
+            ListModeAdded(details) => self.handle_list_mode_added(details),
+            ListModeRemoved(details) => self.handle_list_mode_removed(details),
             ChannelTopicChange(details) => self.handle_channel_topic(details),
             ChannelJoin(details) => self.handle_join(details),
             ChannelPart(details) => self.handle_part(details),
@@ -134,13 +136,36 @@ impl Server
         let changes = utils::format_cmode_changes(&detail.added, &detail.removed);
         let msg = message::Mode::new(source.as_ref(), &chan, &changes);
 
-        for m in chan.members()
-        {
-            let member = m.user()?;
-            if let Ok(conn) = self.connections.get_user(member.id()) {
-                conn.send(&msg);
-            }
-        }
+        self.send_to_channel_members(&chan, msg);
+
+        Ok(())
+    }
+
+    fn handle_list_mode_added(&self, detail: &update::ListModeAdded) -> HandleResult
+    {
+        let chan = self.net.channel(detail.channel)?;
+        let mode_char = detail.list_type.mode_letter();
+        let source = self.lookup_message_source(detail.set_by)?;
+
+        let changes = format!("+{} {}", mode_char, detail.pattern);
+        let msg = message::Mode::new(source.as_ref(), &chan, &changes);
+
+        self.send_to_channel_members(&chan, msg);
+
+        Ok(())
+    }
+
+    fn handle_list_mode_removed(&self, detail: &update::ListModeRemoved) -> HandleResult
+    {
+        let chan = self.net.channel(detail.channel)?;
+        let mode_char = detail.list_type.mode_letter();
+        let source = self.lookup_message_source(detail.removed_by)?;
+
+        let changes = format!("-{} {}", mode_char, detail.pattern);
+        let msg = message::Mode::new(source.as_ref(), &chan, &changes);
+
+        self.send_to_channel_members(&chan, msg);
+
         Ok(())
     }
 

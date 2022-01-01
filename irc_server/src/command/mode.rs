@@ -1,93 +1,19 @@
 use super::*;
+use crate::utils::ArgList;
+use irc_strings::matches::Pattern;
 
 command_handler!("MODE" => ModeHandler {
     fn min_parameters(&self) -> usize { 1 }
 
     fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        let mut args = cmd.args.clone().into_iter();
-        let mut next_arg = || { args.next().ok_or(make_numeric!(NotEnoughParameters, &cmd.command)) };
+        let mut args = ArgList::new(&cmd);
 
-        let target = next_arg()?;
+        let target = args.next_arg()?;
 
         if let Ok(cname) = ChannelName::from_str(&target)
         {
-            let chan = self.server.network().channel_by_name(&cname)?;
-            let mode = chan.mode()?;
-
-            if cmd.args.len() == 1
-            {
-                let msg = numeric::ChannelModeIs::new(&chan, &mode);
-                cmd.response(&msg)?;
-            }
-            else
-            {
-                let mut sent_unknown = false;
-                let mut added = ChannelModeSet::new();
-                let mut removed = ChannelModeSet::new();
-
-                enum Direction { Add, Rem, Query }
-                let mut dir = Direction::Query;
-                for c in next_arg()?.chars()
-                {
-                    match c
-                    {
-                        '+' => { dir = Direction::Add; },
-                        '-' => { dir = Direction::Rem; },
-                        '=' => { dir = Direction::Query; },
-                        _ => {
-                            if let Some(flag) = ChannelModeSet::flag_for(c)
-                            {
-                                self.server.policy().can_change_mode(source, &chan, flag)?;
-                                match dir {
-                                    Direction::Add => { added |= flag; },
-                                    Direction::Rem => { removed |= flag; },
-                                    _ => {}
-                                }
-                            }
-                            else if let Some(flag) = MembershipFlagSet::flag_for(c)
-                            {
-                                let target = self.server.network().user_by_nick(&Nickname::from_str(&next_arg()?)?)?;
-                                let membership = target.is_in_channel(chan.id())
-                                                       .ok_or(make_numeric!(UserNotOnChannel, &target, &chan))?;
-                                let mut perm_added = MembershipFlagSet::new();
-                                let mut perm_removed = MembershipFlagSet::new();
-
-                                match dir {
-                                    Direction::Add => {
-                                        self.server.policy().can_grant_permission(source, &chan, &target, flag)?;
-                                        perm_added |= flag;
-                                    },
-                                    Direction::Rem => {
-                                        self.server.policy().can_remove_permission(source, &chan, &target, flag)?;
-                                        perm_removed |= flag;
-                                    },
-                                    _ => {}
-                                }
-
-                                let detail = event::MembershipFlagChange {
-                                    changed_by: source.id().into(),
-                                    added: perm_added,
-                                    removed: perm_removed,
-                                };
-                                self.action(CommandAction::state_change(membership.id(), detail))?;
-                            }
-                            else
-                            {
-                                if ! sent_unknown {
-                                    cmd.response(&numeric::UnknownMode::new(c))?;
-                                    sent_unknown = true;
-                                }
-                            }
-                        }
-                    }
-                }
-                if !added.is_empty() || !removed.is_empty()
-                {
-                    let detail = event::ChannelModeChange { changed_by: source.id().into(), added: added, removed: removed };
-                    self.action(CommandAction::state_change(mode.id(), detail))?;
-                }
-            }
+            self.handle_channel_mode(source, cmd, cname, &mut args)?;
         }
         else
         {
@@ -105,7 +31,7 @@ command_handler!("MODE" => ModeHandler {
             enum Direction { Add, Rem, Query }
             let mut dir = Direction::Query;
 
-            for c in next_arg()?.chars()
+            for c in args.next_arg()?.chars()
             {
                 match c
                 {
@@ -140,3 +66,146 @@ command_handler!("MODE" => ModeHandler {
         Ok(())
     }
 });
+
+impl ModeHandler<'_>
+{
+    fn handle_channel_mode(&mut self, source: &wrapper::User, cmd: &ClientCommand, cname: ChannelName, args: &mut ArgList) -> CommandResult
+    {
+        let chan = self.server.network().channel_by_name(&cname)?;
+        let mode = chan.mode()?;
+
+        if args.is_empty()
+        {
+            let msg = numeric::ChannelModeIs::new(&chan, &mode);
+            cmd.response(&msg)?;
+        }
+        else
+        {
+            let mut sent_unknown = false;
+            let mut added = ChannelModeSet::new();
+            let mut removed = ChannelModeSet::new();
+
+            #[derive(PartialEq)]
+            enum Direction { Add, Rem, Query }
+
+            let mut dir = Direction::Query;
+            for c in args.next_arg()?.clone().chars()
+            {
+                match c
+                {
+                    '+' => { dir = Direction::Add; },
+                    '-' => { dir = Direction::Rem; },
+                    '=' => { dir = Direction::Query; },
+                    _ => {
+                        if let Some(flag) = ChannelModeSet::flag_for(c)
+                        {
+                            self.server.policy().can_change_mode(source, &chan, flag)?;
+                            match dir {
+                                Direction::Add => { added |= flag; },
+                                Direction::Rem => { removed |= flag; },
+                                _ => {}
+                            }
+                        }
+                        else if let Some(flag) = MembershipFlagSet::flag_for(c)
+                        {
+                            let target = self.server.network().user_by_nick(&Nickname::from_str(args.next_arg()?)?)?;
+                            let membership = target.is_in_channel(chan.id())
+                                                   .ok_or(make_numeric!(UserNotOnChannel, &target, &chan))?;
+                            let mut perm_added = MembershipFlagSet::new();
+                            let mut perm_removed = MembershipFlagSet::new();
+
+                            match dir {
+                                Direction::Add => {
+                                    self.server.policy().can_grant_permission(source, &chan, &target, flag)?;
+                                    perm_added |= flag;
+                                },
+                                Direction::Rem => {
+                                    self.server.policy().can_remove_permission(source, &chan, &target, flag)?;
+                                    perm_removed |= flag;
+                                },
+                                _ => {}
+                            }
+
+                            let detail = event::MembershipFlagChange {
+                                changed_by: source.id().into(),
+                                added: perm_added,
+                                removed: perm_removed,
+                            };
+                            self.action(CommandAction::state_change(membership.id(), detail))?;
+                        }
+                        else if let Some(list_type) = ListModeType::from_char(c)
+                        {
+                            let mode = chan.mode()?;
+                            let list = mode.list(list_type)?;
+
+                            if dir == Direction::Query || args.is_empty()
+                            {
+                                self.send_channel_banlike_list(cmd, &chan, &list)?;
+                            }
+                            else
+                            {
+                                let mask = args.next_arg()?;
+                                
+                                if dir == Direction::Add
+                                {
+                                    self.server.policy().can_set_ban(source, &chan, list_type, mask)?;
+                                    self.server.policy().validate_ban_mask(mask, list_type, &chan)?;
+
+                                    let detail = event::NewListModeEntry {
+                                        list: list.id(),
+                                        pattern: Pattern::new(mask.clone()),
+                                        setter: source.id()
+                                    };
+                                    self.action(CommandAction::state_change(self.server.next_list_mode_entry_id(), detail))?;
+                                }
+                                else
+                                {
+                                    // We've already tested for Direction::Query above, so this is definitely Remove
+                                    if let Some(entry) = list.entries().filter(|e| e.pattern() == mask).next()
+                                    {
+                                        self.server.policy().can_unset_ban(source, &chan, list_type, mask)?;
+
+                                        let detail = event::DelListModeEntry {
+                                            removed_by: source.id()
+                                        };
+                                        self.action(CommandAction::state_change(entry.id(), detail))?;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if ! sent_unknown {
+                                cmd.response(&numeric::UnknownMode::new(c))?;
+                                sent_unknown = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if !added.is_empty() || !removed.is_empty()
+            {
+                let detail = event::ChannelModeChange { changed_by: source.id().into(), added: added, removed: removed };
+                self.action(CommandAction::state_change(mode.id(), detail))?;
+            }
+        }
+        Ok(())
+    }
+
+    fn send_channel_banlike_list(&self, cmd: &ClientCommand, chan: &wrapper::Channel, list: &wrapper::ListMode) -> CommandResult
+    {
+        let (list_numeric, end_numeric) = match list.list_type() {
+            ListModeType::Ban => (numeric::BanList::new, numeric::EndOfBanList::new)
+        };
+
+        for entry in list.entries()
+        {
+            let numeric = list_numeric(chan, &entry);
+            cmd.response(&numeric)?;
+        }
+
+        cmd.response(&end_numeric(chan))?;
+
+        Ok(())
+    }
+}

@@ -2,9 +2,10 @@
 
 use crate::state;
 use crate::validated::*;
-use crate::flags::*;
+use crate::modes::*;
 use crate::id::*;
 use ircd_macros::event_details;
+use irc_strings::matches::Pattern;
 
 #[derive(Debug)]
 pub struct WrongEventTypeError;
@@ -54,6 +55,20 @@ NetworkStateChange => {
         pub new_text: String,
         pub setter: ObjectId,
         pub timestamp: i64,
+    }
+    struct ListModeAdded {
+        pub channel: ChannelId,
+        pub list: ListModeId,
+        pub list_type: ListModeType,
+        pub pattern: Pattern,
+        pub set_by: ObjectId,
+    }
+    struct ListModeRemoved {
+        pub channel: ChannelId,
+        pub list: ListModeId,
+        pub list_type: ListModeType,
+        pub pattern: Pattern,
+        pub removed_by: ObjectId,
     }
     struct MembershipFlagChange {
         pub membership: MembershipId,

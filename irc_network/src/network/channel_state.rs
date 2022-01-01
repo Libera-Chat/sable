@@ -4,15 +4,27 @@ use crate::event::*;
 use crate::update::*;
 
 impl Network {
+    fn channel_for_mode(&self, mode_id: ChannelModeId) -> Option<&state::Channel>
+    {
+        self.channels.values().filter(|c| c.mode == mode_id).next()
+    }
+
     pub(super) fn new_channel(&mut self, target: ChannelId, _event: &Event, details: &details::NewChannel, _updates: &dyn NetworkUpdateReceiver)
     {
+        if let Ok(_existing) = self.channel_by_name(&details.name)
+        {
+            // TODO: handle conflict
+            panic!("Conflicting channel names");
+        }
         let channel = state::Channel::new(target, &details.name, details.mode);
         self.channels.insert(channel.id, channel);
     }
 
     pub(super) fn new_channel_mode(&mut self, target: ChannelModeId, _event: &Event, details: &details::NewChannelMode, _updates: &dyn NetworkUpdateReceiver)
     {
+        let ban_list = state::ListMode::new(ListModeId::new(target, ListModeType::Ban), ListModeType::Ban);
         let cmode = state::ChannelMode::new(target, details.mode);
+        self.channel_list_modes.insert(ban_list.id, ban_list);
         self.channel_modes.insert(cmode.id, cmode);
     }
 
@@ -23,8 +35,7 @@ impl Network {
             cmode.modes |= details.added;
             cmode.modes &= !details.removed;
         }
-        let mut channel = self.channels.values().filter(|c| c.mode == target);
-        if let Some(channel) = channel.next()
+        if let Some(channel) = self.channel_for_mode(target)
         {
             updates.notify(update::ChannelModeChange {
                 channel: channel.id,
@@ -96,6 +107,53 @@ impl Network {
         );
         self.channel_topics.insert(target, new_topic);
         updates.notify(update);
+    }
+
+    pub(super) fn new_list_mode_entry(&mut self, target: ListModeEntryId, event: &Event, details: &details::NewListModeEntry, updates: &dyn NetworkUpdateReceiver)
+    {
+        let setter_info = self.translate_setter_info(details.setter.into());
+
+        let entry = state::ListModeEntry::new(
+            target,
+            details.list,
+            event.timestamp,
+            setter_info,
+            details.pattern.clone()
+        );
+        self.list_mode_entries.insert(entry.id, entry);
+
+        if let Some(channel) = self.channel_for_mode(details.list.mode())
+        {
+            let update = update::ListModeAdded {
+                channel: channel.id,
+                list: details.list,
+                list_type: details.list.list_type(),
+                pattern: details.pattern.clone(),
+                set_by: details.setter.into(),
+            };
+            updates.notify(update);
+        }
+    }
+
+    pub(super) fn del_list_mode_entry(&mut self, target: ListModeEntryId, _event: &Event, details: &details::DelListModeEntry, updates: &dyn NetworkUpdateReceiver)
+    {
+        if let Some(removed) = self.list_mode_entries.remove(&target)
+        {
+            if let Some(list) = self.channel_list_modes.get(&removed.list)
+            {
+                if let Some(channel) = self.channel_for_mode(list.id.mode())
+                {
+                    let update = update::ListModeRemoved {
+                        channel: channel.id,
+                        list: removed.list,
+                        list_type: list.list_type,
+                        pattern: removed.pattern,
+                        removed_by: details.removed_by.into(),
+                    };
+                    updates.notify(update);
+                }
+            }
+        }
     }
 
     pub(super) fn channel_permission_change(&mut self, target: MembershipId, _event: &Event, details: &details::MembershipFlagChange, updates: &dyn NetworkUpdateReceiver)

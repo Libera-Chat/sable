@@ -1,4 +1,4 @@
-use irc_network::flags::*;
+use irc_network::modes::*;
 
 pub fn format_umode_changes(added: &UserModeSet, removed: &UserModeSet) -> String
 {
