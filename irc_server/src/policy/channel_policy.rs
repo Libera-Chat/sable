@@ -17,4 +17,7 @@ pub trait ChannelPolicyService
     fn validate_ban_mask(&self, mask: &str, mode_type: ListModeType, channel: &Channel) -> PermissionResult;
     fn can_set_ban(&self, user: &User, chan: &Channel, mode_type: ListModeType, mask: &str) -> PermissionResult;
     fn can_unset_ban(&self, user: &User, chan: &Channel, mode_type: ListModeType, mask: &str) -> PermissionResult;
+
+    fn can_query_list(&self, user: &User, chan: &Channel, mode_type: ListModeType) -> PermissionResult;
+    fn should_see_list_change(&self, membership: &Membership, mode_type: ListModeType) -> bool;
 }

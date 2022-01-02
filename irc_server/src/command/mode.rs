@@ -140,6 +140,7 @@ impl ModeHandler<'_>
 
                             if dir == Direction::Query || args.is_empty()
                             {
+                                self.server.policy().can_query_list(source, &chan, list_type)?;
                                 self.send_channel_banlike_list(cmd, &chan, &list)?;
                             }
                             else
@@ -194,18 +195,33 @@ impl ModeHandler<'_>
 
     fn send_channel_banlike_list(&self, cmd: &ClientCommand, chan: &wrapper::Channel, list: &wrapper::ListMode) -> CommandResult
     {
-        let (list_numeric, end_numeric) = match list.list_type() {
-            ListModeType::Ban => (numeric::BanList::new, numeric::EndOfBanList::new)
-        };
-
         for entry in list.entries()
         {
-            let numeric = list_numeric(chan, &entry);
-            cmd.response(&numeric)?;
+            self.send_banlike_list_entry(cmd, chan, list.list_type(), &entry)?;
         }
 
-        cmd.response(&end_numeric(chan))?;
+        self.send_banlike_end_numeric(cmd, chan, list.list_type())?;
 
         Ok(())
+    }
+
+    fn send_banlike_list_entry(&self, cmd: &ClientCommand, chan: &wrapper::Channel, list_type: ListModeType, entry: &wrapper::ListModeEntry) -> CommandResult
+    {
+        match list_type {
+            ListModeType::Ban => cmd.response(&numeric::BanList::new(chan, entry)),
+            ListModeType::Quiet => cmd.response(&numeric::QuietList::new(chan, entry)),
+            ListModeType::Except => cmd.response(&numeric::ExceptList::new(chan, entry)),
+            ListModeType::Invex => cmd.response(&numeric::InviteList::new(chan, entry)),
+        }
+    }
+
+    fn send_banlike_end_numeric(&self, cmd: &ClientCommand, chan: &wrapper::Channel, list_type: ListModeType) -> CommandResult
+    {
+        match list_type {
+            ListModeType::Ban => cmd.response(&numeric::EndOfBanList::new(chan)),
+            ListModeType::Quiet => cmd.response(&numeric::EndOfQuietList::new(chan)),
+            ListModeType::Except => cmd.response(&numeric::EndOfExceptList::new(chan)),
+            ListModeType::Invex => cmd.response(&numeric::EndOfInviteList::new(chan)),
+        }
     }
 }

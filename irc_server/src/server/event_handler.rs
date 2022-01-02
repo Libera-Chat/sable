@@ -150,7 +150,9 @@ impl Server
         let changes = format!("+{} {}", mode_char, detail.pattern);
         let msg = message::Mode::new(source.as_ref(), &chan, &changes);
 
-        self.send_to_channel_members(&chan, msg);
+        self.send_to_channel_members_where(&chan, msg,
+                |m| self.policy().should_see_list_change(&m, detail.list_type)
+        );
 
         Ok(())
     }
@@ -164,7 +166,9 @@ impl Server
         let changes = format!("-{} {}", mode_char, detail.pattern);
         let msg = message::Mode::new(source.as_ref(), &chan, &changes);
 
-        self.send_to_channel_members(&chan, msg);
+        self.send_to_channel_members_where(&chan, msg,
+            |m| self.policy().should_see_list_change(&m, detail.list_type)
+        );
 
         Ok(())
     }

@@ -2,6 +2,7 @@ use super::Network;
 use crate::*;
 use crate::event::*;
 use crate::update::*;
+use strum::IntoEnumIterator;
 
 impl Network {
     fn channel_for_mode(&self, mode_id: ChannelModeId) -> Option<&state::Channel>
@@ -22,10 +23,14 @@ impl Network {
 
     pub(super) fn new_channel_mode(&mut self, target: ChannelModeId, _event: &Event, details: &details::NewChannelMode, _updates: &dyn NetworkUpdateReceiver)
     {
-        let ban_list = state::ListMode::new(ListModeId::new(target, ListModeType::Ban), ListModeType::Ban);
         let cmode = state::ChannelMode::new(target, details.mode);
-        self.channel_list_modes.insert(ban_list.id, ban_list);
         self.channel_modes.insert(cmode.id, cmode);
+
+        for list_type in ListModeType::iter()
+        {
+            let new_list = state::ListMode::new(ListModeId::new(target, list_type), list_type);
+            self.channel_list_modes.insert(new_list.id, new_list);
+        }
     }
 
     pub(super) fn channel_mode_change(&mut self, target: ChannelModeId, _event: &Event, details: &details::ChannelModeChange, updates: &dyn NetworkUpdateReceiver)
@@ -210,6 +215,14 @@ impl Network {
             {
                 let topic_id = topic.id;
                 self.channel_topics.remove(&topic_id);
+            }
+            if let Some(mode) = self.channel_modes.remove(&chan.mode)
+            {
+                for list_type in ListModeType::iter()
+                {
+                    let list_id = ListModeId::new(mode.id, list_type);
+                    self.channel_list_modes.remove(&list_id);
+                }
             }
         }
     }

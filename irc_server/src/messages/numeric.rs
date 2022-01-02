@@ -56,8 +56,20 @@ define_messages! {
     502(CantChangeOtherUserMode) => { ()                => ":Can't change mode for other users" },
 
     367(BanList)        => { (chan: &Channel.name(), entry: &ListModeEntry.pattern(), setter=entry.setter(), ts=entry.timestamp())
-                                => "{chan} {entry} {setter} {ts}"},
+        => "{chan} {entry} {setter} {ts}"},
     368(EndOfBanList)   => { (chan: &Channel.name())    => "{chan} :End of channel ban list" },
+
+    728(QuietList)        => { (chan: &Channel.name(), entry: &ListModeEntry.pattern(), setter=entry.setter(), ts=entry.timestamp())
+        => "{chan} {entry} {setter} {ts}"},
+    729(EndOfQuietList)   => { (chan: &Channel.name())    => "{chan} :End of channel quiet list" },
+
+    346(InviteList)        => { (chan: &Channel.name(), entry: &ListModeEntry.pattern(), setter=entry.setter(), ts=entry.timestamp())
+        => "{chan} {entry} {setter} {ts}"},
+    347(EndOfInviteList)   => { (chan: &Channel.name())    => "{chan} :End of channel invite list" },
+
+    348(ExceptList)        => { (chan: &Channel.name(), entry: &ListModeEntry.pattern(), setter=entry.setter(), ts=entry.timestamp())
+        => "{chan} {entry} {setter} {ts}"},
+    349(EndOfExceptList)   => { (chan: &Channel.name())    => "{chan} :End of channel exception list" },
 
     474(BannedOnChannel) => { (chan: &Channel.name())   => "{chan} :Cannot join channel (+b) - you are banned" },
 }

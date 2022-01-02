@@ -36,6 +36,7 @@ impl ChannelPolicyService for StandardChannelPolicy
     fn can_join(&self, user: &User, channel: &Channel) -> PermissionResult
     {
         if self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
+            && !self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_some()
         {
             numeric_error!(BannedOnChannel, channel)
         }
@@ -52,7 +53,9 @@ impl ChannelPolicyService for StandardChannelPolicy
         {
             numeric_error!(CannotSendToChannel, channel)
         }
-        else if self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
+        else if (self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
+                || self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Quiet)?).is_some())
+              && !self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_some()
         {
             numeric_error!(CannotSendToChannel, channel)
         }
@@ -120,5 +123,23 @@ impl ChannelPolicyService for StandardChannelPolicy
     fn can_unset_ban(&self, user: &User, chan: &Channel, _mode_type: ListModeType, _mask: &str) -> PermissionResult
     {
         is_channel_operator(user, chan)
+    }
+
+    fn can_query_list(&self, user: &User, chan: &Channel, mode_type: ListModeType) -> PermissionResult
+    {
+        match mode_type
+        {
+            ListModeType::Ban | ListModeType::Quiet => Ok(()),
+            ListModeType::Except | ListModeType::Invex => is_channel_operator(user, chan)
+        }
+    }
+
+    fn should_see_list_change(&self, member: &Membership, mode_type: ListModeType) -> bool
+    {
+        match mode_type
+        {
+            ListModeType::Ban | ListModeType::Quiet => true,
+            ListModeType::Except | ListModeType::Invex => member.permissions().is_set(MembershipFlagFlag::Op)
+        }
     }
 }
