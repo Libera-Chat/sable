@@ -200,6 +200,7 @@ impl Server
         let mut ret = ISupportBuilder::new();
         ret.add(ISupportEntry::simple("EXCEPTS"));
         ret.add(ISupportEntry::simple("INVEX"));
+        ret.add(ISupportEntry::simple("FNC"));
 
         let list_modes: String = ListModeType::iter().map(|t| t.mode_letter()).collect();
         let key_modes = "";
@@ -208,6 +209,12 @@ impl Server
         let chanmodes = format!("{},{},{},{}", list_modes, key_modes, param_modes, simple_modes);
 
         ret.add(ISupportEntry::string("CHANMODES", &chanmodes));
+
+        let prefix_modes: String = MembershipFlagSet::all().map(|m| m.1).iter().collect();
+        let prefix_chars: String = MembershipFlagSet::all().map(|m| m.2).iter().collect();
+
+        let prefix = format!("({}){}", prefix_modes, prefix_chars);
+        ret.add(ISupportEntry::string("PREFIX", &prefix));
 
         ret
     }
