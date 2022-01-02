@@ -93,6 +93,7 @@ impl ReplicatedEventLog
         {
             if let Some(peer) = self.net.choose_peer()
             {
+                log::info!("Requesting network state from {:?}", peer);
                 let msg = Message::GetNetworkState;
                 match self.net.send_and_process(peer, msg, sender.clone()).await
                 {

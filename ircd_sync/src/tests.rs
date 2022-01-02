@@ -34,8 +34,8 @@ fn simple()
     let entries = drain_from(&mut receiver);
 
     assert_eq!(entries.len(), 2);
-    assert_eq!(entries[0], e1);
-    assert_eq!(entries[1], e2);
+    assert_eq!(entries[0].id, e1.id);
+    assert_eq!(entries[1].id, e2.id);
 }
 
 #[test]
@@ -60,8 +60,8 @@ fn out_of_order()
     let entries = drain_from(&mut receiver);
 
     assert_eq!(entries.len(), 2);
-    assert_eq!(entries[0], e1);
-    assert_eq!(entries[1], e2);
+    assert_eq!(entries[0].id, e1.id);
+    assert_eq!(entries[1].id, e2.id);
 }
 
 #[test]
@@ -93,9 +93,9 @@ fn epochs()
     let entries = drain_from(&mut receiver);
 
     assert_eq!(entries.len(), 3);
-    assert_eq!(entries[0], e1);
-    assert_eq!(entries[1], e2);
-    assert_eq!(entries[2], e3);
+    assert_eq!(entries[0].id, e1.id);
+    assert_eq!(entries[1].id, e2.id);
+    assert_eq!(entries[2].id, e3.id);
 }
 
 #[test]
@@ -125,6 +125,6 @@ fn get_since()
     let entries: Vec<&Event> = log.get_since(clock).collect();
 
     assert_eq!(entries.len(), 2);
-    assert_eq!(entries[0], &e2);
-    assert_eq!(entries[1], &e3);
+    assert_eq!(entries[0].id, e2.id);
+    assert_eq!(entries[1].id, e3.id);
 }

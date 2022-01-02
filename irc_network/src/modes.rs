@@ -29,9 +29,13 @@ mode_flags!(
 #[derive(Debug,Clone,Copy,PartialOrd,Ord,PartialEq,Eq,Hash,Serialize,Deserialize)]
 #[derive(EnumIter)]
 pub enum ListModeType {
+    #[serde(rename="b")]
     Ban,
+    #[serde(rename="q")]
     Quiet,
+    #[serde(rename="e")]
     Except,
+    #[serde(rename="I")]
     Invex
 }
 

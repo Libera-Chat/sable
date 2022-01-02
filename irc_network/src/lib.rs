@@ -70,3 +70,9 @@ pub use update::NetworkStateChange;
 pub use update::NetworkUpdateReceiver;
 
 mod state_utils;
+
+#[cfg(test)]
+pub mod tests {
+    pub mod fixtures;
+    mod serialize;
+}

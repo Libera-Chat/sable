@@ -8,6 +8,9 @@ use serde::{
     Serialize,
     Deserialize
 };
+use serde_with::{
+    serde_as
+};
 
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -59,23 +62,35 @@ pub type ValidationResult = Result<(), ValidationError>;
 /// 
 /// Most public accessors return a [`LookupResult`] instead of an `Option` to
 /// facilitate handling of missing objects in command handlers.
+#[serde_as]
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Network
 {
+    #[serde_as(as = "Vec<(_,_)>")]
     nick_bindings: HashMap<Nickname, state::NickBinding>,
+    #[serde_as(as = "Vec<(_,_)>")]
     users: HashMap<UserId, state::User>,
+    #[serde_as(as = "Vec<(_,_)>")]
     user_modes: HashMap<UserModeId, state::UserMode>,
 
+    #[serde_as(as = "Vec<(_,_)>")]
     channels: HashMap<ChannelId, state::Channel>,
+    #[serde_as(as = "Vec<(_,_)>")]
     channel_modes: HashMap<ChannelModeId, state::ChannelMode>,
+    #[serde_as(as = "Vec<(_,_)>")]
     channel_list_modes: HashMap<ListModeId, state::ListMode>,
+    #[serde_as(as = "Vec<(_,_)>")]
     list_mode_entries: HashMap<ListModeEntryId, state::ListModeEntry>,
+    #[serde_as(as = "Vec<(_,_)>")]
     channel_topics: HashMap<ChannelTopicId, state::ChannelTopic>,
 
+    #[serde_as(as = "Vec<(_,_)>")]
     memberships: HashMap<MembershipId, state::Membership>,
 
+    #[serde_as(as = "Vec<(_,_)>")]
     messages: HashMap<MessageId, state::Message>,
 
+    #[serde_as(as = "Vec<(_,_)>")]
     servers: HashMap<ServerId, state::Server>,
 
     clock: EventClock,
