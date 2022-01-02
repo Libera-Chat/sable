@@ -16,6 +16,7 @@ serde_json = "1"
 trust-dns-resolver = "0.20"
 chrono = "0.4"
 ambassador = "0.2"
+strum = { version = "0.23", features = [ "derive" ] }
 
 [dependencies.serde]
 version = "1"

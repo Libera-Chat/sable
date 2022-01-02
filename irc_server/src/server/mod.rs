@@ -14,6 +14,7 @@ use tokio::{
     time,
     select,
 };
+use strum::IntoEnumIterator;
 
 use std::{
     collections::HashMap,
@@ -34,6 +35,9 @@ use command::*;
 
 mod state_change_receiver;
 
+mod isupport;
+pub use isupport::*;
+
 pub struct Server
 {
     my_id: ServerId,
@@ -51,6 +55,7 @@ pub struct Server
     connections: ConnectionCollection,
     policy_service: StandardPolicyService,
     dns_client: dns::DnsClient,
+    isupport: ISupportBuilder,
 }
 
 impl Server
@@ -81,6 +86,7 @@ impl Server
             command_dispatcher: command::CommandDispatcher::new(),
             policy_service: StandardPolicyService::new(),
             dns_client: DnsClient::new(connevent_send),
+            isupport: Self::build_basic_isupport(),
         }
     }
 
@@ -187,6 +193,23 @@ impl Server
         {
             self.handle_network_update(change);
         }
+    }
+
+    fn build_basic_isupport() -> ISupportBuilder
+    {
+        let mut ret = ISupportBuilder::new();
+        ret.add(ISupportEntry::simple("EXCEPTS"));
+        ret.add(ISupportEntry::simple("INVEX"));
+
+        let list_modes: String = ListModeType::iter().map(|t| t.mode_letter()).collect();
+        let key_modes = "";
+        let param_modes = "";
+        let simple_modes: String = ChannelModeSet::all().map(|m| m.1).iter().collect();
+        let chanmodes = format!("{},{},{},{}", list_modes, key_modes, param_modes, simple_modes);
+
+        ret.add(ISupportEntry::string("CHANMODES", &chanmodes));
+
+        ret
     }
 
     pub async fn run(&mut self, mut shutdown_channel: Receiver<()>)

@@ -42,6 +42,10 @@ impl Server
             connection.user_id = Some(user.id());
 
             connection.send(&numeric::Numeric001::new_for(&self.name.to_string(), &user.nick(), "test", &user.nick()));
+            for line in self.isupport.data().iter()
+            {
+                connection.send(&numeric::ISupport::new_for(&self.name.to_string(), &user.nick(), line));
+            }
         }
         Ok(())
     }
