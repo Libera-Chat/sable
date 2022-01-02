@@ -100,7 +100,6 @@ impl Server
 
     fn handle_user_quit(&self, detail: &update::UserQuit) -> HandleResult
     {
-        let user: wrapper::User = ObjectWrapper::wrap(&self.net, &detail.user);
         let mut to_notify = HashSet::new();
 
         for m1 in &detail.memberships
@@ -116,7 +115,8 @@ impl Server
         {
             if let Ok(conn) = self.connections.get_user(u)
             {
-                conn.send(&message::Quit::new(&user, &detail.message));
+                let nuh = format!("{}!{}@{}", detail.nickname, detail.user.user, detail.user.visible_host);
+                conn.send(&message::Quit::new(&nuh, &detail.message));
             }
         }
         Ok(())

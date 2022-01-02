@@ -26,8 +26,18 @@ impl Network {
             }
             self.memberships = retained_memberships;
 
+            let removed_nickname = if let Ok(binding) = self.nick_binding_for_user(user.id)
+            {
+                let nick = binding.nick();
+                self.nick_bindings.remove(&nick);
+                nick
+            } else {
+                state_utils::hashed_nick_for(user.id)
+            };
+
             Some(update::UserQuit {
                 user: user,
+                nickname: removed_nickname,
                 message: message,
                 memberships: removed_memberships
             })

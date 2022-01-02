@@ -37,6 +37,7 @@ NetworkStateChange => {
     }
     struct UserQuit {
         pub user: state::User,
+        pub nickname: Nickname,
         pub message: String,
         pub memberships: Vec<state::Membership>,
     }
