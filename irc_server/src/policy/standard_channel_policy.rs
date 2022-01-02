@@ -48,21 +48,29 @@ impl ChannelPolicyService for StandardChannelPolicy
 
     fn can_send(&self, user: &User, channel: &Channel, _msg: &str) -> PermissionResult
     {
-        if channel.mode()?.has_mode(ChannelModeFlag::NoExternal) 
-            && user.is_in_channel(channel.id()).is_none()
+        if let Some(membership) = user.is_in_channel(channel.id())
         {
-            numeric_error!(CannotSendToChannel, channel)
+            // Being in the channel and opped or voiced overrides everything
+            if membership.permissions().is_set(MembershipFlagFlag::Op)
+                || membership.permissions().is_set(MembershipFlagFlag::Voice)
+            {
+                return Ok(());
+            }
         }
-        else if (self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
+        else if channel.mode()?.has_mode(ChannelModeFlag::NoExternal)
+        {
+            // If it's +n and they're not in it, no point testing anything else
+            return numeric_error!(CannotSendToChannel, channel);
+        }
+
+        if (self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
                 || self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Quiet)?).is_some())
               && !self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_some()
         {
-            numeric_error!(CannotSendToChannel, channel)
+            return numeric_error!(CannotSendToChannel, channel);
         }
-        else
-        {
-            Ok(())
-        }
+
+        Ok(())
     }
 
     fn can_see_user_on_channel(&self, user: &User, member: &Membership) -> PermissionResult
