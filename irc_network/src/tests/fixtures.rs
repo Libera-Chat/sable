@@ -25,63 +25,57 @@ impl NetworkBuilder
         }
     }
 
+    pub fn json_for_compare(&self) -> serde_json::Value
+    {
+        let mut json = serde_json::to_value(&self.net).unwrap();
+        json.as_object_mut().unwrap().remove("clock");
+        json
+    }
+
+    fn apply(&mut self, target: impl Into<ObjectId>, details: impl Into<EventDetails>)
+    {
+        let evt = Event {
+            clock: EventClock::new(),
+            id: self.id_gen.next_event(),
+            target: target.into(),
+            timestamp: 0,
+            details: details.into()
+        };
+        self.net.apply(&evt, &NopUpdateReceiver).unwrap();
+    }
+
     pub fn add_channel(&mut self, name: ChannelName)
     {
         let mode_id = self.id_gen.next_channel_mode();
 
-        let evt = Event {
-            clock: EventClock::new(),
-            id: self.id_gen.next_event(),
-            target: mode_id.into(),
-            timestamp: 0,
-            details: details::NewChannelMode {
-                mode: ChannelModeSet::new()
-            }.into()
-        };
-        self.net.apply(&evt, &NopUpdateReceiver).unwrap();
+        self.apply(mode_id, details::NewChannelMode { mode: ChannelModeSet::new() });
 
-        let evt = Event { 
-            clock: EventClock::new(),
-            id: self.id_gen.next_event(),
-            target: self.id_gen.next_channel().into(),
-            timestamp: 0,
-            details: details::NewChannel {
+        self.apply(self.id_gen.next_channel(), details::NewChannel {
                 mode: mode_id,
                 name: name
-            }.into()
-        };
-        self.net.apply(&evt, &NopUpdateReceiver).unwrap();
+            });
     }
 
     pub fn add_user(&mut self, nick: Nickname)
     {
         let mode_id = self.id_gen.next_user_mode();
 
-        let evt = Event {
-            clock: EventClock::new(),
-            id: self.id_gen.next_event(),
-            target: mode_id.into(),
-            timestamp: 0,
-            details: details::NewUserMode {
+        self.apply(mode_id, details::NewUserMode {
                 mode: UserModeSet::new()
-            }.into()
-        };
-        self.net.apply(&evt, &NopUpdateReceiver).unwrap();
+            });
 
-        let evt = Event { 
-            clock: EventClock::new(),
-            id: self.id_gen.next_event(),
-            target: self.id_gen.next_user().into(),
-            timestamp: 0,
-            details: details::NewUser {
+        self.apply(self.id_gen.next_user(), details::NewUser {
                 mode_id: mode_id,
                 nickname: nick,
                 username: Username::from_str("a").unwrap(),
                 realname: "user".to_string(),
                 visible_hostname: Hostname::from_str("host.name").unwrap(),
                 server: ServerId::new(1),
-            }.into()
-        };
-        self.net.apply(&evt, &NopUpdateReceiver).unwrap();
+            });
+    }
+
+    pub fn remove_user(&mut self, id: UserId)
+    {
+        self.apply(id, details::UserQuit { message: "quit".to_string() })
     }
 }

@@ -75,4 +75,5 @@ mod state_utils;
 pub mod tests {
     pub mod fixtures;
     mod serialize;
+    mod event_application;
 }

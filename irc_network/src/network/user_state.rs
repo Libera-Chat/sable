@@ -35,6 +35,8 @@ impl Network {
                 state_utils::hashed_nick_for(user.id)
             };
 
+            self.user_modes.remove(&user.mode_id);
+
             Some(update::UserQuit {
                 user: user,
                 nickname: removed_nickname,
