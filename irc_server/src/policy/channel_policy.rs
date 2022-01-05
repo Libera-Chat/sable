@@ -22,4 +22,5 @@ pub trait ChannelPolicyService
     fn should_see_list_change(&self, membership: &Membership, mode_type: ListModeType) -> bool;
 
     fn can_set_key(&self, user: &User, chan: &Channel, new_key: Option<&ChannelKey>) -> PermissionResult;
+    fn can_invite(&self, user: &User, chan: &Channel, target: &User) -> PermissionResult;
 }

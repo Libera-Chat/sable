@@ -59,6 +59,15 @@ pub struct ChannelTopic {
     pub timestamp: i64,
 }
 
+/// An invitation to a channel. The user and channel are encapsulated in the
+/// [InviteId] type.
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct ChannelInvite {
+    pub id: InviteId,
+    pub source: UserId,
+    pub timestamp: i64
+}
+
 impl Channel {
     pub fn new(id: ChannelId, name: &ChannelName, mode: ChannelModeId) -> Self
     {
@@ -98,5 +107,16 @@ impl ListModeEntry {
     pub fn new(id: ListModeEntryId, list: ListModeId, timestamp: i64, setter: String, pattern: Pattern) -> Self
     {
         Self { id: id, list: list, timestamp: timestamp, setter: setter, pattern: pattern }
+    }
+}
+
+impl ChannelInvite {
+    pub fn new(id: InviteId, source: UserId, timestamp: i64) -> Self
+    {
+        Self {
+            id: id,
+            source: source,
+            timestamp: timestamp
+        }
     }
 }

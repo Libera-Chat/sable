@@ -28,6 +28,7 @@ object_ids!(ObjectId, {
     ChannelName: (ChannelName,);
 
     Membership: (UserId, ChannelId);
+    Invite: (UserId, ChannelId);
 });
 
 object_ids!(LocalObjectId, {
@@ -48,4 +49,9 @@ impl NicknameId {
 impl ListModeId {
     pub fn mode(&self) -> ChannelModeId { self.0 }
     pub fn list_type(&self) -> ListModeType { self.1 }
+}
+
+impl InviteId {
+    pub fn user(&self) -> UserId { self.0 }
+    pub fn channel(&self) -> ChannelId { self.1 }
 }

@@ -86,6 +86,8 @@ pub struct Network
     list_mode_entries: HashMap<ListModeEntryId, state::ListModeEntry>,
     #[serde_as(as = "Vec<(_,_)>")]
     channel_topics: HashMap<ChannelTopicId, state::ChannelTopic>,
+    #[serde_as(as = "Vec<(_,_)>")]
+    channel_invites: HashMap<InviteId, state::ChannelInvite>,
 
     #[serde_as(as = "Vec<(_,_)>")]
     memberships: HashMap<MembershipId, state::Membership>,
@@ -114,6 +116,7 @@ impl Network {
             channel_list_modes: HashMap::new(),
             list_mode_entries: HashMap::new(),
             memberships: HashMap::new(),
+            channel_invites: HashMap::new(),
 
             messages: HashMap::new(),
 
@@ -171,6 +174,7 @@ impl Network {
             MembershipFlagChange => self.channel_permission_change,
             ChannelJoin => self.user_joined_channel,
             ChannelPart => self.user_left_channel,
+            ChannelInvite => self.new_channel_invite,
             NewMessage => self.new_message,
             NewServer => self.new_server,
             ServerPing => self.server_ping,

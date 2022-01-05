@@ -10,6 +10,7 @@ mode_flags!(
         NoExternal (0x01, 'n'),
         TopicLock  (0x02, 't'),
         Secret     (0x04, 's'),
+        InviteOnly (0x08, 'i'),
     }
 );
 

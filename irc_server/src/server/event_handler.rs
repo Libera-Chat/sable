@@ -23,6 +23,7 @@ impl Server
             ChannelTopicChange(details) => self.handle_channel_topic(details),
             ChannelJoin(details) => self.handle_join(details),
             ChannelPart(details) => self.handle_part(details),
+            ChannelInvite(details) => self.handle_invite(details),
             MembershipFlagChange(details) => self.handle_chan_perm_change(details),
             NewMessage(details) => self.handle_new_message(details),
             ServerQuit(details) => self.handle_server_quit(details),
@@ -284,6 +285,17 @@ impl Server
                 conn.send(&message);
             }
         }
+        Ok(())
+    }
+
+    fn handle_invite(&self, detail: &update::ChannelInvite) -> HandleResult
+    {
+        let target = self.net.user(detail.id.user())?;
+        let chan = self.net.channel(detail.id.channel())?;
+        let source = self.net.user(detail.source)?;
+
+        let msg = message::Invite::new(&source, &target, &chan);
+        self.send_to_user_if_local(&target, msg);
         Ok(())
     }
 

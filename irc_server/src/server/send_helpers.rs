@@ -32,4 +32,11 @@ impl Server
             }
         }
     }
+
+    pub(super) fn send_to_user_if_local(&self, user: &wrapper::User, msg: impl MessageType)
+    {
+        if let Ok(conn) = self.connections.get_user(user.id()) {
+            conn.send(&msg);
+        }
+    }
 }

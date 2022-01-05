@@ -187,11 +187,14 @@ impl Network {
     pub(super) fn user_joined_channel(&mut self, target: MembershipId, _event: &Event, details: &details::ChannelJoin, updates: &dyn NetworkUpdateReceiver)
     {
         let membership = state::Membership::new(target, details.user, details.channel, details.permissions);
+        self.memberships.insert(membership.id, membership);
+
+        // If there was an invite for them, it's no longer needed
+        self.channel_invites.remove(&InviteId::new(details.user, details.channel));
+
         let update = update::ChannelJoin {
             membership: target
         };
-
-        self.memberships.insert(membership.id, membership);
         updates.notify(update);
     }
 
@@ -213,6 +216,13 @@ impl Network {
         }
     }
 
+    pub(super) fn new_channel_invite(&mut self, target: InviteId, event: &Event, detail: &details::ChannelInvite, updates: &dyn NetworkUpdateReceiver)
+    {
+        let invite = state::ChannelInvite::new(target, detail.source, event.timestamp);
+        self.channel_invites.insert(invite.id, invite);
+        updates.notify(update::ChannelInvite { id: target, source: detail.source });
+    }
+
     fn remove_channel(&mut self, id: ChannelId, _updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(chan) = self.channels.remove(&id)
@@ -232,5 +242,6 @@ impl Network {
                 }
             }
         }
+        self.channel_invites.retain(|i,_| i.channel() != id);
     }
 }

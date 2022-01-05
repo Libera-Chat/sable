@@ -83,6 +83,10 @@ NetworkStateChange => {
         pub membership: state::Membership,
         pub message: String,
     }
+    struct ChannelInvite {
+        pub id: InviteId,
+        pub source: UserId,
+    }
     struct NewMessage {
         pub message: MessageId,
     }

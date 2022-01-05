@@ -98,6 +98,11 @@ EventDetails => {
         pub message: String,
     }
 
+    #[target_type(InviteId)]
+    struct ChannelInvite {
+        pub source: UserId,
+    }
+
     #[target_type(MessageId)]
     struct NewMessage {
         pub source: UserId,

@@ -45,6 +45,7 @@ pub struct UserMode {
     pub modes: UserModeSet,
 }
 
+
 impl NickBinding
 {
     pub fn new(nick: Nickname, user: UserId, timestamp: i64, created: EventId) -> Self

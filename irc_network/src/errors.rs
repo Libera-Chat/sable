@@ -31,6 +31,8 @@ pub enum LookupError
     NoTopicForChannel(ChannelId),
     #[error("No such membership id {0:?}")]
     NoSuchMembership(MembershipId),
+    #[error("No such invite id {0:?}")]
+    NoSuchInvite(InviteId),
     #[error("No such server {0:?}")]
     NoSuchServer(ServerId),
     #[error("No such nickname {0}")]

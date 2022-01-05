@@ -9,6 +9,7 @@ define_messages! {
     Nick    => { (source, newnick: &Nickname)               => ":{source} NICK {newnick}" },
     Join    => { (source, chan: &Channel.name())            => ":{source} JOIN {chan}" },
     Part    => { (source, chan: &Channel.name(), msg: &str) => ":{source} PART {chan} :{msg}" },
+    Invite  => { (source, target, chan: &Channel.name())    => ":{source} INVITE {target} :{chan}" },
     Quit    => { (source, message: &str)                    => ":{source} QUIT :{message}" },
     Topic   => { (source, chan: &Channel.name(), text: &str)=> ":{source} TOPIC {chan} :{text}" },
 

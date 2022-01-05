@@ -24,6 +24,7 @@ pub mod wrapper {
     mod list_mode;
     mod list_mode_entry;
     mod channel_topic;
+    mod channel_invite;
     mod membership;
     mod server;
     mod message;
@@ -42,6 +43,7 @@ pub mod wrapper {
     pub use list_mode::ListMode;
     pub use list_mode_entry::ListModeEntry;
     pub use channel_topic::ChannelTopic;
+    pub use channel_invite::ChannelInvite;
     pub use membership::Membership;
     pub use server::Server;
     pub use message::Message;

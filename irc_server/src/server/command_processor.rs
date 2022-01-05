@@ -70,7 +70,7 @@ impl<'a> CommandProcessor<'a>
     {
         if let Some(conn) = self.server.find_connection(message.source)
         {
-            let source = self.translate_message_source(conn).unwrap();
+            let source = self.translate_message_source(conn).expect("Got message from unknown source");
             let command = message.command.clone();
 
             if let Err(err) = self.do_process_message(conn, &source, message)

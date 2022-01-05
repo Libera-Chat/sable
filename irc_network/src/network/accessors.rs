@@ -136,6 +136,12 @@ impl Network {
         self.memberships.values()
     }
 
+    /// Look up an invite by ID
+    pub fn channel_invite(&self, id: InviteId) -> LookupResult<wrapper::ChannelInvite>
+    {
+        self.channel_invites.get(&id).ok_or(NoSuchInvite(id)).wrap(self)
+    }
+
     /// Look up a server by ID
     pub fn server(&self, id: ServerId) -> LookupResult<wrapper::Server> {
         self.servers.get(&id).ok_or(NoSuchServer(id)).wrap(self)

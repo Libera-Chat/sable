@@ -41,6 +41,15 @@ impl ChannelPolicyService for StandardChannelPolicy
             return numeric_error!(BadChannelKey, channel)
         }
 
+        if channel.mode()?.has_mode(ChannelModeFlag::InviteOnly)
+        {
+            if user.has_invite_for(channel.id()).is_none()
+                && !self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Invex)?).is_some()
+            {
+                return numeric_error!(InviteOnlyChannel, channel);
+            }
+        }
+
         if self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
             && !self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_some()
         {
@@ -156,6 +165,11 @@ impl ChannelPolicyService for StandardChannelPolicy
     }
 
     fn can_set_key(&self, user: &User, chan: &Channel, _new_key: Option<&ChannelKey>) -> PermissionResult
+    {
+        is_channel_operator(user, chan)
+    }
+
+    fn can_invite(&self, user: &User, chan: &Channel, _target: &User) -> PermissionResult
     {
         is_channel_operator(user, chan)
     }

@@ -71,6 +71,12 @@ impl User<'_> {
     {
         self.channels().filter(|m| m.channel_id() == c).next()
     }
+
+    /// Test whether an invite exists for this user to a given channel
+    pub fn has_invite_for(&self, c: ChannelId) -> Option<ChannelInvite>
+    {
+        self.network.channel_invite(InviteId::new(self.data.id, c)).ok()
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for User<'a> {
