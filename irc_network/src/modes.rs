@@ -26,39 +26,52 @@ mode_flags!(
     }
 );
 
-#[derive(Debug,Clone,Copy,PartialOrd,Ord,PartialEq,Eq,Hash,Serialize,Deserialize)]
-#[derive(EnumIter)]
-pub enum ListModeType {
-    #[serde(rename="b")]
-    Ban,
-    #[serde(rename="q")]
-    Quiet,
-    #[serde(rename="e")]
-    Except,
-    #[serde(rename="I")]
-    Invex
-}
-
-impl ListModeType
-{
-    pub fn mode_letter(&self) -> char
-    {
-        match self {
-            Self::Ban => 'b',
-            Self::Quiet => 'q',
-            Self::Except => 'e',
-            Self::Invex => 'I'
+macro_rules! define_mode_type {
+    (
+        $typename:ident
+        {
+             $( $var:ident => $val:expr ),*
         }
-    }
+    ) => {
+        #[derive(Debug,Clone,Copy,PartialOrd,Ord,PartialEq,Eq,Hash,Serialize,Deserialize)]
+        #[derive(EnumIter)]
+        pub enum $typename {
+            $( $var ),*
+        }
 
-    pub fn from_char(c: char) -> Option<Self>
-    {
-        match c {
-            'b' => Some(Self::Ban),
-            'q' => Some(Self::Quiet),
-            'e' => Some(Self::Except),
-            'I' => Some(Self::Invex),
-            _ => None
+        impl $typename
+        {
+            pub fn mode_letter(&self) -> char
+            {
+                match self {
+                    $( Self:: $var => $val ),*
+                }
+            }
+
+            pub fn from_char(c: char) -> Option<Self>
+            {
+                match c {
+                    $( $val => Some(Self::$var) ),+,
+                    _ => None
+                }
+            }
         }
     }
 }
+
+define_mode_type!(
+    ListModeType
+    {
+        Ban => 'b',
+        Quiet => 'q',
+        Except => 'e',
+        Invex => 'I'
+    }
+);
+
+define_mode_type!(
+    KeyModeType
+    {
+        Key => 'k'
+    }
+);

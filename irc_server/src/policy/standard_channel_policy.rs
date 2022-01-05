@@ -33,17 +33,21 @@ fn is_channel_operator(user: &User, channel: &Channel) -> PermissionResult
 
 impl ChannelPolicyService for StandardChannelPolicy
 {
-    fn can_join(&self, user: &User, channel: &Channel) -> PermissionResult
+    fn can_join(&self, user: &User, channel: &Channel, key: Option<ChannelKey>) -> PermissionResult
     {
+        let chan_key = channel.mode()?.key();
+        if chan_key.is_some() && key != chan_key
+        {
+            return numeric_error!(BadChannelKey, channel)
+        }
+
         if self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
             && !self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_some()
         {
-            numeric_error!(BannedOnChannel, channel)
+            return numeric_error!(BannedOnChannel, channel)
         }
-        else
-        {
-            Ok(())
-        }
+
+        Ok(())
     }
 
     fn can_send(&self, user: &User, channel: &Channel, _msg: &str) -> PermissionResult
@@ -149,5 +153,10 @@ impl ChannelPolicyService for StandardChannelPolicy
             ListModeType::Ban | ListModeType::Quiet => true,
             ListModeType::Except | ListModeType::Invex => member.permissions().is_set(MembershipFlagFlag::Op)
         }
+    }
+
+    fn can_set_key(&self, user: &User, chan: &Channel, _new_key: Option<&ChannelKey>) -> PermissionResult
+    {
+        is_channel_operator(user, chan)
     }
 }

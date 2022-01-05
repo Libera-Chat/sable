@@ -84,6 +84,7 @@ impl ModeHandler<'_>
             let mut sent_unknown = false;
             let mut added = ChannelModeSet::new();
             let mut removed = ChannelModeSet::new();
+            let mut key_change = OptionChange::<ChannelKey>::NoChange;
 
             #[derive(PartialEq)]
             enum Direction { Add, Rem, Query }
@@ -174,6 +175,23 @@ impl ModeHandler<'_>
                                 }
                             }
                         }
+                        else if let Some(_key_type) = KeyModeType::from_char(c)
+                        {
+                            match dir
+                            {
+                                // Can't query keys
+                                Direction::Query => (),
+                                Direction::Add => {
+                                    let new_key = ChannelKey::new_coerce(args.next_arg()?);
+                                    self.server.policy().can_set_key(source, &chan, Some(&new_key))?;
+                                    key_change = OptionChange::Set(new_key);
+                                }
+                                Direction::Rem => {
+                                    self.server.policy().can_set_key(source, &chan, None)?;
+                                    key_change = OptionChange::Unset;
+                                }
+                            }
+                        }
                         else
                         {
                             if ! sent_unknown {
@@ -184,9 +202,14 @@ impl ModeHandler<'_>
                     }
                 }
             }
-            if !added.is_empty() || !removed.is_empty()
+            if !added.is_empty() || !removed.is_empty() || !key_change.is_no_change()
             {
-                let detail = event::ChannelModeChange { changed_by: source.id().into(), added: added, removed: removed };
+                let detail = event::ChannelModeChange {
+                    changed_by: source.id().into(),
+                    added: added,
+                    removed: removed,
+                    key_change: key_change,
+                };
                 self.action(CommandAction::state_change(mode.id(), detail))?;
             }
         }

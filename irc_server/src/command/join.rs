@@ -10,7 +10,8 @@ command_handler!("JOIN" => JoinHandler {
 
         let (channel_id, permissions) = match self.server.network().channel_by_name(&chname) {
             Ok(channel) => {
-                self.server.policy().can_join(source, &channel)?;
+                let key = cmd.args.get(1).map(|s| ChannelKey::new_coerce(&s));
+                self.server.policy().can_join(source, &channel, key)?;
                 
                 (channel.id(), MembershipFlagSet::new())
             },

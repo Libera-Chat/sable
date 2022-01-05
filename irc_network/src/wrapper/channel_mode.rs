@@ -33,7 +33,12 @@ impl ChannelMode<'_> {
     /// protocol or human consumption
     pub fn format(&self) -> String
     {
-        format!("+{}", self.data.modes.to_chars())
+        let mut ret = format!("+{}", self.data.modes.to_chars());
+        if self.data.key.is_some()
+        {
+            ret.push(KeyModeType::Key.mode_letter());
+        }
+        ret
     }
 
     /// Get the list mode object belonging to this mode of the given type
@@ -41,6 +46,12 @@ impl ChannelMode<'_> {
     {
         let list_id = ListModeId::new(self.data.id, list_type);
         self.network.list_mode(list_id)
+    }
+
+    /// Get the channel key, if any
+    pub fn key(&self) -> Option<ChannelKey>
+    {
+        self.data.key
     }
 }
 

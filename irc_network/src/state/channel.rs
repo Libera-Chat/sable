@@ -29,6 +29,7 @@ pub struct Membership {
 pub struct ChannelMode {
     pub id: ChannelModeId,
     pub modes: ChannelModeSet,
+    pub key: Option<ChannelKey>,
 }
 
 /// A channel list-type mode (e.g. bqeI)
@@ -61,14 +62,14 @@ pub struct ChannelTopic {
 impl Channel {
     pub fn new(id: ChannelId, name: &ChannelName, mode: ChannelModeId) -> Self
     {
-        Channel{ id: id, name: name.clone(), mode: mode }
+        Channel { id: id, name: name.clone(), mode: mode }
     }
 }
 
 impl ChannelMode {
     pub fn new(id: ChannelModeId, modes: ChannelModeSet) -> Self
     {
-        ChannelMode{ id: id, modes: modes }
+        ChannelMode { id: id, modes: modes, key: None }
     }
 }
 

@@ -39,6 +39,12 @@ impl Network {
         {
             cmode.modes |= details.added;
             cmode.modes &= !details.removed;
+            match details.key_change
+            {
+                OptionChange::NoChange => (),
+                OptionChange::Unset => cmode.key = None,
+                OptionChange::Set(key) => cmode.key = Some(key)
+            };
         }
         if let Some(channel) = self.channel_for_mode(target)
         {
@@ -47,6 +53,7 @@ impl Network {
                 mode: target,
                 added: details.added,
                 removed: details.removed,
+                key_change: details.key_change,
                 changed_by: details.changed_by,
             });
         }

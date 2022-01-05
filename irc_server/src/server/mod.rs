@@ -203,7 +203,7 @@ impl Server
         ret.add(ISupportEntry::simple("FNC"));
 
         let list_modes: String = ListModeType::iter().map(|t| t.mode_letter()).collect();
-        let key_modes = "";
+        let key_modes: String = KeyModeType::iter().map(|t| t.mode_letter()).collect();
         let param_modes = "";
         let simple_modes: String = ChannelModeSet::all().map(|m| m.1).iter().collect();
         let chanmodes = format!("{},{},{},{}", list_modes, key_modes, param_modes, simple_modes);

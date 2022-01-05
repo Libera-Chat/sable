@@ -69,6 +69,9 @@ pub mod update;
 pub use update::NetworkStateChange;
 pub use update::NetworkUpdateReceiver;
 
+mod option_change;
+pub use option_change::OptionChange;
+
 mod state_utils;
 
 #[cfg(test)]

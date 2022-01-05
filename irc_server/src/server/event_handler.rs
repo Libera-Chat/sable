@@ -137,7 +137,12 @@ impl Server
         let chan = mode.channel()?;
         let source = self.lookup_message_source(detail.changed_by)?;
 
-        let changes = utils::format_cmode_changes(&detail.added, &detail.removed);
+        let (mut changes, params) = utils::format_cmode_changes(&detail);
+        for p in params
+        {
+            changes.push(' ');
+            changes.push_str(&p);
+        }
         let msg = message::Mode::new(source.as_ref(), &chan, &changes);
 
         self.send_to_channel_members(&chan, msg);

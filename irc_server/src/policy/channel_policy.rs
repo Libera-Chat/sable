@@ -3,7 +3,7 @@ use super::*;
 #[delegatable_trait]
 pub trait ChannelPolicyService
 {
-    fn can_join(&self, user: &User, channel: &Channel) -> PermissionResult;
+    fn can_join(&self, user: &User, channel: &Channel, key: Option<ChannelKey>) -> PermissionResult;
     fn can_send(&self, user: &User, channel: &Channel, msg: &str) -> PermissionResult;
 
     fn can_see_user_on_channel(&self, user: &User, member: &Membership) -> PermissionResult;
@@ -20,4 +20,6 @@ pub trait ChannelPolicyService
 
     fn can_query_list(&self, user: &User, chan: &Channel, mode_type: ListModeType) -> PermissionResult;
     fn should_see_list_change(&self, membership: &Membership, mode_type: ListModeType) -> bool;
+
+    fn can_set_key(&self, user: &User, chan: &Channel, new_key: Option<&ChannelKey>) -> PermissionResult;
 }

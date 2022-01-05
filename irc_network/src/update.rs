@@ -1,9 +1,7 @@
 //! Contains types used by [`Network`](crate::Network) to notify callers of state changes
 
 use crate::state;
-use crate::validated::*;
-use crate::modes::*;
-use crate::id::*;
+use crate::*;
 use ircd_macros::event_details;
 use irc_strings::matches::Pattern;
 
@@ -49,6 +47,7 @@ NetworkStateChange => {
         pub mode: ChannelModeId,
         pub added: ChannelModeSet,
         pub removed: ChannelModeSet,
+        pub key_change: OptionChange<ChannelKey>,
         pub changed_by: ObjectId,
     }
     struct ChannelTopicChange {

@@ -73,4 +73,5 @@ define_messages! {
     349(EndOfExceptList)   => { (chan: &Channel.name())    => "{chan} :End of channel exception list" },
 
     474(BannedOnChannel) => { (chan: &Channel.name())   => "{chan} :Cannot join channel (+b) - you are banned" },
+    475(BadChannelKey)   => { (chan: &Channel.name())   => "{chan} :Cannot join channel (+k) - bad key" },
 }

@@ -56,7 +56,8 @@ EventDetails => {
     struct ChannelModeChange {
         pub changed_by: ObjectId,
         pub added: ChannelModeSet,
-        pub removed: ChannelModeSet
+        pub removed: ChannelModeSet,
+        pub key_change: OptionChange<ChannelKey>,
     }
 
     #[target_type(ListModeEntryId)]

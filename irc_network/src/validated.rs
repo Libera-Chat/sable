@@ -87,6 +87,19 @@ define_validated! {
         }
         Ok(())
     }
+
+    ChannelKey(ArrayString<64>) {
+        for c in value.chars()
+        {
+            // less than 0x20 (' ') is control chars, greater than 0x7E (~) is outside of ascii
+            // colon, comma and space break protocol parsing
+            if c <= ' ' || c > '~' || c == ':' || c == ','
+            {
+                return Self::error(value);
+            }
+        }
+        Ok(())
+    }
 }
 
 impl Nickname
@@ -110,5 +123,18 @@ impl Username
         s.truncate(10);
         // expect() is safe here; we've already truncated to the max length
         Self(ArrayString::try_from(s.as_str()).expect("Failed to convert string"))
+    }
+}
+
+impl ChannelKey
+{
+    pub fn new_coerce(s: &str) -> Self
+    {
+        let mut s = s.to_string();
+        s.retain(|c| c > ' ' && c <= '~' && c != ':' && c != ',');
+        let mut val = <Self as Validated>::Underlying::new();
+        s.truncate(val.capacity());
+        val.push_str(&s);
+        Self(val)
     }
 }
