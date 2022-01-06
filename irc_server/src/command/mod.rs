@@ -89,6 +89,7 @@ mod nick;
 mod user;
 mod join;
 mod part;
+mod notice;
 mod privmsg;
 mod quit;
 mod mode;

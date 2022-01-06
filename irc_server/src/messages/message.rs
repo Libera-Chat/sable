@@ -17,6 +17,8 @@ define_messages! {
 
     Notice  => { (source, target, message: &str)            => ":{source} NOTICE {target} :{message}" },
     Privmsg => { (source, target, message: &str)            => ":{source} PRIVMSG {target} :{message}" },
+    Message => { (source, target, message_type: state::MessageType, message: &str)
+                                                            => ":{source} {message_type} {target} :{message}" },
 
     Ping    => { (source, target, cookie: &str)             => ":{source} PING {target} :{cookie}" },
     Pong    => { (source, cookie: &str)                     => ":{source} PONG {source} :{cookie}" },

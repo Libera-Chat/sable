@@ -39,6 +39,12 @@ impl Message<'_> {
         }
     }
 
+    /// Whether this is a privmsg or a notice
+    pub fn message_type(&self) -> state::MessageType
+    {
+        self.data.message_type
+    }
+
     /// The message content
     pub fn text(&self) -> &str
     {

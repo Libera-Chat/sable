@@ -62,6 +62,18 @@ impl MessageTarget for Nickname
     fn format(&self) -> String { self.value().to_string() }
 }
 
+impl MessageTarget for wrapper::MessageTarget<'_>
+{
+    fn format(&self) -> String
+    {
+        match self
+        {
+            Self::Channel(c) => c.format(),
+            Self::User(u) => MessageTarget::format(u)
+        }
+    }
+}
+
 // Used when command parsing/processing fails
 impl MessageTarget for CommandSource<'_>
 {

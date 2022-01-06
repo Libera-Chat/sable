@@ -1,6 +1,6 @@
 use super::*;
 
-command_handler!("PRIVMSG" => PrivmsgHandler {
+command_handler!("NOTICE" => NoticeHandler {
     fn min_parameters(&self) -> usize { 2 }
 
     fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
@@ -26,7 +26,7 @@ command_handler!("PRIVMSG" => PrivmsgHandler {
         let details = event::details::NewMessage {
             source: source.id(),
             target: target_id,
-            message_type: state::MessageType::Privmsg,
+            message_type: state::MessageType::Notice,
             text: msg,
         };
         self.action(CommandAction::state_change(self.server.next_message_id(), details))?;

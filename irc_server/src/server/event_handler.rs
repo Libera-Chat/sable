@@ -304,27 +304,18 @@ impl Server
         let message = self.net.message(detail.message)?;
         let source = message.source()?;
 
+        let message_send = message::Message::new(&source, &message.target()?, message.message_type(), message.text());
+
         match message.target()? {
             wrapper::MessageTarget::Channel(channel) => {
-                for m in channel.members() {
-                    let member = m.user()?;
-                    if member.id() == source.id() {
-                        continue;
-                    }
-                    if let Ok(conn) = self.connections.get_user(member.id()) {
-                        conn.send(&message::Privmsg::new(&source, &channel, message.text()));
-                    }
-                }
-                Ok(())
+                self.send_to_channel_members_where(&channel, message_send, |m| m.user_id() != source.id());
             },
             wrapper::MessageTarget::User(user) => {
-                if let Ok(conn) = self.connections.get_user(user.id()) {
-                    conn.send(&message::Privmsg::new(&source, &user, message.text()));
-
-                }
-                Ok(())
+                self.send_to_user_if_local(&user, message_send);
             },
         }
+
+        Ok(())
     }
 
     fn handle_server_quit(&self, detail: &update::ServerQuit) -> HandleResult

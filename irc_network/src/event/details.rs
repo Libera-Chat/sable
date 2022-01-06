@@ -107,6 +107,7 @@ EventDetails => {
     struct NewMessage {
         pub source: UserId,
         pub target: ObjectId, // Can be user or channel
+        pub message_type: state::MessageType,
         pub text: String,
     }
 
