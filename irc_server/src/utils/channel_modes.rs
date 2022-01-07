@@ -34,6 +34,7 @@ pub fn format_cmode_changes(detail: &ChannelModeChange) -> (String, Vec<String>)
         if detail.key_change.is_unset()
         {
             changes.push(KeyModeType::Key.mode_letter());
+            params.push("*".to_string());
         }
     }
 
