@@ -24,11 +24,16 @@ object_ids!(ObjectId, {
     ListModeEntry: sequential;
     Message: sequential;
 
+    NetworkBan: sequential;
+
     Nickname: (Nickname,);
     ChannelName: (ChannelName,);
 
     Membership: (UserId, ChannelId);
     Invite: (UserId, ChannelId);
+
+    Config: (LocalId,);
+    AuditLogEntry: sequential;
 });
 
 object_ids!(LocalObjectId, {

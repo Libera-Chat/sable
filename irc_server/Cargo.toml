@@ -9,6 +9,7 @@ edition = "2018"
 ircd_macros = { path = "../ircd_macros" }
 irc_network = { path = "../irc_network" }
 irc_strings = { path = "../irc_strings" }
+rpc_protocols = { path = "../rpc_protocols" }
 log = "0.4"
 inventory = "0.1"
 thiserror = "1"
@@ -17,6 +18,7 @@ trust-dns-resolver = "0.20"
 chrono = "0.4"
 ambassador = "0.2"
 strum = { version = "0.23", features = [ "derive" ] }
+pwhash = "1"
 
 [dependencies.serde]
 version = "1"

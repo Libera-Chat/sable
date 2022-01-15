@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 irc_network = { path = "../irc_network" }
-irc_server = { path = "../irc_server" }
+rpc_protocols = { path = "../rpc_protocols" }
 rand = "0.8"
 tokio = { version = "1.14", features = [ "full" ] }
 tokio-rustls = "0.23"

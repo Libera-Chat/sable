@@ -43,7 +43,7 @@ pub type ValidationResult = Result<(), ValidationError>;
 
 /// Stores the current network state.
 /// 
-/// # General Principles
+/// ## General Principles
 /// 
 /// A `Network` object is fully serializable and cloneable;
 /// all objects within it refer to each other by unique ID 
@@ -98,6 +98,14 @@ pub struct Network
     #[serde_as(as = "Vec<(_,_)>")]
     servers: HashMap<ServerId, state::Server>,
 
+    #[serde_as(as = "Vec<(_,_)>")]
+    klines: HashMap<NetworkBanId, state::KLine>,
+
+    config: config::NetworkConfig,
+
+    #[serde_as(as = "Vec<(_,_)>")]
+    audit_log: HashMap<AuditLogEntryId, state::AuditLogEntry>,
+
     clock: EventClock,
 }
 
@@ -119,10 +127,14 @@ impl Network {
             channel_invites: HashMap::new(),
 
             messages: HashMap::new(),
+            servers: HashMap::new(),
+            klines: HashMap::new(),
+
+            config: config::NetworkConfig::new(),
+
+            audit_log: HashMap::new(),
 
             clock: EventClock::new(),
-
-            servers: HashMap::new(),
         }
     }
 
@@ -165,6 +177,7 @@ impl Network {
             UserQuit => self.user_quit,
             NewUserMode => self.new_user_mode,
             UserModeChange => self.user_mode_change,
+            OperUp => self.oper_up,
             NewChannel => self.new_channel,
             NewChannelMode => self.new_channel_mode,
             ChannelModeChange => self.channel_mode_change,
@@ -176,9 +189,13 @@ impl Network {
             ChannelPart => self.user_left_channel,
             ChannelInvite => self.new_channel_invite,
             NewMessage => self.new_message,
+            NewKLine => self.new_kline,
+            KLineRemoved => self.remove_kline,
             NewServer => self.new_server,
             ServerPing => self.server_ping,
-            ServerQuit => self.server_quit
+            ServerQuit => self.server_quit,
+            LoadConfig => self.load_config,
+            NewAuditLogEntry => self.new_audit_log,
         })?;
 
         self.clock.update_with_id(event.id);
@@ -212,3 +229,7 @@ mod user_state;
 mod channel_state;
 mod message_state;
 mod server_state;
+mod ban_state;
+mod config_state;
+mod oper_state;
+mod audit_log;

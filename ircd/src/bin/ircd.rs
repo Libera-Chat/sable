@@ -1,36 +1,5 @@
+use ircd::*;
 use irc_server::Server;
-use irc_network::{
-    EpochId,
-    ServerId,
-    ServerName,
-    EventIdGenerator,
-};
-use ircd_sync::*;
-use structopt::StructOpt;
-
-use tokio::{
-    sync::mpsc::{
-        channel
-    },
-    time
-};
-
-use std::{
-    fs::{
-        File,
-    },
-    io::{
-        BufReader,
-    },
-    path::{
-        Path,
-        PathBuf,
-    },
-};
-use serde::Deserialize;
-
-use log;
-use simple_logger::SimpleLogger;
 
 #[derive(Debug,StructOpt)]
 #[structopt(rename_all = "kebab")]
@@ -74,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     let server_config = ServerConfig::load_file(opts.server_conf)?;
 
     SimpleLogger::new().with_level(log::LevelFilter::Debug)
-//                       .with_module_level("ircd_sync::network", log::LevelFilter::Trace)
+                       .with_module_level("ircd_sync::network", log::LevelFilter::Trace)
                        .with_module_level("rustls", log::LevelFilter::Info)
                        .init().unwrap();
 

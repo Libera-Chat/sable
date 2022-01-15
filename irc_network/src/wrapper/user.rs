@@ -77,6 +77,24 @@ impl User<'_> {
     {
         self.network.channel_invite(InviteId::new(self.data.id, c)).ok()
     }
+
+    /// Test whether this user is a network operator
+    pub fn is_oper(&self) -> bool
+    {
+        self.data.oper_privileges.is_some()
+    }
+
+    /// Access the user's operator privilege information
+    pub fn oper_privileges(&self) -> Option<&state::UserPrivileges>
+    {
+        self.data.oper_privileges.as_ref()
+    }
+
+    /// The user's nick!user@host mask, as used in the IRC client protocol
+    pub fn nuh(&self) -> String
+    {
+        format!("{}!{}@{}", self.nick().value(), self.data.user.value(), self.data.visible_host.value())
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for User<'a> {

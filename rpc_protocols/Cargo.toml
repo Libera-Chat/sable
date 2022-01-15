@@ -1,0 +1,10 @@
+[package]
+name = "rpc_protocols"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+irc_network = { path = "../irc_network" }
+tokio = { version = "1.14", features = [ "full" ] }

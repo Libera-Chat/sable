@@ -41,6 +41,11 @@ EventDetails => {
         pub removed: UserModeSet,
     }
 
+    #[target_type(UserId)]
+    struct OperUp {
+        pub oper_name: String
+    }
+
     #[target_type(ChannelId)]
     struct NewChannel {
         pub name: ChannelName,
@@ -111,6 +116,21 @@ EventDetails => {
         pub text: String,
     }
 
+    #[target_type(NetworkBanId)]
+    struct NewKLine {
+        pub user: Pattern,
+        pub host: Pattern,
+        pub setter: UserId,
+        pub duration: i64,
+        pub user_reason: String,
+        pub oper_reason: Option<String>,
+    }
+
+    #[target_type(NetworkBanId)]
+    struct KLineRemoved {
+        pub remover: UserId,
+    }
+
     #[target_type(ServerId)]
     struct NewServer {
         pub epoch: EpochId,
@@ -126,5 +146,16 @@ EventDetails => {
     #[target_type(ServerId)]
     struct ServerQuit {
         pub introduced_by: EventId,
+    }
+
+    #[target_type(ConfigId)]
+    struct LoadConfig {
+        pub config: config::NetworkConfig,
+    }
+
+    #[target_type(AuditLogEntryId)]
+    struct NewAuditLogEntry {
+        pub category: state::AuditLogCategory,
+        pub fields: Vec<(state::AuditLogField, String)>
     }
 });

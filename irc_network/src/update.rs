@@ -93,6 +93,9 @@ NetworkStateChange => {
     struct ServerQuit {
         pub server: state::Server,
     }
+    struct NewAuditLogEntry {
+        pub id: AuditLogEntryId,
+    }
 });
 
 /// Trait to be implemented by an object which wants to be notified of network state updates

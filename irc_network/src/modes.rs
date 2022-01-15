@@ -24,6 +24,7 @@ mode_flags!(
 mode_flags!(
     UserMode {
         Invisible   (0x01, 'i'),
+        Oper        (0x02, 'o'),
     }
 );
 

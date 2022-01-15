@@ -8,8 +8,14 @@ impl Server
             CommandAction::RegisterClient(id) => {
                 let mut should_add_user = None;
                 let mut actions: Vec<(ObjectId, EventDetails)> = Vec::new();
-                if let Ok(conn) = self.connections.get_mut(id)
+                if let Ok(conn) = self.connections.get(id)
                 {
+                    if ! self.policy().check_user_access(&self, &self.net, &conn)
+                    {
+                        self.connections.remove(id);
+                        return;
+                    }
+
                     if let Some(pre_client_rc) = &conn.pre_client
                     {
                         // We don't delete the preclient here, because it's possible the event will fail to apply

@@ -36,11 +36,15 @@ impl ConnectionCollection
         self.client_connections.remove(&id);
     }
 
-    pub fn remove_user(&mut self, id: UserId)
+    pub fn remove_user(&mut self, id: UserId) -> Option<ClientConnection>
     {
         if let Some(connid) = self.user_to_connid.remove(&id)
         {
-            self.client_connections.remove(&connid);
+            self.client_connections.remove(&connid)
+        }
+        else
+        {
+            None
         }
     }
 
@@ -57,16 +61,21 @@ impl ConnectionCollection
         }
     }
 
-    pub fn get_mut(&mut self, id: ConnectionId) -> Result<&mut ClientConnection, LookupError>
+/*    pub fn get_mut(&mut self, id: ConnectionId) -> Result<&mut ClientConnection, LookupError>
     {
         self.client_connections.get_mut(&id).ok_or(LookupError::NoSuchConnectionId)
     }
-
+*/
     pub fn get_user_mut(&mut self, id: UserId) -> Result<&mut ClientConnection, LookupError>
     {
         match self.user_to_connid.get(&id) {
             None => Err(LookupError::NoSuchConnectionId),
             Some(connid) => self.client_connections.get_mut(connid).ok_or(LookupError::NoSuchConnectionId)
         }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item=&ClientConnection>
+    {
+        self.client_connections.values()
     }
 }

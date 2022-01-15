@@ -4,6 +4,7 @@ use super::*;
 pub enum PermissionError
 {
     Numeric(Box<dyn Numeric>),
+    CustomError,
     InternalError(Box<dyn std::error::Error>),
 }
 

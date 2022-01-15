@@ -37,8 +37,8 @@ pub enum Message
 #[derive(Debug)]
 pub struct Request
 {
-    pub(crate) response: Sender<Message>,
-    pub(crate) message: Message,
+    pub response: Sender<Message>,
+    pub message: Message,
 }
 
 impl Message

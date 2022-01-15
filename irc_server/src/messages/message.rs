@@ -22,4 +22,6 @@ define_messages! {
 
     Ping    => { (source, target, cookie: &str)             => ":{source} PING {target} :{cookie}" },
     Pong    => { (source, cookie: &str)                     => ":{source} PONG {source} :{cookie}" },
+
+    Error   => { (text: &str)   => "ERROR :{text}" }
 }

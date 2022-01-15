@@ -14,8 +14,8 @@ pub use config::NetworkConfig;
 pub use config::NodeConfig;
 pub use eventlog::EventLog;
 pub use network::Network;
-use message::Message;
-use message::Request;
+pub use message::Message;
+pub use message::Request;
 
 pub use replicated_log::ReplicatedEventLog;
 

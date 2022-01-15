@@ -27,6 +27,7 @@ impl Server
             MembershipFlagChange(details) => self.handle_chan_perm_change(details),
             NewMessage(details) => self.handle_new_message(details),
             ServerQuit(details) => self.handle_server_quit(details),
+            NewAuditLogEntry(details) => self.report_audit_entry(details),
         };
         if let Err(e) = res
         {
@@ -99,8 +100,13 @@ impl Server
         Ok(())
     }
 
-    fn handle_user_quit(&self, detail: &update::UserQuit) -> HandleResult
+    fn handle_user_quit(&mut self, detail: &update::UserQuit) -> HandleResult
     {
+        if let Some(conn) = self.connections.remove_user(detail.user.id)
+        {
+            conn.send(&message::Error::new(&format!("Closing link: {}", detail.message)));
+        }
+
         let mut to_notify = HashSet::new();
 
         for m1 in &detail.memberships
@@ -123,7 +129,7 @@ impl Server
         Ok(())
     }
 
-    fn handle_bulk_quit(&self, detail: &update::BulkUserQuit) -> HandleResult
+    fn handle_bulk_quit(&mut self, detail: &update::BulkUserQuit) -> HandleResult
     {
         for item in &detail.items
         {
@@ -325,6 +331,30 @@ impl Server
             // The network thinks we're no longer alive. Shut down to avoid desyncs
             panic!("Network thinks we're dead. Making it so");
         }
+        Ok(())
+    }
+
+    fn report_audit_entry(&self, detail: &update::NewAuditLogEntry) -> HandleResult
+    {
+        let entry = self.net.audit_entry(detail.id)?;
+        let text = serde_json::to_string(&entry).unwrap_or("ERROR: failed to serialize audit event".to_string());
+
+        for conn in self.connections.iter()
+        {
+            if let Some(user_id) = conn.user_id
+            {
+                if let Ok(user) = self.net.user(user_id)
+                {
+                    if user.is_oper()
+                    {
+                        let msg = message::Notice::new(&self, &user, &format!("Network event: {}", &text));
+
+                        conn.send(&msg);
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 }

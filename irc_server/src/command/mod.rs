@@ -45,6 +45,11 @@ pub trait CommandHandler
     {
         numeric_error!(AlreadyRegistered)
     }
+
+    fn handle_oper<'a>(&mut self, source: &'a wrapper::User, cmd: &ClientCommand) -> CommandResult
+    {
+        self.handle_user(source, cmd)
+    }
 }
 
 pub trait CommandHandlerFactory
@@ -99,3 +104,6 @@ mod who;
 mod whois;
 mod topic;
 mod invite;
+mod kill;
+mod kline;
+mod oper;

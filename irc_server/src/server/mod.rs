@@ -4,6 +4,7 @@ use event::*;
 use crate::connection::EventDetail::*;
 use crate::policy::*;
 use utils::OrLog;
+use rpc_protocols::*;
 
 use tokio::{
     sync::mpsc::{
@@ -24,8 +25,6 @@ use std::{
 
 use log::{info,error};
 
-use rpc::ServerRpcMessage;
-
 pub mod command_processor;
 use command_processor::*;
 
@@ -45,7 +44,7 @@ pub struct Server
     net: Network,
     epoch: EpochId,
     id_generator: ObjectIdGenerator,
-    rpc_receiver: Receiver<ServerRpcMessage>,
+    rpc_receiver: Receiver<NetworkMessage>,
     event_submitter: Sender<EventLogUpdate>,
     action_receiver: std::sync::mpsc::Receiver<CommandAction>,
     action_submitter: std::sync::mpsc::Sender<CommandAction>,
@@ -62,7 +61,7 @@ impl Server
 {
     pub fn new(id: ServerId,
                name: ServerName,
-               rpc_receiver: Receiver<ServerRpcMessage>,
+               rpc_receiver: Receiver<NetworkMessage>,
                to_network: Sender<EventLogUpdate>) -> Self
     {
         let (connevent_send, connevent_recv) = channel(128);
@@ -98,6 +97,11 @@ impl Server
     fn submit_event(&self, id: impl Into<ObjectId>, detail: impl Into<EventDetails>)
     {
         self.event_submitter.try_send(EventLogUpdate::NewEvent(id.into(), detail.into())).unwrap();
+    }
+
+    pub fn ids(&self) -> &ObjectIdGenerator
+    {
+        &self.id_generator
     }
 
     pub fn next_user_id(&self) -> UserId
@@ -308,16 +312,16 @@ impl Server
                 },
                 res = self.rpc_receiver.recv() => {
                     match res {
-                        Some(ServerRpcMessage::NewEvent(event)) =>
+                        Some(NetworkMessage::NewEvent(event)) =>
                         {
                             self.apply_event(event);
                         },
-                        Some(ServerRpcMessage::ImportNetworkState(new_net)) =>
+                        Some(NetworkMessage::ImportNetworkState(new_net)) =>
                         {
                             log::debug!("Server got state import");
                             self.net = new_net;
                         },
-                        Some(ServerRpcMessage::ExportNetworkState(channel)) =>
+                        Some(NetworkMessage::ExportNetworkState(channel)) =>
                         {
                             log::debug!("Server got state export request; sending");
                             channel.send(self.net.clone()).await.or_log("Error sending network state for export");

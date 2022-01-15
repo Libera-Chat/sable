@@ -158,4 +158,22 @@ impl Network {
     {
         self.messages.get(&id).ok_or(NoSuchMessage(id)).wrap(self)
     }
+
+    /// Iterate over K:Lines
+    pub fn klines(&self) -> impl std::iter::Iterator<Item=wrapper::KLine>
+    {
+        self.klines.values().wrap(self)
+    }
+
+    /// Retrieve the current network configuration
+    pub fn config(&self) -> &config::NetworkConfig
+    {
+        &self.config
+    }
+
+    /// Retrieve an audit log entry
+    pub fn audit_entry(&self, id: AuditLogEntryId) -> LookupResult<&state::AuditLogEntry>
+    {
+        self.audit_log.get(&id).ok_or(NoSuchAuditLogEntry(id))
+    }
 }

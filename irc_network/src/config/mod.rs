@@ -1,0 +1,24 @@
+use serde::{Serialize,Deserialize};
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct NetworkConfig
+{
+    pub opers: Vec<OperConfig>,
+}
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct OperConfig
+{
+    pub name: String,
+    pub hash: String,
+}
+
+impl NetworkConfig
+{
+    pub fn new() -> Self
+    {
+        Self {
+            opers: Vec::new()
+        }
+    }
+}

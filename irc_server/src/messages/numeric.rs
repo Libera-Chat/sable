@@ -72,7 +72,12 @@ define_messages! {
         => "{chan} {entry} {setter} {ts}"},
     349(EndOfExceptList)   => { (chan: &Channel.name())    => "{chan} :End of channel exception list" },
 
+    465(YoureBanned)        => { (msg: &str)    => "You are banned from this server: {msg}" },
+
     473(InviteOnlyChannel)  => { (chan: &Channel.name())   => "{chan} :Cannot join channel (+i) - you must be invited" },
     474(BannedOnChannel)    => { (chan: &Channel.name())   => "{chan} :Cannot join channel (+b) - you are banned" },
     475(BadChannelKey)      => { (chan: &Channel.name())   => "{chan} :Cannot join channel (+k) - bad key" },
+
+    481(NotOper)            => { ()     => ":You're not an IRC operator" },
+    491(NoOperConf)         => { ()     => ":No oper configuration found" },
 }

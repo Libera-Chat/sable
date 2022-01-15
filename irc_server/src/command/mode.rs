@@ -41,6 +41,11 @@ command_handler!("MODE" => ModeHandler {
                     _ => {
                         if let Some(flag) = UserModeSet::flag_for(c)
                         {
+                            if self.server.policy().can_set_umode(source, flag).is_err()
+                            {
+                                continue;
+                            }
+
                             match dir {
                                 Direction::Add => { added |= flag; },
                                 Direction::Rem => { removed |= flag; },

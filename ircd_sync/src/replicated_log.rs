@@ -3,7 +3,7 @@
 use super::*;
 use irc_network::event::*;
 use irc_network::id::*;
-use irc_server::ServerRpcMessage;
+use rpc_protocols::*;
 
 use tokio::{
     sync::mpsc::{
@@ -23,7 +23,7 @@ pub struct ReplicatedEventLog
 {
     log: EventLog,
     net: Network,
-    server_send: Sender<ServerRpcMessage>,
+    server_send: Sender<NetworkMessage>,
     log_recv: Receiver<Event>,
     update_recv: Receiver<EventLogUpdate>,
     network_recv: Receiver<Request>,
@@ -36,7 +36,7 @@ impl ReplicatedEventLog
     /// ## Arguments
     /// 
     /// - `idgen`: Event ID generator
-    /// - `server_send`: channel for [`ServerRpcMessage`]s to be processed
+    /// - `server_send`: channel for [`NetworkMessage`]s to be processed
     /// - `update_receiver`: channel for the log to receive [`EventLogUpdate`]
     ///   messages
     /// - `net_config`: global configuration for the gossip network
@@ -47,7 +47,7 @@ impl ReplicatedEventLog
     /// `update_receiver` to be created, propagated, and notified back to the
     /// server for processing.
     pub fn new(idgen: EventIdGenerator,
-               server_send: Sender<ServerRpcMessage>,
+               server_send: Sender<NetworkMessage>,
                update_receiver: Receiver<EventLogUpdate>,
                net_config: NetworkConfig,
                node_config: NodeConfig,
@@ -119,7 +119,7 @@ impl ReplicatedEventLog
                         Some(evt) => {
                             log::trace!("Log emitted event: {:?}", evt);
 
-                            if self.server_send.send(ServerRpcMessage::NewEvent(evt)).await.is_err()
+                            if self.server_send.send(NetworkMessage::NewEvent(evt)).await.is_err()
                             {
                                 break;
                             }
@@ -246,7 +246,7 @@ impl ReplicatedEventLog
             Message::GetNetworkState => {
                 log::trace!("Processing get network state request");
                 let (send,mut recv) = channel(1);
-                if let Err(e) = self.server_send.send(ServerRpcMessage::ExportNetworkState(send)).await
+                if let Err(e) = self.server_send.send(NetworkMessage::ExportNetworkState(send)).await
                 {
                     log::error!("Error sending network request to server: {}", e);
                 }
@@ -263,7 +263,7 @@ impl ReplicatedEventLog
                 log::debug!("New event clock is {:?}", net.clock());
                 self.log.set_clock(net.clock().clone());
 
-                if let Err(e) = self.server_send.send(ServerRpcMessage::ImportNetworkState(net)).await
+                if let Err(e) = self.server_send.send(NetworkMessage::ImportNetworkState(net)).await
                 {
                     log::error!("Error sending network state to server: {}", e);
                 }

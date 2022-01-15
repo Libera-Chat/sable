@@ -30,6 +30,3 @@ pub use messages::message;
 pub use messages::numeric;
 pub use messages::MessageType;
 pub use messages::Numeric;
-
-mod rpc;
-pub use rpc::ServerRpcMessage;

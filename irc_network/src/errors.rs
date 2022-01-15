@@ -45,6 +45,8 @@ pub enum LookupError
     NoSuchMessage(MessageId),
     #[error("Connection id not found")]
     NoSuchConnectionId,
+    #[error("No such audit log entry {0:?}")]
+    NoSuchAuditLogEntry(AuditLogEntryId),
 }
 
 /// Convenience definition of a Result type used to look up network objects.

@@ -35,6 +35,7 @@ pub struct User {
     pub realname: String,
 
     pub mode_id: UserModeId,
+    pub oper_privileges: Option<UserPrivileges>,
 }
 
 /// A user mode. Changing modes does not need to update the user object, only
@@ -43,6 +44,12 @@ pub struct User {
 pub struct UserMode {
     pub id: UserModeId,
     pub modes: UserModeSet,
+}
+
+/// A user's operator privileges
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct UserPrivileges {
+    pub oper_name: String,
 }
 
 
@@ -66,6 +73,7 @@ impl User {
             visible_host: visible_host.clone(),
             realname: realname.to_string(),
             mode_id: mode_id,
+            oper_privileges: None,
         }
     }
 }

@@ -21,6 +21,7 @@ pub enum CommandAction {
 pub enum CommandError
 {
     UnderlyingError(Box<dyn std::error::Error>),
+    CustomError,
     UnknownError(String),
     Numeric(Box<dyn messages::Numeric>)
 }
@@ -81,10 +82,12 @@ impl<'a> CommandProcessor<'a>
                     },
                     CommandError::UnknownError(desc) => {
                         panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), desc);
-                    }
+                    },
                     CommandError::Numeric(num) => {
                         let targeted = num.as_ref().format_for(self.server, &source);
                         conn.send(&targeted);
+                    },
+                    CommandError::CustomError => {
                     }
                 }
             }
@@ -223,6 +226,7 @@ impl From<policy::PermissionError> for CommandError
         match e
         {
             policy::PermissionError::Numeric(n) => Self::Numeric(n),
+            policy::PermissionError::CustomError => Self::CustomError,
             policy::PermissionError::InternalError(e) => Self::UnderlyingError(e)
         }
     }
