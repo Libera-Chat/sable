@@ -19,6 +19,8 @@ chrono = "0.4"
 ambassador = "0.2"
 strum = { version = "0.23", features = [ "derive" ] }
 pwhash = "1"
+tokio-rustls = "0.23"
+rustls = "0.20"
 
 [dependencies.serde]
 version = "1"

@@ -31,6 +31,12 @@ command_handler!("MODE" => ModeHandler {
             enum Direction { Add, Rem, Query }
             let mut dir = Direction::Query;
 
+            if args.is_empty()
+            {
+                cmd.response(&numeric::UserModeIs::new(&mode.format()))?;
+                return Ok(())
+            }
+
             for c in args.next_arg()?.chars()
             {
                 match c

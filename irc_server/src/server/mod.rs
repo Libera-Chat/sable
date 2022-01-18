@@ -89,14 +89,17 @@ impl Server
         }
     }
 
-    pub fn add_listener(&mut self, address: SocketAddr)
+    pub fn add_listener(&mut self, address: SocketAddr, connection_type: ConnectionType)
     {
-        self.listeners.add(address);
+        self.listeners.add(address, connection_type);
     }
 
     fn submit_event(&self, id: impl Into<ObjectId>, detail: impl Into<EventDetails>)
     {
-        self.event_submitter.try_send(EventLogUpdate::NewEvent(id.into(), detail.into())).unwrap();
+        let id = id.into();
+        let detail = detail.into();
+        log::trace!("Submitting new event {:?} {:?}", id, detail);
+        self.event_submitter.try_send(EventLogUpdate::NewEvent(id, detail)).unwrap();
     }
 
     pub fn ids(&self) -> &ObjectIdGenerator

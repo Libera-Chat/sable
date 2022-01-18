@@ -13,6 +13,7 @@ define_messages! {
     001(Welcome)    => { (network_name: &str, nick: &Nickname)  => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
     005(ISupport)   => { (data: &str)                           => "{data} :are supported by this server" },
 
+    221(UserModeIs)                => { (modestring: &str)         => ":{modestring}" },
     311(WhoisUser)              => { (nick: &User.nick(), user=nick.user(), host=nick.visible_host(), realname=nick.realname())
                                                                 => "{nick} {user} {host} * :{realname}" },
     312(WhoisServer)            => { (nick: &User.nick(), server: &Server.name(), info=server.id())

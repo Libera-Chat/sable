@@ -17,12 +17,11 @@ impl UserPolicyService for StandardUserPolicy
 {
     fn can_set_umode(&self, _user: &wrapper::User, mode: UserModeFlag) -> PermissionResult
     {
-        if mode == UserModeFlag::Oper
+        match mode
         {
-            return Err(PermissionError::CustomError);
+            UserModeFlag::Oper | UserModeFlag::TlsConnection => Err(PermissionError::CustomError),
+            _ => Ok(())
         }
-
-        Ok(())
     }
 
     fn can_unset_umode(&self, _user: &wrapper::User, _mode: UserModeFlag) -> PermissionResult

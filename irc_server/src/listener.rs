@@ -12,6 +12,7 @@ use tokio::{
 use log::error;
 use super::connection;
 use std::net::SocketAddr;
+use super::connection::ConnectionType;
 
 #[derive(Debug)]
 enum ListenerControl
@@ -19,13 +20,12 @@ enum ListenerControl
     Close,
 }
 
-#[derive(Debug)]
 pub struct Listener {
-    address: SocketAddr,
+    //address: SocketAddr,
     control_channel: Sender<ListenerControl>,
+    //connection_type: ConnectionType,
 }
 
-#[derive(Debug)]
 pub struct ListenerCollection {
     id_gen: ListenerIdGenerator,
     event_channel: Sender<connection::ConnectionEvent>,
@@ -34,15 +34,21 @@ pub struct ListenerCollection {
 
 impl Listener
 {
-    pub fn new(address: SocketAddr, event_channel: Sender<connection::ConnectionEvent>, listener_id: ListenerId) -> Self
+    pub fn new(address: SocketAddr, connection_type: ConnectionType, event_channel: Sender<connection::ConnectionEvent>, listener_id: ListenerId) -> Self
     {
         let (control_send, control_receive) = channel(128);
 
-        tokio::spawn(Self::listen_and_log(event_channel, control_receive, address, ConnectionIdGenerator::new(listener_id, 1)));
+        tokio::spawn(Self::listen_and_log(event_channel,
+                                          control_receive,
+                                          address,
+                                          connection_type.clone(),
+                                          ConnectionIdGenerator::new(listener_id, 1)
+                                        ));
 
         Self {
-            address: address,
-            control_channel: control_send
+            //address: address,
+            control_channel: control_send,
+            //connection_type: connection_type
         }
     }
 
@@ -50,10 +56,11 @@ impl Listener
         event_channel: Sender<connection::ConnectionEvent>,
         control_channel: Receiver<ListenerControl>,
         address: SocketAddr,
+        connection_type: ConnectionType,
         id_gen: ConnectionIdGenerator
     )
     {
-        match Self::listen_loop(event_channel, control_channel, address, id_gen).await
+        match Self::listen_loop(event_channel, control_channel, address, connection_type, id_gen).await
         {
             Ok(_) => return,
             Err(e) => error!("Listener error on {}: {}", address, e)
@@ -64,6 +71,7 @@ impl Listener
         event_channel: Sender<connection::ConnectionEvent>,
         mut control_channel: Receiver<ListenerControl>,
         address: SocketAddr,
+        connection_type: ConnectionType,
         id_gen: ConnectionIdGenerator
     ) -> Result<(), std::io::Error>
     {
@@ -76,7 +84,7 @@ impl Listener
                     match res {
                         Ok((stream,_)) => {
                             let id = id_gen.next();
-                            match connection::Connection::new(id,stream,event_channel.clone()) {
+                            match connection::Connection::new(id, stream, connection_type.clone(), event_channel.clone()) {
                                 Ok(conn) => event_channel.send(connection::ConnectionEvent::new(id, conn)).await.or_log(format!("reporting new connection on {}", address)),
                                 Err(e) => error!("Error opening connection for {}: {}", address, e)
                             }
@@ -116,9 +124,10 @@ impl ListenerCollection
         }
     }
 
-    pub fn add(&mut self, addr: SocketAddr)
+    pub fn add(&mut self, addr: SocketAddr, connection_type: ConnectionType)
     {
         self.listeners.push(Listener::new(addr, 
+                            connection_type,
                             self.event_channel.clone(), 
                             self.id_gen.next()));
     }

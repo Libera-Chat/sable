@@ -11,6 +11,7 @@ pub mod server;
 pub use server::Server;
 
 pub mod connection;
+pub use connection::ConnectionType;
 
 pub mod client;
 use client::ClientConnection;

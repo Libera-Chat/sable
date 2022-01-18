@@ -6,6 +6,8 @@ use tokio::{
         TcpStream,
     },
     io::{
+        AsyncRead,
+        AsyncWrite,
         BufReader,
         AsyncBufReadExt,
         AsyncWriteExt,
@@ -18,9 +20,11 @@ use tokio::{
     task,
     select,
 };
+use tokio_rustls::TlsAcceptor;
 use log::info;
 
 use std::net::IpAddr;
+use std::sync::Arc;
 
 static SEND_QUEUE_LEN:usize = 100;
 
@@ -30,6 +34,7 @@ pub struct Connection {
     pub remote_addr: IpAddr,
     control_channel: Sender<ConnectionControl>,
     send_channel: Sender<String>,
+    connection_type: ConnectionType,
 }
 
 #[derive(Debug)]
@@ -46,9 +51,9 @@ pub struct ConnectionEvent {
     pub detail: EventDetail
 }
 
-struct ConnectionTask {
+struct ConnectionTask<S> {
     id: ConnectionId,
-    conn: TcpStream,
+    conn: S,
     control_channel: Receiver<ConnectionControl>,
     send_channel: Receiver<String>,
     event_channel: Sender<ConnectionEvent>
@@ -58,23 +63,65 @@ pub enum ConnectionControl {
     Close
 }
 
+#[derive(Clone)]
+pub enum ConnectionType
+{
+    Clear,
+    Tls(Arc<rustls::ServerConfig>)
+}
+
+impl std::fmt::Debug for ConnectionType
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result
+    {
+        match self {
+            Self::Clear => "<clear>".fmt(f),
+            Self::Tls(_) => "<tls>".fmt(f)
+        }
+    }
+}
+
 impl Connection
 {
-    pub fn new(id: ConnectionId, stream: TcpStream, events: Sender<ConnectionEvent>) -> Result<Self,ConnectionError>
+    pub fn new(id: ConnectionId, stream: TcpStream, conntype: ConnectionType, events: Sender<ConnectionEvent>) -> Result<Self,ConnectionError>
     {
         let (control_send, control_recv) = channel(SEND_QUEUE_LEN);
         let (send_send, send_recv) = channel(SEND_QUEUE_LEN);
 
         let addr = stream.peer_addr()?.ip();
+        let connection_type = conntype.clone();
 
-        let conntask = ConnectionTask::new(id, stream, control_recv, send_recv, events.clone());
-        task::spawn(conntask.run());
+        task::spawn(async move {
+            match connection_type {
+                ConnectionType::Tls(config) => {
+                    let acceptor: TlsAcceptor = config.into();
+                    match acceptor.accept(stream).await
+                    {
+                        Ok(tls_stream) => {
+                            let conntask = ConnectionTask::new(id, tls_stream, control_recv, send_recv, events.clone());
+                            conntask.run().await;
+                        }
+                        Err(err) => {
+                            let _ = events.send(ConnectionEvent {
+                                source: id,
+                                detail: EventDetail::Error(ConnectionError::IoError(err))
+                            }).await;
+                        }
+                    }
+                }
+                ConnectionType::Clear => {
+                    let conntask = ConnectionTask::new(id, stream, control_recv, send_recv, events.clone());
+                    conntask.run().await;
+                }
+            }
+        });
 
         Ok(Self {
             id: id,
             remote_addr: addr,
             control_channel: control_send,
             send_channel: send_send,
+            connection_type: conntype,
         })
     }
 
@@ -93,6 +140,15 @@ impl Connection
     {
         self.send_channel.try_send(message.to_string())?;
         Ok(())
+    }
+
+    pub fn is_tls(&self) -> bool
+    {
+        match self.connection_type
+        {
+            ConnectionType::Clear => false,
+            ConnectionType::Tls(_) => true,
+        }
     }
 }
 
@@ -122,10 +178,11 @@ impl ConnectionEvent
     }
 }
 
-impl ConnectionTask
+impl<S> ConnectionTask<S>
+    where S: AsyncRead + AsyncWrite
 {
     fn new(id: ConnectionId, 
-        stream: TcpStream,
+        stream: S,
         control: Receiver<ConnectionControl>,
         send: Receiver<String>,
         events: Sender<ConnectionEvent>) -> Self
@@ -141,7 +198,7 @@ impl ConnectionTask
 
     async fn run(mut self)
     {
-        let (reader, mut writer) = self.conn.split();
+        let (reader, mut writer) = tokio::io::split(self.conn);
         let reader = BufReader::new(reader);
         let mut lines = reader.lines();
         loop

@@ -48,6 +48,8 @@ impl Server
             {
                 connection.send(&numeric::ISupport::new_for(&self.name.to_string(), &user.nick(), line));
             }
+
+            connection.send(&message::Mode::new(&user, &user, &user.mode()?.format()))
         }
         Ok(())
     }

@@ -26,6 +26,7 @@ pub use std::{
         Path,
         PathBuf,
     },
+    error::Error,
 };
 pub use serde::Deserialize;
 

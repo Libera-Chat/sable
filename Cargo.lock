@@ -571,11 +571,13 @@ dependencies = [
  "log",
  "pwhash",
  "rpc_protocols",
+ "rustls",
  "serde",
  "serde_json",
  "strum",
  "thiserror",
  "tokio",
+ "tokio-rustls",
  "trust-dns-resolver",
 ]
 
@@ -599,6 +601,8 @@ dependencies = [
  "ircd_macros",
  "ircd_sync",
  "log",
+ "rustls",
+ "rustls-pemfile",
  "serde",
  "serde_json",
  "simple_logger",

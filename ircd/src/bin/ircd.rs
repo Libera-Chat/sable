@@ -1,5 +1,7 @@
 use ircd::*;
 use irc_server::Server;
+use irc_server::ConnectionType;
+use std::sync::Arc;
 
 #[derive(Debug,StructOpt)]
 #[structopt(rename_all = "kebab")]
@@ -15,12 +17,28 @@ struct Opts
 }
 
 #[derive(Debug,Deserialize)]
+struct TlsConfig
+{
+    key_file: PathBuf,
+    cert_file: PathBuf,
+}
+
+#[derive(Debug,Deserialize)]
+struct ListenerConfig
+{
+    address: String,
+    #[serde(default)]
+    tls: bool,
+}
+
+#[derive(Debug,Deserialize)]
 struct ServerConfig
 {
     server_id: ServerId,
     server_name: ServerName,
-    listen_addr: String,
+    listeners: Vec<ListenerConfig>,
 
+    tls_config: Option<TlsConfig>,
     node_config: NodeConfig,
 }
 
@@ -34,6 +52,25 @@ impl ServerConfig
     }
 }
 
+fn load_tls_server_config(conf: &TlsConfig) -> Result<Arc<rustls::ServerConfig>, Box<dyn Error>>
+{
+    let cert_file = File::open(&conf.cert_file)?;
+    let mut cert_reader = BufReader::new(cert_file);
+    let cert_chain = rustls_pemfile::certs(&mut cert_reader)?.into_iter().map(|v| rustls::Certificate(v)).collect();
+
+    let key_file = File::open(&conf.key_file)?;
+    let mut key_reader = BufReader::new(key_file);
+    let server_key = rustls_pemfile::rsa_private_keys(&mut key_reader)?
+                                    .pop()
+                                    .ok_or(ConfigError::FormatError("No private key in file".to_string()))?;
+    let server_key = rustls::PrivateKey(server_key);
+
+    Ok(Arc::new(rustls::ServerConfig::builder()
+                        .with_safe_defaults()
+                        .with_no_client_auth()
+                        .with_single_cert(cert_chain, server_key)?))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
@@ -42,8 +79,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     let network_config = NetworkConfig::load_file(opts.network_conf)?;
     let server_config = ServerConfig::load_file(opts.server_conf)?;
 
+    let tls_config = if let Some(conf) = server_config.tls_config {
+        Some(load_tls_server_config(&conf)?)
+    } else {
+        None
+    };
+
     SimpleLogger::new().with_level(log::LevelFilter::Debug)
-                       .with_module_level("ircd_sync::network", log::LevelFilter::Trace)
+//                       .with_module_level("ircd_sync::replicated_log", log::LevelFilter::Trace)
+//                       .with_module_level("irc_server::server", log::LevelFilter::Trace)
                        .with_module_level("rustls", log::LevelFilter::Info)
                        .init().unwrap();
 
@@ -59,7 +103,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
                                  server_recv,
                                  new_send);
     
-    server.add_listener(server_config.listen_addr.parse().unwrap());
+    for listener in server_config.listeners
+    {
+        if listener.tls {
+            if let Some(tls_config) = &tls_config
+            {
+                server.add_listener(listener.address.parse().unwrap(), ConnectionType::Tls(Arc::clone(tls_config)));
+            }
+            else
+            {
+                panic!("TLS listener specified but no TLS config");
+            }
+        } else {
+            server.add_listener(listener.address.parse().unwrap(), ConnectionType::Clear);
+        }
+    }
 
     ctrlc::set_handler(move || {
         shutdown_send.try_send(()).expect("Failed to send shutdown command");

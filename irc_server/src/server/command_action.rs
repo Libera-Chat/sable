@@ -24,8 +24,13 @@ impl Server
                         let new_user_id = self.id_generator.next_user();
                         let new_user_mode_id = self.id_generator.next_user_mode();
 
+                        let mut umodes = UserModeSet::new();
+                        if conn.connection.is_tls() {
+                            umodes |= UserModeFlag::TlsConnection;
+                        }
+
                         let details = event::details::NewUserMode {
-                            mode: UserModeSet::new()
+                            mode: umodes
                         };
                         actions.push((new_user_mode_id.into(), details.into()));
 
