@@ -12,16 +12,16 @@ command_handler!("JOIN" => JoinHandler {
             Ok(channel) => {
                 let key = cmd.args.get(1).map(|s| ChannelKey::new_coerce(&s));
                 self.server.policy().can_join(source, &channel, key)?;
-                
+
                 (channel.id(), MembershipFlagSet::new())
             },
             Err(_) => {
                 let newmode_details = event::NewChannelMode { mode: ChannelModeSet::default() };
-                let cmode_id = self.server.next_channel_mode_id();
+                let cmode_id = self.server.ids().next_channel_mode();
                 self.action(CommandAction::state_change(cmode_id, newmode_details))?;
 
                 let details = event::NewChannel { name: chname.clone(), mode: cmode_id };
-                let channel_id = self.server.next_channel_id();
+                let channel_id = self.server.ids().next_channel();
                 self.action(CommandAction::state_change(channel_id, details))?;
                 (channel_id, MembershipFlagFlag::Op.into())
             }

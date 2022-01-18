@@ -158,7 +158,7 @@ impl ModeHandler<'_>
                             else
                             {
                                 let mask = args.next_arg()?;
-                                
+
                                 if dir == Direction::Add
                                 {
                                     self.server.policy().can_set_ban(source, &chan, list_type, mask)?;
@@ -169,7 +169,7 @@ impl ModeHandler<'_>
                                         pattern: Pattern::new(mask.clone()),
                                         setter: source.id()
                                     };
-                                    self.action(CommandAction::state_change(self.server.next_list_mode_entry_id(), detail))?;
+                                    self.action(CommandAction::state_change(self.server.ids().next_list_mode_entry(), detail))?;
                                 }
                                 else
                                 {

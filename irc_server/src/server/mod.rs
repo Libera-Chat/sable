@@ -107,36 +107,6 @@ impl Server
         &self.id_generator
     }
 
-    pub fn next_user_id(&self) -> UserId
-    {
-        self.id_generator.next_user()
-    }
-
-    pub fn next_channel_id(&self) -> ChannelId
-    {
-        self.id_generator.next_channel()
-    }
-
-    pub fn next_channel_mode_id(&self) -> ChannelModeId
-    {
-        self.id_generator.next_channel_mode()
-    }
-
-    pub fn next_message_id(&self) -> MessageId
-    {
-        self.id_generator.next_message()
-    }
-
-    pub fn next_topic_id(&self) -> ChannelTopicId
-    {
-        self.id_generator.next_channel_topic()
-    }
-
-    pub fn next_list_mode_entry_id(&self) -> ListModeEntryId
-    {
-        self.id_generator.next_list_mode_entry()
-    }
-
     pub fn network(&self) -> &Network
     {
         &self.net
@@ -283,7 +253,7 @@ impl Server
                                         }
                                     }
                                 },
-                                Message(m) => { 
+                                Message(m) => {
                                     info!("Got message from connection {:?}: {}", msg.source, m);
 
                                     if let Some(message) = ClientMessage::parse(msg.source, &m)
@@ -329,7 +299,7 @@ impl Server
                             log::debug!("Server got state export request; sending");
                             channel.send(self.net.clone()).await.or_log("Error sending network state for export");
                         },
-                        None => { 
+                        None => {
                             panic!("what to do here?");
                         }
                     }

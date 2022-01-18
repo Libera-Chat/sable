@@ -19,7 +19,7 @@ command_handler!("TOPIC" => TopicHandler {
                 text: text,
                 setter: source.id().into()
             };
-            self.action(CommandAction::state_change(self.server.next_topic_id(), details))?;
+            self.action(CommandAction::state_change(self.server.ids().next_channel_topic(), details))?;
         }
         else
         {

@@ -29,7 +29,7 @@ command_handler!("NOTICE" => NoticeHandler {
             message_type: state::MessageType::Notice,
             text: msg,
         };
-        self.action(CommandAction::state_change(self.server.next_message_id(), details))?;
+        self.action(CommandAction::state_change(self.server.ids().next_message(), details))?;
         Ok(())
     }
 });
