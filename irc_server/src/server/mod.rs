@@ -218,7 +218,7 @@ impl Server
                                     let conn = ClientConnection::new(conn);
 
                                     conn.send(&message::Notice::new(self, &conn.pre_client,
-                                                ":*** Looking up your hostname"));
+                                                "*** Looking up your hostname"));
                                     self.dns_client.start_lookup(conn.id(), conn.remote_addr());
                                     self.connections.add(msg.source, conn);
                                 },
@@ -232,12 +232,12 @@ impl Server
                                             let mut pc = pc_rc.borrow_mut();
                                             if let Some(hostname) = hostname {
                                                 conn.send(&message::Notice::new(self, &*pc,
-                                                                &format!(":*** Found your hostname: {}", hostname)));
+                                                                &format!("*** Found your hostname: {}", hostname)));
 
                                                 pc.hostname = Some(hostname);
                                             } else {
                                                 conn.send(&message::Notice::new(self, &*pc,
-                                                                ":*** Couldn't look up your hostname"));
+                                                                "*** Couldn't look up your hostname"));
                                                 let no_hostname = Hostname::convert(conn.remote_addr());
                                                 match no_hostname {
                                                     Ok(n) => pc.hostname = Some(n),
