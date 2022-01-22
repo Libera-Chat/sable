@@ -179,6 +179,8 @@ impl Server
         ret.add(ISupportEntry::simple("INVEX"));
         ret.add(ISupportEntry::simple("FNC"));
 
+        ret.add(ISupportEntry::string("CASEMAPPING", "ascii"));
+
         let list_modes: String = ListModeType::iter().map(|t| t.mode_letter()).collect();
         let key_modes: String = KeyModeType::iter().map(|t| t.mode_letter()).collect();
         let param_modes = "";

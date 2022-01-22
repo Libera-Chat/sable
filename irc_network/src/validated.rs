@@ -49,7 +49,7 @@ const UPPER: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const DIGIT: &str = "0123456789";
 
 define_validated! {
-    Nickname(ArrayString<15>) {
+    Nickname(ArrayString<15> casefolded) {
         check_allowed_chars(value, &[LOWER, UPPER, DIGIT, "-_\\|[]{}^`"])?;
         if let Some(first) = value.chars().next() {
             if DIGIT.contains(first) || first == '-' {
@@ -69,7 +69,7 @@ define_validated! {
         Ok(())
     }
 
-    ChannelName(ArrayString<64>) {
+    ChannelName(ArrayString<64> casefolded) {
         if ! value.starts_with("#") {
             return Self::error(value);
         }

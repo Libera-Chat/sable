@@ -16,6 +16,7 @@ arrayvec = {version = "0.7", features = [ "serde" ] }
 hashers = "1"
 strum = { version = "0.23", features = [ "derive" ] }
 serde_with = "1.11"
+itertools = "0.10"
 
 [dependencies.serde]
 version = "1"

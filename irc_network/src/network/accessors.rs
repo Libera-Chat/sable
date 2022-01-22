@@ -82,7 +82,7 @@ impl Network {
     /// Look up a channel by name.
     pub fn channel_by_name(&self, name: &ChannelName) -> LookupResult<wrapper::Channel>
     {
-        self.channels.values().filter(|x| &x.name == name.value()).next().ok_or(NoSuchChannelName(name.to_string())).wrap(self)
+        self.channels.values().filter(|x| &x.name == name).next().ok_or(NoSuchChannelName(name.to_string())).wrap(self)
     }
 
     /// Look up a channel mode by ID.

@@ -14,6 +14,10 @@ use syn::{
 };
 use syn::parse::{Parse, ParseStream};
 
+mod kw {
+    syn::custom_keyword!(casefolded);
+}
+
 struct ValidatedDefnList
 {
     items: Vec<ValidatedDefn>
@@ -24,6 +28,7 @@ struct ValidatedDefn
     name: Ident,
     _paren: token::Paren,
     utype: Type,
+    casefolded: Option<kw::casefolded>,
     body: Block,
 }
 
@@ -50,6 +55,7 @@ impl Parse for ValidatedDefn
             name: input.parse()?,
             _paren: parenthesized!(content in input),
             utype: content.parse()?,
+            casefolded: content.parse()?,
             body: input.parse()?,
         })
     }
@@ -70,6 +76,12 @@ pub fn define_validated(input: TokenStream) -> TokenStream
         let error = Ident::new(&format!("Invalid{}Error", name), Span::call_site());
         let error_str = format!("Invalid value for {}: {{0}}", name);
 
+        let extra_derives = if def.casefolded.is_none() {
+            quote!( #[derive(PartialEq,Eq,Hash,PartialOrd,Ord)] )
+        } else {
+            quote!( )
+        };
+
         out.extend(quote!(
             #[derive(Debug,Clone,Error)]
             #[error(#error_str)]
@@ -80,7 +92,8 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                 fn from(e: StringValidationError) -> Self { Self(e.0) }
             }
 
-            #[derive(Debug,Clone,Copy,PartialEq,Eq,Hash,PartialOrd,Ord,serde::Serialize,serde::Deserialize)]
+            #extra_derives
+            #[derive(Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
             pub struct #name(#typename);
 
             impl #name
@@ -178,15 +191,56 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                     self.0.fmt(f)
                 }
             }
-
-            impl<T> std::cmp::PartialEq<T> for #name where #typename: std::cmp::PartialEq<T>
-            {
-                fn eq(&self, other: &T) -> bool
-                {
-                    self.0.eq(other)
-                }
-            }
         ));
+
+        if def.casefolded.is_some()
+        {
+            out.extend(quote!(
+                impl PartialEq for #name
+                {
+                    fn eq(&self, other: &Self) -> bool
+                    {
+                        self.0.eq_ignore_ascii_case(&other.0)
+                    }
+                }
+                impl Eq for #name { }
+
+                impl Ord for #name
+                {
+                    fn cmp(&self, other: &Self) -> std::cmp::Ordering
+                    {
+                        use itertools::Itertools;
+                        self.0.chars()
+                            .zip_longest(other.0.chars())
+                            .map(|ab| match ab {
+                                itertools::EitherOrBoth::Left(_) => std::cmp::Ordering::Greater,
+                                itertools::EitherOrBoth::Right(_) => std::cmp::Ordering::Less,
+                                itertools::EitherOrBoth::Both(a, b) => a.to_ascii_lowercase().cmp(&b.to_ascii_lowercase()),
+                            })
+                            .find(|&ordering| ordering != std::cmp::Ordering::Equal)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    }
+                }
+                impl PartialOrd for #name
+                {
+                    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering>
+                    {
+                        Some(self.cmp(other))
+                    }
+                }
+
+                impl std::hash::Hash for #name
+                {
+                    fn hash<H: std::hash::Hasher>(&self, h: &mut H)
+                    {
+                        for c in self.0.chars()
+                        {
+                            c.to_ascii_lowercase().hash(h);
+                        }
+                    }
+                }
+            ));
+        }
     }
 
     out.into()
