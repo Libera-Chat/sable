@@ -202,17 +202,21 @@ impl Network {
     {
         if let Some(removed_membership) = self.memberships.remove(&target)
         {
+            let channel_name = self.channels.get(&removed_membership.channel).map(|c| c.name);
             let empty = self.memberships.iter().filter(|(_,v)| v.channel == removed_membership.channel).next().is_none();
             if empty
             {
                 self.remove_channel(removed_membership.channel, updates);
             }
 
-            let update = update::ChannelPart {
-                membership: removed_membership,
-                message: details.message.clone()
-            };
-            updates.notify(update);
+            if let Some(name) = channel_name {
+                let update = update::ChannelPart {
+                    membership: removed_membership,
+                    channel_name: name,
+                    message: details.message.clone()
+                };
+                updates.notify(update);
+            }
         }
     }
 

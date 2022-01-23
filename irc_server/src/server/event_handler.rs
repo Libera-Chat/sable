@@ -56,7 +56,7 @@ impl Server
 
     fn handle_nick_change(&mut self, detail: &update::UserNickChange) -> HandleResult
     {
-        // This fires after the nick change is applied to the network state, so we 
+        // This fires after the nick change is applied to the network state, so we
         // have to construct the n!u@h string explicitly
         let source = self.net.user(detail.user)?;
         let source_string = format!("{}!{}@{}", detail.old_nick, source.user(), source.visible_host());
@@ -276,15 +276,19 @@ impl Server
     fn handle_part(&self, detail: &update::ChannelPart) -> HandleResult
     {
         let source = self.net.user(detail.membership.user)?;
-        let channel = self.net.channel(detail.membership.channel)?;
-        let message = message::Part::new(&source, &channel, &detail.message);
+        let message = message::Part::new(&source, &detail.channel_name, &detail.message);
 
         // This gets called after the part is applied to the network state,
-        // so the user themselves needs to be notified separately
+        // so the user themselves needs to be notified separately.
+        //
+        // Also, if this was the last user to leave, then the channel no longer
+        // exists, so we need to do this before trying to look it up
         if let Ok(conn) = self.connections.get_user(source.id())
         {
             conn.send(&message);
         }
+
+        let channel = self.net.channel(detail.membership.channel)?;
 
         for m in channel.members()
         {

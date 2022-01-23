@@ -13,7 +13,7 @@ event_details!(
 /// Emitted by the `Network` to signal that a change has happened which needs to be notified
 /// or otherwise processed. These are distinct from the `Event`s which are input to the network;
 /// one `Event` may cause the network to emit any number of state updates.
-/// 
+///
 /// Note that the parameters are all copies of the state objects, as the originals may have already
 /// been removed from the network state. Where possible, the consumer may want to call back to the
 ///  `Network` to get wrapper objects.
@@ -81,6 +81,9 @@ NetworkStateChange => {
     }
     struct ChannelPart {
         pub membership: state::Membership,
+        // This needs to be here explicitly because when the last user leaves a channel,
+        // the channel won't exist any more to look up from the membership details
+        pub channel_name: ChannelName,
         pub message: String,
     }
     struct ChannelInvite {
@@ -99,10 +102,10 @@ NetworkStateChange => {
 });
 
 /// Trait to be implemented by an object which wants to be notified of network state updates
-/// 
-/// An instance of this is passed to `Network::apply` to receive all updates caused by that 
+///
+/// An instance of this is passed to `Network::apply` to receive all updates caused by that
 /// operation.
-/// 
+///
 /// This primarily exists to avoid the network state library depending on tokio or other async
 /// runtime for channel types.
 pub trait NetworkUpdateReceiver
