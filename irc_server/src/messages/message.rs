@@ -6,6 +6,7 @@ use ircd_macros::define_messages;
 use super::*;
 
 define_messages! {
+    Cap     => { (source, target, subcmd: &str, text: &str) => ":{source} CAP {target} {subcmd} :{text}" },
     Nick    => { (source, newnick: &Nickname)               => ":{source} NICK {newnick}" },
     Join    => { (source, chan: &Channel.name())            => ":{source} JOIN {chan}" },
     Part    => { (source, chan: &ChannelName, msg: &str)    => ":{source} PART {chan} :{msg}" },

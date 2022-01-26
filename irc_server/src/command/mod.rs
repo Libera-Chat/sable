@@ -90,6 +90,7 @@ impl CommandDispatcher {
     }
 }
 
+mod cap;
 mod nick;
 mod user;
 mod join;

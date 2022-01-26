@@ -17,6 +17,7 @@ pub struct PreClient
     pub nick: Option<Nickname>,
     pub realname: Option<String>,
     pub hostname: Option<Hostname>,
+    pub cap_in_progress: bool,
 }
 
 impl ClientConnection
@@ -64,11 +65,12 @@ impl PreClient {
             nick: None,
             realname: None,
             hostname: None,
+            cap_in_progress: false
         }
     }
 
     pub fn can_register(&self) -> bool
     {
-        self.user.is_some() && self.nick.is_some() && self.hostname.is_some()
+        self.user.is_some() && self.nick.is_some() && self.hostname.is_some() && !self.cap_in_progress
     }
 }
