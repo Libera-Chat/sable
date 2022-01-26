@@ -60,9 +60,16 @@ fn load_tls_server_config(conf: &TlsConfig) -> Result<Arc<rustls::ServerConfig>,
 
     let key_file = File::open(&conf.key_file)?;
     let mut key_reader = BufReader::new(key_file);
-    let server_key = rustls_pemfile::rsa_private_keys(&mut key_reader)?
-                                    .pop()
-                                    .ok_or(ConfigError::FormatError("No private key in file".to_string()))?;
+
+    let server_key = rustls_pemfile::read_one(&mut key_reader)?;
+
+    use rustls_pemfile::Item;
+
+    let server_key = match server_key {
+        Some(Item::RSAKey(key)) | Some(Item::PKCS8Key(key)) => Ok(key),
+        Some(Item::X509Certificate(_)) | None => Err(ConfigError::FormatError("No private key in file".to_string()))
+    }?;
+
     let server_key = rustls::PrivateKey(server_key);
 
     Ok(Arc::new(rustls::ServerConfig::builder()
@@ -102,7 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
                                  server_config.server_name,
                                  server_recv,
                                  new_send);
-    
+
     for listener in server_config.listeners
     {
         if listener.tls {
