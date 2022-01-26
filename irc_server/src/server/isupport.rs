@@ -85,7 +85,7 @@ impl ISupportBuilder
         let mut result = Vec::new();
         let mut current = Cell::new(String::new());
 
-        for entry in &self.entries
+        for (i, entry) in (&self.entries).iter().enumerate()
         {
             let s = entry.format();
 
@@ -93,8 +93,12 @@ impl ISupportBuilder
             {
                 result.push(current.replace(String::new()));
             }
-
-            current.get_mut().push(' ');
+            else if i > 0
+            {
+                // if we're not making a new line and we're not the first
+                // item of the first line, we need a space
+                current.get_mut().push(' ');
+            }
             current.get_mut().push_str(&s);
         }
 
