@@ -49,7 +49,7 @@ impl Parse for ObjectIdDefn
 struct ObjectIdList
 {
     enum_name: Ident,
-    _comma: Token![,],
+    generator_name: Option<Ident>,
     _brace: token::Brace,
     items: Vec<ObjectIdDefn>
 }
@@ -60,18 +60,25 @@ impl Parse for ObjectIdList
     {
         let mut items = Vec::new();
         let enum_name = input.parse()?;
-        let _comma = input.parse()?;
-        let content;
-        let _brace = syn::braced!(content in input);
+        let generator_name = if input.peek(token::Paren) {
+            let content;
+            let _paren: token::Paren = syn::parenthesized!(content in input);
+            Some(content.parse()?)
+        } else {
+            None
+        };
 
-        while !content.is_empty()
+        let content2;
+        let _brace = syn::braced!(content2 in input);
+
+        while !content2.is_empty()
         {
-            items.push(content.parse::<ObjectIdDefn>()?);
+            items.push(content2.parse::<ObjectIdDefn>()?);
         }
 
         Ok(Self {
             enum_name: enum_name,
-            _comma: _comma,
+            generator_name: generator_name,
             _brace: _brace,
             items: items
         })
@@ -84,7 +91,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 
     let mut output = proc_macro2::TokenStream::new();
     let enum_name = input.enum_name;
-    let generator_name = Ident::new(&format!("{}Generator", enum_name), Span::call_site());
+    let generator_name = input.generator_name;
     let mut enum_variants = Vec::new();
     let mut all_typenames = Vec::new();
     let mut generator_fields = Vec::new();
@@ -151,7 +158,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
             arg_types.pop();
             arg_names.pop();
             arg_list.pop();
-    
+
             let field_numbers: Vec<_> = (0..arg_types.len()).map(|i| syn::Index::from(i)).collect();
             let counter_number = syn::Index::from(arg_types.len());
 
@@ -171,7 +178,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 
                     pub fn next(&self) -> #id_typename {
                         #id_typename::new(
-                            #( self.#field_numbers ),* #maybe_comma 
+                            #( self.#field_numbers ),* #maybe_comma
                             self.#counter_number.fetch_add(1, std::sync::atomic::Ordering::SeqCst))
                     }
 
@@ -230,27 +237,31 @@ pub fn object_ids(input: TokenStream) -> TokenStream
         pub enum #enum_name {
             #( #enum_variants ),*
         }
+    ));
 
-        pub struct #generator_name {
-            #( #generator_fields ),*
-        }
+    if generator_name.is_some() {
+        output.extend(quote!(
+            pub struct #generator_name {
+                #( #generator_fields ),*
+            }
 
-        impl #generator_name {
-            #( #generator_methods )*
+            impl #generator_name {
+                #( #generator_methods )*
 
-            pub fn new(server_id: ServerId, epoch_id: EpochId) -> Self
-            {
-                Self {
-                    #( #generator_initargs ),*
+                pub fn new(server_id: ServerId, epoch_id: EpochId) -> Self
+                {
+                    Self {
+                        #( #generator_initargs ),*
+                    }
+                }
+
+                pub fn set_epoch(&mut self, new_epoch: EpochId)
+                {
+                    #( self. #generator_field_names .set_epoch(new_epoch); )*
                 }
             }
-
-            pub fn set_epoch(&mut self, new_epoch: EpochId)
-            {
-                #( self. #generator_field_names .set_epoch(new_epoch); )*
-            }
-        }
-    ));
+        ));
+    }
 
     output.into()
 }

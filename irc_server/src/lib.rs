@@ -10,15 +10,9 @@ pub use dns::DnsClient;
 pub mod server;
 pub use server::Server;
 
-pub mod connection;
-pub use connection::ConnectionType;
-
 pub mod client;
 use client::ClientConnection;
 use client::PreClient;
-
-mod listener;
-use listener::ListenerCollection;
 
 mod client_message;
 use client_message::ClientMessage;

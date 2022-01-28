@@ -7,6 +7,7 @@ members = [
     "irc_strings",
     "ircd",
     "rpc_protocols",
+    "client_listener",
 ]
 
 # Incremental builds break inventory

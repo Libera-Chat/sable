@@ -1,12 +1,13 @@
 use irc_network::*;
 use super::*;
+use client_listener::*;
 
 use std::cell::RefCell;
 use std::net::IpAddr;
 
 pub struct ClientConnection
 {
-    pub connection: connection::Connection,
+    pub connection: Connection,
     pub user_id: Option<UserId>,
     pub pre_client: Option<RefCell<PreClient>>
 }
@@ -22,7 +23,7 @@ pub struct PreClient
 
 impl ClientConnection
 {
-    pub fn new(conn: connection::Connection) -> Self
+    pub fn new(conn: Connection) -> Self
     {
         Self {
             connection: conn,
@@ -43,16 +44,13 @@ impl ClientConnection
 
     pub fn send(&self, msg: &dyn messages::MessageType)
     {
-        if let Err(e) = self.connection.send(&msg.to_string())
-        {
-            self.error(&e.to_string())
-        }
+        self.connection.send(msg.to_string())
     }
 
     pub fn error(&self, msg: &str)
     {
         // Can't do much if this does fail, because we're already tearing down the connection
-        let _res = self.connection.send(&format!("ERROR :{}", msg));
+        let _res = self.connection.send(format!("ERROR :{}", msg));
         let _res = self.connection.close();
     }
 }

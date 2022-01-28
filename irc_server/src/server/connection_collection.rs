@@ -1,4 +1,5 @@
 use super::*;
+use client_listener::ConnectionId;
 
 pub(super) struct ConnectionCollection
 {

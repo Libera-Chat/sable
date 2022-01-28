@@ -9,6 +9,7 @@ ircd_macros = { path = "../ircd_macros" }
 ircd_sync = { path = "../ircd_sync" }
 irc_network = { path = "../irc_network" }
 irc_server = { path = "../irc_server" }
+client_listener = { path = "../client_listener" }
 
 log = "0.4"
 simple_logger = "1"

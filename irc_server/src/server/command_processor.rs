@@ -2,6 +2,10 @@ use irc_network::*;
 use super::*;
 use crate::numeric;
 use crate::errors::*;
+use client_listener::{
+    ConnectionId,
+    ConnectionError
+};
 
 use std::cell::RefCell;
 
@@ -96,7 +100,7 @@ impl<'a> CommandProcessor<'a>
         }
     }
 
-    fn do_process_message(&self, 
+    fn do_process_message(&self,
                           connection: &ClientConnection,
                           source: &CommandSource,
                           message: ClientMessage
@@ -106,7 +110,7 @@ impl<'a> CommandProcessor<'a>
             let mut handler = factory.create(self.server, self);
             let cmd = ClientCommand {
                  server: self.server,
-                 connection: connection, 
+                 connection: connection,
                  source: source,
                  command: message.command,
                  args: message.args

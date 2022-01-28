@@ -1,0 +1,21 @@
+[package]
+name = "client_listener"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ircd_macros = { path = "../ircd_macros" }
+log = "0.4"
+thiserror = "1"
+serde = { version = "1", features = [ "derive" ] }
+serde_json = "1"
+tokio-rustls = "0.23"
+rustls = "0.20"
+tokio-unix-ipc = "0.2"
+tokio = { version = "1.14", features = [ "full" ] }
+libc = "0.2"
+
+[dev-dependencies]
+simple_logger = "1"

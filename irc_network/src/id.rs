@@ -11,7 +11,7 @@ pub type LocalId = i64;
 #[error("Mismatched object ID type for event")]
 pub struct WrongIdTypeError;
 
-object_ids!(ObjectId, {
+object_ids!(ObjectId (ObjectIdGenerator) {
     Server: (LocalId,);
     Epoch: (LocalId,);
     Event: sequential;
@@ -36,10 +36,6 @@ object_ids!(ObjectId, {
     AuditLogEntry: sequential;
 });
 
-object_ids!(LocalObjectId, {
-    Listener: (LocalId,) sequential;
-    Connection: (ListenerId,LocalId) sequential;
-});
 
 impl EventId {
     pub fn server(&self) -> ServerId { self.0 }

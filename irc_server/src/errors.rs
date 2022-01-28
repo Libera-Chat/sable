@@ -1,6 +1,6 @@
 use thiserror::Error;
 use irc_network::*;
-use tokio::sync::mpsc::error::TrySendError;
+use client_listener::ConnectionError;
 
 #[derive(Debug,Error)]
 pub enum HandlerError {
@@ -21,27 +21,3 @@ impl From<&str> for HandlerError
 
 pub type HandleResult = Result<(), HandlerError>;
 
-#[derive(Error,Debug)]
-pub enum ConnectionError {
-    #[error("Connection closed")]
-    Closed,
-    #[error("I/O Error: {0}")]
-    IoError(#[from]std::io::Error),
-    #[error("Internal error")]
-    InternalError,
-    #[error("Send queue full")]
-    SendQueueFull,
-}
-
-
-impl<T> From<TrySendError<T>> for ConnectionError
-{
-    fn from(e: TrySendError<T>) -> Self
-    {
-        match e
-        {
-            TrySendError::Full(_) => Self::SendQueueFull,
-            TrySendError::Closed(_) => Self::Closed
-        }
-    }
-}

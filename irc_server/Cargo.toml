@@ -10,6 +10,7 @@ ircd_macros = { path = "../ircd_macros" }
 irc_network = { path = "../irc_network" }
 irc_strings = { path = "../irc_strings" }
 rpc_protocols = { path = "../rpc_protocols" }
+client_listener = { path = "../client_listener" }
 log = "0.4"
 inventory = "0.1"
 thiserror = "1"

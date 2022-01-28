@@ -1,5 +1,5 @@
 use irc_network::*;
-use crate::connection::*;
+use client_listener::ConnectionId;
 
 use tokio::{
     sync::mpsc::{
@@ -10,15 +10,21 @@ use tokio::{
 use std::net::IpAddr;
 use trust_dns_resolver::TokioAsyncResolver;
 
+pub struct DnsResult
+{
+    pub conn: ConnectionId,
+    pub hostname: Option<Hostname>,
+}
+
 pub struct DnsClient
 {
-    event_channel: Sender<ConnectionEvent>,
+    event_channel: Sender<DnsResult>,
     resolver: TokioAsyncResolver,
 }
 
 impl DnsClient
 {
-    pub fn new(event_channel: Sender<ConnectionEvent>) -> Self
+    pub fn new(event_channel: Sender<DnsResult>) -> Self
     {
         let resolver = TokioAsyncResolver::tokio_from_system_conf().expect("Failed to create DNS resolver");
         Self {
@@ -50,7 +56,7 @@ impl DnsClient
                 Err(_) => None
             };
             let name = name.map(|n| Hostname::convert(n.trim_end_matches('.')).ok()).flatten();
-            let _res = chan.send(ConnectionEvent{source: conn_id, detail: EventDetail::DNSLookupFinished(name)}).await;
+            let _res = chan.send(DnsResult { conn: conn_id, hostname: name}).await;
         });
     }
 

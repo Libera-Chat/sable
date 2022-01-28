@@ -1,10 +1,15 @@
 use super::*;
 use irc_network::*;
 use event::*;
-use crate::connection::EventDetail::*;
 use crate::policy::*;
 use utils::OrLog;
 use rpc_protocols::*;
+
+use client_listener::{
+    ConnectionEvent,
+    ConnectionEventDetail,
+    ConnectionId,
+};
 
 use tokio::{
     sync::mpsc::{
@@ -20,7 +25,6 @@ use strum::IntoEnumIterator;
 use std::{
     collections::HashMap,
     time::Duration,
-    net::SocketAddr,
 };
 
 use log::{info,error};
@@ -48,12 +52,12 @@ pub struct Server
     event_submitter: Sender<EventLogUpdate>,
     action_receiver: std::sync::mpsc::Receiver<CommandAction>,
     action_submitter: std::sync::mpsc::Sender<CommandAction>,
-    listeners: ListenerCollection,
-    connection_events: Receiver<connection::ConnectionEvent>,
+    connection_events: Receiver<ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
     connections: ConnectionCollection,
     policy_service: StandardPolicyService,
     dns_client: dns::DnsClient,
+    dns_events: Receiver<dns::DnsResult>,
     isupport: ISupportBuilder,
 }
 
@@ -61,10 +65,11 @@ impl Server
 {
     pub fn new(id: ServerId,
                name: ServerName,
+               connection_events: Receiver<ConnectionEvent>,
                rpc_receiver: Receiver<NetworkMessage>,
                to_network: Sender<EventLogUpdate>) -> Self
     {
-        let (connevent_send, connevent_recv) = channel(128);
+        let (dns_send, dns_recv) = channel(128);
         let (action_send, action_recv) = std::sync::mpsc::channel();
 
         let epoch = EpochId::new(utils::now());
@@ -79,19 +84,14 @@ impl Server
             event_submitter: to_network,
             action_receiver: action_recv,
             action_submitter: action_send,
-            listeners: ListenerCollection::new(connevent_send.clone()),
-            connection_events: connevent_recv,
+            connection_events: connection_events,
             connections: ConnectionCollection::new(),
             command_dispatcher: command::CommandDispatcher::new(),
             policy_service: StandardPolicyService::new(),
-            dns_client: DnsClient::new(connevent_send),
+            dns_client: DnsClient::new(dns_send),
+            dns_events: dns_recv,
             isupport: Self::build_basic_isupport(),
         }
-    }
-
-    pub fn add_listener(&mut self, address: SocketAddr, connection_type: ConnectionType)
-    {
-        self.listeners.add(address, connection_type);
     }
 
     fn submit_event(&self, id: impl Into<ObjectId>, detail: impl Into<EventDetails>)
@@ -215,7 +215,7 @@ impl Server
                     match res {
                         Some(msg) => {
                             match msg.detail {
-                                NewConnection(conn) => {
+                                ConnectionEventDetail::NewConnection(conn) => {
                                     info!("Got new connection {:?}", msg.source);
                                     let conn = ClientConnection::new(conn);
 
@@ -224,38 +224,7 @@ impl Server
                                     self.dns_client.start_lookup(conn.id(), conn.remote_addr());
                                     self.connections.add(msg.source, conn);
                                 },
-                                DNSLookupFinished(hostname) => {
-                                    if let Ok(conn) = self.connections.get(msg.source) {
-                                        info!("DNS lookup finished for {:?}: {}/{:?}", msg.source,
-                                                                                     conn.remote_addr(),
-                                                                                     hostname
-                                                                                     );
-                                        if let Some(pc_rc) = &conn.pre_client {
-                                            let mut pc = pc_rc.borrow_mut();
-                                            if let Some(hostname) = hostname {
-                                                conn.send(&message::Notice::new(self, &*pc,
-                                                                &format!("*** Found your hostname: {}", hostname)));
-
-                                                pc.hostname = Some(hostname);
-                                            } else {
-                                                conn.send(&message::Notice::new(self, &*pc,
-                                                                "*** Couldn't look up your hostname"));
-                                                let no_hostname = Hostname::convert(conn.remote_addr());
-                                                match no_hostname {
-                                                    Ok(n) => pc.hostname = Some(n),
-                                                    Err(e) => conn.error(&e.to_string())
-                                                }
-                                            }
-                                            if pc.can_register() {
-                                                let res = self.action_submitter.send(CommandAction::RegisterClient(conn.id()));
-                                                if let Err(e) = res {
-                                                    conn.error(&e.to_string());
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                Message(m) => {
+                                ConnectionEventDetail::Message(m) => {
                                     info!("Got message from connection {:?}: {}", msg.source, m);
 
                                     if let Some(message) = ClientMessage::parse(msg.source, &m)
@@ -264,7 +233,7 @@ impl Server
                                         processor.process_message(message).await;
                                     }
                                 },
-                                Error(e) => {
+                                ConnectionEventDetail::Error(e) => {
                                     error!("Got error from connection {:?}: {:?}", msg.source, e);
                                     if let Ok(conn) = self.connections.get(msg.source) {
                                         if let Some(userid) = conn.user_id {
@@ -285,6 +254,44 @@ impl Server
                         }
                     }
                 },
+                res = self.dns_events.recv() => {
+                    match res
+                    {
+                        Some(msg) =>
+                        {
+                            if let Ok(conn) = self.connections.get(msg.conn) {
+                                info!("DNS lookup finished for {:?}: {}/{:?}", msg.conn,
+                                                                                conn.remote_addr(),
+                                                                                msg.hostname
+                                                                                );
+                                if let Some(pc_rc) = &conn.pre_client {
+                                    let mut pc = pc_rc.borrow_mut();
+                                    if let Some(hostname) = msg.hostname {
+                                        conn.send(&message::Notice::new(self, &*pc,
+                                                        &format!("*** Found your hostname: {}", hostname)));
+
+                                        pc.hostname = Some(hostname);
+                                    } else {
+                                        conn.send(&message::Notice::new(self, &*pc,
+                                                        "*** Couldn't look up your hostname"));
+                                        let no_hostname = Hostname::convert(conn.remote_addr());
+                                        match no_hostname {
+                                            Ok(n) => pc.hostname = Some(n),
+                                            Err(e) => conn.error(&e.to_string())
+                                        }
+                                    }
+                                    if pc.can_register() {
+                                        let res = self.action_submitter.send(CommandAction::RegisterClient(conn.id()));
+                                        if let Err(e) = res {
+                                            conn.error(&e.to_string());
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        None => break
+                    }
+                }
                 res = self.rpc_receiver.recv() => {
                     match res {
                         Some(NetworkMessage::NewEvent(event)) =>

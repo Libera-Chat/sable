@@ -1,4 +1,4 @@
-use irc_network::*;
+use client_listener::ConnectionId;
 
 pub struct ClientMessage
 {
@@ -34,7 +34,7 @@ impl ClientMessage
         loop {
             if rest.starts_with(":") {
                 let arg = &rest[1..];
-                if !arg.is_empty() { 
+                if !arg.is_empty() {
                     args.push(arg.to_string());
                 }
                 break;
@@ -68,6 +68,7 @@ impl ClientMessage
 mod tests
 {
     use super::*;
+    use client_listener::*;
 
     fn get_connid() -> ConnectionId
     {
@@ -87,7 +88,7 @@ mod tests
     fn simple_args()
     {
         let msg = ClientMessage::parse(get_connid(), "command arg1 arg2 :arg three").unwrap();
-        
+
         assert_eq!(msg.command, "command");
         assert_eq!(msg.args, &["arg1", "arg2", "arg three"]);
     }
