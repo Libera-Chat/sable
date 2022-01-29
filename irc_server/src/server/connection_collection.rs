@@ -79,4 +79,9 @@ impl ConnectionCollection
     {
         self.client_connections.values()
     }
+
+    pub fn len(&self) -> usize
+    {
+        self.client_connections.len()
+    }
 }

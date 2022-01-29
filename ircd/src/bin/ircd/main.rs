@@ -1,6 +1,16 @@
 use ircd::*;
-use irc_server::Server;
+use irc_server::{
+    Server,
+};
 use client_listener::*;
+
+mod management
+{
+    mod command;
+    pub use command::*;
+    mod service;
+    pub use service::*;
+}
 
 #[derive(Debug,StructOpt)]
 #[structopt(rename_all = "kebab")]
@@ -35,6 +45,9 @@ struct ServerConfig
 {
     server_id: ServerId,
     server_name: ServerName,
+
+    management_address: String,
+
     listeners: Vec<ListenerConfig>,
 
     tls_config: Option<TlsConfig>,
@@ -117,12 +130,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
         shutdown_send.try_send(()).expect("Failed to send shutdown command");
     }).expect("Failed to set Ctrl+C handler");
 
+    let (management_send, management_recv) = channel(128);
+    let management_address = server_config.management_address.clone();
+
+    let _management_task = tokio::spawn(async move {
+        let mut server = management::ManagementServer::start(management_address.parse().unwrap());
+
+        while let Some(cmd) = server.recv().await
+        {
+            match cmd
+            {
+                management::ManagementCommand::ServerCommand(scmd) =>
+                {
+                    management_send.send(scmd).await.ok();
+                }
+            }
+        }
+    });
+
     event_log.sync_to_network().await;
 
     tokio::spawn(event_log.sync_task());
 
     // Run the actual server
-    server.run(shutdown_recv).await;
+    server.run(management_recv, shutdown_recv).await;
+
     // ...and once it shuts down, give the network sync some time to push the ServerQuit out
     time::sleep(std::time::Duration::new(1,0)).await;
 

@@ -36,6 +36,9 @@ mod connection_collection;
 use connection_collection::ConnectionCollection;
 use command::*;
 
+mod management;
+pub use management::ServerManagementCommand;
+
 mod state_change_receiver;
 
 mod isupport;
@@ -67,7 +70,8 @@ impl Server
                name: ServerName,
                connection_events: Receiver<ConnectionEvent>,
                rpc_receiver: Receiver<NetworkMessage>,
-               to_network: Sender<EventLogUpdate>) -> Self
+               to_network: Sender<EventLogUpdate>,
+            ) -> Self
     {
         let (dns_send, dns_recv) = channel(128);
         let (action_send, action_recv) = std::sync::mpsc::channel();
@@ -198,7 +202,7 @@ impl Server
         ret
     }
 
-    pub async fn run(&mut self, mut shutdown_channel: Receiver<()>)
+    pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: Receiver<()>)
     {
         self.event_submitter.try_send(EventLogUpdate::EpochUpdate(self.epoch)).expect("failed to submit epoch update");
         self.submit_event(self.my_id, details::NewServer{ epoch: self.epoch, name: self.name.clone(), ts: utils::now() });
@@ -313,6 +317,19 @@ impl Server
                         }
                     }
                 },
+                res = management_channel.recv() =>
+                {
+                    match res {
+                        Some(cmd) =>
+                        {
+                            self.handle_management_command(cmd).await;
+                        }
+                        None =>
+                        {
+                            panic!("Lost management service");
+                        }
+                    }
+                }
                 _ = check_ping_timer.tick() => {
                     self.check_pings();
                 },

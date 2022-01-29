@@ -22,3 +22,4 @@ structopt = "0.3"
 chrono = "0.4"
 rustls = "0.20"
 rustls-pemfile = "0.2"
+hyper = { version = "0.14", features = [ "server", "tcp", "http1" ] }
