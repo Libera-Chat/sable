@@ -2,6 +2,7 @@ use crate::id::*;
 use crate::error::*;
 use crate::Connection;
 
+use std::net::IpAddr;
 use serde::{Serialize,Deserialize};
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
@@ -9,6 +10,14 @@ pub enum ConnectionType
 {
     Clear,
     Tls
+}
+
+#[derive(Debug,Serialize,Deserialize)]
+pub struct ConnectionData
+{
+    pub(crate) id: ConnectionId,
+    pub(crate) remote_addr: IpAddr,
+    pub(crate) conn_type: ConnectionType,
 }
 
 #[derive(Clone,Debug,Serialize,Deserialize)]

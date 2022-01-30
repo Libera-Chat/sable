@@ -4,7 +4,6 @@ use crate::protocols::*;
 
 use serde::{Serialize,Deserialize};
 use std::net::{
-    IpAddr,
     SocketAddr
 };
 use std::sync::Arc;
@@ -47,15 +46,8 @@ pub enum ControlMessage
     Connection(ConnectionId, ConnectionControlDetail),
     Listener(ListenerId, ListenerControlDetail),
     LoadTlsSettings(TlsSettings),
-    Shutdown
-}
-
-#[derive(Debug,Serialize,Deserialize)]
-pub struct ConnectionData
-{
-    pub id: ConnectionId,
-    pub endpoint: IpAddr,
-    pub conn_type: ConnectionType,
+    Shutdown,
+    SaveForUpgrade,
 }
 
 #[derive(Debug,Serialize,Deserialize)]

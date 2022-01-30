@@ -168,6 +168,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 
             output.extend(quote!(
                 #[derive(Debug)]
+                #[derive(serde::Serialize,serde::Deserialize)]
                 pub struct #generator_typename(#( #arg_types ),* #maybe_comma std::sync::atomic::AtomicI64);
 
                 impl #generator_typename
@@ -241,6 +242,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 
     if generator_name.is_some() {
         output.extend(quote!(
+            #[derive(serde::Serialize,serde::Deserialize)]
             pub struct #generator_name {
                 #( #generator_fields ),*
             }

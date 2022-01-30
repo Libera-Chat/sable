@@ -50,4 +50,13 @@ impl Connection
     {
         self.send_control(ConnectionControlDetail::Send(msg));
     }
+
+    pub fn save(self) -> ConnectionData
+    {
+        ConnectionData {
+            id: self.id,
+            remote_addr: self.remote_addr,
+            conn_type: self.conn_type
+        }
+    }
 }

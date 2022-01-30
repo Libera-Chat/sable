@@ -1,7 +1,10 @@
 use client_listener::*;
 
-use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    env::current_exe
+};
 
 use tokio::{
 //    select,
@@ -21,8 +24,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     let (event_send, mut event_recv) = channel(128);
 
     let addr: SocketAddr = "127.0.0.1:5555".parse()?;
+    let exe = current_exe()?.parent().unwrap().parent().unwrap().join("listener_process");
+    log::info!("exe = {:?}", exe);
 
-    let listeners = ListenerCollection::new(event_send)?;
+    let listeners = ListenerCollection::with_exe_path(exe, event_send)?;
     let _id = listeners.add_listener(addr, ConnectionType::Clear)?;
 
     while let Some(event) = event_recv.recv().await
@@ -39,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
                 log::info!("Message from {:?}: {}", event.source, msg);
                 if let Some(conn) = connections.get(&event.source)
                 {
-                    conn.send(msg);
+                    conn.send(format!("{}\n", msg));
                 }
                 else
                 {

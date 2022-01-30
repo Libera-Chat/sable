@@ -70,7 +70,7 @@ impl InternalConnection
     {
         ConnectionData {
             id: self.id,
-            endpoint: self.remote_addr,
+            remote_addr: self.remote_addr,
             conn_type: self.connection_type.to_pub()
         }
     }

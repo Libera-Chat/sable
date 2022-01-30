@@ -19,3 +19,4 @@ libc = "0.2"
 
 [dev-dependencies]
 simple_logger = "1"
+memfd = "0.4"
