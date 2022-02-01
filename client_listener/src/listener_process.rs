@@ -73,15 +73,12 @@ impl ListenerProcess
         let (event_send, mut event_recv) = channel(128);
         let (connection_send, mut connection_recv) = channel(128);
 
-        eprintln!("Starting ListenerProcess::run");
-
         loop
         {
             select!
             {
                 control = self.control_receiver.recv() =>
                 {
-                    eprintln!("got control: {:?}", control);
                     match control
                     {
                         Ok(ControlMessage::Connection(id, msg)) =>
@@ -149,7 +146,6 @@ impl ListenerProcess
                 }
                 event = event_recv.recv() =>
                 {
-                    eprintln!("got event: {:?}", event);
                     if let Some(event) = event
                     {
                         self.event_sender.send(event).await?;
