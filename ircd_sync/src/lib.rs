@@ -13,6 +13,7 @@ pub use config::PeerConfig;
 pub use config::NetworkConfig;
 pub use config::NodeConfig;
 pub use eventlog::EventLog;
+pub use eventlog::EventLogState;
 pub use network::Network;
 pub use message::Message;
 pub use message::Request;

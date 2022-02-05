@@ -3,6 +3,18 @@ use irc_server::{
     Server,
 };
 use client_listener::*;
+use rpc_protocols::ShutdownAction;
+
+use std::{
+    process::Command,
+    env,
+    os::unix::process::CommandExt,
+};
+
+use tokio::{
+    sync::broadcast,
+    select
+};
 
 mod management
 {
@@ -11,6 +23,7 @@ mod management
     mod service;
     pub use service::*;
 }
+mod upgrade;
 
 #[derive(Debug,StructOpt)]
 #[structopt(rename_all = "kebab")]
@@ -22,7 +35,11 @@ struct Opts
 
     /// Server config file location
     #[structopt(short,long)]
-    server_conf: PathBuf
+    server_conf: PathBuf,
+
+    /// FD from which to read upgrade data
+    #[structopt(long)]
+    upgrade_state_fd: Option<i32>,
 }
 
 #[derive(Debug,Deserialize)]
@@ -88,75 +105,172 @@ fn load_tls_server_config(conf: &TlsConfig) -> Result<client_listener::TlsSettin
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
-    let opts = Opts::from_args();
-
-    let network_config = NetworkConfig::load_file(opts.network_conf)?;
-    let server_config = ServerConfig::load_file(opts.server_conf)?;
-
     SimpleLogger::new().with_level(log::LevelFilter::Debug)
 //                       .with_module_level("ircd_sync::replicated_log", log::LevelFilter::Trace)
-//                       .with_module_level("irc_server::server", log::LevelFilter::Trace)
+//                       .with_module_level("irc_server", log::LevelFilter::Trace)
                        .with_module_level("rustls", log::LevelFilter::Info)
                        .init().unwrap();
+
+    let opts = Opts::from_args();
+    let exe_path = std::env::current_exe()?;
+
+    let network_config = NetworkConfig::load_file(opts.network_conf.clone())?;
+    let server_config = ServerConfig::load_file(opts.server_conf.clone())?;
 
     let (client_send, client_recv) = channel(128);
     let (server_send, server_recv) = channel(128);
     let (new_send, new_recv) = channel(128);
-    let (shutdown_send, shutdown_recv) = channel(1);
 
-    let id_gen = EventIdGenerator::new(server_config.server_id, EpochId::new(1), 0);
-    let mut event_log = ReplicatedEventLog::new(id_gen, server_send, new_recv, network_config, server_config.node_config);
+    // There are two shutdown channels, one for the Server task and one for everything else.
+    // The Server needs to shut down first, because it'll panic if any of the others disappears
+    // from under it.
+    let (shutdown_send, _shutdown_recv) = broadcast::channel(1);
+    let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
 
-    let client_listeners = ListenerCollection::new(client_send)?;
+    let (mut event_log, client_listeners, mut server, is_upgrade) = if let Some(upgrade_fd) = opts.upgrade_state_fd {
+        log::info!("Got upgrade FD {}", upgrade_fd);
 
-    let mut server = Server::new(server_config.server_id,
-                                 server_config.server_name,
-                                 client_recv,
-                                 server_recv,
-                                 new_send);
+        let state = upgrade::read_upgrade_state(upgrade_fd);
 
-    if let Some(conf) = server_config.tls_config {
-        let tls_conf = load_tls_server_config(&conf)?;
-        client_listeners.load_tls_certificates(tls_conf)?;
+        let event_log = ReplicatedEventLog::restore(state.sync_state, server_send, new_recv, network_config, server_config.node_config);
+
+        let client_listeners = ListenerCollection::resume(state.listener_state, client_send)?;
+
+        let server = Server::restore_from(state.server_state,
+                                          &client_listeners,
+                                          client_recv,
+                                          server_recv,
+                                          new_send)?;
+
+        (event_log, client_listeners, server, true)
     }
-
-    for listener in server_config.listeners
+    else
     {
-        let conn_type = if listener.tls {ConnectionType::Tls} else {ConnectionType::Clear};
-        client_listeners.add_listener(listener.address.parse().unwrap(), conn_type)?;
-    }
+        let id_gen = EventIdGenerator::new(server_config.server_id, EpochId::new(1), 0);
+        let event_log = ReplicatedEventLog::new(id_gen, server_send, new_recv, network_config, server_config.node_config);
 
-    ctrlc::set_handler(move || {
-        shutdown_send.try_send(()).expect("Failed to send shutdown command");
-    }).expect("Failed to set Ctrl+C handler");
+        let client_listeners = ListenerCollection::new(client_send)?;
+
+        let server = Server::new(server_config.server_id,
+                                    server_config.server_name,
+                                    client_recv,
+                                    server_recv,
+                                    new_send);
+
+        if let Some(conf) = server_config.tls_config {
+            let tls_conf = load_tls_server_config(&conf)?;
+            client_listeners.load_tls_certificates(tls_conf)?;
+        }
+
+        for listener in server_config.listeners
+        {
+            let conn_type = if listener.tls {ConnectionType::Tls} else {ConnectionType::Clear};
+            client_listeners.add_listener(listener.address.parse().unwrap(), conn_type)?;
+        }
+
+        (event_log, client_listeners, server, false)
+    };
 
     let (management_send, management_recv) = channel(128);
     let management_address = server_config.management_address.clone();
 
-    let _management_task = tokio::spawn(async move {
-        let mut server = management::ManagementServer::start(management_address.parse().unwrap());
+    let management_shutdown = shutdown_send.subscribe();
+    let (mgmt_task_shutdown, mut mgmt_task_shutdown_recv) = oneshot::channel();
 
-        while let Some(cmd) = server.recv().await
+    let management_task = tokio::spawn(async move {
+        let mut server = management::ManagementServer::start(management_address.parse().unwrap(), management_shutdown);
+
+        let mut server_shutdown_send = Some(server_shutdown_send);
+        loop
         {
-            match cmd
-            {
-                management::ManagementCommand::ServerCommand(scmd) =>
+            select!(
+                res = server.recv() =>
                 {
-                    management_send.send(scmd).await.ok();
+                    if let Some(cmd) = res
+                    {
+                        match cmd
+                        {
+                            management::ManagementCommand::ServerCommand(scmd) =>
+                            {
+                                management_send.send(scmd).await.ok();
+                            }
+                            management::ManagementCommand::Shutdown(action) =>
+                            {
+                                if let Some(sender) = server_shutdown_send.take()
+                                {
+                                    sender.send(action.clone()).ok();
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                },
+                _ = &mut mgmt_task_shutdown_recv =>
+                {
+                    return server;
                 }
-            }
+            );
         }
+        log::error!("Lost management server; shutting down");
+        if let Some(sender) = server_shutdown_send.take() {
+            sender.send(ShutdownAction::Shutdown).expect("Error signalling server shutdown");
+        }
+        server
     });
 
-    event_log.sync_to_network().await;
+    // Only run the initial sync if we're not upgrading - if we are, then we already have the
+    // initial state persisted
+    if ! is_upgrade
+    {
+        event_log.sync_to_network().await;
+    }
 
-    tokio::spawn(event_log.sync_task());
+    let sync_task = tokio::spawn(event_log.sync_task(shutdown_send.subscribe()));
 
-    // Run the actual server
-    server.run(management_recv, shutdown_recv).await;
+    // Run the actual server - we don't use spawn() here because Server isn't Send/Sync
+    let shutdown_action = server.run(management_recv, server_shutdown_recv).await;
 
-    // ...and once it shuts down, give the network sync some time to push the ServerQuit out
-    time::sleep(std::time::Duration::new(1,0)).await;
+    // ...and once it finishes, shut down the other tasks
+    mgmt_task_shutdown.send(()).expect("Couldn't signal shutdown");
+    let management_server = management_task.await?;
 
-    Ok(())
+    shutdown_send.send(shutdown_action.clone())?;
+    let (sync_state,_) = tokio::join!(
+        sync_task,
+        management_server.wait()
+    );
+
+    // Now that we've closed down, deal with whatever the intended action was
+    match shutdown_action
+    {
+        ShutdownAction::Shutdown =>
+        {
+            client_listeners.shutdown().await;
+            return Ok(())
+        }
+        ShutdownAction::Restart =>
+        {
+            client_listeners.shutdown().await;
+
+            let err = Command::new(env::current_exe()?)
+                        .args(env::args().skip(1).collect::<Vec<_>>())
+                        .exec();
+
+            panic!("Couldn't re-execute: {}", err);
+        }
+        ShutdownAction::Upgrade =>
+        {
+            let server_state = server.save_state().await?;
+            let listener_state = client_listeners.save().await?;
+
+            upgrade::exec_upgrade(&exe_path, opts, upgrade::ApplicationState {
+                server_state: server_state,
+                listener_state: listener_state,
+                sync_state: sync_state?
+            });
+        }
+    }
 }

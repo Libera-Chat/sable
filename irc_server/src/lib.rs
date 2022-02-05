@@ -4,9 +4,6 @@ pub mod policy;
 
 pub mod errors;
 
-mod dns;
-pub use dns::DnsClient;
-
 pub mod server;
 pub use server::Server;
 

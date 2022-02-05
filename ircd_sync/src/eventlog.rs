@@ -14,7 +14,7 @@ use log;
 use chrono::prelude::*;
 
 /// An event log.
-/// 
+///
 /// The event log contains the history of all events that have been seen and
 /// processed by the server.
 #[derive(Debug)]
@@ -26,17 +26,45 @@ pub struct EventLog {
     last_event_clock: EventClock,
 }
 
+/// Saved state for an [EventLog], used to save and restore across an upgrade
+#[derive(Debug,serde::Serialize,serde::Deserialize)]
+pub struct EventLogState
+{
+    id_gen: EventIdGenerator,
+    clock: EventClock,
+}
+
 impl EventLog {
     /// Construct a new `EventLog`. `event_sender`, if `Some`, will receive
     /// notification of all new events as they are added to the log and become
     /// ready for processing by the [`Network`](irc_network::Network).
     pub fn new(idgen: EventIdGenerator, event_sender: Option<Sender<Event>>) -> Self {
-        Self{
+        Self {
             history: BTreeMap::new(),
             pending: HashMap::new(),
             id_gen: idgen,
             event_sender: event_sender,
             last_event_clock: EventClock::new(),
+        }
+    }
+
+    /// Restore an `EventLog` from a previously saved state
+    pub fn restore(state: EventLogState, event_sender: Option<Sender<Event>>) -> Self
+    {
+        Self {
+            history: BTreeMap::new(),
+            pending: HashMap::new(),
+            id_gen: state.id_gen,
+            event_sender: event_sender,
+            last_event_clock: state.clock
+        }
+    }
+
+    pub fn save_state(self) -> EventLogState
+    {
+        EventLogState {
+            id_gen: self.id_gen,
+            clock: self.last_event_clock,
         }
     }
 
@@ -47,7 +75,7 @@ impl EventLog {
 
     /// Iterate over all events in the current log which do not precede the
     /// given event clock.
-    /// 
+    ///
     /// When provided with the current event clock from a remote server, this
     /// will produce a list of all events that this server knows about and the
     /// remote one does not.
@@ -69,8 +97,8 @@ impl EventLog {
     }
 
     /// Set the clock for this log.
-    /// 
-    /// This should only be used when importing a serialized 
+    ///
+    /// This should only be used when importing a serialized
     /// [Network](irc_network::Network) state, to sync the event log's view of
     /// 'current' with that from the imported network state.
     pub fn set_clock(&mut self, new_clock: EventClock) {
@@ -78,7 +106,7 @@ impl EventLog {
     }
 
     /// Add an event to the log.
-    /// 
+    ///
     /// - If the event ID already exists within the log, do nothing.
     /// - If the event's dependencies (as denoted by the embedded event clock)
     ///   are all already present in the log, then immediately add it to the
@@ -146,7 +174,7 @@ impl EventLog {
     pub(crate) fn has_dependencies_for(&self, e: &Event) -> bool
     {
         // <= returns true iff, for every key in e.clock, we have the same
-        // key and the value is the same or higher. 
+        // key and the value is the same or higher.
         //
         // Local clock being higher is OK because it means we've processed an
         // event that the originator hadn't at the time this was emitted. Local

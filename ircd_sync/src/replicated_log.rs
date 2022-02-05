@@ -11,12 +11,13 @@ use tokio::{
         Receiver,
         channel,
     },
+    sync::broadcast,
     select,
     task::JoinHandle,
 };
 
 /// A replicated event log.
-/// 
+///
 /// `ReplicatedEventLog` wraps [`EventLog`] and adds replication across a
 /// network of servers.
 pub struct ReplicatedEventLog
@@ -32,16 +33,16 @@ pub struct ReplicatedEventLog
 impl ReplicatedEventLog
 {
     /// Create a new instance.
-    /// 
+    ///
     /// ## Arguments
-    /// 
+    ///
     /// - `idgen`: Event ID generator
     /// - `server_send`: channel for [`NetworkMessage`]s to be processed
     /// - `update_receiver`: channel for the log to receive [`EventLogUpdate`]
     ///   messages
     /// - `net_config`: global configuration for the gossip network
     /// - `node_config`: configuration specific for this node in the network
-    /// 
+    ///
     /// New events will be notified via `server_send` as they become ready for
     /// processing. Events to be emitted by this server should be sent via
     /// `update_receiver` to be created, propagated, and notified back to the
@@ -67,8 +68,34 @@ impl ReplicatedEventLog
         }
     }
 
+    /// Construct a `ReplicatedEventLog` from a previously saved state
+    /// and given set of configs.
+    ///
+    /// `state` contains a state object previously returned on completion of
+    /// [`sync_task`]; the other arguments are as for [`new`]
+    pub fn restore(state: EventLogState,
+               server_send: Sender<NetworkMessage>,
+               update_receiver: Receiver<EventLogUpdate>,
+               net_config: NetworkConfig,
+               node_config: NodeConfig,
+            ) -> Self
+    {
+        let (log_send, log_recv) = channel(128);
+        let (net_send, net_recv) = channel(128);
+
+        Self {
+            log: EventLog::restore(state, Some(log_send)),
+            net: Network::new(net_config, node_config, net_send),
+
+            server_send: server_send,
+            log_recv: log_recv,
+            update_recv: update_receiver,
+            network_recv: net_recv,
+        }
+    }
+
     /// Run and wait for the initial synchronisation to the network.
-    /// 
+    ///
     /// This will choose a peer from the provided network configuration,
     /// request a copy of the current network state from that peer, send it
     /// (via the `server_send` channel provided to the constructor) to be
@@ -85,6 +112,14 @@ impl ReplicatedEventLog
             self.handle_network_request(req).await;
         }
         handle.await.expect("Error syncing to network");
+    }
+
+    /// Resume syncing from an existing network state. Primarily for use
+    /// after a code upgrade.
+    pub fn resume_with_state(&mut self, network: &irc_network::Network)
+    {
+        // We don't actually store any significant state apart from the latest event clock
+        self.log.set_clock(network.clock().clone());
     }
 
     async fn start_sync_to_network(&self, sender: Sender<Request>) -> JoinHandle<()>
@@ -106,7 +141,7 @@ impl ReplicatedEventLog
     }
 
     /// Run the main network synchronisation task.
-    pub async fn sync_task(mut self)
+    pub async fn sync_task(mut self, mut shutdown: broadcast::Receiver<ShutdownAction>) -> EventLogState
     {
         self.net.spawn_listen_task().await;
 
@@ -151,9 +186,13 @@ impl ReplicatedEventLog
                         }
                         None => break
                     }
+                },
+                _ = shutdown.recv() => {
+                    break
                 }
             }
         }
+        self.log.save_state()
     }
 
     async fn handle_new_event(&mut self, evt: Event, should_propagate: bool, response: &Sender<Message>) -> bool
@@ -169,7 +208,7 @@ impl ReplicatedEventLog
                 is_done = false;
                 let missing = self.log.missing_ids_for(&evt.clock);
                 log::info!("Requesting missing IDs {:?}", missing);
-                if let Err(e) = 
+                if let Err(e) =
                     response.send(Message::GetEvent(missing)).await
                 {
                     log::error!("Error sending response to network message: {}", e);
@@ -219,7 +258,7 @@ impl ReplicatedEventLog
             Message::SyncRequest(clock) => {
                 let new_events: Vec<Event> = self.log.get_since(clock).map(|r| r.clone()).collect();
 
-                if let Err(e) = 
+                if let Err(e) =
                     req.response.send(Message::BulkEvents(new_events)).await
                 {
                     log::error!("Error sending response to network message: {}", e);
@@ -237,7 +276,7 @@ impl ReplicatedEventLog
                     }
                 }
                 log::debug!("Sending events {:?}", events);
-                if let Err(e) = 
+                if let Err(e) =
                     req.response.send(Message::BulkEvents(events)).await
                 {
                     log::error!("Error sending response to network message: {}", e);

@@ -8,9 +8,10 @@ members = [
     "ircd",
     "rpc_protocols",
     "client_listener",
+    "auth_client",
 ]
 
 # Incremental builds break inventory
 [profile.dev]
 incremental = false
-
+panic = "abort"

@@ -12,6 +12,7 @@ pub use tokio::{
     sync::mpsc::{
         channel
     },
+    sync::oneshot,
     time
 };
 
@@ -28,7 +29,10 @@ pub use std::{
     },
     error::Error,
 };
-pub use serde::Deserialize;
+pub use serde::{
+    Serialize,
+    Deserialize
+};
 
 pub use log;
 pub use simple_logger::SimpleLogger;

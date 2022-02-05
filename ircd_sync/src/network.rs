@@ -15,23 +15,27 @@ use tokio::{
         AsyncReadExt,
         AsyncWriteExt,
     },
-    sync::mpsc::{
-        Sender,
-        channel
+    sync::{
+        mpsc::{
+            Sender,
+            channel
+        },
+        oneshot,
     },
     task::{
         JoinHandle,
         JoinError
     },
+    select
 };
 use tokio_rustls::{
     TlsAcceptor,
     TlsConnector,
 };
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::convert::{
-    TryInto
+use std::{
+    net::SocketAddr,
+    sync::Arc,
+    convert::TryInto,
 };
 use futures::future;
 
@@ -54,6 +58,8 @@ pub struct Network
     tls_client_config: Arc<ClientConfig>,
     tls_server_config: Arc<ServerConfig>,
     message_sender: Sender<Request>,
+    shutdown_send: oneshot::Sender<()>,
+    shutdown_recv: Option<oneshot::Receiver<()>>
 }
 
 #[derive(Debug,Error)]
@@ -103,6 +109,8 @@ impl Network
         let mut peers = net_config.peers;
         peers.retain(|p| p.address != node_config.listen_addr);
 
+        let (shutdown_send, shutdown_recv) = oneshot::channel();
+
         Self {
             listen_addr: node_config.listen_addr,
             peers: peers,
@@ -110,7 +118,14 @@ impl Network
             tls_client_config: Arc::new(client_config),
             tls_server_config: Arc::new(server_config),
             message_sender: message_sender,
+            shutdown_send: shutdown_send,
+            shutdown_recv: Some(shutdown_recv),
         }
+    }
+
+    pub fn shutdown(self)
+    {
+        self.shutdown_send.send(()).ok();
     }
 
     pub fn choose_peer(&self) -> Option<&PeerConfig>
@@ -146,7 +161,7 @@ impl Network
         Ok(self.do_send_to(peer, msg, response_sender).await?)
     }
 
-    async fn do_send_to(&self, peer: &PeerConfig, msg: Message, response_sender: Sender<Request>) 
+    async fn do_send_to(&self, peer: &PeerConfig, msg: Message, response_sender: Sender<Request>)
                 -> Result<JoinHandle<()>, NetworkError>
     {
         let connector = TlsConnector::from(Arc::clone(&self.tls_client_config));
@@ -162,7 +177,7 @@ impl Network
         }))
     }
 
-    pub async fn spawn_listen_task(&self)
+    pub async fn spawn_listen_task(&mut self)
     {
         if let Err(e) = self.do_spawn_listen_task().await
         {
@@ -170,14 +185,15 @@ impl Network
         }
     }
 
-    async fn do_spawn_listen_task(&self) -> Result<(), io::Error>
+    async fn do_spawn_listen_task(&mut self) -> Result<(), io::Error>
     {
         let listener = TcpListener::bind(self.listen_addr).await?;
         let tls_acceptor = TlsAcceptor::from(Arc::clone(&self.tls_server_config));
         let sender = self.message_sender.clone();
+        let shutdown = self.shutdown_recv.take().ok_or(io::ErrorKind::Other)?;
 
         tokio::spawn(async move {
-            if let Err(e) = Self::listen_loop(listener, tls_acceptor, sender).await
+            if let Err(e) = Self::listen_loop(listener, tls_acceptor, sender, shutdown).await
             {
                 log::error!("Error in network sync listener: {}", e);
             }
@@ -185,18 +201,31 @@ impl Network
         Ok(())
     }
 
-    async fn listen_loop(listener: TcpListener, tls_acceptor: TlsAcceptor, message_sender: Sender<Request>) -> Result<(), io::Error>
+    async fn listen_loop(listener: TcpListener, tls_acceptor: TlsAcceptor, message_sender: Sender<Request>, mut shutdown: oneshot::Receiver<()>) -> Result<(), io::Error>
     {
-        while let Ok((conn, _)) = listener.accept().await
+        loop
         {
-            let tls_acceptor = tls_acceptor.clone();
-            let sender = message_sender.clone();
-            tokio::spawn(async move {
-                if let Err(e) = Self::handle_connection(tls_acceptor, conn, sender).await
+            select!
+            {
+                res = listener.accept() =>
                 {
-                    log::error!("Error in network sync connection handler: {}", e);
+                    if let Ok((conn, _)) = res
+                    {
+                        let tls_acceptor = tls_acceptor.clone();
+                        let sender = message_sender.clone();
+                        tokio::spawn(async move {
+                            if let Err(e) = Self::handle_connection(tls_acceptor, conn, sender).await
+                            {
+                                log::error!("Error in network sync connection handler: {}", e);
+                            }
+                        });
+                    }
+                },
+                _ = &mut shutdown =>
+                {
+                    break
                 }
-            });
+            }
         }
 
         Ok(())

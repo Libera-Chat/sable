@@ -71,7 +71,6 @@ impl ListenerProcess
     pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>>
     {
         let (event_send, mut event_recv) = channel(128);
-        let (connection_send, mut connection_recv) = channel(128);
 
         loop
         {
@@ -98,7 +97,7 @@ impl ListenerProcess
                                     {
                                         Ok(ct) =>
                                         {
-                                            let listener = Listener::new(id, address, ct, event_send.clone(), connection_send.clone());
+                                            let listener = Listener::new(id, address, ct, event_send.clone());
 
                                             self.listeners.insert(id, listener);
                                         }
@@ -146,21 +145,18 @@ impl ListenerProcess
                 }
                 event = event_recv.recv() =>
                 {
-                    if let Some(event) = event
+                    match event
                     {
-                        self.event_sender.send(event).await?;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-                conn = connection_recv.recv() =>
-                {
-                    if let Some(conn) = conn
-                    {
-                        self.event_sender.send(InternalConnectionEvent::NewConnection(conn.data())).await?;
-                        self.connections.insert(conn.id, conn);
+                        Some(InternalConnectionEventType::New(conn)) =>
+                        {
+                            self.event_sender.send(InternalConnectionEvent::NewConnection(conn.data())).await?;
+                            self.connections.insert(conn.id, conn);
+                        }
+                        Some(InternalConnectionEventType::Event(evt)) =>
+                        {
+                            self.event_sender.send(evt).await?;
+                        }
+                        None => break
                     }
                 }
             }

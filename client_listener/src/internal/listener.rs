@@ -13,9 +13,9 @@ use tokio::{
 
 use std::net::SocketAddr;
 
-pub struct Listener {
+pub(crate) struct Listener {
     //address: SocketAddr,
-    pub id: ListenerId,
+    pub _id: ListenerId,
     pub control_channel: Sender<ListenerControlDetail>,
 //    connection_type: InternalConnectionType,
 //    tls_config: Option<Arc<ServerConfig>>,
@@ -26,14 +26,12 @@ impl Listener
     pub fn new(listener_id: ListenerId,
                address: SocketAddr,
                connection_type: InternalConnectionType,
-               event_channel: Sender<InternalConnectionEvent>,
-               connection_channel: Sender<InternalConnection>,
+               event_channel: Sender<InternalConnectionEventType>,
             ) -> Self
     {
         let (control_send, control_receive) = channel(128);
 
         tokio::spawn(Self::listen_and_log(event_channel,
-                                          connection_channel,
                                           control_receive,
                                           address,
                                           connection_type.clone(),
@@ -41,7 +39,7 @@ impl Listener
                                         ));
 
         Self {
-            id: listener_id,
+            _id: listener_id,
             control_channel: control_send,
 //            connection_type: connection_type,
 //            tls_config: tls_config,
@@ -49,8 +47,7 @@ impl Listener
     }
 
     async fn listen_and_log(
-        event_channel: Sender<InternalConnectionEvent>,
-        connection_channel: Sender<InternalConnection>,
+        event_channel: Sender<InternalConnectionEventType>,
         control_channel: Receiver<ListenerControlDetail>,
         address: SocketAddr,
         connection_type: InternalConnectionType,
@@ -58,10 +55,10 @@ impl Listener
     )
     {
         if let Err(e) =
-            match Self::listen_loop(event_channel.clone(), connection_channel, control_channel, address, connection_type, listener_id).await
+            match Self::listen_loop(event_channel.clone(), control_channel, address, connection_type, listener_id).await
             {
                 Ok(_) => return,
-                Err(e) => event_channel.send(InternalConnectionEvent::ListenerError(listener_id, e.into())).await,
+                Err(e) => event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::ListenerError(listener_id, e.into()))).await,
             }
         {
             log::error!("Error in listener loop: {}", e);
@@ -69,8 +66,7 @@ impl Listener
     }
 
     async fn listen_loop(
-        event_channel: Sender<InternalConnectionEvent>,
-        connection_channel: Sender<InternalConnection>,
+        event_channel: Sender<InternalConnectionEventType>,
         mut control_channel: Receiver<ListenerControlDetail>,
         address: SocketAddr,
         connection_type: InternalConnectionType,
@@ -91,7 +87,7 @@ impl Listener
                             match InternalConnection::new(id, stream, connection_type.clone(), event_channel.clone())
                             {
                                 Ok(conn) => {
-                                    if connection_channel.send(conn).await.is_err()
+                                    if event_channel.send(InternalConnectionEventType::New(conn)).await.is_err()
                                     {
                                         InternalConnectionEvent::CommunicationError
                                     }
@@ -105,7 +101,7 @@ impl Listener
                         },
                         Err(e) => InternalConnectionEvent::ListenerError(listener_id, e.into())
                     };
-                    if let Err(e) = event_channel.send(event).await
+                    if let Err(e) = event_channel.send(InternalConnectionEventType::Event(event)).await
                     {
                         log::error!("Error sending connection event: {}", e);
                     }

@@ -2,7 +2,10 @@
 //! in order to run a network sync node
 
 use serde_json;
-use serde::Deserialize;
+use serde::{
+    Serialize,
+    Deserialize,
+};
 use thiserror::Error;
 
 use std::{
@@ -20,7 +23,7 @@ use rustls::{
 };
 
 /// Configuration of a peer in the gossip network
-#[derive(Clone,Debug,Deserialize)]
+#[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct PeerConfig
 {
     pub(crate) name: String,
@@ -28,7 +31,7 @@ pub struct PeerConfig
 }
 
 /// Configuration of the gossip network
-#[derive(Debug,Deserialize)]
+#[derive(Debug,Serialize,Deserialize)]
 pub struct NetworkConfig
 {
     pub(crate) peers: Vec<PeerConfig>,
@@ -38,7 +41,7 @@ pub struct NetworkConfig
 }
 
 /// Configuration for this server's node in the gossip network
-#[derive(Debug,Deserialize)]
+#[derive(Debug,Serialize,Deserialize)]
 pub struct NodeConfig
 {
     pub(crate) listen_addr: SocketAddr,

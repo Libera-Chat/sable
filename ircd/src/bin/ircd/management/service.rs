@@ -1,5 +1,6 @@
 use super::*;
 use irc_server::server::ServerManagementCommand;
+use rpc_protocols::ShutdownAction;
 
 use std::{
     net::SocketAddr,
@@ -11,12 +12,15 @@ use std::{
     }
 };
 use tokio::{
-    sync::mpsc::{
-        Sender,
-        Receiver,
-        channel,
+    sync::{
+        mpsc::{
+            Sender,
+            Receiver,
+            channel,
+        },
+        broadcast,
+        oneshot
     },
-    sync::oneshot,
     task,
 };
 use hyper::{
@@ -30,6 +34,7 @@ use hyper::{
 pub struct ManagementServer
 {
     command_receiver: Receiver<ManagementCommand>,
+    server_task: task::JoinHandle<Result<(), hyper::Error>>,
 }
 
 struct ManagementService
@@ -83,6 +88,39 @@ impl hyper::service::Service<Request<Body>> for ManagementService
                         internal_error()
                     }
                 }
+                (&Method::POST, "/shutdown") =>
+                {
+                    if command_sender.send(ManagementCommand::Shutdown(ShutdownAction::Shutdown)).await.is_ok()
+                    {
+                        Ok(Response::new(Body::empty()))
+                    }
+                    else
+                    {
+                        internal_error()
+                    }
+                }
+                (&Method::POST, "/restart") =>
+                {
+                    if command_sender.send(ManagementCommand::Shutdown(ShutdownAction::Restart)).await.is_ok()
+                    {
+                        Ok(Response::new(Body::empty()))
+                    }
+                    else
+                    {
+                        internal_error()
+                    }
+                }
+                (&Method::POST, "/upgrade") =>
+                {
+                    if command_sender.send(ManagementCommand::Shutdown(ShutdownAction::Upgrade)).await.is_ok()
+                    {
+                        Ok(Response::new(Body::empty()))
+                    }
+                    else
+                    {
+                        internal_error()
+                    }
+                }
                 _ =>
                 {
                     let mut response = Response::default();
@@ -113,27 +151,34 @@ impl<T> hyper::service::Service<T> for MakeManagementService {
 
 impl ManagementServer
 {
-    pub fn start(listen_addr: SocketAddr) -> Self
+    pub fn start(listen_addr: SocketAddr, mut shutdown: broadcast::Receiver<ShutdownAction>) -> Self
     {
         let (command_sender, command_receiver) = channel(128);
 
-        task::spawn(async move {
+        let server_task = task::spawn(async move {
             let command_sender = command_sender;
 
             let service = MakeManagementService { command_sender: command_sender };
             let server = hyper::Server::bind(&listen_addr)
-                            .serve(service);
+                            .serve(service)
+                            .with_graceful_shutdown(async { shutdown.recv().await.ok(); });
 
             server.await
         });
 
         Self {
             command_receiver: command_receiver,
+            server_task: server_task,
         }
     }
 
     pub async fn recv(&mut self) -> Option<ManagementCommand>
     {
         self.command_receiver.recv().await
+    }
+
+    pub async fn wait(self) -> Result<(), Box<dyn std::error::Error>>
+    {
+        Ok(self.server_task.await??)
     }
 }

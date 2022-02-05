@@ -29,11 +29,11 @@ mod internal
     pub mod protocols;
     pub use protocols::*;
     pub mod connection;
-    pub use connection::*;
+    pub(crate) use connection::*;
     pub mod connection_task;
-    pub use connection_task::*;
+    pub(crate) use connection_task::*;
     pub mod listener;
-    pub use listener::*;
+    pub(crate) use listener::*;
 }
 
 pub use internal::InternalConnectionEvent;

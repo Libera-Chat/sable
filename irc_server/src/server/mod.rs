@@ -4,6 +4,7 @@ use event::*;
 use crate::policy::*;
 use utils::OrLog;
 use rpc_protocols::*;
+use auth_client::*;
 
 use client_listener::{
     ConnectionEvent,
@@ -15,8 +16,12 @@ use tokio::{
     sync::mpsc::{
         Sender,
         Receiver,
-        channel
+        channel,
+        UnboundedSender,
+        UnboundedReceiver,
+        unbounded_channel
     },
+    sync::oneshot,
     time,
     select,
 };
@@ -53,14 +58,14 @@ pub struct Server
     id_generator: ObjectIdGenerator,
     rpc_receiver: Receiver<NetworkMessage>,
     event_submitter: Sender<EventLogUpdate>,
-    action_receiver: std::sync::mpsc::Receiver<CommandAction>,
-    action_submitter: std::sync::mpsc::Sender<CommandAction>,
+    action_receiver: UnboundedReceiver<CommandAction>,
+    action_submitter: UnboundedSender<CommandAction>,
     connection_events: Receiver<ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
     connections: ConnectionCollection,
     policy_service: StandardPolicyService,
-    dns_client: dns::DnsClient,
-    dns_events: Receiver<dns::DnsResult>,
+    auth_client: AuthClient,
+    auth_events: Receiver<AuthEvent>,
     isupport: ISupportBuilder,
 }
 
@@ -73,8 +78,8 @@ impl Server
                to_network: Sender<EventLogUpdate>,
             ) -> Self
     {
-        let (dns_send, dns_recv) = channel(128);
-        let (action_send, action_recv) = std::sync::mpsc::channel();
+        let (auth_send, auth_recv) = channel(128);
+        let (action_send, action_recv) = unbounded_channel();
 
         let epoch = EpochId::new(utils::now());
 
@@ -92,8 +97,8 @@ impl Server
             connections: ConnectionCollection::new(),
             command_dispatcher: command::CommandDispatcher::new(),
             policy_service: StandardPolicyService::new(),
-            dns_client: DnsClient::new(dns_send),
-            dns_events: dns_recv,
+            auth_client: AuthClient::new(auth_send).expect("Couldn't create auth client"),
+            auth_events: auth_recv,
             isupport: Self::build_basic_isupport(),
         }
     }
@@ -148,7 +153,9 @@ impl Server
 
     pub fn find_connection(&self, id: ConnectionId) -> Option<&ClientConnection>
     {
-        self.connections.get(id).ok()
+        let ret = self.connections.get(id).ok();
+        log::trace!("Looking up connection id {:?}, {}", id, if ret.is_some() {"found"}else{"not found"});
+        ret
     }
 
     fn lookup_message_source(&self, id: ObjectId) -> Result<Box<dyn messages::MessageSource + '_>, LookupError>
@@ -202,20 +209,22 @@ impl Server
         ret
     }
 
-    pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: Receiver<()>)
+    pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {
         self.event_submitter.try_send(EventLogUpdate::EpochUpdate(self.epoch)).expect("failed to submit epoch update");
         self.submit_event(self.my_id, details::NewServer{ epoch: self.epoch, name: self.name.clone(), ts: utils::now() });
         let mut check_ping_timer = time::interval(Duration::from_secs(5));
 
-        loop {
+        let shutdown_action = loop
+        {
             // Between each I/O event, see whether there are any actions we need to process synchronously
             while let Ok(act) = self.action_receiver.try_recv()
             {
                 self.apply_action(act);
             }
             select! {
-                res = self.connection_events.recv() => {
+                res = self.connection_events.recv() =>
+                {
                     match res {
                         Some(msg) => {
                             match msg.detail {
@@ -225,7 +234,7 @@ impl Server
 
                                     conn.send(&message::Notice::new(self, &conn.pre_client,
                                                 "*** Looking up your hostname"));
-                                    self.dns_client.start_lookup(conn.id(), conn.remote_addr());
+                                    self.auth_client.start_dns_lookup(conn.id(), conn.remote_addr());
                                     self.connections.add(msg.source, conn);
                                 },
                                 ConnectionEventDetail::Message(m) => {
@@ -258,10 +267,11 @@ impl Server
                         }
                     }
                 },
-                res = self.dns_events.recv() => {
+                res = self.auth_events.recv() =>
+                {
                     match res
                     {
-                        Some(msg) =>
+                        Some(AuthEvent::DnsResult(msg)) =>
                         {
                             if let Ok(conn) = self.connections.get(msg.conn) {
                                 info!("DNS lookup finished for {:?}: {}/{:?}", msg.conn,
@@ -293,10 +303,14 @@ impl Server
                                 }
                             }
                         },
-                        None => break
+                        None =>
+                        {
+                            panic!("Lost auth client task");
+                        }
                     }
-                }
-                res = self.rpc_receiver.recv() => {
+                },
+                res = self.rpc_receiver.recv() =>
+                {
                     match res {
                         Some(NetworkMessage::NewEvent(event)) =>
                         {
@@ -329,18 +343,43 @@ impl Server
                             panic!("Lost management service");
                         }
                     }
-                }
-                _ = check_ping_timer.tick() => {
+                },
+                _ = check_ping_timer.tick() =>
+                {
                     self.check_pings();
                 },
-                _ = shutdown_channel.recv() => {
-                    break;
+                shutdown = &mut shutdown_channel =>
+                {
+                    match shutdown
+                    {
+                        Err(e) =>
+                        {
+                            log::error!("Got error ({}) from shutdown channel; exiting", e);
+                            break ShutdownAction::Shutdown;
+                        }
+                        Ok(ShutdownAction::Shutdown) | Ok(ShutdownAction::Restart) =>
+                        {
+                            // In either of these cases, we're disconnecting from the network and
+                            // should announce that. We might be starting again, but it'll be from
+                            // a clean slate.
+                            break shutdown.unwrap();
+                        }
+                        Ok(ShutdownAction::Upgrade) =>
+                        {
+                            // If we're upgrading, then don't signal to the network that we're shutting down.
+                            // The actual state save/restore will be called by main() after everything's stopped
+                            // processing.
+                            return ShutdownAction::Upgrade;
+                        }
+                    }
                 },
             }
-        }
+        };
 
         let me = self.net.server(self.my_id).expect("Couldn't say I quit as I have no record of myself");
-        self.submit_event(self.my_id, details::ServerQuit{ introduced_by: me.introduced_by() });
+        self.submit_event(self.my_id, details::ServerQuit { introduced_by: me.introduced_by() });
+
+        shutdown_action
     }
 }
 
@@ -348,3 +387,6 @@ mod command_action;
 mod event_handler;
 mod pings;
 mod send_helpers;
+
+mod upgrade;
+pub use upgrade::ServerState;

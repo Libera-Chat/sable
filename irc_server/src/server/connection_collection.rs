@@ -1,11 +1,29 @@
 use super::*;
-use client_listener::ConnectionId;
+use client_listener::{
+    ConnectionId,
+    ConnectionData
+};
+use std::cell::RefCell;
 
 pub(super) struct ConnectionCollection
 {
     client_connections: HashMap<ConnectionId, ClientConnection>,
     user_to_connid: HashMap<UserId, ConnectionId>,
 }
+
+#[derive(serde::Serialize,serde::Deserialize)]
+pub(super) struct ClientConnectionState
+{
+    connection_id: ConnectionId,
+    connection_data: ConnectionData,
+    user_id: Option<UserId>,
+    pre_client: Option<PreClient>
+}
+
+#[derive(serde::Serialize,serde::Deserialize)]
+pub(super) struct ConnectionCollectionState(
+    Vec<ClientConnectionState>
+);
 
 impl ConnectionCollection
 {
@@ -30,6 +48,7 @@ impl ConnectionCollection
     {
         if let Some(conn) = self.client_connections.get(&id)
         {
+            log::trace!("Removing connection {:?}", id);
             if let Some(userid) = conn.user_id {
                 self.user_to_connid.remove(&userid);
             }
@@ -83,5 +102,45 @@ impl ConnectionCollection
     pub fn len(&self) -> usize
     {
         self.client_connections.len()
+    }
+
+    pub fn save_state(self) -> ConnectionCollectionState
+    {
+        ConnectionCollectionState(
+            self.client_connections
+                .into_iter()
+                .map(|(k,v)| {
+                    log::trace!("Saving client connection {:?} ({:?})", k, v.user_id);
+                    ClientConnectionState {
+                        connection_id: k,
+                        connection_data: v.connection.save(),
+                        user_id: v.user_id,
+                        pre_client: v.pre_client.map(|cell| cell.into_inner())
+                    }
+                })
+                .collect()
+        )
+    }
+
+    pub fn restore_from(state: ConnectionCollectionState, listener_collection: &client_listener::ListenerCollection) -> Self
+    {
+        let mut ret = Self::new();
+
+        for conn_data in state.0.into_iter()
+        {
+            log::trace!("Restoring client connection {:?} ({:?})", conn_data.connection_id, conn_data.user_id);
+            let cli_conn = ClientConnection {
+                connection: listener_collection.restore_connection(conn_data.connection_data),
+                user_id: conn_data.user_id,
+                pre_client: conn_data.pre_client.map(|v| RefCell::new(v))
+            };
+            if let Some(user_id) = &cli_conn.user_id
+            {
+                ret.user_to_connid.insert(*user_id, conn_data.connection_id);
+            }
+            ret.client_connections.insert(conn_data.connection_id, cli_conn);
+        }
+
+        ret
     }
 }

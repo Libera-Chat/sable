@@ -15,7 +15,7 @@ use tokio::{
 
 const SEND_QUEUE_LEN: usize = 100;
 
-pub struct InternalConnection {
+pub(crate) struct InternalConnection {
     pub id: ConnectionId,
     pub remote_addr: IpAddr,
     pub control_channel: Sender<ConnectionControlDetail>,
@@ -28,7 +28,7 @@ impl InternalConnection
     pub fn new(id: ConnectionId,
                       stream: TcpStream,
                       conntype: InternalConnectionType,
-                      events: Sender<InternalConnectionEvent>)
+                      events: Sender<InternalConnectionEventType>)
                     -> Result<Self,ConnectionError>
     {
         let (control_send, control_recv) = channel(SEND_QUEUE_LEN);
@@ -47,7 +47,7 @@ impl InternalConnection
                             conntask.run().await;
                         }
                         Err(err) => {
-                            let _ = events.send(InternalConnectionEvent::ConnectionError(id, err.into())).await;
+                            let _ = events.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(id, err.into()))).await;
                         }
                     }
                 }

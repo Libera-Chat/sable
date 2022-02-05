@@ -11,11 +11,12 @@ irc_network = { path = "../irc_network" }
 irc_strings = { path = "../irc_strings" }
 rpc_protocols = { path = "../rpc_protocols" }
 client_listener = { path = "../client_listener" }
+auth_client = { path = "../auth_client" }
+
 log = "0.4"
 inventory = "0.1"
 thiserror = "1"
 serde_json = "1"
-trust-dns-resolver = "0.20"
 chrono = "0.4"
 ambassador = "0.2"
 strum = { version = "0.23", features = [ "derive" ] }

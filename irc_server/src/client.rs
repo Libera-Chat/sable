@@ -12,6 +12,7 @@ pub struct ClientConnection
     pub pre_client: Option<RefCell<PreClient>>
 }
 
+#[derive(serde::Serialize,serde::Deserialize)]
 pub struct PreClient
 {
     pub user: Option<Username>,

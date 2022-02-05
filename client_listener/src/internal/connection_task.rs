@@ -17,11 +17,11 @@ use tokio::{
 };
 
 
-pub struct ConnectionTask<S> {
+pub(crate) struct ConnectionTask<S> {
     id: ConnectionId,
     conn: S,
     control_channel: Receiver<ConnectionControlDetail>,
-    event_channel: Sender<InternalConnectionEvent>
+    event_channel: Sender<InternalConnectionEventType>
 }
 
 
@@ -32,7 +32,7 @@ impl<S> ConnectionTask<S>
     pub fn new(id: ConnectionId,
         stream: S,
         control: Receiver<ConnectionControlDetail>,
-        events: Sender<InternalConnectionEvent>) -> Self
+        events: Sender<InternalConnectionEventType>) -> Self
     {
         Self {
             id: id,
@@ -64,12 +64,12 @@ impl<S> ConnectionTask<S>
                 message = lines.next_line() => match message {
                     Ok(None) => { break; },
                     Ok(Some(m)) => {
-                        if self.event_channel.send(InternalConnectionEvent::Message(self.id, m)).await.is_err() {
+                        if self.event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::Message(self.id, m))).await.is_err() {
                             log::error!("Error notifying socket message on connection {:?}", self.id);
                         }
                     }
                     Err(e) => {
-                        if self.event_channel.send(InternalConnectionEvent::ConnectionError(self.id, ConnectionError::from(e))).await.is_err() {
+                        if self.event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(self.id, ConnectionError::from(e)))).await.is_err() {
                             log::error!("Error notifying socket error on connection {:?}", self.id);
                             return;
                         }
@@ -78,7 +78,7 @@ impl<S> ConnectionTask<S>
             }
         }
         log::info!("closing {:?}", self.id);
-        if self.event_channel.send(InternalConnectionEvent::ConnectionError(self.id, ConnectionError::Closed)).await.is_err() {
+        if self.event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(self.id, ConnectionError::Closed))).await.is_err() {
             log::error!("Error notifying connection closed on {:?}", self.id);
         }
     }

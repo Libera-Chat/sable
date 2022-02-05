@@ -71,3 +71,9 @@ pub enum InternalConnectionEvent
     BadTlsConfig,
     CommunicationError
 }
+
+pub(crate) enum InternalConnectionEventType
+{
+    New(super::InternalConnection),
+    Event(InternalConnectionEvent),
+}
