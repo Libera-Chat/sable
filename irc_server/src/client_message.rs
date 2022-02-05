@@ -1,5 +1,6 @@
 use client_listener::ConnectionId;
 
+#[derive(Debug)]
 pub struct ClientMessage
 {
     pub source: ConnectionId,

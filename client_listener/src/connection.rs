@@ -37,7 +37,7 @@ impl Connection
     {
         if let Err(e) = self.send_channel.send(ControlMessage::Connection(self.id, msg))
         {
-            log::error!("Error sending connection control message: {}", e);
+            tracing::error!("Error sending connection control message: {}", e);
         }
     }
 

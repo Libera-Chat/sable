@@ -32,8 +32,6 @@ use std::{
     time::Duration,
 };
 
-use log::{info,error};
-
 pub mod command_processor;
 use command_processor::*;
 
@@ -107,7 +105,7 @@ impl Server
     {
         let id = id.into();
         let detail = detail.into();
-        log::trace!("Submitting new event {:?} {:?}", id, detail);
+        tracing::trace!("Submitting new event {:?} {:?}", id, detail);
         self.event_submitter.try_send(EventLogUpdate::NewEvent(id, detail)).unwrap();
     }
 
@@ -141,6 +139,7 @@ impl Server
         &self.command_dispatcher
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn add_action(&self, act: CommandAction)
     {
         self.action_submitter.send(act).unwrap();
@@ -154,7 +153,7 @@ impl Server
     pub fn find_connection(&self, id: ConnectionId) -> Option<&ClientConnection>
     {
         let ret = self.connections.get(id).ok();
-        log::trace!("Looking up connection id {:?}, {}", id, if ret.is_some() {"found"}else{"not found"});
+        tracing::trace!("Looking up connection id {:?}, {}", id, if ret.is_some() {"found"}else{"not found"});
         ret
     }
 
@@ -167,9 +166,10 @@ impl Server
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn apply_event(&mut self, event: Event)
     {
-        log::trace!("Applying inbound event: {:?}", event);
+        tracing::trace!("Applying inbound event: {:?}", event);
 
         let receiver = state_change_receiver::StateChangeReceiver::new();
 
@@ -183,6 +183,7 @@ impl Server
         }
     }
 
+    #[tracing::instrument]
     fn build_basic_isupport() -> ISupportBuilder
     {
         let mut ret = ISupportBuilder::new();
@@ -209,6 +210,7 @@ impl Server
         ret
     }
 
+    #[tracing::instrument(skip_all)]
     pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {
         self.event_submitter.try_send(EventLogUpdate::EpochUpdate(self.epoch)).expect("failed to submit epoch update");
@@ -229,7 +231,7 @@ impl Server
                         Some(msg) => {
                             match msg.detail {
                                 ConnectionEventDetail::NewConnection(conn) => {
-                                    info!("Got new connection {:?}", msg.source);
+                                    tracing::info!("Got new connection {:?}", msg.source);
                                     let conn = ClientConnection::new(conn);
 
                                     conn.send(&message::Notice::new(self, &conn.pre_client,
@@ -238,7 +240,7 @@ impl Server
                                     self.connections.add(msg.source, conn);
                                 },
                                 ConnectionEventDetail::Message(m) => {
-                                    info!("Got message from connection {:?}: {}", msg.source, m);
+                                    tracing::info!("Got message from connection {:?}: {}", msg.source, m);
 
                                     if let Some(message) = ClientMessage::parse(msg.source, &m)
                                     {
@@ -247,7 +249,7 @@ impl Server
                                     }
                                 },
                                 ConnectionEventDetail::Error(e) => {
-                                    error!("Got error from connection {:?}: {:?}", msg.source, e);
+                                    tracing::error!("Got error from connection {:?}: {:?}", msg.source, e);
                                     if let Ok(conn) = self.connections.get(msg.source) {
                                         if let Some(userid) = conn.user_id {
                                             self.apply_action(CommandAction::state_change(
@@ -274,7 +276,7 @@ impl Server
                         Some(AuthEvent::DnsResult(msg)) =>
                         {
                             if let Ok(conn) = self.connections.get(msg.conn) {
-                                info!("DNS lookup finished for {:?}: {}/{:?}", msg.conn,
+                                tracing::info!("DNS lookup finished for {:?}: {}/{:?}", msg.conn,
                                                                                 conn.remote_addr(),
                                                                                 msg.hostname
                                                                                 );
@@ -318,12 +320,12 @@ impl Server
                         },
                         Some(NetworkMessage::ImportNetworkState(new_net)) =>
                         {
-                            log::debug!("Server got state import");
+                            tracing::debug!("Server got state import");
                             self.net = new_net;
                         },
                         Some(NetworkMessage::ExportNetworkState(channel)) =>
                         {
-                            log::debug!("Server got state export request; sending");
+                            tracing::debug!("Server got state export request; sending");
                             channel.send(self.net.clone()).await.or_log("Error sending network state for export");
                         },
                         None => {
@@ -354,7 +356,7 @@ impl Server
                     {
                         Err(e) =>
                         {
-                            log::error!("Got error ({}) from shutdown channel; exiting", e);
+                            tracing::error!("Got error ({}) from shutdown channel; exiting", e);
                             break ShutdownAction::Shutdown;
                         }
                         Ok(ShutdownAction::Shutdown) | Ok(ShutdownAction::Restart) =>

@@ -47,7 +47,6 @@ use rustls::{
 
 use serde_json;
 use rand::prelude::*;
-use log;
 use thiserror::Error;
 
 pub struct Network
@@ -147,17 +146,17 @@ impl Network
 
     pub async fn send_to(&self, peer: &PeerConfig, msg: Message)
     {
-        log::trace!("Sending to {:?}: {:?}", peer.address, msg);
+        tracing::trace!("Sending to {:?}: {:?}", peer.address, msg);
         if let Err(e) = self.do_send_to(peer, msg, self.message_sender.clone()).await
         {
-            log::error!("Error sending network event: {}", e);
+            tracing::error!("Error sending network event: {}", e);
         }
     }
 
     pub async fn send_and_process(&self, peer: &PeerConfig, msg: Message, response_sender: Sender<Request>)
                  -> Result<JoinHandle<()>, NetworkError>
     {
-        log::trace!("Sending to {:?}: {:?}", peer.address, msg);
+        tracing::trace!("Sending to {:?}: {:?}", peer.address, msg);
         Ok(self.do_send_to(peer, msg, response_sender).await?)
     }
 
@@ -172,7 +171,7 @@ impl Network
         Ok(tokio::spawn(async move {
             if let Err(e) = Self::send_and_handle_response(stream, msg, response_sender).await
             {
-                log::error!("Error in outbound network sync connection: {}", e);
+                tracing::error!("Error in outbound network sync connection: {}", e);
             }
         }))
     }
@@ -181,7 +180,7 @@ impl Network
     {
         if let Err(e) = self.do_spawn_listen_task().await
         {
-            log::error!("Error in network sync listener: {}", e);
+            tracing::error!("Error in network sync listener: {}", e);
         }
     }
 
@@ -195,7 +194,7 @@ impl Network
         tokio::spawn(async move {
             if let Err(e) = Self::listen_loop(listener, tls_acceptor, sender, shutdown).await
             {
-                log::error!("Error in network sync listener: {}", e);
+                tracing::error!("Error in network sync listener: {}", e);
             }
         });
         Ok(())
@@ -216,7 +215,7 @@ impl Network
                         tokio::spawn(async move {
                             if let Err(e) = Self::handle_connection(tls_acceptor, conn, sender).await
                             {
-                                log::error!("Error in network sync connection handler: {}", e);
+                                tracing::error!("Error in network sync connection handler: {}", e);
                             }
                         });
                     }
@@ -237,7 +236,7 @@ impl Network
 
         if let Err(e) = Self::read_and_handle_message(stream, message_sender).await
         {
-            log::error!("Error handling message: {}", e);
+            tracing::error!("Error handling message: {}", e);
         }
 
         Ok(())
@@ -271,7 +270,7 @@ impl Network
                 return Ok(());
             }
 
-            log::trace!("Processing inbound message: {:?}", msg);
+            tracing::trace!("Processing inbound message: {:?}", msg);
 
             let (req_send, mut req_recv) = channel(8);
             let req = Request {
@@ -283,14 +282,14 @@ impl Network
 
             while let Some(response) = req_recv.recv().await
             {
-                log::trace!("Sending network response: {:?}", response);
+                tracing::trace!("Sending network response: {:?}", response);
                 let buf = serde_json::to_vec(&response).expect("Failed to serialise response");
                 stream.write_u32(buf.len().try_into().unwrap()).await?;
                 stream.write_all(&buf).await?;
 
                 if matches!(response, Message::Done)
                 {
-                    log::trace!("Got done, ending connection");
+                    tracing::trace!("Got done, ending connection");
                     return Ok(());
                 }
             }

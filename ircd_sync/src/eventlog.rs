@@ -10,7 +10,6 @@ use std::{
 use tokio::sync::mpsc::{
     Sender,
 };
-use log;
 use chrono::prelude::*;
 
 /// An event log.
@@ -129,7 +128,7 @@ impl EventLog {
         }
         else
         {
-            log::info!("Deferring event {:?}; event clock={:?} my clock={:?}", e.id, e.clock, self.last_event_clock);
+            tracing::info!("Deferring event {:?}; event clock={:?} my clock={:?}", e.id, e.clock, self.last_event_clock);
             self.pending.insert(e.id, e);
         }
     }
@@ -222,7 +221,7 @@ impl EventLog {
         {
             if let Some(event) = self.pending.remove(&id)
             {
-                log::info!("Adding satisfied deferred event {:?}", event);
+                tracing::info!("Adding satisfied deferred event {:?}", event);
                 self.do_add(event);
             }
         }

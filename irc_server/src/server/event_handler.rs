@@ -7,6 +7,7 @@ use std::collections::HashSet;
 
 impl Server
 {
+    #[tracing::instrument(skip(self))]
     pub(super) fn handle_network_update(&mut self, change: NetworkStateChange)
     {
         use NetworkStateChange::*;
@@ -31,7 +32,7 @@ impl Server
         };
         if let Err(e) = res
         {
-            log::error!("Error handling network state update {:?}: {}", change, e);
+            tracing::error!("Error handling network state update {:?}: {}", change, e);
         }
     }
 

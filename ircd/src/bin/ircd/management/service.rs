@@ -30,6 +30,7 @@ use hyper::{
     Response,
     StatusCode,
 };
+use tracing::Instrument;
 
 pub struct ManagementServer
 {
@@ -68,6 +69,8 @@ impl hyper::service::Service<Request<Body>> for ManagementService
     fn call(&mut self, req: Request<Body>) -> Self::Future
     {
         let command_sender = self.command_sender.clone();
+
+        tracing::info!(method=?req.method(), path=?req.uri().path(), "Got management request");
 
         Box::pin(async move {
             match (req.method(), req.uri().path())
@@ -164,7 +167,7 @@ impl ManagementServer
                             .with_graceful_shutdown(async { shutdown.recv().await.ok(); });
 
             server.await
-        });
+        }.instrument(tracing::info_span!("management server")));
 
         Self {
             command_receiver: command_receiver,

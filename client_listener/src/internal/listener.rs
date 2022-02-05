@@ -61,7 +61,7 @@ impl Listener
                 Err(e) => event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::ListenerError(listener_id, e.into()))).await,
             }
         {
-            log::error!("Error in listener loop: {}", e);
+            tracing::error!("Error in listener loop: {}", e);
         }
     }
 
@@ -103,7 +103,7 @@ impl Listener
                     };
                     if let Err(e) = event_channel.send(InternalConnectionEventType::Event(event)).await
                     {
-                        log::error!("Error sending connection event: {}", e);
+                        tracing::error!("Error sending connection event: {}", e);
                     }
                 },
                 control = control_channel.recv() => {
@@ -126,7 +126,7 @@ impl Drop for Listener
     {
         if let Err(e) = self.control_channel.try_send(ListenerControlDetail::Close)
         {
-            log::error!("Error closing dropped listener: {}", e);
+            tracing::error!("Error closing dropped listener: {}", e);
         }
     }
 }

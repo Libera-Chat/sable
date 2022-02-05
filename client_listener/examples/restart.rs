@@ -26,7 +26,6 @@ use tokio::{
         channel
     },
 };
-use simple_logger::SimpleLogger;
 
 #[derive(serde::Serialize,serde::Deserialize)]
 struct SaveData
@@ -41,7 +40,7 @@ fn to_memfd(data: SaveData) -> Result<i32, Box<dyn Error>>
     let mut memfile = memfd.as_file();
     let data = serde_json::to_vec(&data)?;
 
-    log::debug!("serialised data: ({}) {:?}", data.len(), data);
+    tracing::debug!("serialised data: ({}) {:?}", data.len(), data);
 
     memfile.set_len(data.len().try_into()?)?;
     memfile.write_all(&data)?;
@@ -52,7 +51,7 @@ fn to_memfd(data: SaveData) -> Result<i32, Box<dyn Error>>
 
     let fd = memfd.into_raw_fd();
 
-    log::debug!("wrote data to fd {:?}", fd);
+    tracing::debug!("wrote data to fd {:?}", fd);
 
     Ok(fd)
 }
@@ -65,7 +64,7 @@ fn from_memfd(fd: i32) -> Result<SaveData, Box<dyn Error>>
     let mut data = Vec::new();
     memfile.read_to_end(&mut data)?;
 
-    log::debug!("Read data: {:?}", data);
+    tracing::debug!("Read data: {:?}", data);
     Ok(serde_json::from_slice(&data)?)
 }
 
@@ -77,7 +76,7 @@ async fn do_restart(listeners: ListenerCollection, connections: HashMap<Connecti
     };
     let fd = to_memfd(data).unwrap();
 
-    log::debug!("executing restart");
+    tracing::debug!("executing restart");
     Command::new(current_exe().unwrap())
                     .args([fd.to_string()])
                     .exec();
@@ -88,8 +87,7 @@ async fn do_restart(listeners: ListenerCollection, connections: HashMap<Connecti
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
-    SimpleLogger::new().with_level(log::LevelFilter::Debug)
-                       .init().unwrap();
+    tracing_subscriber::fmt::init();
 
     let (event_send, mut event_recv) = channel(128);
 
@@ -99,10 +97,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     let listeners = if let Some(fd) = args.get(1)
     {
-        log::info!("Resuming from FD {}", fd);
+        tracing::info!("Resuming from FD {}", fd);
         let data = from_memfd(fd.parse()?)?;
 
-        log::debug!("Reloading listeners");
+        tracing::debug!("Reloading listeners");
         let listeners = ListenerCollection::resume(data.listeners, event_send)?;
 
         for conndata in data.connections
@@ -115,7 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     }
     else
     {
-        log::info!("No FD supplied; starting from cold");
+        tracing::info!("No FD supplied; starting from cold");
         let addr: SocketAddr = "127.0.0.1:5555".parse()?;
         let exe = current_exe()?.parent().unwrap().parent().unwrap().join("listener_process");
 
@@ -124,39 +122,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
         listeners
     };
 
-    log::debug!("Starting event loop");
+    tracing::debug!("Starting event loop");
 
     while let Some(event) = event_recv.recv().await
     {
-        log::debug!("Got event");
+        tracing::debug!("Got event");
         match event.detail
         {
             ConnectionEventDetail::NewConnection(conn) =>
             {
-                log::info!("New connection {:?}", event.source);
+                tracing::info!("New connection {:?}", event.source);
                 connections.insert(event.source, conn);
             }
             ConnectionEventDetail::Message(msg) =>
             {
                 if msg == "restart"
                 {
-                    log::info!("Restarting...");
+                    tracing::info!("Restarting...");
                     do_restart(listeners, connections).await;
                 }
 
-                log::info!("Message from {:?}: {}", event.source, msg);
+                tracing::info!("Message from {:?}: {}", event.source, msg);
                 if let Some(conn) = connections.get(&event.source)
                 {
                     conn.send(format!("{}\n", msg));
                 }
                 else
                 {
-                    log::warn!("Got message from unknown connection id {:?}", event.source);
+                    tracing::warn!("Got message from unknown connection id {:?}", event.source);
                 }
             }
             ConnectionEventDetail::Error(err) =>
             {
-                log::error!("Got error {}", err);
+                tracing::error!("Got error {}", err);
             }
         }
     }

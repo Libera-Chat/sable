@@ -1,4 +1,3 @@
-use log::error;
 use std::fmt::{Debug,Display};
 
 pub trait OrLog
@@ -12,7 +11,7 @@ impl<T, E: Debug> OrLog for Result<T,E>
     {
         if let Err(e) = &self
         {
-            error!("Error: {:?} ({})", e, context);
+            tracing::error!("Error: {:?} ({})", e, context);
         }
     }
 }

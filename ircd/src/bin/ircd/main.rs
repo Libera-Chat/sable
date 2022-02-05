@@ -9,12 +9,14 @@ use std::{
     process::Command,
     env,
     os::unix::process::CommandExt,
+    net::SocketAddr,
 };
 
 use tokio::{
     sync::broadcast,
     select
 };
+use tracing::Instrument;
 
 mod management
 {
@@ -64,6 +66,7 @@ struct ServerConfig
     server_name: ServerName,
 
     management_address: String,
+    console_address: String,
 
     listeners: Vec<ListenerConfig>,
 
@@ -105,17 +108,17 @@ fn load_tls_server_config(conf: &TlsConfig) -> Result<client_listener::TlsSettin
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
-    SimpleLogger::new().with_level(log::LevelFilter::Debug)
-//                       .with_module_level("ircd_sync::replicated_log", log::LevelFilter::Trace)
-//                       .with_module_level("irc_server", log::LevelFilter::Trace)
-                       .with_module_level("rustls", log::LevelFilter::Info)
-                       .init().unwrap();
+    //tracing_subscriber::fmt::init();
 
     let opts = Opts::from_args();
     let exe_path = std::env::current_exe()?;
 
     let network_config = NetworkConfig::load_file(opts.network_conf.clone())?;
     let server_config = ServerConfig::load_file(opts.server_conf.clone())?;
+
+    console_subscriber::ConsoleLayer::builder()
+        .server_addr(server_config.console_address.parse::<SocketAddr>()?)
+        .init();
 
     let (client_send, client_recv) = channel(128);
     let (server_send, server_recv) = channel(128);
@@ -128,7 +131,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
 
     let (mut event_log, client_listeners, mut server, is_upgrade) = if let Some(upgrade_fd) = opts.upgrade_state_fd {
-        log::info!("Got upgrade FD {}", upgrade_fd);
+        tracing::info!("Got upgrade FD {}", upgrade_fd);
 
         let state = upgrade::read_upgrade_state(upgrade_fd);
 
@@ -214,12 +217,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
                 }
             );
         }
-        log::error!("Lost management server; shutting down");
+        tracing::error!("Lost management server; shutting down");
         if let Some(sender) = server_shutdown_send.take() {
             sender.send(ShutdownAction::Shutdown).expect("Error signalling server shutdown");
         }
         server
-    });
+    }.instrument(tracing::info_span!("management event pump")));
 
     // Only run the initial sync if we're not upgrading - if we are, then we already have the
     // initial state persisted

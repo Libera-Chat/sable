@@ -71,6 +71,7 @@ impl<'a> CommandProcessor<'a>
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn process_message(&self, message: ClientMessage)
     {
         if let Some(conn) = self.server.find_connection(message.source)

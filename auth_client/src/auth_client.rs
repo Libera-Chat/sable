@@ -55,6 +55,7 @@ pub struct AuthClientState
 
 type CommResult = io::Result<(IpcSender<ControlMessage>, IpcReceiver<AuthEvent>)>;
 
+#[tracing::instrument(skip_all)]
 async fn run_communication_task(
         control_sender: IpcSender<ControlMessage>,
         event_receiver: IpcReceiver<AuthEvent>,
@@ -69,7 +70,7 @@ async fn run_communication_task(
             event = event_receiver.recv() =>
             {
                 if let Err(e) = event_sender.send(event?).await {
-                    log::error!("Error sending connection event: {}", e);
+                    tracing::error!("Error sending connection event: {}", e);
                 }
         },
             control = control_receiver.recv() =>
@@ -152,11 +153,13 @@ impl AuthClient
         Ok(ret)
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn start_dns_lookup(&self, conn_id: ConnectionId, addr: IpAddr)
     {
         self.control_sender.send(ControlMessage::StartDnsLookup(conn_id, addr)).ok();
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn shutdown(self) -> io::Result<()>
     {
         self.control_sender.send(ControlMessage::Shutdown).map_err(|_| io::ErrorKind::Other)?;

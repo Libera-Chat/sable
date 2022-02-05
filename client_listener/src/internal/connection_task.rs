@@ -65,21 +65,21 @@ impl<S> ConnectionTask<S>
                     Ok(None) => { break; },
                     Ok(Some(m)) => {
                         if self.event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::Message(self.id, m))).await.is_err() {
-                            log::error!("Error notifying socket message on connection {:?}", self.id);
+                            tracing::error!("Error notifying socket message on connection {:?}", self.id);
                         }
                     }
                     Err(e) => {
                         if self.event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(self.id, ConnectionError::from(e)))).await.is_err() {
-                            log::error!("Error notifying socket error on connection {:?}", self.id);
+                            tracing::error!("Error notifying socket error on connection {:?}", self.id);
                             return;
                         }
                     }
                 }
             }
         }
-        log::info!("closing {:?}", self.id);
+        tracing::info!("closing {:?}", self.id);
         if self.event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(self.id, ConnectionError::Closed))).await.is_err() {
-            log::error!("Error notifying connection closed on {:?}", self.id);
+            tracing::error!("Error notifying connection closed on {:?}", self.id);
         }
     }
 }

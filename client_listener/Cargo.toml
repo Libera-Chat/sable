@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 ircd_macros = { path = "../ircd_macros" }
-log = "0.4"
+tracing = "0.1"
 thiserror = "1"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
@@ -18,5 +18,5 @@ tokio = { version = "1.14", features = [ "full" ] }
 libc = "0.2"
 
 [dev-dependencies]
-simple_logger = "1"
+tracing-subscriber = "0.3"
 memfd = "0.4"

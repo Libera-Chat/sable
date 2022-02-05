@@ -34,5 +34,3 @@ pub use serde::{
     Deserialize
 };
 
-pub use log;
-pub use simple_logger::SimpleLogger;

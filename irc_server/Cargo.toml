@@ -13,7 +13,7 @@ rpc_protocols = { path = "../rpc_protocols" }
 client_listener = { path = "../client_listener" }
 auth_client = { path = "../auth_client" }
 
-log = "0.4"
+tracing = "0.1"
 inventory = "0.1"
 thiserror = "1"
 serde_json = "1"

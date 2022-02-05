@@ -105,9 +105,9 @@ impl Network {
         if let Some(existing) = self.nick_bindings.remove(target.nick())
         {
             // Conflict. This can only happen if neither of the event that created the existing binding,
-            // and the event we're processing now, depends on the other (if they did either way, then the 
+            // and the event we're processing now, depends on the other (if they did either way, then the
             // server emitting the later event would know about the earlier and refuse to bind). Since we
-            // can't use the  dependency-order to resolve, the timestamp is the best fallback we have, 
+            // can't use the  dependency-order to resolve, the timestamp is the best fallback we have,
             // followed by lexicographical comparison of user IDs as a tie-breaker.
             if existing.timestamp < event.timestamp
                || (existing.timestamp == event.timestamp && existing.user < user)
@@ -150,7 +150,7 @@ impl Network {
         }
         else
         {
-            log::error!("Tried to bind nickname {:?} to nonexistent user {:?}", target, binding.user);
+            tracing::error!("Tried to bind nickname {:?} to nonexistent user {:?}", target, binding.user);
         }
     }
 

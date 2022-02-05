@@ -53,10 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     let config_to_load = load_network_config(opts.config_to_load)?;
 
-    SimpleLogger::new().with_level(log::LevelFilter::Debug)
-                       .with_module_level("ircd_sync::network", log::LevelFilter::Trace)
-                       .with_module_level("rustls", log::LevelFilter::Info)
-                       .init().unwrap();
+    tracing_subscriber::fmt::init();
 
     let (msg_send, _msg_recv) = channel(128);
 
@@ -76,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     net.propagate(&ircd_sync::Message::NewEvent(event)).await;
 
-    // Because we discarded the receive half of the channel above, the normal process of 
+    // Because we discarded the receive half of the channel above, the normal process of
     // exchanging messages back and forth will fail, so exiting immediately here will cause
     // read errors on the target server(s). Give them time to process it.
     time::sleep(std::time::Duration::new(1,0)).await;

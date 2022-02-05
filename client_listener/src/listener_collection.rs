@@ -112,11 +112,11 @@ impl ListenerCollection
 
     pub async fn save(self) -> std::io::Result<SavedListenerCollection>
     {
-        log::debug!("Saving state");
-        log::debug!("Stopping control task...");
+        tracing::debug!("Saving state");
+        tracing::debug!("Stopping control task...");
         self.control_sender.send(ControlMessage::SaveForUpgrade).map_err(|_| std::io::Error::from(std::io::ErrorKind::Other))?;
         let (ctl_send, evt_recv) = self.comm_task.await??;
-        log::debug!("control task done");
+        tracing::debug!("control task done");
 
         let (ctl_fd, evt_fd) = unsafe
         {
@@ -133,7 +133,7 @@ impl ListenerCollection
             (control_fd, event_fd)
         };
 
-        log::debug!("unwrapped fds");
+        tracing::debug!("unwrapped fds");
 
         Ok(SavedListenerCollection {
             control_sender: ctl_fd,
@@ -194,6 +194,7 @@ impl ListenerCollection
     }
 }
 
+#[tracing::instrument(skip_all)]
 async fn run_communication_task<'a>(
         control_send: IpcSender<ControlMessage>,
         local_control_send: UnboundedSender<ControlMessage>,
@@ -212,16 +213,25 @@ async fn run_communication_task<'a>(
                     use InternalConnectionEvent::*;
                     let translated_event = match evt
                     {
-                        NewConnection(data) => {
+                        NewConnection(data) =>
+                        {
+                            tracing::debug!(?data, "got new connection");
                             let new_connection = Connection::new(data.id, data.conn_type, data.remote_addr, local_control_send.clone());
                             ConnectionEvent::new(new_connection.id, new_connection)
                         },
-                        ConnectionError(id, err) => ConnectionEvent::error(id, err),
-                        Message(id, msg) => ConnectionEvent::message(id, msg),
+                        ConnectionError(id, err) =>
+                        {
+                            tracing::debug!(connection=?id, error=?err, "Connection error");
+                            ConnectionEvent::error(id, err)
+                        },
+                        Message(id, msg) => {
+                            tracing::trace!(connection=?id, ?msg, "Got message");
+                            ConnectionEvent::message(id, msg)
+                        },
                         _ => continue
                     };
                     if let Err(e) = event_sender.send(translated_event).await {
-                        log::error!("Error sending connection event: {}", e);
+                        tracing::error!("Error sending connection event: {}", e);
                     }
                 }
             },

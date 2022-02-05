@@ -48,7 +48,7 @@ impl ConnectionCollection
     {
         if let Some(conn) = self.client_connections.get(&id)
         {
-            log::trace!("Removing connection {:?}", id);
+            tracing::trace!("Removing connection {:?}", id);
             if let Some(userid) = conn.user_id {
                 self.user_to_connid.remove(&userid);
             }
@@ -110,7 +110,7 @@ impl ConnectionCollection
             self.client_connections
                 .into_iter()
                 .map(|(k,v)| {
-                    log::trace!("Saving client connection {:?} ({:?})", k, v.user_id);
+                    tracing::trace!("Saving client connection {:?} ({:?})", k, v.user_id);
                     ClientConnectionState {
                         connection_id: k,
                         connection_data: v.connection.save(),
@@ -128,7 +128,7 @@ impl ConnectionCollection
 
         for conn_data in state.0.into_iter()
         {
-            log::trace!("Restoring client connection {:?} ({:?})", conn_data.connection_id, conn_data.user_id);
+            tracing::trace!("Restoring client connection {:?} ({:?})", conn_data.connection_id, conn_data.user_id);
             let cli_conn = ClientConnection {
                 connection: listener_collection.restore_connection(conn_data.connection_data),
                 user_id: conn_data.user_id,

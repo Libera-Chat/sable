@@ -52,7 +52,7 @@ pub(super) fn exec_upgrade(exe: &Path, opts: super::Opts, state: ApplicationStat
                 "--upgrade-state-fd",
                 &fd.to_string()];
 
-    log::debug!("Executing upgrade: {:?} {:?}", exe, args);
+    tracing::debug!("Executing upgrade: {:?} {:?}", exe, args);
 
     let err = Command::new(exe)
                       .args(args)
