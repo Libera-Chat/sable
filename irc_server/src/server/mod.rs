@@ -70,6 +70,7 @@ pub struct Server
 impl Server
 {
     pub fn new(id: ServerId,
+               epoch: EpochId,
                name: ServerName,
                connection_events: Receiver<ConnectionEvent>,
                rpc_receiver: Receiver<NetworkMessage>,
@@ -78,8 +79,6 @@ impl Server
     {
         let (auth_send, auth_recv) = channel(128);
         let (action_send, action_recv) = unbounded_channel();
-
-        let epoch = EpochId::new(utils::now());
 
         Self {
             my_id: id,
@@ -213,7 +212,6 @@ impl Server
     #[tracing::instrument(skip_all)]
     pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {
-        self.event_submitter.try_send(EventLogUpdate::EpochUpdate(self.epoch)).expect("failed to submit epoch update");
         self.submit_event(self.my_id, details::NewServer{ epoch: self.epoch, name: self.name.clone(), ts: utils::now() });
         let mut check_ping_timer = time::interval(Duration::from_secs(5));
 

@@ -173,10 +173,6 @@ impl ReplicatedEventLog
                             self.log.add(event.clone());
                             self.net.propagate(&Message::NewEvent(event)).await
                         },
-                        Some(EventLogUpdate::EpochUpdate(new_epoch)) => {
-                            tracing::debug!("Server signalled epoch update: {:?}", new_epoch);
-                            self.log.set_epoch(new_epoch);
-                        },
                         None => break
                     }
                 },

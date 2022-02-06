@@ -219,21 +219,6 @@ pub fn object_ids(input: TokenStream) -> TokenStream
                 generator_initargs.push(quote!(
                     #generator_field_name: #generator_typename::new(server_id, epoch_id, 1)
                 ));
-
-                output.extend(quote!(
-                    impl #generator_typename
-                    {
-                        pub fn set_epoch(&mut self, new_epoch: EpochId)
-                        {
-                            self.1 = new_epoch;
-                        }
-
-                        pub fn epoch(&self) -> EpochId
-                        {
-                            self.1
-                        }
-                    }
-                ));
             }
         }
     }
@@ -260,11 +245,6 @@ pub fn object_ids(input: TokenStream) -> TokenStream
                     Self {
                         #( #generator_initargs ),*
                     }
-                }
-
-                pub fn set_epoch(&mut self, new_epoch: EpochId)
-                {
-                    #( self. #generator_field_names .set_epoch(new_epoch); )*
                 }
             }
         ));
