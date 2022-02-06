@@ -227,6 +227,11 @@ pub fn object_ids(input: TokenStream) -> TokenStream
                         {
                             self.1 = new_epoch;
                         }
+
+                        pub fn epoch(&self) -> EpochId
+                        {
+                            self.1
+                        }
                     }
                 ));
             }
