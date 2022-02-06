@@ -272,7 +272,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
             upgrade::exec_upgrade(&exe_path, opts, upgrade::ApplicationState {
                 server_state: server_state,
                 listener_state: listener_state,
-                sync_state: sync_state?
+                sync_state: sync_state??
             });
         }
     }

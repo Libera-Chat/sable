@@ -229,40 +229,7 @@ impl Server
                 {
                     match res {
                         Some(msg) => {
-                            match msg.detail {
-                                ConnectionEventDetail::NewConnection(conn) => {
-                                    tracing::info!("Got new connection {:?}", msg.source);
-                                    let conn = ClientConnection::new(conn);
-
-                                    conn.send(&message::Notice::new(self, &conn.pre_client,
-                                                "*** Looking up your hostname"));
-                                    self.auth_client.start_dns_lookup(conn.id(), conn.remote_addr());
-                                    self.connections.add(msg.source, conn);
-                                },
-                                ConnectionEventDetail::Message(m) => {
-                                    tracing::info!("Got message from connection {:?}: {}", msg.source, m);
-
-                                    if let Some(message) = ClientMessage::parse(msg.source, &m)
-                                    {
-                                        let processor = CommandProcessor::new(&self);
-                                        processor.process_message(message).await;
-                                    }
-                                },
-                                ConnectionEventDetail::Error(e) => {
-                                    tracing::error!("Got error from connection {:?}: {:?}", msg.source, e);
-                                    if let Ok(conn) = self.connections.get(msg.source) {
-                                        if let Some(userid) = conn.user_id {
-                                            self.apply_action(CommandAction::state_change(
-                                                userid,
-                                                details::UserQuit {
-                                                    message: format!("I/O error: {}", e)
-                                                }
-                                            ));
-                                        }
-                                    }
-                                    self.connections.remove(msg.source);
-                                }
-                            }
+                            self.process_connection_event(msg).await;
                         },
                         None => {
                             panic!("what to do here?");
@@ -382,6 +349,49 @@ impl Server
         self.submit_event(self.my_id, details::ServerQuit { introduced_by: me.introduced_by() });
 
         shutdown_action
+    }
+
+    #[tracing::instrument(skip_all, fields(source = ?msg.source))]
+    async fn process_connection_event(&mut self, msg: ConnectionEvent)
+    {
+        match msg.detail {
+            ConnectionEventDetail::NewConnection(conn) => {
+                tracing::info!("Got new connection");
+                let conn = ClientConnection::new(conn);
+
+                conn.send(&message::Notice::new(self, &conn.pre_client,
+                            "*** Looking up your hostname"));
+                self.auth_client.start_dns_lookup(conn.id(), conn.remote_addr());
+                self.connections.add(msg.source, conn);
+            },
+            ConnectionEventDetail::Message(m) => {
+                tracing::info!(msg=?m, "Got message");
+
+                if let Some(message) = ClientMessage::parse(msg.source, &m)
+                {
+                    let processor = CommandProcessor::new(&self);
+                    processor.process_message(message).await;
+                }
+                else
+                {
+                    tracing::info!("Failed parsing")
+                }
+            },
+            ConnectionEventDetail::Error(e) => {
+                tracing::error!(error=?e, "Got connection error");
+                if let Ok(conn) = self.connections.get(msg.source) {
+                    if let Some(userid) = conn.user_id {
+                        self.apply_action(CommandAction::state_change(
+                            userid,
+                            details::UserQuit {
+                                message: format!("I/O error: {}", e)
+                            }
+                        ));
+                    }
+                }
+                self.connections.remove(msg.source);
+            }
+        }
     }
 }
 

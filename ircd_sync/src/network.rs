@@ -176,28 +176,19 @@ impl Network
         }))
     }
 
-    pub async fn spawn_listen_task(&mut self)
-    {
-        if let Err(e) = self.do_spawn_listen_task().await
-        {
-            tracing::error!("Error in network sync listener: {}", e);
-        }
-    }
-
-    async fn do_spawn_listen_task(&mut self) -> Result<(), io::Error>
+    pub async fn spawn_listen_task(&mut self) -> Result<JoinHandle<()>, io::Error>
     {
         let listener = TcpListener::bind(self.listen_addr).await?;
         let tls_acceptor = TlsAcceptor::from(Arc::clone(&self.tls_server_config));
         let sender = self.message_sender.clone();
         let shutdown = self.shutdown_recv.take().ok_or(io::ErrorKind::Other)?;
 
-        tokio::spawn(async move {
+        Ok(tokio::spawn(async move {
             if let Err(e) = Self::listen_loop(listener, tls_acceptor, sender, shutdown).await
             {
                 tracing::error!("Error in network sync listener: {}", e);
             }
-        });
-        Ok(())
+        }))
     }
 
     async fn listen_loop(listener: TcpListener, tls_acceptor: TlsAcceptor, message_sender: Sender<Request>, mut shutdown: oneshot::Receiver<()>) -> Result<(), io::Error>

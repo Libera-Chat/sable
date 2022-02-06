@@ -143,9 +143,9 @@ impl ReplicatedEventLog
 
     /// Run the main network synchronisation task.
     #[tracing::instrument(skip_all)]
-    pub async fn sync_task(mut self, mut shutdown: broadcast::Receiver<ShutdownAction>) -> EventLogState
+    pub async fn sync_task(mut self, mut shutdown: broadcast::Receiver<ShutdownAction>) -> std::io::Result<EventLogState>
     {
-        self.net.spawn_listen_task().await;
+        let listen_task = self.net.spawn_listen_task().await?;
 
         loop {
             tracing::trace!("sync_task loop");
@@ -194,7 +194,10 @@ impl ReplicatedEventLog
                 }
             }
         }
-        self.log.save_state()
+
+        self.net.shutdown();
+        listen_task.await?;
+        Ok(self.log.save_state())
     }
 
     #[tracing::instrument(skip(self,response))]
