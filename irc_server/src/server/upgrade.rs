@@ -5,6 +5,7 @@ use auth_client::{
     AuthClientState
 };
 
+/// Saved state of a [`Server`] for later resumption
 #[derive(serde::Serialize,serde::Deserialize)]
 pub struct ServerState
 {
@@ -19,6 +20,7 @@ pub struct ServerState
 
 impl Server
 {
+    /// Save the server's state for later resumption
     pub async fn save_state(self) -> std::io::Result<ServerState>
     {
         Ok(ServerState {
@@ -32,6 +34,10 @@ impl Server
         })
     }
 
+    /// Restore from a previously saved state.
+    ///
+    /// The `listener_collection` is only used during the resumption to restore
+    /// connection data; the other arguments are as for [`new`](Self::new).
     pub fn restore_from(
             state: ServerState,
             listener_collection: &client_listener::ListenerCollection,

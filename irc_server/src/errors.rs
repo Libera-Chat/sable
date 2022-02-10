@@ -2,6 +2,7 @@ use thiserror::Error;
 use irc_network::*;
 use client_listener::ConnectionError;
 
+/// An error that could occur when handling a network state change
 #[derive(Debug,Error)]
 pub enum HandlerError {
     #[error("Internal error: {0}")]

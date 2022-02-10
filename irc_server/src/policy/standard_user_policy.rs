@@ -1,5 +1,6 @@
 use super::*;
 
+/// Standard implementation of [`UserPolicyService`]
 pub struct StandardUserPolicy
 {
 }

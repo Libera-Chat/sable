@@ -43,8 +43,10 @@ pub use standard_access_policy::*;
 mod error;
 pub use error::*;
 
+/// Convenience definition of the `Result` type for permission checks.
 pub type PermissionResult = Result<(), PermissionError>;
 
+/// A `PolicyService` provides all the various policy traits in one place
 pub trait PolicyService:
             ChannelPolicyService +
             UserPolicyService +
@@ -54,6 +56,7 @@ pub trait PolicyService:
 {
 }
 
+/// The standard implementation of a [`PolicyService`]
 #[derive(Delegate)]
 #[delegate(ChannelPolicyService, target="channel_policy")]
 #[delegate(UserPolicyService, target="user_policy")]

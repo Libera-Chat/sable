@@ -2,6 +2,7 @@ use super::*;
 use crate::utils::*;
 use pwhash::unix;
 
+/// Standard implementation of [`OperPolicyService`] and [`OperAuthenticationService`]
 pub struct StandardOperPolicy
 {
 }

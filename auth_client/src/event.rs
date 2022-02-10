@@ -15,5 +15,6 @@ pub struct DnsResult
 #[derive(Debug,serde::Serialize,serde::Deserialize)]
 pub enum AuthEvent
 {
+    /// A reverse DNS lookup has been completed
     DnsResult(DnsResult)
 }

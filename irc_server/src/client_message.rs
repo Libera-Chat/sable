@@ -1,15 +1,20 @@
 use client_listener::ConnectionId;
 
+/// A tokenised, but not yet processed, message from a client connection
 #[derive(Debug)]
 pub struct ClientMessage
 {
+    /// The connection from which the message was received
     pub source: ConnectionId,
+    /// The command
     pub command: String,
+    /// The list of arguments
     pub args: Vec<String>
 }
 
 impl ClientMessage
 {
+    /// Create a `ClientMessage` from a received message
     pub fn parse(source: ConnectionId, raw: &str) -> Option<Self>
     {
         let mut args = Vec::new();

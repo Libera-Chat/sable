@@ -9,44 +9,81 @@ use client_listener::{
 
 use std::cell::RefCell;
 
-pub struct CommandProcessor<'a>
+/// Utility type to invoke a command handler
+pub(crate) struct CommandProcessor<'a>
 {
     server: &'a Server,
 }
 
+/// An action that can be triggered by a command handler.
+///
+/// Command handlers have only an immutable reference to the [`Server`], and so
+/// cannot directly change state (with limited exceptions). If handling the command
+/// requires a change in state, either network or local, then this is achieved
+/// by emitting a `CommandAction` which the `Server` will apply on the next
+/// iteration of its event loop.
 #[derive(Debug)]
 pub enum CommandAction {
+    /// A network state change. The target object ID and event details are provided
+    /// here; the remaining [`Event`](event::Event) fields are filled in by the
+    /// event log.
     StateChange(ObjectId, event::EventDetails),
+    /// Indicate that the given connection is ready to register
     RegisterClient(ConnectionId),
+    /// Disconnect the given user. The handler should first inform the user of the reason,
+    /// if appropriate
     DisconnectUser(UserId),
 }
 
+/// An error that may occur during command processing
+///
+/// Note that, at present, returning the `UnderlyingError` or `UnknownError` variants
+/// from a handler will cause the [`CommandProcessor`] to panic; in future this may
+/// change (for example, to terminate the connection), but in either case should only
+/// be used for exceptional, unhandleable, errors.
 #[derive(Debug)]
 pub enum CommandError
 {
+    /// Something returned an `Error` that we don't know how to handle
     UnderlyingError(Box<dyn std::error::Error>),
-    CustomError,
+    /// Something went wrong but we don't have an `Error` impl for it
     UnknownError(String),
+    /// The command couldn't be processed successfully, and the client has already been
+    /// notified
+    CustomError,
+    /// The command couldn't be processed successfully; the provided
+    /// [`Numeric`](messages::Numeric) will be sent to the client to notify them
     Numeric(Box<dyn messages::Numeric>)
 }
 
+/// Describes the possible types of connection that can invoke a command handler
 pub enum CommandSource<'a>
 {
+    /// A client connection which has not yet completed registration
     PreClient(&'a RefCell<PreClient>),
+    /// A client connection which is associated with a network user
     User(wrapper::User<'a>),
 }
 
+/// A client command to be handled
 pub struct ClientCommand<'a>
 {
+    /// The [`Server`] instance
     pub server: &'a Server,
+    /// The connection from which the command originated
     pub connection: &'a ClientConnection,
+    /// Details of the user associated with the connection
     pub source: &'a CommandSource<'a>,
+    /// The command being executed
     pub command: String,
+    /// Arguments supplied
     pub args: Vec<String>,
 }
 
 impl CommandAction
 {
+    /// Helper to create a [`CommandAction::StateChange`] variant. By passing the underlying
+    /// ID and detail types, they will be converted into the corresponding enum variants.
     pub fn state_change(id: impl Into<ObjectId>, detail: impl Into<event::EventDetails>) -> Self
     {
         Self::StateChange(id.into(), detail.into())
@@ -55,6 +92,7 @@ impl CommandAction
 
 impl ClientCommand<'_>
 {
+    /// Send a numeric response to the connection that invoked the command
     pub fn response(&self, n: &impl messages::Numeric) -> CommandResult
     {
         self.connection.send(&n.format_for(self.server, self.source));
@@ -64,6 +102,7 @@ impl ClientCommand<'_>
 
 impl<'a> CommandProcessor<'a>
 {
+    /// Construct a `CommandProcessor`
     pub fn new (server: &'a Server) -> Self
     {
         Self {
@@ -71,6 +110,15 @@ impl<'a> CommandProcessor<'a>
         }
     }
 
+    /// Take a tokenised [`ClientMessage`] and process it as a protocol command.
+    ///
+    /// This function will:
+    /// - Look up the source connection, identify the `PreClient` or `User`
+    ///   associated with that connection
+    /// - Create an appropriate [`CommandHandler`] based on the command being
+    ///   executed
+    /// - Invoke the handler
+    /// - Process any numeric error response, if appropriate
     #[tracing::instrument(skip(self))]
     pub async fn process_message(&self, message: ClientMessage)
     {

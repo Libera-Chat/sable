@@ -4,16 +4,23 @@ use std::cell::{
     RefCell
 };
 
+/// A parameter associated with an ISUPPORT entry
 pub enum ISupportParam
 {
+    /// This entry is a simple token parameter
     Simple,
+    /// This entry has a string value
     String(String),
+    /// This entry has an integer value
     Int(i32)
 }
 
+/// An entry in the server's ISUPPORT response
 pub struct ISupportEntry
 {
+    /// The entry's token name
     pub name: String,
+    /// Associated value, if any
     pub param: ISupportParam
 }
 
@@ -45,6 +52,7 @@ impl ISupportEntry
     }
 }
 
+/// Build an ISUPPORT response
 pub struct ISupportBuilder
 {
     entries: Vec<ISupportEntry>,
@@ -53,6 +61,7 @@ pub struct ISupportBuilder
 
 impl ISupportBuilder
 {
+    /// Construct the builder
     pub fn new() -> Self
     {
         Self {
@@ -61,12 +70,17 @@ impl ISupportBuilder
         }
     }
 
+    /// Add an entry
     pub fn add(&mut self, entry: ISupportEntry)
     {
         self.entries.push(entry);
         self.cache.replace(None);
     }
 
+    /// Return the reply data.
+    ///
+    /// Return value is a borrowed reference to a `Vec<String>`. Each entry in the
+    /// vector should be sent as the final parameter of an 005 numeric message.
     pub fn data(&self) -> Ref<Vec<String>>
     {
         if self.cache.borrow().is_none()

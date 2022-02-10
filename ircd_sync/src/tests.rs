@@ -6,7 +6,7 @@ use tokio::sync::mpsc::*;
 fn drain_from(log: &mut Receiver<Event>) -> Vec<Event>
 {
     let mut v = Vec::new();
-    
+
     while let Ok(e) = log.try_recv()
     {
         v.push(e);
@@ -27,7 +27,7 @@ fn simple()
 
     let e1 = log.create(uid, details::UserQuit{ message: "aaa".to_string() });
     log.add(e1.clone());
-    
+
     let e2 = log.create(uid, details::UserQuit{ message: "bbb".to_string() });
     log.add(e2.clone());
 
@@ -56,7 +56,7 @@ fn out_of_order()
 
     log.add(e2.clone());
     log.add(e1.clone());
-    
+
     let entries = drain_from(&mut receiver);
 
     assert_eq!(entries.len(), 2);
@@ -64,6 +64,7 @@ fn out_of_order()
     assert_eq!(entries[1].id, e2.id);
 }
 
+/*
 #[test]
 fn epochs()
 {
@@ -97,6 +98,7 @@ fn epochs()
     assert_eq!(entries[1].id, e2.id);
     assert_eq!(entries[2].id, e3.id);
 }
+*/
 
 #[test]
 fn get_since()
@@ -115,7 +117,7 @@ fn get_since()
     log.add(e1.clone());
 
     let clock = log.clock().clone();
-    
+
     let e2 = log.create(uid, details::UserQuit{ message: "bbb".to_string() });
     log.add(e2.clone());
 

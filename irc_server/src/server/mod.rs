@@ -32,7 +32,7 @@ use std::{
     time::Duration,
 };
 
-pub mod command_processor;
+pub(crate) mod command_processor;
 use command_processor::*;
 
 mod connection_collection;
@@ -47,6 +47,7 @@ mod state_change_receiver;
 mod isupport;
 pub use isupport::*;
 
+/// An IRC client server.
 pub struct Server
 {
     my_id: ServerId,
@@ -69,6 +70,21 @@ pub struct Server
 
 impl Server
 {
+    /// Construct a server.
+    ///
+    /// Arguments:
+    /// - `id`: This server's ID
+    /// - `epoch`: The epoch ID to be used for ID generation. This must be unique
+    ///   across all invocations with the same server ID, and should be the same
+    ///   as the epoch ID provided to the event log
+    /// - `name`: The server's name
+    /// - `connection_events`: a channel to receive connection events. In normal
+    ///   use this should be shared with a
+    ///   [`ListenerCollection`](client_listener::ListenerCollection)
+    /// - `rpc_receiver`: channel to receive messages from the network synchronisation.
+    ///   Should be shared with a `ReplicatedEventLog`.
+    /// - `to_network`: channel to send out new events. Should be shared with the
+    ///   `ReplicatedEventLog`.
     pub fn new(id: ServerId,
                epoch: EpochId,
                name: ServerName,
@@ -108,47 +124,55 @@ impl Server
         self.event_submitter.try_send(EventLogUpdate::NewEvent(id, detail)).unwrap();
     }
 
+    /// Retrieve the [`ObjectIdGenerator`] used to generate object identifiers
     pub fn ids(&self) -> &ObjectIdGenerator
     {
         &self.id_generator
     }
 
+    /// Access the IRC network state
     pub fn network(&self) -> &Network
     {
         &self.net
     }
 
+    /// Get the server's name
     pub fn name(&self) -> &ServerName
     {
         &self.name
     }
 
+    /// The server's ID
     pub fn id(&self) -> ServerId
     {
         self.my_id
     }
 
+    /// This server's entry in the network state
     pub fn me(&self) -> LookupResult<wrapper::Server>
     {
         self.net.server(self.my_id)
     }
 
-    pub fn command_dispatcher(&self) -> &command::CommandDispatcher
+    fn command_dispatcher(&self) -> &command::CommandDispatcher
     {
         &self.command_dispatcher
     }
 
+    /// Submit a command action to process in the next loop iteration.
     #[tracing::instrument(skip(self))]
     pub fn add_action(&self, act: CommandAction)
     {
         self.action_submitter.send(act).unwrap();
     }
 
+    /// Access the currently used [`PolicyService`]
     pub fn policy(&self) -> &dyn PolicyService
     {
         &self.policy_service
     }
 
+    /// Find a client connection
     pub fn find_connection(&self, id: ConnectionId) -> Option<&ClientConnection>
     {
         let ret = self.connections.get(id).ok();
@@ -209,6 +233,11 @@ impl Server
         ret
     }
 
+    /// Run the server
+    ///
+    /// Arguments:
+    /// - `management_channel`: receives management commands from the management service
+    /// - `shutdown_channel`: used to signal the server to shut down
     #[tracing::instrument(skip_all)]
     pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {

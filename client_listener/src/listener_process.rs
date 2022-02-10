@@ -15,6 +15,9 @@ use tokio_unix_ipc::{
     Receiver as IpcReceiver,
 };
 
+/// The worker side of the [`ListenerCollection`] system. This should only be constructed
+/// by the worker process itself; applications using this system have no cause to interact
+/// directly with it.
 pub struct ListenerProcess
 {
     control_receiver: IpcReceiver<ControlMessage>,

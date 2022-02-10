@@ -5,6 +5,7 @@ use std::net::IpAddr;
 
 use tokio::sync::mpsc::UnboundedSender;
 
+/// A connection being managed by the worker process.
 pub struct Connection
 {
     pub id: ConnectionId,
@@ -25,6 +26,7 @@ impl Connection
         }
     }
 
+    /// Is this a TLS connection?
     pub fn is_tls(&self) -> bool
     {
         match self.conn_type {
@@ -41,16 +43,22 @@ impl Connection
         }
     }
 
+    /// Close the connection.
     pub fn close(&self)
     {
         self.send_control(ConnectionControlDetail::Close);
     }
 
+    /// Send the provided text to the connection
     pub fn send(&self, msg: String)
     {
         self.send_control(ConnectionControlDetail::Send(msg));
     }
 
+    /// Save the connection state for later restoration.
+    ///
+    /// See [`ListenerCollection::restore_connection`] for the counterpart to restore
+    /// the saved state to a new `Connection`.
     pub fn save(self) -> ConnectionData
     {
         ConnectionData {

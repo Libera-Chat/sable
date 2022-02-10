@@ -12,6 +12,7 @@ pub enum ConnectionType
     Tls
 }
 
+/// The saved state of a [`Connection`]
 #[derive(Debug,Serialize,Deserialize)]
 pub struct ConnectionData
 {
@@ -20,6 +21,10 @@ pub struct ConnectionData
     pub(crate) conn_type: ConnectionType,
 }
 
+/// The certificate chain and private key required to create a TLS listener.
+///
+/// Should be provided to
+/// [`ListenerCollection::load_tls_certificates`](crate::ListenerCollection::load_tls_certificates).
 #[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct TlsSettings
 {
@@ -27,16 +32,23 @@ pub struct TlsSettings
     pub key: Vec<u8>,
 }
 
+/// Possible types of event that might occur on a given connection.
 pub enum ConnectionEventDetail
 {
+    /// A new connection was accepted
     NewConnection(Connection),
+    /// A new line was received
     Message(String),
+    /// An error occurred
     Error(ConnectionError),
 }
 
+/// An event be notified via a `ListenerCollection`'s event channel.
 pub struct ConnectionEvent
 {
+    /// The connection ID to which this event relates
     pub source: ConnectionId,
+    /// The type of event and its content
     pub detail: ConnectionEventDetail
 }
 

@@ -39,6 +39,8 @@ use std::process::{
     Child
 };
 
+/// Saved state which can be used to recreate a [`ListenerCollection`] after an
+/// `exec()` transition.
 #[derive(serde::Serialize,serde::Deserialize)]
 pub struct SavedListenerCollection
 {
@@ -50,6 +52,16 @@ pub struct SavedListenerCollection
 
 type CommResult = std::io::Result<(IpcSender<ControlMessage>, IpcReceiver<InternalConnectionEvent>)>;
 
+/// The primary interface to the client listener worker process.
+///
+/// Creating a `ListenerCollection` will spawn the worker process, as well as an
+/// asynchronous task to manage communications with it. The `ListenerCollection`
+/// can be used directly to manage running listeners, while new connections and
+/// incoming events will be sent via the channel provided at construction.
+///
+/// Listener collections can be saved into a [`SavedListenerCollection`] and then
+/// reconstructed after an `exec()` operation or in a child process, provided that
+/// open file descriptors are inherited.
 pub struct ListenerCollection
 {
     listener_id_generator: ListenerIdGenerator,
@@ -62,6 +74,9 @@ pub struct ListenerCollection
 
 impl ListenerCollection
 {
+    /// Create a new `ListenerCollection` with an automatically guessed worker process
+    /// executable. `new` will look for an executable named `listener_process` in the
+    /// same directory as the currently running executable, then call `with_exe_path`.
     pub fn new(event_channel: Sender<ConnectionEvent>) -> std::io::Result<Self>
     {
         let my_path = current_exe()?;
@@ -71,6 +86,11 @@ impl ListenerCollection
         Self::with_exe_path(default_listener_path, event_channel)
     }
 
+    /// Construct a `ListenerCollection` with the given worker executable.
+    ///
+    /// The worker process will be spawned, along with an asynchronous task to run
+    /// communications. Incoming connections, data and other events will be notified
+    /// via `event_channel`.
     pub fn with_exe_path(exec_path: impl AsRef<Path>, event_channel: Sender<ConnectionEvent>) -> std::io::Result<Self>
     {
         let (control_send, control_recv) = ipc_channel()?;
@@ -110,6 +130,12 @@ impl ListenerCollection
         Ok(ret)
     }
 
+    /// Consume the `ListenerCollection` and save its state for later resumption.
+    ///
+    /// The file descriptors used for worker process communication will be detached,
+    /// marked as not to be closed on exec, and wrapped in the opaque `ListenerCollectionState`
+    /// type for later use. This type can be serialised and transmitted to a new
+    /// executable image, provided that the open file descriptors are inherited.
     pub async fn save(self) -> std::io::Result<SavedListenerCollection>
     {
         tracing::debug!("Saving state");
@@ -143,6 +169,17 @@ impl ListenerCollection
         })
     }
 
+    /// Reconstruct a `ListenerCollection` based on a previously saved state.
+    ///
+    /// The `event_channel` sender is the same as that passed to [`new`](Self::new) and
+    /// [`with_exe_path`](Self::with_exe_path), and used to notify connection events.
+    ///
+    /// Note that applications using this interface will likely have separate state
+    /// relating to the [`Connection`] objects created by this listener collection.
+    /// Those `Connection`s must be saved separately (via their [`save`](Connection::save))
+    /// method) along with any application-specific state relating to them; they can then
+    /// be recreated using [`restore_connection`](Self::restore_connection) on the
+    /// recreated listener collection.
     pub fn resume(state: SavedListenerCollection, event_channel: Sender<ConnectionEvent>) -> std::io::Result<Self>
     {
         let (control_sender, event_receiver) = unsafe
@@ -164,6 +201,12 @@ impl ListenerCollection
         })
     }
 
+    /// Create a new listener with the given socket address and type.
+    ///
+    /// Note that this method will only return an `Err(_)` variant if sending the
+    /// control message to the child process fails. If the worker process is unable
+    /// to create the listener, a separate error event will later be emitted on the
+    /// event channel.
     pub fn add_listener(&self, address: SocketAddr, conn_type: ConnectionType) -> Result<ListenerId,ListenerError>
     {
         let id = self.listener_id_generator.next();
@@ -173,16 +216,20 @@ impl ListenerCollection
         return Ok(id)
     }
 
+    /// Load the provided TLS settings. This must be done before a TLS listener can be
+    /// created.
     pub fn load_tls_certificates(&self, settings: TlsSettings) -> Result<(), ListenerError>
     {
         Ok(self.control_sender.send(ControlMessage::LoadTlsSettings(settings))?)
     }
 
+    /// Restore a connection belonging to this connection from its saved [`ConnectionData`]
     pub fn restore_connection(&self, data: ConnectionData) -> Connection
     {
         Connection::new(data.id, data.conn_type, data.remote_addr, self.control_sender.clone())
     }
 
+    /// Shut down the worker process and communication task.
     pub async fn shutdown(self)
     {
         let _ = self.control_sender.send(ControlMessage::Shutdown);

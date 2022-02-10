@@ -2,6 +2,7 @@ use super::*;
 use crate::PreClient;
 use crate::numeric;
 
+/// Standard implementation of [`AccessPolicyService`]
 pub struct StandardAccessPolicy
 {
 }

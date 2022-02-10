@@ -2,11 +2,13 @@ use irc_network::*;
 use crate::server::command_processor::*;
 use crate::client;
 
+/// Trait describing an object that can be the source of a client protocol message
 pub trait MessageSource
 {
     fn format(&self) -> String;
 }
 
+/// Trait describing an object that can be the target of a client protocol message
 pub trait MessageTarget
 {
     fn format(&self) -> String;
@@ -87,15 +89,25 @@ impl MessageTarget for CommandSource<'_>
     }
 }
 
+/// Trait describing a client protocol message type
 pub trait MessageType : std::fmt::Display + std::fmt::Debug
 { }
 
+/// A `Numeric` that has been formatted for a specific source and target
 #[derive(Debug)]
 pub struct TargetedNumeric(String);
 
-impl std::fmt::Display for TargetedNumeric { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.0.fmt(f) } }
+impl std::fmt::Display for TargetedNumeric
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result
+    {
+        self.0.fmt(f)
+    }
+}
+
 impl MessageType for TargetedNumeric { }
 
+/// Trait describing a numeric message
 pub trait Numeric : std::fmt::Debug
 {
     fn format_for(&self, source: &dyn MessageSource, target: &dyn MessageTarget) -> TargetedNumeric;

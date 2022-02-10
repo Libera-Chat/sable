@@ -42,7 +42,7 @@ pub fn command_handler(input: TokenStream) -> TokenStream
     let body = defn.body;
 
     quote!(
-        pub struct #name<'a>
+        pub(crate) struct #name<'a>
         {
             server: &'a Server,
             processor: &'a CommandProcessor<'a>,

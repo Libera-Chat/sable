@@ -5,7 +5,7 @@ use tokio::sync::mpsc::error::{
     TrySendError
 };
 
-
+/// An error that might occur on a single connection.
 #[derive(Error,Debug,Serialize,Deserialize)]
 pub enum ConnectionError
 {
@@ -19,6 +19,7 @@ pub enum ConnectionError
     SendQueueFull,
 }
 
+/// An error that might occur when configuring a listener.
 #[derive(Error,Debug,Serialize,Deserialize)]
 pub enum ListenerError
 {

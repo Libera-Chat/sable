@@ -2,11 +2,14 @@ use super::*;
 
 use tokio::sync::oneshot::Sender;
 
+/// A management command
 pub enum ServerManagementCommand
 {
+    /// Collect server statistics
     ServerStatistics(Sender<String>)
 }
 
+/// Statistics to be exported via the management interface
 #[derive(serde::Serialize)]
 struct ServerStatistics
 {

@@ -5,12 +5,15 @@ use client_listener::{
 };
 use std::cell::RefCell;
 
+/// Stores the client connections handled by a [`Server`], and allows lookup by
+/// either connection ID or user ID
 pub(super) struct ConnectionCollection
 {
     client_connections: HashMap<ConnectionId, ClientConnection>,
     user_to_connid: HashMap<UserId, ConnectionId>,
 }
 
+/// Serialised state of a [`ClientConnection`], for later resumption
 #[derive(serde::Serialize,serde::Deserialize)]
 pub(super) struct ClientConnectionState
 {
@@ -20,6 +23,7 @@ pub(super) struct ClientConnectionState
     pre_client: Option<PreClient>
 }
 
+/// Serialised state of a [`ConnectionCollection`], for later resumption
 #[derive(serde::Serialize,serde::Deserialize)]
 pub(super) struct ConnectionCollectionState(
     Vec<ClientConnectionState>
@@ -27,6 +31,7 @@ pub(super) struct ConnectionCollectionState(
 
 impl ConnectionCollection
 {
+    /// Contruct a [`ConnectionCollection`]
     pub fn new() -> Self {
         Self {
             client_connections: HashMap::new(),
@@ -34,16 +39,19 @@ impl ConnectionCollection
         }
     }
 
+    /// Insert a new connection, with no associated user ID
     pub fn add(&mut self, id: ConnectionId, conn: ClientConnection)
     {
         self.client_connections.insert(id, conn);
     }
 
+    /// Associate a user ID with an existing connection ID
     pub fn add_user(&mut self, user: UserId, to: ConnectionId)
     {
         self.user_to_connid.insert(user, to);
     }
 
+    /// Remove a connection, by connection ID
     pub fn remove(&mut self, id: ConnectionId)
     {
         if let Some(conn) = self.client_connections.get(&id)
@@ -56,6 +64,7 @@ impl ConnectionCollection
         self.client_connections.remove(&id);
     }
 
+    /// Remove a connection, by associated user ID
     pub fn remove_user(&mut self, id: UserId) -> Option<ClientConnection>
     {
         if let Some(connid) = self.user_to_connid.remove(&id)
@@ -68,11 +77,13 @@ impl ConnectionCollection
         }
     }
 
+    /// Look up a connection by ID
     pub fn get(&self, id: ConnectionId) -> Result<&ClientConnection, LookupError>
     {
         self.client_connections.get(&id).ok_or(LookupError::NoSuchConnectionId)
     }
 
+    /// Look up a connection by user ID
     pub fn get_user(&self, id: UserId) -> Result<&ClientConnection, LookupError>
     {
         match self.user_to_connid.get(&id) {
@@ -86,6 +97,7 @@ impl ConnectionCollection
         self.client_connections.get_mut(&id).ok_or(LookupError::NoSuchConnectionId)
     }
 */
+    /// Look up a connection by user ID, returning a mutable reference
     pub fn get_user_mut(&mut self, id: UserId) -> Result<&mut ClientConnection, LookupError>
     {
         match self.user_to_connid.get(&id) {
@@ -94,16 +106,19 @@ impl ConnectionCollection
         }
     }
 
+    /// Iterate over connections
     pub fn iter(&self) -> impl Iterator<Item=&ClientConnection>
     {
         self.client_connections.values()
     }
 
+    /// Get the number of managed connections
     pub fn len(&self) -> usize
     {
         self.client_connections.len()
     }
 
+    /// Save the collection state for later resumption
     pub fn save_state(self) -> ConnectionCollectionState
     {
         ConnectionCollectionState(
@@ -122,6 +137,7 @@ impl ConnectionCollection
         )
     }
 
+    /// Restore a collection from a previously stored state
     pub fn restore_from(state: ConnectionCollectionState, listener_collection: &client_listener::ListenerCollection) -> Self
     {
         let mut ret = Self::new();

@@ -1,6 +1,7 @@
 use super::*;
 use crate::utils::*;
 
+/// Standard implementation of [`ChannelPolicyService`]
 pub struct StandardChannelPolicy
 {
     ban_resolver: Box<dyn BanResolver>
@@ -9,7 +10,7 @@ pub struct StandardChannelPolicy
 impl StandardChannelPolicy {
     pub fn new() -> Self
     {
-        Self { 
+        Self {
             ban_resolver: Box::new(StandardBanResolver::new())
         }
     }

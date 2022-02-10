@@ -1,9 +1,14 @@
 //! The client protocol listener process, and interface thereto.
 //!
-//! This crate contains the `client_listener` executable, which maintains all
+//! This package contains the `client_listener` executable, which maintains all
 //! persistent TCP connections for the IRC client protocol. Keeping these in a
 //! dedicated process allows the main server process to restart for upgrades
 //! without interrupting client connections.
+//!
+//! Listeners are managed using the [`ListenerCollection`], which spawns both
+//! the child worker process and an asynchronous task to manage communications.
+//! Once a listener has been created, new connections and any events on existing
+//! connections will be sent via the provided event channel.
 
 
 pub mod id;

@@ -72,7 +72,8 @@ impl ReplicatedEventLog
     /// and given set of configs.
     ///
     /// `state` contains a state object previously returned on completion of
-    /// [`sync_task`]; the other arguments are as for [`new`]
+    /// [`sync_task`](Self::sync_task); the other arguments are as for
+    /// [`new`](Self::new)
     pub fn restore(state: EventLogState,
                server_send: Sender<NetworkMessage>,
                update_receiver: Receiver<EventLogUpdate>,
