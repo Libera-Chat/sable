@@ -42,6 +42,11 @@ struct Opts
     /// FD from which to read upgrade data
     #[structopt(long)]
     upgrade_state_fd: Option<i32>,
+
+    /// Start a new network; without this no clients will be accepted until the
+    /// server has synced to an existing net
+    #[structopt(long)]
+    bootstrap_network: bool,
 }
 
 #[derive(Debug,Deserialize)]
@@ -229,7 +234,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     // Only run the initial sync if we're not upgrading - if we are, then we already have the
     // initial state persisted
-    if ! is_upgrade
+    if ! is_upgrade && ! opts.bootstrap_network
     {
         event_log.sync_to_network().await;
     }

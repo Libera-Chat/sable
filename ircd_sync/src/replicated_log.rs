@@ -14,7 +14,9 @@ use tokio::{
     sync::broadcast,
     select,
     task::JoinHandle,
+    time::sleep,
 };
+use std::time::Duration;
 
 /// A replicated event log.
 ///
@@ -126,20 +128,17 @@ impl ReplicatedEventLog
 
     async fn start_sync_to_network(&self, sender: Sender<Request>) -> JoinHandle<()>
     {
-        for _ in [0..3]
+        while let Some(peer) = self.net.choose_peer()
         {
-            if let Some(peer) = self.net.choose_peer()
+            tracing::info!("Requesting network state from {:?}", peer);
+            let msg = Message::GetNetworkState;
+            match self.net.send_and_process(peer, msg, sender.clone()).await
             {
-                tracing::info!("Requesting network state from {:?}", peer);
-                let msg = Message::GetNetworkState;
-                match self.net.send_and_process(peer, msg, sender.clone()).await
-                {
-                    Ok(handle) => return handle,
-                    Err(_) => continue,
-                }
+                Ok(handle) => return handle,
+                Err(_) => sleep(Duration::from_secs(3)).await,
             }
         }
-        tokio::spawn(async {})
+        panic!("No peer available to sync");
     }
 
     /// Run the main network synchronisation task.
