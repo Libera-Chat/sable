@@ -14,7 +14,7 @@ pub(crate) fn hashed_nick_for(id: UserId) -> Nickname
     {
         // If we fill up the arraystring, just stop adding. We won't, though, as long as
         // the hash is 32-bit and the nicklen is >10
-        if let Err(_) = newnick.try_push(c)
+        if newnick.try_push(c).is_err()
         {
             break;
         }

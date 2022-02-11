@@ -14,25 +14,16 @@ impl<T> OptionChange<T>
 {
     pub fn is_set(&self) -> bool
     {
-        match self {
-            Self::Set(_) => true,
-            _ => false
-        }
+        matches!(self, Self::Set(_))
     }
 
     pub fn is_unset(&self) -> bool
     {
-        match self {
-            Self::Unset => true,
-            _ => false
-        }
+        matches!(self, Self::Unset)
     }
 
     pub fn is_no_change(&self) -> bool
     {
-        match self {
-            Self::NoChange => true,
-            _ => false
-        }
+        matches!(self, Self::NoChange)
     }
 }

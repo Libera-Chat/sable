@@ -17,8 +17,7 @@ impl UserMode<'_> {
     pub fn user(&self) -> LookupResult<User>
     {
         self.network.raw_users()
-                    .filter(|u| u.mode_id == self.data.id)
-                    .next()
+                    .find(|u| u.mode_id == self.data.id)
                     .ok_or(LookupError::NoUserForMode(self.data.id))
                     .wrap(self.network)
     }
@@ -40,7 +39,8 @@ impl UserMode<'_> {
 impl<'a> super::ObjectWrapper<'a> for UserMode<'a> {
     type Underlying = state::UserMode;
 
-    fn wrap(net: &'a Network, data: &'a state::UserMode) -> Self {
-        Self{ network: net, data: data }
+    fn wrap(network: &'a Network, data: &'a state::UserMode) -> Self
+    {
+        Self { network, data }
     }
 }

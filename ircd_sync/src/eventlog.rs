@@ -42,7 +42,7 @@ impl EventLog {
             history: BTreeMap::new(),
             pending: HashMap::new(),
             id_gen: idgen,
-            event_sender: event_sender,
+            event_sender,
             last_event_clock: EventClock::new(),
         }
     }
@@ -54,7 +54,7 @@ impl EventLog {
             history: BTreeMap::new(),
             pending: HashMap::new(),
             id_gen: state.id_gen,
-            event_sender: event_sender,
+            event_sender,
             last_event_clock: state.clock
         }
     }
@@ -69,7 +69,7 @@ impl EventLog {
 
     /// Return a single event.
     pub fn get(&self, id: &EventId) -> Option<&Event> {
-        self.history.get(&id.server()).and_then(|x| x.get(&id))
+        self.history.get(&id.server()).and_then(|x| x.get(id))
     }
 
     /// Iterate over all events in the current log which do not precede the
@@ -151,9 +151,7 @@ impl EventLog {
         let s = e.id.server();
         let id = e.id;
 
-        if ! self.history.contains_key(&s) {
-            self.history.insert(s, BTreeMap::new());
-        }
+        self.history.entry(s).or_insert_with(BTreeMap::new);
 
         let server_map = self.history.get_mut(&s).unwrap();
         server_map.insert(e.id, e);
@@ -190,7 +188,7 @@ impl EventLog {
         {
             if self.get(v).is_none()
             {
-                ret.push(v.clone());
+                ret.push(*v);
             }
         }
         ret
@@ -200,7 +198,7 @@ impl EventLog {
     {
         for (id, event) in &self.pending
         {
-            if self.has_dependencies_for(&event)
+            if self.has_dependencies_for(event)
             {
                 return Some(*id);
             }

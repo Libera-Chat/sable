@@ -23,12 +23,12 @@ fn is_channel_operator(user: &User, channel: &Channel) -> PermissionResult
         if membership.permissions().is_set(MembershipFlagFlag::Op) {
             Ok(())
         } else {
-            numeric_error!(ChanOpPrivsNeeded, &channel)
+            numeric_error!(ChanOpPrivsNeeded, channel)
         }
     }
     else
     {
-        numeric_error!(NotOnChannel, &channel)
+        numeric_error!(NotOnChannel, channel)
     }
 }
 
@@ -43,16 +43,14 @@ impl ChannelPolicyService for StandardChannelPolicy
         }
 
         if channel.mode()?.has_mode(ChannelModeFlag::InviteOnly)
+            && user.has_invite_for(channel.id()).is_none()
+            && self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Invex)?).is_none()
         {
-            if user.has_invite_for(channel.id()).is_none()
-                && !self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Invex)?).is_some()
-            {
-                return numeric_error!(InviteOnlyChannel, channel);
-            }
+            return numeric_error!(InviteOnlyChannel, channel);
         }
 
         if self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
-            && !self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_some()
+            && self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_none()
         {
             return numeric_error!(BannedOnChannel, channel)
         }
@@ -79,7 +77,7 @@ impl ChannelPolicyService for StandardChannelPolicy
 
         if (self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
                 || self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Quiet)?).is_some())
-              && !self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_some()
+              && self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_none()
         {
             return numeric_error!(CannotSendToChannel, channel);
         }

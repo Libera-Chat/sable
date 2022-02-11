@@ -10,7 +10,7 @@ impl Server
                 let mut actions: Vec<(ObjectId, EventDetails)> = Vec::new();
                 if let Ok(conn) = self.connections.get(id)
                 {
-                    if ! self.policy().check_user_access(&self, &self.net, &conn)
+                    if ! self.policy().check_user_access(self, &self.net, conn)
                     {
                         self.connections.remove(id);
                         return;
@@ -35,9 +35,9 @@ impl Server
                         actions.push((new_user_mode_id.into(), details.into()));
 
                         let details = event::details::NewUser {
-                            nickname: pre_client.nick.as_ref().unwrap().clone(),
-                            username: pre_client.user.as_ref().unwrap().clone(),
-                            visible_hostname: pre_client.hostname.as_ref().unwrap().clone(),
+                            nickname: *pre_client.nick.as_ref().unwrap(),
+                            username: *pre_client.user.as_ref().unwrap(),
+                            visible_hostname: *pre_client.hostname.as_ref().unwrap(),
                             realname: pre_client.realname.as_ref().unwrap().clone(),
                             mode_id: new_user_mode_id,
                             server: self.my_id,

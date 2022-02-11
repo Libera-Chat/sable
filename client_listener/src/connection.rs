@@ -19,10 +19,10 @@ impl Connection
     pub(crate) fn new(id: ConnectionId, conn_type: ConnectionType, remote_addr: IpAddr, send_channel: UnboundedSender<ControlMessage>) -> Self
     {
         Self {
-            id: id,
-            conn_type: conn_type,
-            remote_addr: remote_addr,
-            send_channel: send_channel,
+            id,
+            conn_type,
+            remote_addr,
+            send_channel,
         }
     }
 

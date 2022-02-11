@@ -1,3 +1,6 @@
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::eval_order_dependence)]
+
 extern crate proc_macro;
 
 use proc_macro::TokenStream;

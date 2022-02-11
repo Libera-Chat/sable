@@ -1,6 +1,5 @@
 use super::*;
 
-use proc_macro2;
 use quote::quote;
 use syn::{
     parse_macro_input,
@@ -42,13 +41,13 @@ impl Parse for DefinitionList {
 impl Parse for ItemStructList {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut items = Vec::new();
-        
+
         while ! input.is_empty() {
             items.push(input.parse::<ItemStruct>()?);
         }
 
         Ok(ItemStructList {
-            items: items
+            items
         })
     }
 }
@@ -59,7 +58,7 @@ pub fn event_details(input: TokenStream) -> TokenStream
     let attrs = input.attrs;
     let enum_name = input.enum_name;
     let items = input.items;
-    
+
     let mut output = proc_macro2::TokenStream::new();
     let mut names = Vec::<Ident>::new();
 

@@ -70,7 +70,7 @@ define_validated! {
     }
 
     ChannelName(ArrayString<64> casefolded) {
-        if ! value.starts_with("#") {
+        if ! value.starts_with('#') {
             return Self::error(value);
         }
         Ok(())

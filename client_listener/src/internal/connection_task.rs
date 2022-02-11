@@ -31,14 +31,14 @@ impl<S> ConnectionTask<S>
 {
     pub fn new(id: ConnectionId,
         stream: S,
-        control: Receiver<ConnectionControlDetail>,
-        events: Sender<InternalConnectionEventType>) -> Self
+        control_channel: Receiver<ConnectionControlDetail>,
+        event_channel: Sender<InternalConnectionEventType>) -> Self
     {
         Self {
-            id: id,
+            id,
             conn: stream,
-            control_channel: control,
-            event_channel: events
+            control_channel,
+            event_channel
         }
     }
 

@@ -122,7 +122,7 @@ impl ListenerCollection
         let ret = Self {
             listener_id_generator: ListenerIdGenerator::new(0),
             control_sender: local_control_send,
-            comm_task: comm_task,
+            comm_task,
             connection_data: HashMap::new(),
             child_process: Some(child)
         };
@@ -213,7 +213,7 @@ impl ListenerCollection
 
         let message = ControlMessage::Listener(id, ListenerControlDetail::Add(address, conn_type));
         self.control_sender.send(message)?;
-        return Ok(id)
+        Ok(id)
     }
 
     /// Load the provided TLS settings. This must be done before a TLS listener can be

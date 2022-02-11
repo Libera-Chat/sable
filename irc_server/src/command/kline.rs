@@ -23,11 +23,11 @@ command_handler!("KLINE" => KlineHandler {
         let mask = &cmd.args[1];
         let message = &cmd.args[2];
 
-        let parts:Vec<_> = message.splitn(2, "|").collect();
+        let parts:Vec<_> = message.splitn(2, '|').collect();
         let user_reason = parts[0];
         let oper_reason = parts.get(1);
 
-        let mask_parts:Vec<_> = mask.split("@").collect();
+        let mask_parts:Vec<_> = mask.split('@').collect();
 
         if let [user, host] = mask_parts[..]
         {

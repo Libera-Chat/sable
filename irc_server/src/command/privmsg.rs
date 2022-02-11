@@ -20,7 +20,7 @@ command_handler!("PRIVMSG" => PrivmsgHandler {
             }
             else
             {
-                return Err(numeric::NoSuchTarget::new(&target_name).into());
+                return Err(numeric::NoSuchTarget::new(target_name).into());
             };
 
         let details = event::details::NewMessage {

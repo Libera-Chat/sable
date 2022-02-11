@@ -59,6 +59,7 @@ impl hyper::service::Service<Request<Body>> for ManagementService
 {
     type Response = Response<Body>;
     type Error = hyper::Error;
+    #[allow(clippy::type_complexity)]
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>>
@@ -139,6 +140,7 @@ impl hyper::service::Service<Request<Body>> for ManagementService
 impl<T> hyper::service::Service<T> for MakeManagementService {
     type Response = ManagementService;
     type Error = hyper::Error;
+    #[allow(clippy::type_complexity)]
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
@@ -161,7 +163,7 @@ impl ManagementServer
         let server_task = task::spawn(async move {
             let command_sender = command_sender;
 
-            let service = MakeManagementService { command_sender: command_sender };
+            let service = MakeManagementService { command_sender };
             let server = hyper::Server::bind(&listen_addr)
                             .serve(service)
                             .with_graceful_shutdown(async { shutdown.recv().await.ok(); });
@@ -170,8 +172,8 @@ impl ManagementServer
         }.instrument(tracing::info_span!("management server")));
 
         Self {
-            command_receiver: command_receiver,
-            server_task: server_task,
+            command_receiver,
+            server_task,
         }
     }
 

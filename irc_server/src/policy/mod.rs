@@ -1,3 +1,6 @@
+// Most of the policy types have zero-parameter new(), but aren't a meaningful candidate for Default
+#![allow(clippy::new_without_default)]
+
 use irc_network::*;
 use irc_strings::matches::Pattern;
 use wrapper::*;

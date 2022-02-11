@@ -17,8 +17,7 @@ impl ChannelMode<'_> {
     pub fn channel(&self) -> LookupResult<Channel>
     {
         self.network.raw_channels()
-                    .filter(|c| c.mode == self.data.id)
-                    .next()
+                    .find(|c| c.mode == self.data.id)
                     .ok_or(LookupError::NoChannelForMode(self.data.id))
                     .wrap(self.network)
     }
@@ -58,7 +57,8 @@ impl ChannelMode<'_> {
 impl<'a> super::ObjectWrapper<'a> for ChannelMode<'a> {
     type Underlying = state::ChannelMode;
 
-    fn wrap(net: &'a Network, data: &'a state::ChannelMode) -> Self {
-        Self{ network: net, data: data }
+    fn wrap(network: &'a Network, data: &'a state::ChannelMode) -> Self
+    {
+        Self { network, data }
     }
 }

@@ -6,7 +6,7 @@ use crate::errors::*;
 
 pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Channel) -> HandleResult
 {
-    let user = server.network().user(to.user_id.ok_or(HandlerError::InternalError("Sending to non-user".to_string()))?)?;
+    let user = server.network().user(to.user_id.ok_or_else(|| HandlerError::InternalError("Sending to non-user".to_string()))?)?;
 
     let mut lines = Vec::new();
     let mut current_line = String::new();
@@ -38,8 +38,8 @@ pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Chan
 
     for line in lines
     {
-        to.send(&numeric::NamesReply::new_for(server, &user, pub_or_secret, &channel, &line));
+        to.send(&numeric::NamesReply::new_for(server, &user, pub_or_secret, channel, &line));
     }
-    to.send(&numeric::EndOfNames::new_for(server, &user, &channel));
+    to.send(&numeric::EndOfNames::new_for(server, &user, channel));
     Ok(())
 }

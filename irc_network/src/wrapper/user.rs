@@ -69,7 +69,7 @@ impl User<'_> {
     /// Test whether the user is in a given channel
     pub fn is_in_channel(&self, c: ChannelId) -> Option<Membership>
     {
-        self.channels().filter(|m| m.channel_id() == c).next()
+        self.channels().find(|m| m.channel_id() == c)
     }
 
     /// Test whether an invite exists for this user to a given channel
@@ -100,7 +100,8 @@ impl User<'_> {
 impl<'a> super::ObjectWrapper<'a> for User<'a> {
     type Underlying = state::User;
 
-    fn wrap(net: &'a Network, data: &'a state::User) -> Self {
-        Self{network: net, data: data}
+    fn wrap(network: &'a Network, data: &'a state::User) -> Self
+    {
+        Self { network, data }
     }
 }

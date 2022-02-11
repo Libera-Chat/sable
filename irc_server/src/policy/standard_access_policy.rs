@@ -21,7 +21,7 @@ impl StandardAccessPolicy
         {
             for kline in net.klines()
             {
-                if kline.user().matches(&user.value()) && kline.host().matches(&host.value())
+                if kline.user().matches(user.value()) && kline.host().matches(host.value())
                 {
                     return Some(kline);
                 }

@@ -37,7 +37,7 @@ pub struct ChannelMode {
 pub struct ListMode {
     pub id: ListModeId,
     pub list_type: ListModeType,
-} 
+}
 
 /// An entry in a list mode
 #[derive(Debug,Clone,Serialize,Deserialize)]
@@ -69,54 +69,50 @@ pub struct ChannelInvite {
 }
 
 impl Channel {
-    pub fn new(id: ChannelId, name: &ChannelName, mode: ChannelModeId) -> Self
+    pub fn new(id: ChannelId, name: ChannelName, mode: ChannelModeId) -> Self
     {
-        Channel { id: id, name: name.clone(), mode: mode }
+        Channel { id, name, mode }
     }
 }
 
 impl ChannelMode {
     pub fn new(id: ChannelModeId, modes: ChannelModeSet) -> Self
     {
-        ChannelMode { id: id, modes: modes, key: None }
+        ChannelMode { id, modes, key: None }
     }
 }
 
 impl ChannelTopic {
     pub fn new(id: ChannelTopicId, channel: ChannelId, text: String, setter_info: String, timestamp: i64) -> ChannelTopic
     {
-        ChannelTopic { id: id, channel: channel, text: text, setter_info: setter_info, timestamp: timestamp }
+        ChannelTopic { id, channel, text, setter_info, timestamp }
     }
 }
 
 impl Membership {
-    pub fn new(id: MembershipId, user: UserId, channel: ChannelId, perms: MembershipFlagSet) -> Membership 
+    pub fn new(id: MembershipId, user: UserId, channel: ChannelId, permissions: MembershipFlagSet) -> Membership
     {
-        Membership{ id: id, user: user, channel: channel, permissions: perms }
+        Membership{ id, user, channel, permissions }
     }
 }
 
 impl ListMode {
     pub fn new(id: ListModeId, list_type: ListModeType) -> Self
     {
-        Self { id: id, list_type: list_type }
+        Self { id, list_type }
     }
 }
 
 impl ListModeEntry {
     pub fn new(id: ListModeEntryId, list: ListModeId, timestamp: i64, setter: String, pattern: Pattern) -> Self
     {
-        Self { id: id, list: list, timestamp: timestamp, setter: setter, pattern: pattern }
+        Self { id, list, timestamp, setter, pattern }
     }
 }
 
 impl ChannelInvite {
     pub fn new(id: InviteId, source: UserId, timestamp: i64) -> Self
     {
-        Self {
-            id: id,
-            source: source,
-            timestamp: timestamp
-        }
+        Self { id, source, timestamp }
     }
 }

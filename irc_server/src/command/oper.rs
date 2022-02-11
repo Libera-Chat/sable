@@ -55,7 +55,7 @@ impl OperHandler<'_>
         {
             if block.name == oper_name
             {
-                return Some(&block)
+                return Some(block)
             }
         }
         None

@@ -12,7 +12,7 @@ command_handler!("JOIN" => JoinHandler {
 
         for name in names {
             let chname = ChannelName::from_str(name)?;
-            let key = keys.next().map(|s| ChannelKey::new_coerce(&s));
+            let key = keys.next().map(ChannelKey::new_coerce);
 
             let (channel_id, permissions) = match self.server.network().channel_by_name(&chname) {
                 Ok(channel) => {
@@ -25,7 +25,7 @@ command_handler!("JOIN" => JoinHandler {
                     let cmode_id = self.server.ids().next_channel_mode();
                     self.action(CommandAction::state_change(cmode_id, newmode_details))?;
 
-                    let details = event::NewChannel { name: chname.clone(), mode: cmode_id };
+                    let details = event::NewChannel { name: chname, mode: cmode_id };
                     let channel_id = self.server.ids().next_channel();
                     self.action(CommandAction::state_change(channel_id, details))?;
                     (channel_id, MembershipFlagFlag::Op.into())
@@ -34,7 +34,7 @@ command_handler!("JOIN" => JoinHandler {
             let details = event::ChannelJoin {
                 user: source.id(),
                 channel: channel_id,
-                permissions: permissions,
+                permissions,
             };
             let membership_id = MembershipId::new(source.id(), channel_id);
             self.action(CommandAction::state_change(membership_id, details))?;

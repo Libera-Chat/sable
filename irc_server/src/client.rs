@@ -69,6 +69,7 @@ impl ClientConnection
 
 impl PreClient {
     /// Construct a `PreClient`
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self
     {
         Self {

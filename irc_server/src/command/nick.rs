@@ -28,7 +28,7 @@ command_handler!("NICK" => NickHandler {
         let newnick = Nickname::from_str(&cmd.args[0])?;
         let detail = details::BindNickname{ user: source.id() };
 
-        if let Ok(_) = self.server.network().nick_binding(&newnick)
+        if self.server.network().nick_binding(&newnick).is_ok()
         {
             return numeric_error!(NicknameInUse, &newnick);
         }

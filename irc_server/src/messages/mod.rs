@@ -83,7 +83,7 @@ impl MessageTarget for CommandSource<'_>
     {
         match self
         {
-            Self::User(u) => <wrapper::User as MessageTarget>::format(&u),
+            Self::User(u) => <wrapper::User as MessageTarget>::format(u),
             Self::PreClient(pc) => <client::PreClient as MessageTarget>::format(&*pc.borrow())
         }
     }

@@ -24,37 +24,49 @@ impl ClientMessage
             return None;
         }
 
-        let offset = match raw.find(" ") {
+        let offset = match raw.find(' ')
+        {
             Some(offset) => offset,
             None => {
                 return Some(Self {
-                    source: source,
+                    source,
                     command: raw.to_string(),
                     args: Vec::new()
                 });
             }
         };
+
         let command = &raw[0 .. offset];
         let mut rest = &raw[offset+1 .. ];
 
-        loop {
-            if rest.starts_with(":") {
-                let arg = &rest[1..];
-                if !arg.is_empty() {
+        loop
+        {
+            if let Some(arg) = rest.strip_prefix(':')
+            {
+                if !arg.is_empty()
+                {
                     args.push(arg.to_string());
                 }
                 break;
             }
-            match rest.find(" ") {
-                Some(offset) => {
+
+            match rest.find(' ')
+            {
+                Some(offset) =>
+                {
                     let arg = &rest[0 .. offset];
-                    if !arg.is_empty() {
+
+                    if !arg.is_empty()
+                    {
                         args.push(arg.to_string());
                     }
+
                     rest = &rest[offset + 1 ..];
                 }
-                None => {
-                    if !rest.is_empty() {
+                None =>
+                {
+                    if !rest.is_empty()
+                    {
                         args.push(rest.to_string());
                     }
                     break;
@@ -63,9 +75,9 @@ impl ClientMessage
         }
 
         Some(Self {
-            source: source,
+            source,
             command: command.to_string(),
-            args: args
+            args
         })
     }
 }

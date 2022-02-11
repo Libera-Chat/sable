@@ -98,15 +98,15 @@ impl Server
 
         Self {
             my_id: id,
-            name: name,
+            name,
             net: Network::new(),
-            epoch: epoch,
+            epoch,
             id_generator: ObjectIdGenerator::new(id, epoch),
-            rpc_receiver: rpc_receiver,
+            rpc_receiver,
             event_submitter: to_network,
             action_receiver: action_recv,
             action_submitter: action_send,
-            connection_events: connection_events,
+            connection_events,
             connections: ConnectionCollection::new(),
             command_dispatcher: command::CommandDispatcher::new(),
             policy_service: StandardPolicyService::new(),
@@ -241,7 +241,7 @@ impl Server
     #[tracing::instrument(skip_all)]
     pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {
-        self.submit_event(self.my_id, details::NewServer{ epoch: self.epoch, name: self.name.clone(), ts: utils::now() });
+        self.submit_event(self.my_id, details::NewServer{ epoch: self.epoch, name: self.name, ts: utils::now() });
         let mut check_ping_timer = time::interval(Duration::from_secs(5));
 
         let shutdown_action = loop
@@ -315,12 +315,12 @@ impl Server
                         Some(NetworkMessage::ImportNetworkState(new_net)) =>
                         {
                             tracing::debug!("Server got state import");
-                            self.net = new_net;
+                            self.net = *new_net;
                         },
                         Some(NetworkMessage::ExportNetworkState(channel)) =>
                         {
                             tracing::debug!("Server got state export request; sending");
-                            channel.send(self.net.clone()).await.or_log("Error sending network state for export");
+                            channel.send(Box::new(self.net.clone())).await.or_log("Error sending network state for export");
                         },
                         None => {
                             panic!("what to do here?");
@@ -396,7 +396,7 @@ impl Server
 
                 if let Some(message) = ClientMessage::parse(msg.source, &m)
                 {
-                    let processor = CommandProcessor::new(&self);
+                    let processor = CommandProcessor::new(self);
                     processor.process_message(message).await;
                 }
                 else

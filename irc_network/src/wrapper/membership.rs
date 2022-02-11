@@ -13,7 +13,7 @@ impl Membership<'_> {
     pub fn id(&self) -> MembershipId {
         self.data.id
     }
-    
+
     /// The ID of the associated user
     pub fn user_id(&self) -> UserId {
         self.data.user
@@ -42,8 +42,9 @@ impl Membership<'_> {
 
 impl<'a> super::ObjectWrapper<'a> for Membership<'a> {
     type Underlying = state::Membership;
-    fn wrap(net: &'a Network, data: &'a state::Membership) -> Membership<'a> {
-        Membership{ network: net, data: data }
+    fn wrap(network: &'a Network, data: &'a state::Membership) -> Self
+    {
+        Self { network, data }
     }
 
 

@@ -7,7 +7,7 @@ use strum::IntoEnumIterator;
 impl Network {
     fn channel_for_mode(&self, mode_id: ChannelModeId) -> Option<&state::Channel>
     {
-        self.channels.values().filter(|c| c.mode == mode_id).next()
+        self.channels.values().find(|c| c.mode == mode_id)
     }
 
     pub(super) fn new_channel(&mut self, target: ChannelId, _event: &Event, details: &details::NewChannel, _updates: &dyn NetworkUpdateReceiver)
@@ -17,7 +17,7 @@ impl Network {
             // TODO: handle conflict
             panic!("Conflicting channel names");
         }
-        let channel = state::Channel::new(target, &details.name, details.mode);
+        let channel = state::Channel::new(target, details.name, details.mode);
         self.channels.insert(channel.id, channel);
     }
 
@@ -85,7 +85,7 @@ impl Network {
 
     pub(super) fn new_channel_topic(&mut self, target: ChannelTopicId, event: &Event, details: &details::NewChannelTopic, updates: &dyn NetworkUpdateReceiver)
     {
-        if let Some(existing) = self.channel_topics.values().filter(|t| t.channel == details.channel).next()
+        if let Some(existing) = self.channel_topics.values().find(|t| t.channel == details.channel)
         {
             // This is a conflict - we can't have two topics for one channel. Keep the newer, drop the older.
             // As usual, use ID comparison as a tiebreaker if the timestamps are equal
@@ -203,7 +203,7 @@ impl Network {
         if let Some(removed_membership) = self.memberships.remove(&target)
         {
             let channel_name = self.channels.get(&removed_membership.channel).map(|c| c.name);
-            let empty = self.memberships.iter().filter(|(_,v)| v.channel == removed_membership.channel).next().is_none();
+            let empty = ! self.memberships.iter().any(|(_,v)| v.channel == removed_membership.channel);
             if empty
             {
                 self.remove_channel(removed_membership.channel, updates);
@@ -232,7 +232,7 @@ impl Network {
         if let Some(chan) = self.channels.remove(&id)
         {
             self.channel_modes.remove(&chan.mode);
-            if let Some(topic) = self.channel_topics.values().filter(|t| t.channel == chan.id).next()
+            if let Some(topic) = self.channel_topics.values().find(|t| t.channel == chan.id)
             {
                 let topic_id = topic.id;
                 self.channel_topics.remove(&topic_id);

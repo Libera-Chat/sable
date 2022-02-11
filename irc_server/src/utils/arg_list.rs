@@ -17,13 +17,13 @@ impl<'a> ArgList<'a>
     {
         Self {
             iter: cmd.args.iter().peekable(),
-            cmd: cmd,
+            cmd,
         }
     }
 
     pub fn next_arg(&mut self) -> Result<&String, CommandError>
     {
-        Ok(self.iter.next().ok_or(make_numeric!(NotEnoughParameters, &self.cmd.command))?)
+        Ok(self.iter.next().ok_or_else(|| make_numeric!(NotEnoughParameters, &self.cmd.command))?)
     }
 
     pub fn is_empty(&mut self) -> bool

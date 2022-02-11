@@ -136,7 +136,7 @@ impl Server
     {
         for item in &detail.items
         {
-            self.handle_user_quit(&item)?;
+            self.handle_user_quit(item)?;
         }
         Ok(())
     }
@@ -147,7 +147,7 @@ impl Server
         let chan = mode.channel()?;
         let source = self.lookup_message_source(detail.changed_by)?;
 
-        let (mut changes, params) = utils::format_cmode_changes(&detail);
+        let (mut changes, params) = utils::format_cmode_changes(detail);
         for p in params
         {
             changes.push(' ');
@@ -170,7 +170,7 @@ impl Server
         let msg = message::Mode::new(source.as_ref(), &chan, &changes);
 
         self.send_to_channel_members_where(&chan, msg,
-                |m| self.policy().should_see_list_change(&m, detail.list_type)
+                |m| self.policy().should_see_list_change(m, detail.list_type)
         );
 
         Ok(())
@@ -186,7 +186,7 @@ impl Server
         let msg = message::Mode::new(source.as_ref(), &chan, &changes);
 
         self.send_to_channel_members_where(&chan, msg,
-            |m| self.policy().should_see_list_change(&m, detail.list_type)
+            |m| self.policy().should_see_list_change(m, detail.list_type)
         );
 
         Ok(())
@@ -344,7 +344,7 @@ impl Server
     fn report_audit_entry(&self, detail: &update::NewAuditLogEntry) -> HandleResult
     {
         let entry = self.net.audit_entry(detail.id)?;
-        let text = serde_json::to_string(&entry).unwrap_or("ERROR: failed to serialize audit event".to_string());
+        let text = serde_json::to_string(&entry).unwrap_or_else(|e| format!("ERROR: failed to serialize audit event: {}", e));
 
         for conn in self.connections.iter()
         {

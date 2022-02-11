@@ -7,7 +7,7 @@ use serde::{
 };
 
 /// A nickname binding.
-/// 
+///
 /// The binding denotes current ownership of a given nickname at a point in
 /// time. Although nicknames are the primary identifier for a user in the
 /// client protocol, the server protocol permits a user to exist detached from
@@ -22,7 +22,7 @@ pub struct NickBinding {
 }
 
 /// A user.
-/// 
+///
 /// Note that the user's nickname is not included here; that is stored in a
 /// separate [`NickBinding`] record.
 #[derive(Debug,Clone,Serialize,Deserialize)]
@@ -57,33 +57,33 @@ impl NickBinding
 {
     pub fn new(nick: Nickname, user: UserId, timestamp: i64, created: EventId) -> Self
     {
-        Self { nick: nick, user: user, timestamp: timestamp, created: created }
+        Self { nick, user, timestamp, created }
     }
 }
 
 impl User {
     pub fn new(id: UserId, server: ServerId,
-               user: &Username, visible_host: &Hostname,
-               realname: &str, mode_id: UserModeId) -> Self
+               user: Username, visible_host: Hostname,
+               realname: String, mode_id: UserModeId) -> Self
     {
         Self {
-            id: id,
-            server: server,
-            user: user.clone(),
-            visible_host: visible_host.clone(),
-            realname: realname.to_string(),
-            mode_id: mode_id,
+            id,
+            server,
+            user,
+            visible_host,
+            realname,
+            mode_id,
             oper_privileges: None,
         }
     }
 }
 
 impl UserMode {
-    pub fn new(id: UserModeId, mode: UserModeSet) -> Self
+    pub fn new(id: UserModeId, modes: UserModeSet) -> Self
     {
         Self {
-            id: id,
-            modes: mode
+            id,
+            modes
         }
     }
 }

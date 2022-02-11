@@ -14,6 +14,8 @@ use tokio::sync::mpsc::Sender;
 
 /// A single protocol message.
 #[derive(Debug,Clone,Serialize,Deserialize)]
+// The largest variant is NewEvent, which is also the most frequently used
+#[allow(clippy::large_enum_variant)]
 pub enum Message
 {
     /// A new event has been created
@@ -28,7 +30,7 @@ pub enum Message
     /// Request to export the current network state
     GetNetworkState,
     /// Response containing the current network state
-    NetworkState(Network),
+    NetworkState(Box<Network>),
     /// Close the connection
     Done
 }
@@ -45,10 +47,6 @@ impl Message
 {
     pub fn expects_response(&self) -> bool
     {
-        match self
-        {
-            Self::SyncRequest(_) | Self::GetEvent(_) | Self::GetNetworkState => true,
-            _ => false
-        }
+        matches!(self, Self::SyncRequest(_) | Self::GetEvent(_) | Self::GetNetworkState)
     }
 }

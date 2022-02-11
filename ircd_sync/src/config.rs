@@ -1,7 +1,6 @@
 //! Contains definitions of the various configuration files and items required
 //! in order to run a network sync node
 
-use serde_json;
 use serde::{
     Serialize,
     Deserialize,
@@ -16,7 +15,6 @@ use std::{
     net::SocketAddr,
 };
 
-use rustls_pemfile;
 use rustls::{
     Certificate,
     PrivateKey,
@@ -83,7 +81,7 @@ impl NetworkConfig
         let mut ca_reader = BufReader::new(ca_file);
         let ca_data = rustls_pemfile::certs(&mut ca_reader)?
                                         .pop()
-                                        .ok_or(ConfigError::FormatError("No certificate in CA file".to_string()))?;
+                                        .ok_or_else(|| ConfigError::FormatError("No certificate in CA file".to_string()))?;
 
         Ok(Certificate(ca_data))
     }
@@ -105,13 +103,13 @@ impl NodeConfig
     {
         let cert_file = File::open(&self.cert_file)?;
         let mut cert_reader = BufReader::new(cert_file);
-        let cert_chain = rustls_pemfile::certs(&mut cert_reader)?.into_iter().map(|v| Certificate(v)).collect();
+        let cert_chain = rustls_pemfile::certs(&mut cert_reader)?.into_iter().map(Certificate).collect();
 
         let key_file = File::open(&self.key_file)?;
         let mut key_reader = BufReader::new(key_file);
         let client_key = rustls_pemfile::rsa_private_keys(&mut key_reader)?
                                         .pop()
-                                        .ok_or(ConfigError::FormatError("No private key in file".to_string()))?;
+                                        .ok_or_else(|| ConfigError::FormatError("No private key in file".to_string()))?;
 
         Ok((cert_chain, PrivateKey(client_key)))
     }

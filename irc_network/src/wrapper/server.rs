@@ -44,7 +44,8 @@ impl Server<'_> {
 impl<'a> super::ObjectWrapper<'a> for Server<'a> {
     type Underlying = state::Server;
 
-    fn wrap(net: &'a Network, data: &'a state::Server) -> Self {
-        Self{network: net, data: data}
+    fn wrap(network: &'a Network, data: &'a state::Server) -> Self
+    {
+        Self { network, data }
     }
 }

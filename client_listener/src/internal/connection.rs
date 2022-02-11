@@ -59,7 +59,7 @@ impl InternalConnection
         });
 
         Ok(Self {
-            id: id,
+            id,
             remote_addr: addr,
             control_channel: control_send,
             connection_type: conntype,

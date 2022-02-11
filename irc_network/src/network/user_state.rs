@@ -38,9 +38,9 @@ impl Network {
             self.user_modes.remove(&user.mode_id);
 
             Some(update::UserQuit {
-                user: user,
+                user,
                 nickname: removed_nickname,
-                message: message,
+                message,
                 memberships: removed_memberships
             })
         }
@@ -127,9 +127,9 @@ impl Network {
 
         // If we get here, then either there was no conflict or the existing binding has been removed,
         // and we can continue
-        let new_binding = state::NickBinding::new(target.nick().clone(), user, event.timestamp, event.id);
+        let new_binding = state::NickBinding::new(*target.nick(), user, event.timestamp, event.id);
         let update = UserNickChange {
-            user: user,
+            user,
             old_nick: prev_nick,
             new_nick: new_binding.nick
         };
@@ -158,9 +158,9 @@ impl Network {
     {
         let user = state::User::new(target,
                                     detail.server,
-                                    &detail.username,
-                                    &detail.visible_hostname,
-                                    &detail.realname,
+                                    detail.username,
+                                    detail.visible_hostname,
+                                    detail.realname.clone(),
                                     detail.mode_id,
                                 );
 

@@ -12,8 +12,8 @@ impl StateChangeReceiver
     {
         let (send, recv) = std::sync::mpsc::channel();
         Self {
-            send: send,
-            recv: recv,
+            send,
+            recv,
         }
     }
 }

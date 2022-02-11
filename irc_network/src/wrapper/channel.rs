@@ -12,10 +12,10 @@ impl Channel<'_> {
     pub fn id(&self) -> ChannelId {
         self.data.id
     }
-    
+
     /// The channel's name
     pub fn name(&self) -> &str {
-        &self.data.name.value()
+        self.data.name.value()
     }
 
     /// The [ChannelMode] for this channel
@@ -32,14 +32,15 @@ impl Channel<'_> {
     /// Test whether the given user is a member of this channel
     pub fn has_member(&self, u: UserId) -> Option<Membership>
     {
-        self.members().filter(|m| m.user_id() == u).next()
+        self.members().find(|m| m.user_id() == u)
     }
 }
 
 impl<'a> super::ObjectWrapper<'a> for Channel<'a> {
     type Underlying = state::Channel;
 
-    fn wrap(net: &'a Network, data: &'a state::Channel) -> Self {
-        Channel{ network: net, data: data }
+    fn wrap(network: &'a Network, data: &'a state::Channel) -> Self
+    {
+        Self { network, data }
     }
 }

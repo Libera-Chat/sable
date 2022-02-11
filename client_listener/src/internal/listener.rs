@@ -34,7 +34,7 @@ impl Listener
         tokio::spawn(Self::listen_and_log(event_channel,
                                           control_receive,
                                           address,
-                                          connection_type.clone(),
+                                          connection_type,
                                           listener_id,
                                         ));
 

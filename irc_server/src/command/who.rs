@@ -11,7 +11,7 @@ command_handler!("WHO" => WhoHandler {
         {
             let chname = ChannelName::from_str(&cmd.args[0])?;
             let channel = self.server.network().channel_by_name(&chname)?;
-            
+
             self.do_who_channel(source, channel, cmd)
         }
         else
@@ -27,7 +27,7 @@ impl WhoHandler<'_>
                       membership: Option<&wrapper::Membership>, server: &wrapper::Server) -> numeric::WhoReply
     {
         let chname = channel.map(|c| c.name()).unwrap_or("*");
-        let status = format!("H{}", membership.map(|m| m.permissions().to_prefixes()).unwrap_or("".to_string()));
+        let status = format!("H{}", membership.map(|m| m.permissions().to_prefixes()).unwrap_or_else(|| "".to_string()));
         make_numeric!(WhoReply, chname, target, server, &status, 0)
     }
 

@@ -33,8 +33,8 @@ impl ListenerProcess
     pub fn new(control_receiver: IpcReceiver<ControlMessage>, event_sender: IpcSender<InternalConnectionEvent>) -> Self
     {
         Self {
-            control_receiver: control_receiver,
-            event_sender: event_sender,
+            control_receiver,
+            event_sender,
             tls_config: None,
             listeners: HashMap::new(),
             connections: HashMap::new(),
@@ -63,7 +63,7 @@ impl ListenerProcess
     fn build_tls_config(&self, settings: TlsSettings) -> Result<Arc<rustls::ServerConfig>, rustls::Error>
     {
         let key = rustls::PrivateKey(settings.key);
-        let certs = settings.cert_chain.into_iter().map(|c| rustls::Certificate(c)).collect();
+        let certs = settings.cert_chain.into_iter().map(rustls::Certificate).collect();
 
         Ok(Arc::new(rustls::ServerConfig::builder()
             .with_safe_defaults()

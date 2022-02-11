@@ -10,7 +10,6 @@
 //! Once a listener has been created, new connections and any events on existing
 //! connections will be sent via the provided event channel.
 
-
 pub mod id;
 pub use id::*;
 

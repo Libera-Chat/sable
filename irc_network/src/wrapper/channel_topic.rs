@@ -41,7 +41,8 @@ impl ChannelTopic<'_> {
 impl<'a> super::ObjectWrapper<'a> for ChannelTopic<'a> {
     type Underlying = state::ChannelTopic;
 
-    fn wrap(net: &'a Network, data: &'a state::ChannelTopic) -> Self {
-        Self{ network: net, data: data }
+    fn wrap(network: &'a Network, data: &'a state::ChannelTopic) -> Self
+    {
+        Self { network, data }
     }
 }

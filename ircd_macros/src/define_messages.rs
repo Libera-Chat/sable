@@ -99,7 +99,7 @@ impl Parse for MessageArgDefn
         let _dot = input.parse::<Option<Token![.]>>()?;
         let expr = if _dot.is_some() { Some(input.parse::<Expr>()?) } else { None };
 
-        Ok(Self { name: name, _colon: _colon, typename: typename, _dot: _dot, expr: expr })
+        Ok(Self { name, _colon, typename, _dot, expr })
     }
 }
 
@@ -138,10 +138,10 @@ impl Parse for MessageDefn
         };
 
         Ok(MessageDefn {
-            is_numeric: is_numeric,
-            name: name,
-            typename: typename,
-            aliases: aliases,
+            is_numeric,
+            name,
+            typename,
+            aliases,
             _arrow1: input.parse()?,
             _brace: braced!(content2 in input),
             _paren2: parenthesized!(content3 in content2),

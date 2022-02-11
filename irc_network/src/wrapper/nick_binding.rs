@@ -34,7 +34,8 @@ impl NickBinding<'_>
 impl<'a> super::ObjectWrapper<'a> for NickBinding<'a> {
     type Underlying = state::NickBinding;
 
-    fn wrap(net: &'a Network, data: &'a state::NickBinding) -> Self {
-        Self{network: net, data: data}
+    fn wrap(network: &'a Network, data: &'a state::NickBinding) -> Self
+    {
+        Self { network, data }
     }
 }

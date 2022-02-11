@@ -1,3 +1,6 @@
+#![allow(clippy::module_inception)]
+#![allow(clippy::new_without_default)]
+
 /// Defines the various state objects making up a network
 pub mod state {
     mod user;

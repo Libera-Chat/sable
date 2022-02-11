@@ -45,7 +45,6 @@ use rustls::{
     server::AllowAnyAuthenticatedClient,
 };
 
-use serde_json;
 use rand::prelude::*;
 use thiserror::Error;
 
@@ -65,20 +64,20 @@ pub struct Network
 pub enum NetworkError
 {
     #[error("I/O error: {0}")]
-    IoError(#[from] io::Error),
+    Io(#[from] io::Error),
     #[error("Send error: {0}")]
-    SendError(String),
+    Send(String),
     #[error("JSON error: {0}")]
-    JsonError(#[from] serde_json::Error),
+    Json(#[from] serde_json::Error),
     #[error("Error joining task: {0}")]
-    JoinError(#[from] JoinError),
+    Join(#[from] JoinError),
 }
 
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for NetworkError
 {
     fn from(e: tokio::sync::mpsc::error::SendError<T>) -> Self
     {
-        Self::SendError(e.to_string())
+        Self::Send(e.to_string())
     }
 }
 
@@ -112,12 +111,12 @@ impl Network
 
         Self {
             listen_addr: node_config.listen_addr,
-            peers: peers,
+            peers,
             fanout: net_config.fanout,
             tls_client_config: Arc::new(client_config),
             tls_server_config: Arc::new(server_config),
-            message_sender: message_sender,
-            shutdown_send: shutdown_send,
+            message_sender,
+            shutdown_send,
             shutdown_recv: Some(shutdown_recv),
         }
     }

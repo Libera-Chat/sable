@@ -41,7 +41,8 @@ impl ChannelInvite<'_> {
 impl<'a> super::ObjectWrapper<'a> for ChannelInvite<'a> {
     type Underlying = state::ChannelInvite;
 
-    fn wrap(net: &'a Network, data: &'a state::ChannelInvite) -> Self {
-        Self{ network: net, data: data }
+    fn wrap(network: &'a Network, data: &'a state::ChannelInvite) -> Self
+    {
+        Self { network, data }
     }
 }

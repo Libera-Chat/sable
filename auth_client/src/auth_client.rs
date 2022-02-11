@@ -165,7 +165,7 @@ impl AuthClient
         let ret = Self {
             control_sender: local_control_send,
             comm_task_shutdown: shutdown_send,
-            comm_task: comm_task,
+            comm_task,
             child_process: Some(child)
         };
 
@@ -241,8 +241,8 @@ impl AuthClient
         }
 
         Ok(AuthClientState {
-            control_fd: control_fd,
-            event_fd: event_fd
+            control_fd,
+            event_fd
         })
     }
 
@@ -270,7 +270,7 @@ impl AuthClient
         Ok(Self {
             control_sender: local_control_send,
             comm_task_shutdown: shutdown_send,
-            comm_task: comm_task,
+            comm_task,
             child_process: None
         })
     }

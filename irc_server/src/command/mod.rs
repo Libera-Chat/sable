@@ -48,7 +48,7 @@ pub(crate) trait CommandHandler
                 self.handle_preclient(pc, cmd)
             },
             CommandSource::User(u) => {
-                self.handle_user(&u, cmd)
+                self.handle_user(u, cmd)
             }
         }
     }
@@ -96,6 +96,7 @@ pub(crate) struct CommandRegistration
 /// command name.
 pub(crate) struct CommandDispatcher
 {
+    #[allow(clippy::borrowed_box)]
     handlers: HashMap<String, &'static Box<dyn CommandHandlerFactory>>
 }
 
@@ -119,9 +120,11 @@ impl CommandDispatcher {
     }
 
     /// Look up the handler factory corresponding to a given command.
+    // &Box actually makes sense for a return value given the type in the hashmap
+    #[allow(clippy::borrowed_box)]
     pub fn resolve_command(&self, cmd: &str) -> Option<&Box<dyn CommandHandlerFactory>>
     {
-        self.handlers.get(&cmd.to_ascii_uppercase()).map(|x| *x)
+        self.handlers.get(&cmd.to_ascii_uppercase()).copied()
     }
 }
 

@@ -16,7 +16,7 @@ impl Network
         let server = state::Server {
             id: target,
             epoch: detail.epoch,
-            name: detail.name.clone(),
+            name: detail.name,
             last_ping: detail.ts,
             introduced_by: event.id,
         };

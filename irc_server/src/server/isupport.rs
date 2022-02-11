@@ -62,6 +62,7 @@ pub struct ISupportBuilder
 impl ISupportBuilder
 {
     /// Construct the builder
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self
     {
         Self {

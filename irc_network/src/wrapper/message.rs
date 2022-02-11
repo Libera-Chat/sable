@@ -55,7 +55,8 @@ impl Message<'_> {
 impl<'a> super::ObjectWrapper<'a> for Message<'a> {
     type Underlying = state::Message;
 
-    fn wrap(net: &'a Network, data: &'a state::Message) -> Self {
-        Self{network: net, data: data}
+    fn wrap(network: &'a Network, data: &'a state::Message) -> Self
+    {
+        Self { network, data}
     }
 }

@@ -35,7 +35,8 @@ impl ListMode<'_> {
 impl<'a> super::ObjectWrapper<'a> for ListMode<'a> {
     type Underlying = state::ListMode;
 
-    fn wrap(net: &'a Network, data: &'a state::ListMode) -> Self {
-        Self{ network: net, data: data }
+    fn wrap(network: &'a Network, data: &'a state::ListMode) -> Self
+    {
+        Self { network, data }
     }
 }

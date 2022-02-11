@@ -1,6 +1,5 @@
 use super::*;
 
-use proc_macro2;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
@@ -176,6 +175,10 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                 }
             }
 
+            // Clippy warns about implementing Into, because From is preferred.
+            // However, here the type that would need to implement From is outside
+            // our crate, so we can't.
+            #[allow(clippy::from_over_into)]
             impl Into<#typename> for #name
             {
                 fn into(self) -> #typename

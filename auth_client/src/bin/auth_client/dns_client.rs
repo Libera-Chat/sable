@@ -27,8 +27,8 @@ impl InternalDnsClient
     {
         let resolver = TokioAsyncResolver::tokio_from_system_conf().expect("Failed to create DNS resolver");
         Self {
-            event_channel: event_channel,
-            resolver: resolver
+            event_channel,
+            resolver
         }
     }
 

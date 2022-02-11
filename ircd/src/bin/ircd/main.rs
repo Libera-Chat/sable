@@ -107,7 +107,7 @@ fn load_tls_server_config(conf: &TlsConfig) -> Result<client_listener::TlsSettin
         Some(Item::X509Certificate(_)) | None => Err(ConfigError::FormatError("No private key in file".to_string()))
     }?;
 
-    Ok(client_listener::TlsSettings { key: server_key, cert_chain: cert_chain })
+    Ok(client_listener::TlsSettings { key: server_key, cert_chain })
 }
 
 #[tokio::main]
@@ -260,7 +260,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
         ShutdownAction::Shutdown =>
         {
             client_listeners.shutdown().await;
-            return Ok(())
+            Ok(())
         }
         ShutdownAction::Restart =>
         {
@@ -278,8 +278,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
             let listener_state = client_listeners.save().await?;
 
             upgrade::exec_upgrade(&exe_path, opts, upgrade::ApplicationState {
-                server_state: server_state,
-                listener_state: listener_state,
+                server_state,
+                listener_state,
                 sync_state: sync_state??
             });
         }

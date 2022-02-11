@@ -7,17 +7,17 @@ command_handler!("MODE" => ModeHandler {
 
     fn handle_user(&mut self, source: &wrapper::User, cmd: &ClientCommand) -> CommandResult
     {
-        let mut args = ArgList::new(&cmd);
+        let mut args = ArgList::new(cmd);
 
         let target = args.next_arg()?;
 
-        if let Ok(cname) = ChannelName::from_str(&target)
+        if let Ok(cname) = ChannelName::from_str(target)
         {
             self.handle_channel_mode(source, cmd, cname, &mut args)?;
         }
         else
         {
-            if source.nick() != Nickname::from_str(&target)?
+            if source.nick() != Nickname::from_str(target)?
             {
                 return numeric_error!(CantChangeOtherUserMode);
             }
@@ -58,19 +58,17 @@ command_handler!("MODE" => ModeHandler {
                                 _ => {}
                             }
                         }
-                        else
+                        else if ! sent_unknown
                         {
-                            if ! sent_unknown {
-                                cmd.response(&numeric::UnknownMode::new(c))?;
-                                sent_unknown = true;
-                            }
+                            cmd.response(&numeric::UnknownMode::new(c))?;
+                            sent_unknown = true;
                         }
                     }
                 }
             }
             if !added.is_empty() || !removed.is_empty()
             {
-                let detail = event::UserModeChange { changed_by: source.id().into(), added: added, removed: removed };
+                let detail = event::UserModeChange { changed_by: source.id().into(), added, removed };
                 self.action(CommandAction::state_change(mode.id(), detail))?;
             }
         }
@@ -122,7 +120,7 @@ impl ModeHandler<'_>
                         {
                             let target = self.server.network().user_by_nick(&Nickname::from_str(args.next_arg()?)?)?;
                             let membership = target.is_in_channel(chan.id())
-                                                   .ok_or(make_numeric!(UserNotOnChannel, &target, &chan))?;
+                                                   .ok_or_else(|| make_numeric!(UserNotOnChannel, &target, &chan))?;
                             let mut perm_added = MembershipFlagSet::new();
                             let mut perm_removed = MembershipFlagSet::new();
 
@@ -174,7 +172,7 @@ impl ModeHandler<'_>
                                 else
                                 {
                                     // We've already tested for Direction::Query above, so this is definitely Remove
-                                    if let Some(entry) = list.entries().filter(|e| e.pattern() == mask).next()
+                                    if let Some(entry) = list.entries().find(|e| e.pattern() == mask)
                                     {
                                         self.server.policy().can_unset_ban(source, &chan, list_type, mask)?;
 
@@ -203,12 +201,10 @@ impl ModeHandler<'_>
                                 }
                             }
                         }
-                        else
+                        else if ! sent_unknown
                         {
-                            if ! sent_unknown {
-                                cmd.response(&numeric::UnknownMode::new(c))?;
-                                sent_unknown = true;
-                            }
+                            cmd.response(&numeric::UnknownMode::new(c))?;
+                            sent_unknown = true;
                         }
                     }
                 }
@@ -217,9 +213,9 @@ impl ModeHandler<'_>
             {
                 let detail = event::ChannelModeChange {
                     changed_by: source.id().into(),
-                    added: added,
-                    removed: removed,
-                    key_change: key_change,
+                    added,
+                    removed,
+                    key_change,
                 };
                 self.action(CommandAction::state_change(mode.id(), detail))?;
             }

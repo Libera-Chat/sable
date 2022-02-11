@@ -51,7 +51,7 @@ impl ReplicatedEventLog
     /// server for processing.
     pub fn new(idgen: EventIdGenerator,
                server_send: Sender<NetworkMessage>,
-               update_receiver: Receiver<EventLogUpdate>,
+               update_recv: Receiver<EventLogUpdate>,
                net_config: NetworkConfig,
                node_config: NodeConfig,
             ) -> Self
@@ -63,9 +63,9 @@ impl ReplicatedEventLog
             log: EventLog::new(idgen, Some(log_send)),
             net: Network::new(net_config, node_config, net_send),
 
-            server_send: server_send,
-            log_recv: log_recv,
-            update_recv: update_receiver,
+            server_send,
+            log_recv,
+            update_recv,
             network_recv: net_recv,
         }
     }
@@ -90,8 +90,8 @@ impl ReplicatedEventLog
             log: EventLog::restore(state, Some(log_send)),
             net: Network::new(net_config, node_config, net_send),
 
-            server_send: server_send,
-            log_recv: log_recv,
+            server_send,
+            log_recv,
             update_recv: update_receiver,
             network_recv: net_recv,
         }
@@ -259,7 +259,7 @@ impl ReplicatedEventLog
                 }
             },
             Message::SyncRequest(clock) => {
-                let new_events: Vec<Event> = self.log.get_since(clock).map(|r| r.clone()).collect();
+                let new_events: Vec<Event> = self.log.get_since(clock).cloned().collect();
 
                 if let Err(e) =
                     req.response.send(Message::BulkEvents(new_events)).await
@@ -273,7 +273,7 @@ impl ReplicatedEventLog
 
                 for id in ids.iter()
                 {
-                    if let Some(new_event) = self.log.get(&id)
+                    if let Some(new_event) = self.log.get(id)
                     {
                         events.push(new_event.clone());
                     }

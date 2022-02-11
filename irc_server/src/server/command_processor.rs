@@ -23,6 +23,7 @@ pub(crate) struct CommandProcessor<'a>
 /// by emitting a `CommandAction` which the `Server` will apply on the next
 /// iteration of its event loop.
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)] // The largest variant is also the most commonly constructed by far
 pub enum CommandAction {
     /// A network state change. The target object ID and event details are provided
     /// here; the remaining [`Event`](event::Event) fields are filled in by the
@@ -106,7 +107,7 @@ impl<'a> CommandProcessor<'a>
     pub fn new (server: &'a Server) -> Self
     {
         Self {
-            server: server,
+            server,
         }
     }
 
@@ -159,8 +160,8 @@ impl<'a> CommandProcessor<'a>
             let mut handler = factory.create(self.server, self);
             let cmd = ClientCommand {
                  server: self.server,
-                 connection: connection,
-                 source: source,
+                 connection,
+                 source,
                  command: message.command,
                  args: message.args
             };
@@ -175,7 +176,7 @@ impl<'a> CommandProcessor<'a>
 
     fn translate_message_source(&self, source: &'a ClientConnection) -> Result<CommandSource<'a>, CommandError> {
         if let Some(user_id) = source.user_id {
-            Ok(self.server.network().user(user_id).map(|u| CommandSource::User(u))?)
+            Ok(self.server.network().user(user_id).map(CommandSource::User)?)
         } else if let Some(pre_client) = &source.pre_client {
             Ok(CommandSource::PreClient(pre_client))
         } else {
@@ -206,8 +207,8 @@ impl From<ValidationError> for CommandError
             ValidationError::InvalidChannelName(e) => {
                 numeric::InvalidChannelName::new(&e.0).into()
             }
-            ValidationError::InvalidUsername(e) => CommandError::UnknownError(e.0.to_string()),
-            ValidationError::InvalidHostname(e) => CommandError::UnknownError(e.0.to_string()),
+            ValidationError::InvalidUsername(e) => CommandError::UnknownError(e.0),
+            ValidationError::InvalidHostname(e) => CommandError::UnknownError(e.0),
             ValidationError::WrongTypeId(e) => CommandError::UnknownError(e.to_string())
         }
     }
@@ -223,7 +224,7 @@ impl CommandError
 
     pub fn inner(err: impl std::error::Error + Clone + 'static) -> CommandError
     {
-        CommandError::UnderlyingError(Box::new(err.clone()))
+        CommandError::UnderlyingError(Box::new(err))
     }
 }
 

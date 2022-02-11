@@ -61,7 +61,8 @@ impl KLine<'_> {
 impl<'a> super::ObjectWrapper<'a> for KLine<'a> {
     type Underlying = state::KLine;
 
-    fn wrap(net: &'a Network, data: &'a state::KLine) -> Self {
-        Self{ _network: net, data: data }
+    fn wrap(net: &'a Network, data: &'a state::KLine) -> Self
+    {
+        Self{ _network: net, data }
     }
 }

@@ -1,6 +1,5 @@
 use super::*;
 
-use proc_macro2;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
@@ -77,10 +76,10 @@ impl Parse for ObjectIdList
         }
 
         Ok(Self {
-            enum_name: enum_name,
-            generator_name: generator_name,
-            _brace: _brace,
-            items: items
+            enum_name,
+            generator_name,
+            _brace,
+            items
         })
     }
 }
@@ -159,7 +158,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
             arg_names.pop();
             arg_list.pop();
 
-            let field_numbers: Vec<_> = (0..arg_types.len()).map(|i| syn::Index::from(i)).collect();
+            let field_numbers: Vec<_> = (0..arg_types.len()).map(syn::Index::from).collect();
             let counter_number = syn::Index::from(arg_types.len());
 
             let generator_typename = Ident::new(&format!("{}Generator", id_typename), Span::call_site());

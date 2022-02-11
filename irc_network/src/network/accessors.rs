@@ -15,12 +15,12 @@ impl Network {
     /// Look up a user by ID.
     pub fn user(&self, id: UserId) -> LookupResult<wrapper::User> {
         let r: LookupResult<&state::User> = self.users.get(&id).ok_or(NoSuchUser(id));
-        r.wrap(&self)
+        r.wrap(self)
     }
 
     /// Return an iterator over all users.
     pub fn users(&self) -> impl std::iter::Iterator<Item=wrapper::User> + '_ {
-        self.raw_users().wrap(&self)
+        self.raw_users().wrap(self)
     }
 
     /// Return an iterator over the raw `state::User` objects.
@@ -31,7 +31,7 @@ impl Network {
     /// Return a nickname binding for the given nick.
     pub fn nick_binding(&self, nick: &Nickname) -> LookupResult<wrapper::NickBinding>
     {
-        self.nick_bindings.get(nick).ok_or(NoSuchNick(nick.to_string())).wrap(self)
+        self.nick_bindings.get(nick).ok_or_else(|| NoSuchNick(nick.to_string())).wrap(self)
     }
 
     /// Iterate over raw [`state::NickBinding`] objects
@@ -43,19 +43,19 @@ impl Network {
     /// Iterate over nickname bindings
     pub fn nick_bindings(&self) -> impl std::iter::Iterator<Item=wrapper::NickBinding>
     {
-        self.nick_bindings.values().wrap(&self)
+        self.nick_bindings.values().wrap(self)
     }
 
     /// Return the current nick binding information for a given user ID
     pub fn nick_binding_for_user(&self, user: UserId) -> LookupResult<wrapper::NickBinding>
     {
-        self.raw_nick_bindings().filter(|b| b.user == user).next().ok_or(NoNickForUser(user)).wrap(self)
+        self.raw_nick_bindings().find(|b| b.user == user).ok_or(NoNickForUser(user)).wrap(self)
     }
 
     /// Look up the user currently using the given nickname
     pub fn user_by_nick(&self, nick: &Nickname) -> LookupResult<wrapper::User>
     {
-        self.user(self.nick_bindings.get(nick).ok_or(NoSuchNick(nick.to_string()))?.user)
+        self.user(self.nick_bindings.get(nick).ok_or_else(|| NoSuchNick(nick.to_string()))?.user)
     }
 
     /// Look up a user mode object by ID
@@ -82,7 +82,7 @@ impl Network {
     /// Look up a channel by name.
     pub fn channel_by_name(&self, name: &ChannelName) -> LookupResult<wrapper::Channel>
     {
-        self.channels.values().filter(|x| &x.name == name).next().ok_or(NoSuchChannelName(name.to_string())).wrap(self)
+        self.channels.values().find(|x| &x.name == name).ok_or_else(|| NoSuchChannelName(name.to_string())).wrap(self)
     }
 
     /// Look up a channel mode by ID.
@@ -118,7 +118,7 @@ impl Network {
     /// Find the topic associated with a given channel, if any.
     pub fn topic_for_channel(&self, id: ChannelId) -> LookupResult<wrapper::ChannelTopic>
     {
-        self.channel_topics.values().filter(|t| t.channel == id).next().ok_or(NoTopicForChannel(id)).wrap(self)
+        self.channel_topics.values().find(|t| t.channel == id).ok_or(NoTopicForChannel(id)).wrap(self)
     }
 
     /// Look up a membership by ID.

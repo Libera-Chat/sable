@@ -148,7 +148,7 @@ impl ConnectionCollection
             let cli_conn = ClientConnection {
                 connection: listener_collection.restore_connection(conn_data.connection_data),
                 user_id: conn_data.user_id,
-                pre_client: conn_data.pre_client.map(|v| RefCell::new(v))
+                pre_client: conn_data.pre_client.map(RefCell::new)
             };
             if let Some(user_id) = &cli_conn.user_id
             {
