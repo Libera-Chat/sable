@@ -373,7 +373,7 @@ impl Server
         };
 
         let me = self.net.server(self.my_id).expect("Couldn't say I quit as I have no record of myself");
-        self.submit_event(self.my_id, details::ServerQuit { introduced_by: me.introduced_by() });
+        self.submit_event(self.my_id, details::ServerQuit { epoch: me.epoch() });
 
         shutdown_action
     }

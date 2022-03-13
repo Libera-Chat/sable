@@ -51,7 +51,7 @@ EventDetails => {
         pub name: ChannelName,
         pub mode: ChannelModeId,
     }
- 
+
     #[target_type(ChannelModeId)]
     struct NewChannelMode {
         pub mode: ChannelModeSet,
@@ -145,7 +145,7 @@ EventDetails => {
 
     #[target_type(ServerId)]
     struct ServerQuit {
-        pub introduced_by: EventId,
+        pub epoch: EpochId,
     }
 
     #[target_type(ConfigId)]

@@ -1,8 +1,11 @@
 //! A replicated version of [`EventLog`]
 
 use super::*;
-use irc_network::event::*;
-use irc_network::id::*;
+use irc_network::{
+    event::*,
+    id::*,
+    ServerName
+};
 use rpc_protocols::*;
 
 use tokio::{
@@ -16,7 +19,19 @@ use tokio::{
     task::JoinHandle,
     time::sleep,
 };
-use std::time::Duration;
+use std::{
+    time::Duration,
+    collections::HashMap,
+};
+
+/// Saved state for a [ReplicatedEventLog], used to save and restore across an upgrade
+#[derive(Debug,serde::Serialize,serde::Deserialize)]
+pub struct ReplicatedEventLogState
+{
+    server: (ServerId, EpochId),
+    log_state: EventLogState,
+    server_tombstones: HashMap<ServerId, (ServerName, EpochId)>,
+}
 
 /// A replicated event log.
 ///
@@ -30,6 +45,8 @@ pub struct ReplicatedEventLog
     log_recv: Receiver<Event>,
     update_recv: Receiver<EventLogUpdate>,
     network_recv: Receiver<Request>,
+    server: (ServerId, EpochId),
+    server_tombstones: HashMap<ServerId, (ServerName, EpochId)>,
 }
 
 impl ReplicatedEventLog
@@ -49,7 +66,8 @@ impl ReplicatedEventLog
     /// processing. Events to be emitted by this server should be sent via
     /// `update_receiver` to be created, propagated, and notified back to the
     /// server for processing.
-    pub fn new(idgen: EventIdGenerator,
+    pub fn new(server_id: ServerId,
+               epoch: EpochId,
                server_send: Sender<NetworkMessage>,
                update_recv: Receiver<EventLogUpdate>,
                net_config: NetworkConfig,
@@ -60,13 +78,15 @@ impl ReplicatedEventLog
         let (net_send, net_recv) = channel(128);
 
         Self {
-            log: EventLog::new(idgen, Some(log_send)),
+            log: EventLog::new(EventIdGenerator::new(server_id, epoch, 0), Some(log_send)),
             net: Network::new(net_config, node_config, net_send),
 
             server_send,
             log_recv,
             update_recv,
             network_recv: net_recv,
+            server: (server_id, epoch),
+            server_tombstones: HashMap::new(),
         }
     }
 
@@ -76,7 +96,7 @@ impl ReplicatedEventLog
     /// `state` contains a state object previously returned on completion of
     /// [`sync_task`](Self::sync_task); the other arguments are as for
     /// [`new`](Self::new)
-    pub fn restore(state: EventLogState,
+    pub fn restore(state: ReplicatedEventLogState,
                server_send: Sender<NetworkMessage>,
                update_receiver: Receiver<EventLogUpdate>,
                net_config: NetworkConfig,
@@ -86,14 +106,18 @@ impl ReplicatedEventLog
         let (log_send, log_recv) = channel(128);
         let (net_send, net_recv) = channel(128);
 
+        let log = EventLog::restore(state.log_state, Some(log_send));
+
         Self {
-            log: EventLog::restore(state, Some(log_send)),
+            log,
             net: Network::new(net_config, node_config, net_send),
 
             server_send,
             log_recv,
             update_recv: update_receiver,
             network_recv: net_recv,
+            server: state.server,
+            server_tombstones: state.server_tombstones,
         }
     }
 
@@ -118,20 +142,12 @@ impl ReplicatedEventLog
         handle.await.expect("Error syncing to network");
     }
 
-    /// Resume syncing from an existing network state. Primarily for use
-    /// after a code upgrade.
-    pub fn resume_with_state(&mut self, network: &irc_network::Network)
-    {
-        // We don't actually store any significant state apart from the latest event clock
-        self.log.set_clock(network.clock().clone());
-    }
-
     async fn start_sync_to_network(&self, sender: Sender<Request>) -> JoinHandle<()>
     {
-        while let Some(peer) = self.net.choose_peer()
+        while let Some(peer) = self.net.choose_any_peer()
         {
             tracing::info!("Requesting network state from {:?}", peer);
-            let msg = Message::GetNetworkState;
+            let msg = Message { source_server: self.server, content: MessageDetail::GetNetworkState };
             match self.net.send_and_process(peer, msg, sender.clone()).await
             {
                 Ok(handle) => return handle,
@@ -143,7 +159,7 @@ impl ReplicatedEventLog
 
     /// Run the main network synchronisation task.
     #[tracing::instrument(skip_all)]
-    pub async fn sync_task(mut self, mut shutdown: broadcast::Receiver<ShutdownAction>) -> std::io::Result<EventLogState>
+    pub async fn sync_task(mut self, mut shutdown: broadcast::Receiver<ShutdownAction>) -> Result<ReplicatedEventLogState, NetworkError>
     {
         let listen_task = self.net.spawn_listen_task().await?;
 
@@ -167,11 +183,22 @@ impl ReplicatedEventLog
                 update = self.update_recv.recv() => {
                     tracing::trace!("...from update_recv");
                     match update {
-                        Some(EventLogUpdate::NewEvent(id, detail)) => {
+                        Some(EventLogUpdate::NewEvent(id, detail)) =>
+                        {
                             let event = self.log.create(id, detail);
                             tracing::trace!("Server signalled log update: {:?}", event);
                             self.log.add(event.clone());
-                            self.net.propagate(&Message::NewEvent(event)).await
+                            self.net.propagate(&self.message(MessageDetail::NewEvent(event))).await
+                        },
+                        Some(EventLogUpdate::ServerQuit(name, id, epoch)) =>
+                        {
+                            self.server_tombstones.insert(id, (name, epoch));
+                            self.net.disable_peer(&name.to_string());
+                        },
+                        Some(EventLogUpdate::ServerJoin(name, id, _epoch)) =>
+                        {
+                            self.server_tombstones.remove(&id);
+                            self.net.enable_peer(&name.to_string());
                         },
                         None => break
                     }
@@ -193,7 +220,17 @@ impl ReplicatedEventLog
 
         self.net.shutdown();
         listen_task.await?;
-        Ok(self.log.save_state())
+        Ok(ReplicatedEventLogState {
+            server: self.server,
+            log_state: self.log.save_state(),
+            server_tombstones: self.server_tombstones,
+        })
+    }
+
+    /// Make a [`Message`] originating from this server, for submission to the network
+    fn message(&self, content: MessageDetail) -> Message
+    {
+        Message { source_server: self.server, content }
     }
 
     #[tracing::instrument(skip(self,response))]
@@ -211,7 +248,7 @@ impl ReplicatedEventLog
                 let missing = self.log.missing_ids_for(&evt.clock);
                 tracing::info!("Requesting missing IDs {:?}", missing);
                 if let Err(e) =
-                    response.send(Message::GetEvent(missing)).await
+                    response.send(self.message(MessageDetail::GetEvent(missing))).await
                 {
                     tracing::error!("Error sending response to network message: {}", e);
                 }
@@ -220,7 +257,7 @@ impl ReplicatedEventLog
             self.log.add(evt.clone());
             if should_propagate
             {
-                self.net.propagate(&Message::NewEvent(evt)).await;
+                self.net.propagate(&self.message(MessageDetail::NewEvent(evt))).await;
             }
         }
         is_done
@@ -229,17 +266,31 @@ impl ReplicatedEventLog
     #[tracing::instrument(skip(self))]
     async fn handle_network_request(&mut self, req: Request)
     {
-        match req.message {
-            Message::NewEvent(evt) => {
+        // If this is a server we've seen quit, don't accept any events from it
+        let (source_id, source_epoch) = &req.message.source_server;
+        if let Some((name, tombstone_epoch)) = self.server_tombstones.get(&source_id)
+        {
+            if tombstone_epoch == source_epoch
+            {
+                tracing::warn!("Got sync message from tombstoned peer {}, rejecting", name);
+                let _ = req.response.send(self.message(MessageDetail::MessageRejected)).await;
+                return;
+            }
+        }
+
+        match req.message.content {
+            MessageDetail::NewEvent(evt) =>
+            {
                 if self.handle_new_event(evt, true, &req.response).await
                 {
-                    if let Err(e) = req.response.send(Message::Done).await
+                    if let Err(e) = req.response.send(self.message(MessageDetail::Done)).await
                     {
                         tracing::error!("Error sending response to network message: {}", e);
                     }
                 }
             },
-            Message::BulkEvents(events) => {
+            MessageDetail::BulkEvents(events) =>
+            {
                 tracing::debug!("Got bulk events: {:?}", events);
                 let mut done = true;
                 for event in events {
@@ -252,22 +303,24 @@ impl ReplicatedEventLog
                 // Send done message only if none of the event processing steps indicated they need more
                 if done
                 {
-                    if let Err(e) = req.response.send(Message::Done).await
+                    if let Err(e) = req.response.send(self.message(MessageDetail::Done)).await
                     {
                         tracing::error!("Error sending response to network message: {}", e);
                     }
                 }
             },
-            Message::SyncRequest(clock) => {
+            MessageDetail::SyncRequest(clock) =>
+            {
                 let new_events: Vec<Event> = self.log.get_since(clock).cloned().collect();
 
                 if let Err(e) =
-                    req.response.send(Message::BulkEvents(new_events)).await
+                    req.response.send(self.message(MessageDetail::BulkEvents(new_events))).await
                 {
                     tracing::error!("Error sending response to network message: {}", e);
                 }
             },
-            Message::GetEvent(ids) => {
+            MessageDetail::GetEvent(ids) =>
+            {
                 tracing::debug!("Got request for events {:?}", ids);
                 let mut events = Vec::new();
 
@@ -280,12 +333,13 @@ impl ReplicatedEventLog
                 }
                 tracing::debug!("Sending events {:?}", events);
                 if let Err(e) =
-                    req.response.send(Message::BulkEvents(events)).await
+                    req.response.send(self.message(MessageDetail::BulkEvents(events))).await
                 {
                     tracing::error!("Error sending response to network message: {}", e);
                 }
             },
-            Message::GetNetworkState => {
+            MessageDetail::GetNetworkState =>
+            {
                 tracing::trace!("Processing get network state request");
                 let (send,mut recv) = channel(1);
                 if let Err(e) = self.server_send.send(NetworkMessage::ExportNetworkState(send)).await
@@ -294,27 +348,44 @@ impl ReplicatedEventLog
                 }
                 if let Some(net) = recv.recv().await
                 {
-                    if let Err(e) = req.response.send(Message::NetworkState(net)).await
+                    if let Err(e) = req.response.send(self.message(MessageDetail::NetworkState(net))).await
                     {
                         tracing::error!("Error sending response to network message: {}", e);
                     }
                 }
             },
-            Message::NetworkState(net) => {
+            MessageDetail::NetworkState(net) =>
+            {
                 tracing::info!("Got new network state; applying");
                 tracing::info!("New event clock is {:?}", net.clock());
+
+                // Set our event clock to the one from the incoming state
                 self.log.set_clock(net.clock().clone());
+
+                // Then reset our list of active peers to those that are active in the incoming state
+                self.net.disable_all_peers();
+                for server in net.servers()
+                {
+                    self.net.enable_peer(server.name().as_ref());
+                }
 
                 if let Err(e) = self.server_send.send(NetworkMessage::ImportNetworkState(net)).await
                 {
                     tracing::error!("Error sending network state to server: {}", e);
                 }
-                if let Err(e) = req.response.send(Message::Done).await
+                if let Err(e) = req.response.send(self.message(MessageDetail::Done)).await
                 {
                     tracing::error!("Error sending response to network message: {}", e);
                 }
             },
-            Message::Done => {
+            MessageDetail::MessageRejected =>
+            {
+                // If the target server rejected one of our sync messages, then they'll continue
+                // to reject them until we restart. Stop sending to that server
+                tracing::warn!("peer {} rejected our message; disabling", &req.received_from);
+                self.net.disable_peer(&req.received_from);
+            }
+            MessageDetail::Done => {
 
             }
         }

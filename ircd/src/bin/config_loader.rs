@@ -60,9 +60,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     let net = ircd_sync::Network::new(network_config, server_config.node_config, msg_send);
 
     let now = Utc::now().timestamp();
+    let epoch = EpochId::new(now);
 
     let event = Event {
-        id: EventId::new(server_config.server_id, EpochId::new(now), 1),
+        id: EventId::new(server_config.server_id, epoch, 1),
         target: ConfigId::new(1).into(),
         timestamp: now,
         clock: EventClock::new(),
@@ -71,7 +72,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
         }.into()
     };
 
-    net.propagate(&ircd_sync::Message::NewEvent(event)).await;
+    net.propagate(&ircd_sync::Message {
+        source_server: (server_config.server_id, epoch),
+        content: ircd_sync::MessageDetail::NewEvent(event)
+    }).await;
 
     // Because we discarded the receive half of the channel above, the normal process of
     // exchanging messages back and forth will fail, so exiting immediately here will cause

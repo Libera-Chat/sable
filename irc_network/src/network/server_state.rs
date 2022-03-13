@@ -3,7 +3,7 @@ use crate::update::*;
 
 impl Network
 {
-    pub(super) fn new_server(&mut self, target: ServerId, event: &Event, detail: &details::NewServer, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn new_server(&mut self, target: ServerId, _event: &Event, detail: &details::NewServer, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(existing_epoch) = self.servers.get(&target).map(|s| s.epoch)
         {
@@ -18,7 +18,6 @@ impl Network
             epoch: detail.epoch,
             name: detail.name,
             last_ping: detail.ts,
-            introduced_by: event.id,
         };
 
         self.servers.insert(target, server);
@@ -35,7 +34,7 @@ impl Network
     pub(super) fn server_quit(&mut self, target: ServerId, _event: &Event, detail: &details::ServerQuit, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(server) = self.servers.get(&target) {
-            if server.introduced_by != detail.introduced_by
+            if server.epoch != detail.epoch
             {
                 return;
             }

@@ -15,7 +15,7 @@ impl Server
         {
             if now - server.last_ping() > PINGOUT_DURATION
             {
-                let quit_detail = details::ServerQuit { introduced_by: server.introduced_by() };
+                let quit_detail = details::ServerQuit { epoch: server.epoch() };
                 self.submit_event(server.id(), quit_detail);
             }
         }

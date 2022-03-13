@@ -15,10 +15,13 @@ pub use config::NodeConfig;
 pub use eventlog::EventLog;
 pub use eventlog::EventLogState;
 pub use network::Network;
+pub use network::NetworkError;
 pub use message::Message;
+pub use message::MessageDetail;
 pub use message::Request;
 
 pub use replicated_log::ReplicatedEventLog;
+pub use replicated_log::ReplicatedEventLogState;
 
 #[cfg(test)]
 mod tests;

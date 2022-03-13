@@ -93,6 +93,9 @@ NetworkStateChange => {
     struct NewMessage {
         pub message: MessageId,
     }
+    struct NewServer {
+        pub id: ServerId,
+    }
     struct ServerQuit {
         pub server: state::Server,
     }

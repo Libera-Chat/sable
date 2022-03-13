@@ -28,11 +28,6 @@ impl Server<'_> {
         self.data.last_ping
     }
 
-    /// The event ID by which this server was introduced to the network
-    pub fn introduced_by(&self) -> EventId {
-        self.data.introduced_by
-    }
-
     /// Iterate over the users connecting via this server
     pub fn users(&self) -> impl Iterator<Item=User>
     {

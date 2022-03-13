@@ -194,6 +194,14 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                     self.0.fmt(f)
                 }
             }
+
+            impl std::convert::AsRef<str> for #name
+            {
+                fn as_ref(&self) -> &str
+                {
+                    self.0.as_ref()
+                }
+            }
         ));
 
         if def.casefolded.is_some()

@@ -21,7 +21,7 @@ pub struct ApplicationState
 {
     pub server_state: ServerState,
     pub listener_state: client_listener::SavedListenerCollection,
-    pub sync_state: EventLogState,
+    pub sync_state: ReplicatedEventLogState,
 }
 
 pub fn read_upgrade_state(fd: RawFd) -> ApplicationState

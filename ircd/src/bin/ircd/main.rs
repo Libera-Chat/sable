@@ -155,8 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     else
     {
         let epoch = EpochId::new(chrono::Utc::now().timestamp());
-        let id_gen = EventIdGenerator::new(server_config.server_id, epoch, 0);
-        let event_log = ReplicatedEventLog::new(id_gen, server_send, new_recv, network_config, server_config.node_config);
+        let event_log = ReplicatedEventLog::new(server_config.server_id, epoch, server_send, new_recv, network_config, server_config.node_config);
 
         let client_listeners = ListenerCollection::new(client_send)?;
 

@@ -31,11 +31,16 @@ use tokio::{
 use tokio_rustls::{
     TlsAcceptor,
     TlsConnector,
+    TlsStream,
 };
 use std::{
     net::SocketAddr,
     sync::Arc,
     convert::TryInto,
+    sync::atomic::{
+        AtomicBool,
+        Ordering
+    },
 };
 use futures::future;
 
@@ -44,20 +49,37 @@ use rustls::{
     ServerConfig,
     server::AllowAnyAuthenticatedClient,
 };
+use x509_parser::prelude::*;
 
 use rand::prelude::*;
 use thiserror::Error;
+use tracing::instrument;
 
+/// An interface to the gossip network used to synchronise state.
 pub struct Network
 {
     listen_addr: SocketAddr,
-    peers: Vec<PeerConfig>,
     fanout: usize,
     tls_client_config: Arc<ClientConfig>,
+    shutdown_send: oneshot::Sender<()>,
+    shutdown_recv: Option<oneshot::Receiver<()>>,
+    task_state: Arc<NetworkTaskState>,
+}
+
+/// State that's shared between the listener task and client code
+///
+/// Note that all additions to this struct must keep it `Send` and `Sync`.
+struct NetworkTaskState
+{
+    peers: Vec<Peer>,
     tls_server_config: Arc<ServerConfig>,
     message_sender: Sender<Request>,
-    shutdown_send: oneshot::Sender<()>,
-    shutdown_recv: Option<oneshot::Receiver<()>>
+}
+
+struct Peer
+{
+    conf: PeerConfig,
+    enabled: AtomicBool,
 }
 
 #[derive(Debug,Error)]
@@ -71,6 +93,10 @@ pub enum NetworkError
     Json(#[from] serde_json::Error),
     #[error("Error joining task: {0}")]
     Join(#[from] JoinError),
+    #[error("Listen task already spawned")]
+    AlreadyListening,
+    #[error("Internal error: {0}")]
+    InternalError(String),
 }
 
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for NetworkError
@@ -111,13 +137,15 @@ impl Network
 
         Self {
             listen_addr: node_config.listen_addr,
-            peers,
             fanout: net_config.fanout,
             tls_client_config: Arc::new(client_config),
-            tls_server_config: Arc::new(server_config),
-            message_sender,
             shutdown_send,
             shutdown_recv: Some(shutdown_recv),
+            task_state: Arc::new(NetworkTaskState {
+                peers: peers.into_iter().map(|c| Peer { conf: c, enabled: AtomicBool::new(false) }).collect(),
+                tls_server_config: Arc::new(server_config),
+                message_sender,
+            })
         }
     }
 
@@ -126,18 +154,79 @@ impl Network
         self.shutdown_send.send(()).ok();
     }
 
+    pub fn enable_peer(&self, name: &str)
+    {
+        tracing::info!(name, "enabling peer");
+        for p in self.task_state.peers.iter()
+        {
+            if p.conf.name == name
+            {
+                p.enabled.store(true, Ordering::SeqCst);
+            }
+        }
+    }
+
+    pub fn disable_peer(&self, name: &str)
+    {
+        tracing::info!(name, "disabling peer");
+
+        for p in self.task_state.peers.iter()
+        {
+            if p.conf.name == name
+            {
+                p.enabled.store(false, Ordering::SeqCst);
+            }
+        }
+    }
+
+    pub fn disable_all_peers(&self)
+    {
+        tracing::info!("disabling all peers");
+
+        for p in self.task_state.peers.iter()
+        {
+            p.enabled.store(false, Ordering::SeqCst);
+        }
+    }
+
+    #[instrument(skip_all)]
     pub fn choose_peer(&self) -> Option<&PeerConfig>
     {
-        self.peers.iter().choose(&mut rand::thread_rng())
+        let ret = self.task_state.peers.iter()
+                             .filter(|p| p.enabled.load(Ordering::SeqCst))
+                             .choose(&mut rand::thread_rng())
+                             .map(|p| &p.conf);
+
+        if ret.is_none()
+        {
+            tracing::info!("No active peer available to choose");
+        }
+        ret
+    }
+
+    #[instrument(skip_all)]
+    pub fn choose_any_peer(&self) -> Option<&PeerConfig>
+    {
+        let ret = self.task_state.peers.iter()
+                             .choose(&mut rand::thread_rng())
+                             .map(|p| &p.conf);
+
+        if ret.is_none()
+        {
+            tracing::info!("No peer available to choose");
+        }
+        ret
     }
 
     pub async fn propagate(&self, msg: &Message)
     {
         let mut tasks = Vec::new();
 
-        for peer in self.peers.iter().choose_multiple(&mut rand::thread_rng(), self.fanout)
+        for peer in self.task_state.peers.iter()
+                                         .filter(|p| p.enabled.load(Ordering::SeqCst))
+                                         .choose_multiple(&mut rand::thread_rng(), self.fanout)
         {
-            tasks.push(self.send_to(peer, msg.clone()));
+            tasks.push(self.send_to(&peer.conf, msg.clone()));
         }
 
         future::join_all(tasks).await;
@@ -146,7 +235,7 @@ impl Network
     pub async fn send_to(&self, peer: &PeerConfig, msg: Message)
     {
         tracing::trace!("Sending to {:?}: {:?}", peer.address, msg);
-        if let Err(e) = self.do_send_to(peer, msg, self.message_sender.clone()).await
+        if let Err(e) = self.do_send_to(peer, msg, self.task_state.message_sender.clone()).await
         {
             tracing::error!("Error sending network event: {}", e);
         }
@@ -159,6 +248,7 @@ impl Network
         Ok(self.do_send_to(peer, msg, response_sender).await?)
     }
 
+    #[instrument(skip(self,response_sender))]
     async fn do_send_to(&self, peer: &PeerConfig, msg: Message, response_sender: Sender<Request>)
                 -> Result<JoinHandle<()>, NetworkError>
     {
@@ -168,30 +258,32 @@ impl Network
         let stream = connector.connect(server_name, conn).await?;
 
         Ok(tokio::spawn(async move {
-            if let Err(e) = Self::send_and_handle_response(stream, msg, response_sender).await
+            if let Err(e) = Self::send_and_handle_response(stream.into(), msg, response_sender).await
             {
                 tracing::error!("Error in outbound network sync connection: {}", e);
             }
         }))
     }
 
-    pub async fn spawn_listen_task(&mut self) -> Result<JoinHandle<()>, io::Error>
+    pub async fn spawn_listen_task(&mut self) -> Result<JoinHandle<()>, NetworkError>
     {
         let listener = TcpListener::bind(self.listen_addr).await?;
-        let tls_acceptor = TlsAcceptor::from(Arc::clone(&self.tls_server_config));
-        let sender = self.message_sender.clone();
-        let shutdown = self.shutdown_recv.take().ok_or(io::ErrorKind::Other)?;
+        let task_state = Arc::clone(&self.task_state);
+        let shutdown_recv = self.shutdown_recv.take().ok_or(NetworkError::AlreadyListening)?;
 
         Ok(tokio::spawn(async move {
-            if let Err(e) = Self::listen_loop(listener, tls_acceptor, sender, shutdown).await
+            if let Err(e) = Self::listen_loop(listener, shutdown_recv, task_state).await
             {
                 tracing::error!("Error in network sync listener: {}", e);
             }
         }))
     }
 
-    async fn listen_loop(listener: TcpListener, tls_acceptor: TlsAcceptor, message_sender: Sender<Request>, mut shutdown: oneshot::Receiver<()>) -> Result<(), io::Error>
+    #[instrument(skip(task_state))]
+    async fn listen_loop(listener: TcpListener, mut shutdown: oneshot::Receiver<()>, task_state: Arc<NetworkTaskState>) -> Result<(), io::Error>
     {
+        let tls_acceptor = TlsAcceptor::from(Arc::clone(&task_state.tls_server_config));
+
         loop
         {
             select!
@@ -201,7 +293,7 @@ impl Network
                     if let Ok((conn, _)) = res
                     {
                         let tls_acceptor = tls_acceptor.clone();
-                        let sender = message_sender.clone();
+                        let sender = task_state.message_sender.clone();
                         tokio::spawn(async move {
                             if let Err(e) = Self::handle_connection(tls_acceptor, conn, sender).await
                             {
@@ -220,11 +312,12 @@ impl Network
         Ok(())
     }
 
+    #[instrument(skip(tls_acceptor))]
     async fn handle_connection(tls_acceptor: TlsAcceptor, conn: TcpStream, message_sender: Sender<Request>) -> Result<(), NetworkError>
     {
         let stream = tls_acceptor.accept(conn).await?;
 
-        if let Err(e) = Self::read_and_handle_message(stream, message_sender).await
+        if let Err(e) = Self::read_and_handle_message(stream.into(), message_sender).await
         {
             tracing::error!("Error handling message: {}", e);
         }
@@ -232,8 +325,9 @@ impl Network
         Ok(())
     }
 
-    async fn send_and_handle_response<S>(mut stream: S, message: Message, response_sender: Sender<Request>) -> Result<(), NetworkError>
-        where S: AsyncRead + AsyncWrite + Unpin
+    #[instrument]
+    async fn send_and_handle_response<IO>(mut stream: TlsStream<IO>, message: Message, response_sender: Sender<Request>) -> Result<(), NetworkError>
+        where IO: AsyncRead + AsyncWrite + Unpin + std::fmt::Debug
     {
         let buf = serde_json::to_vec(&message)?;
         stream.write_u32(buf.len().try_into().unwrap()).await?;
@@ -244,10 +338,25 @@ impl Network
         Ok(())
     }
 
-    async fn read_and_handle_message<S>(mut stream: S, message_sender: Sender<Request>) -> Result<(), NetworkError>
-        where S: AsyncRead + AsyncWrite + Unpin
+    #[instrument]
+    async fn read_and_handle_message<IO>(mut stream: TlsStream<IO>, message_sender: Sender<Request>) -> Result<(), NetworkError>
+        where IO: AsyncRead + AsyncWrite + Unpin + std::fmt::Debug
     {
-        loop {
+        // Get the peer name we're talking to from the tls certificate
+        let (_, state) = stream.get_ref();
+        let peer_certs = state.peer_certificates()
+                                    .ok_or(NetworkError::InternalError("No peer certificates?".to_string()))?;
+        let (_,cert) = X509Certificate::from_der(&peer_certs[0].0)
+                                    .map_err(|e| NetworkError::InternalError(format!("Invalid peer certificate? {}", e)))?;
+        let peer_name = cert.subject()
+                            .iter_common_name()
+                            .next()
+                            .and_then(|cn| cn.as_str().ok())
+                            .ok_or(NetworkError::InternalError("Couldn't parse peer CN".to_string()))?
+                            .to_string();
+
+        loop
+        {
             let length = stream.read_u32().await?;
 
             let mut buf = vec![0; length.try_into().unwrap()];
@@ -255,7 +364,7 @@ impl Network
 
             let msg: Message = serde_json::from_slice(&buf)?;
 
-            if matches!(msg, Message::Done)
+            if matches!(msg.content, MessageDetail::Done)
             {
                 return Ok(());
             }
@@ -264,6 +373,7 @@ impl Network
 
             let (req_send, mut req_recv) = channel(8);
             let req = Request {
+                received_from: peer_name.clone(),
                 response: req_send,
                 message: msg
             };
@@ -277,7 +387,7 @@ impl Network
                 stream.write_u32(buf.len().try_into().unwrap()).await?;
                 stream.write_all(&buf).await?;
 
-                if matches!(response, Message::Done)
+                if matches!(response.content, MessageDetail::Done)
                 {
                     tracing::trace!("Got done, ending connection");
                     return Ok(());

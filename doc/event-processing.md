@@ -11,12 +11,12 @@ ordering for events. An incoming event whose event clock is not
 less than or equal to the server's current clock must be held in a
 pending queue until its dependencies can be satisfied.
 
-Most events are handled in a fairly obvious manner, creating, updating 
+Most events are handled in a fairly obvious manner, creating, updating
 or deleting state objects. Those which require more complex logic, such
 as for conflict resolution, are described below.
 
 Note that events may be processed by a given server in any order that
-is consistent with the dependency graph, and may be processed in 
+is consistent with the dependency graph, and may be processed in
 different orders by different servers. Note also that once an event
 has been accepted into a server's event log, it cannot be
 retrospectively removed or reverted. Events must be processed in a
@@ -110,9 +110,12 @@ user mode and membership objects.
 
     #[target_type(ServerId)]
     struct ServerQuit {
-        pub introduced_by: EventId,
+        pub epoch: EpochId,
     }
 
 Remove the target server from the network state, including all users
 currently connected to that server, following the rules above for each
 of those users.
+
+Once a ServerQuit event has been seen, no new events may be sent to
+or accepted from that server until it has rejoined with a new epoch.

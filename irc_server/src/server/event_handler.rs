@@ -27,6 +27,7 @@ impl Server
             ChannelInvite(details) => self.handle_invite(details),
             MembershipFlagChange(details) => self.handle_chan_perm_change(details),
             NewMessage(details) => self.handle_new_message(details),
+            NewServer(details) => self.handle_new_server(details),
             ServerQuit(details) => self.handle_server_quit(details),
             NewAuditLogEntry(details) => self.report_audit_entry(details),
         };
@@ -331,6 +332,15 @@ impl Server
         Ok(())
     }
 
+    fn handle_new_server(&self, detail: &update::NewServer) -> HandleResult
+    {
+        let server = self.net.server(detail.id)?;
+
+        self.event_submitter.try_send(EventLogUpdate::ServerJoin(*server.name(), server.id(), server.epoch()))?;
+
+        Ok(())
+    }
+
     fn handle_server_quit(&self, detail: &update::ServerQuit) -> HandleResult
     {
         if detail.server.id == self.my_id
@@ -338,6 +348,9 @@ impl Server
             // The network thinks we're no longer alive. Shut down to avoid desyncs
             panic!("Network thinks we're dead. Making it so");
         }
+
+        self.event_submitter.try_send(EventLogUpdate::ServerQuit(detail.server.name, detail.server.id, detail.server.epoch))?;
+
         Ok(())
     }
 

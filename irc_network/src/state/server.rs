@@ -13,5 +13,4 @@ pub struct Server
     pub epoch: EpochId,
     pub name: ServerName,
     pub last_ping: i64,
-    pub introduced_by: EventId,
 }

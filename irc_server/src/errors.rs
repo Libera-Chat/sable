@@ -4,7 +4,8 @@ use client_listener::ConnectionError;
 
 /// An error that could occur when handling a network state change
 #[derive(Debug,Error)]
-pub enum HandlerError {
+pub enum HandlerError
+{
     #[error("Internal error: {0}")]
     InternalError(String),
     #[error("Connection error: {0}")]
@@ -18,6 +19,11 @@ pub enum HandlerError {
 impl From<&str> for HandlerError
 {
     fn from(msg: &str) -> Self { Self::InternalError(msg.to_string()) }
+}
+
+impl<T> From<tokio::sync::mpsc::error::TrySendError<T>> for HandlerError
+{
+    fn from(err: tokio::sync::mpsc::error::TrySendError<T>) -> Self { Self::InternalError(err.to_string()) }
 }
 
 pub type HandleResult = Result<(), HandlerError>;

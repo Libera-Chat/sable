@@ -18,6 +18,7 @@ thiserror = "1"
 rustls = "0.20"
 rustls-pemfile = "0.2"
 chrono = "0.4"
+x509-parser = "0.13"
 
 
 [dependencies.serde]
