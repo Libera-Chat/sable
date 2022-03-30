@@ -40,10 +40,10 @@ impl Server
     /// connection data; the other arguments are as for [`new`](Self::new).
     pub fn restore_from(
             state: ServerState,
+            event_log: Arc<ReplicatedEventLog>,
             listener_collection: &client_listener::ListenerCollection,
             connection_events: Receiver<ConnectionEvent>,
             rpc_receiver: Receiver<NetworkMessage>,
-            to_network: Sender<EventLogUpdate>,
         ) -> std::io::Result<Self>
     {
         let (auth_send, auth_recv) = channel(128);
@@ -56,7 +56,7 @@ impl Server
             epoch: state.epoch,
             id_generator: state.id_generator,
             rpc_receiver,
-            event_submitter: to_network,
+            event_log,
             action_receiver: action_recv,
             action_submitter: action_send,
             connection_events,

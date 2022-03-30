@@ -125,6 +125,10 @@ impl hyper::service::Service<Request<Body>> for ManagementService
                         internal_error()
                     }
                 }
+                (&Method::POST, "/dump-events") =>
+                {
+                    internal_error()
+                }
                 _ =>
                 {
                     let mut response = Response::default();

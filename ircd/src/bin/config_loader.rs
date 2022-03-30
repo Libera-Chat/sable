@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     let (msg_send, _msg_recv) = channel(128);
 
-    let net = ircd_sync::Network::new(network_config, server_config.node_config, msg_send);
+    let net = ircd_sync::GossipNetwork::new(network_config, server_config.node_config, msg_send);
 
     let now = Utc::now().timestamp();
     let epoch = EpochId::new(now);

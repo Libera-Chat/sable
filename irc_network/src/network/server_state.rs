@@ -21,6 +21,8 @@ impl Network
         };
 
         self.servers.insert(target, server);
+
+        updates.notify(update::NewServer { id: target });
     }
 
     pub(super) fn server_ping(&mut self, target: ServerId, _event: &Event, detail: &details::ServerPing, _updates: &dyn NetworkUpdateReceiver)
@@ -44,7 +46,7 @@ impl Network
 
     fn delete_server(&mut self, target: ServerId, updates: &dyn NetworkUpdateReceiver)
     {
-        if self.servers.remove(&target).is_some()
+        if let Some(removed) = self.servers.remove(&target)
         {
             let mut users_to_remove = Vec::new();
 
@@ -65,6 +67,10 @@ impl Network
                     quit_updates.push(update);
                 }
             }
+
+            updates.notify(update::ServerQuit {
+                server: removed
+            });
 
             updates.notify(update::BulkUserQuit {
                 items: quit_updates

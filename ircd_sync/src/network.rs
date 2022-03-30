@@ -36,6 +36,7 @@ use tokio_rustls::{
 use std::{
     net::SocketAddr,
     sync::Arc,
+    sync::Mutex,
     convert::TryInto,
     sync::atomic::{
         AtomicBool,
@@ -56,13 +57,12 @@ use thiserror::Error;
 use tracing::instrument;
 
 /// An interface to the gossip network used to synchronise state.
-pub struct Network
+pub struct GossipNetwork
 {
     listen_addr: SocketAddr,
     fanout: usize,
     tls_client_config: Arc<ClientConfig>,
-    shutdown_send: oneshot::Sender<()>,
-    shutdown_recv: Option<oneshot::Receiver<()>>,
+    shutdown_send: Mutex<Option<oneshot::Sender<()>>>,
     task_state: Arc<NetworkTaskState>,
 }
 
@@ -80,6 +80,12 @@ struct Peer
 {
     conf: PeerConfig,
     enabled: AtomicBool,
+}
+
+#[derive(Debug,serde::Serialize,serde::Deserialize)]
+pub struct GossipNetworkState
+{
+    peer_states: Vec<(String, bool)>
 }
 
 #[derive(Debug,Error)]
@@ -107,7 +113,7 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for NetworkError
     }
 }
 
-impl Network
+impl GossipNetwork
 {
     pub fn new(net_config: NetworkConfig, node_config: NodeConfig, message_sender: Sender<Request>) -> Self
     {
@@ -133,14 +139,11 @@ impl Network
         let mut peers = net_config.peers;
         peers.retain(|p| p.address != node_config.listen_addr);
 
-        let (shutdown_send, shutdown_recv) = oneshot::channel();
-
         Self {
             listen_addr: node_config.listen_addr,
             fanout: net_config.fanout,
             tls_client_config: Arc::new(client_config),
-            shutdown_send,
-            shutdown_recv: Some(shutdown_recv),
+            shutdown_send: Mutex::new(None),
             task_state: Arc::new(NetworkTaskState {
                 peers: peers.into_iter().map(|c| Peer { conf: c, enabled: AtomicBool::new(false) }).collect(),
                 tls_server_config: Arc::new(server_config),
@@ -149,9 +152,37 @@ impl Network
         }
     }
 
-    pub fn shutdown(self)
+    pub fn restore(state: GossipNetworkState, net_config: NetworkConfig, node_config: NodeConfig, message_sender: Sender<Request>) -> Self
     {
-        self.shutdown_send.send(()).ok();
+        let ret = Self::new(net_config, node_config, message_sender);
+
+        for (peer,enabled) in state.peer_states
+        {
+            if enabled
+            {
+                ret.enable_peer(&peer);
+            }
+        }
+
+        ret
+    }
+
+    pub fn save_state(&self) -> GossipNetworkState
+    {
+        GossipNetworkState {
+            peer_states: self.task_state.peers.iter().map(|peer| (peer.conf.name.clone(), peer.enabled.load(Ordering::SeqCst))).collect()
+        }
+    }
+
+    pub fn shutdown(&self)
+    {
+        if let Ok(mut shutdown_send) = self.shutdown_send.lock()
+        {
+            if let Some(sender) = shutdown_send.take()
+            {
+                sender.send(()).ok();
+            }
+        }
     }
 
     pub fn enable_peer(&self, name: &str)
@@ -176,16 +207,6 @@ impl Network
             {
                 p.enabled.store(false, Ordering::SeqCst);
             }
-        }
-    }
-
-    pub fn disable_all_peers(&self)
-    {
-        tracing::info!("disabling all peers");
-
-        for p in self.task_state.peers.iter()
-        {
-            p.enabled.store(false, Ordering::SeqCst);
         }
     }
 
@@ -222,9 +243,16 @@ impl Network
     {
         let mut tasks = Vec::new();
 
-        for peer in self.task_state.peers.iter()
-                                         .filter(|p| p.enabled.load(Ordering::SeqCst))
-                                         .choose_multiple(&mut rand::thread_rng(), self.fanout)
+        let chosen_peers = self.task_state.peers.iter()
+                                          .filter(|p| p.enabled.load(Ordering::SeqCst))
+                                          .choose_multiple(&mut rand::thread_rng(), self.fanout);
+
+        if chosen_peers.is_empty()
+        {
+            tracing::info!("No peers available to propagate message");
+        }
+
+        for peer in chosen_peers
         {
             tasks.push(self.send_to(&peer.conf, msg.clone()));
         }
@@ -265,11 +293,20 @@ impl Network
         }))
     }
 
-    pub async fn spawn_listen_task(&mut self) -> Result<JoinHandle<()>, NetworkError>
+    pub async fn spawn_listen_task(&self) -> Result<JoinHandle<()>, NetworkError>
     {
         let listener = TcpListener::bind(self.listen_addr).await?;
         let task_state = Arc::clone(&self.task_state);
-        let shutdown_recv = self.shutdown_recv.take().ok_or(NetworkError::AlreadyListening)?;
+
+        let (shutdown_send, shutdown_recv) = oneshot::channel();
+        {
+            let mut guard = self.shutdown_send.lock().map_err(|e| NetworkError::InternalError(e.to_string()))?;
+            if guard.is_some()
+            {
+                Err(NetworkError::AlreadyListening)?;
+            }
+            let _ = guard.insert(shutdown_send);
+        }
 
         Ok(tokio::spawn(async move {
             if let Err(e) = Self::listen_loop(listener, shutdown_recv, task_state).await

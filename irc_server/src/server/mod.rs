@@ -5,6 +5,7 @@ use crate::policy::*;
 use utils::OrLog;
 use rpc_protocols::*;
 use auth_client::*;
+use ircd_sync::ReplicatedEventLog;
 
 use client_listener::{
     ConnectionEvent,
@@ -14,7 +15,6 @@ use client_listener::{
 
 use tokio::{
     sync::mpsc::{
-        Sender,
         Receiver,
         channel,
         UnboundedSender,
@@ -30,6 +30,7 @@ use strum::IntoEnumIterator;
 use std::{
     collections::HashMap,
     time::Duration,
+    sync::Arc,
 };
 
 pub(crate) mod command_processor;
@@ -53,10 +54,10 @@ pub struct Server
     my_id: ServerId,
     name: ServerName,
     net: Network,
+    event_log: Arc<ReplicatedEventLog>,
     epoch: EpochId,
     id_generator: ObjectIdGenerator,
     rpc_receiver: Receiver<NetworkMessage>,
-    event_submitter: Sender<EventLogUpdate>,
     action_receiver: UnboundedReceiver<CommandAction>,
     action_submitter: UnboundedSender<CommandAction>,
     connection_events: Receiver<ConnectionEvent>,
@@ -88,9 +89,10 @@ impl Server
     pub fn new(id: ServerId,
                epoch: EpochId,
                name: ServerName,
+               net: Network,
+               event_log: Arc<ReplicatedEventLog>,
                connection_events: Receiver<ConnectionEvent>,
                rpc_receiver: Receiver<NetworkMessage>,
-               to_network: Sender<EventLogUpdate>,
             ) -> Self
     {
         let (auth_send, auth_recv) = channel(128);
@@ -99,11 +101,11 @@ impl Server
         Self {
             my_id: id,
             name,
-            net: Network::new(),
+            net,
             epoch,
+            event_log,
             id_generator: ObjectIdGenerator::new(id, epoch),
             rpc_receiver,
-            event_submitter: to_network,
             action_receiver: action_recv,
             action_submitter: action_send,
             connection_events,
@@ -121,7 +123,7 @@ impl Server
         let id = id.into();
         let detail = detail.into();
         tracing::trace!("Submitting new event {:?} {:?}", id, detail);
-        self.event_submitter.try_send(EventLogUpdate::NewEvent(id, detail)).unwrap();
+        self.event_log.create_event(id, detail);
     }
 
     /// Retrieve the [`ObjectIdGenerator`] used to generate object identifiers

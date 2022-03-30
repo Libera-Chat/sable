@@ -10,6 +10,7 @@ use std::{
     env,
     os::unix::process::CommandExt,
     net::SocketAddr,
+    sync::Arc,
 };
 
 use tokio::{
@@ -127,7 +128,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     let (client_send, client_recv) = channel(128);
     let (server_send, server_recv) = channel(128);
-    let (new_send, new_recv) = channel(128);
 
     // There are two shutdown channels, one for the Server task and one for everything else.
     // The Server needs to shut down first, because it'll panic if any of the others disappears
@@ -135,36 +135,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     let (shutdown_send, _shutdown_recv) = broadcast::channel(1);
     let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
 
-    let (mut event_log, client_listeners, mut server, is_upgrade) = if let Some(upgrade_fd) = opts.upgrade_state_fd {
+    let (event_log, client_listeners, mut server) = if let Some(upgrade_fd) = opts.upgrade_state_fd {
         tracing::info!("Got upgrade FD {}", upgrade_fd);
 
         let state = upgrade::read_upgrade_state(upgrade_fd);
 
-        let event_log = ReplicatedEventLog::restore(state.sync_state, server_send, new_recv, network_config, server_config.node_config);
+        let event_log = Arc::new(ReplicatedEventLog::restore(state.sync_state, server_send, network_config, server_config.node_config));
 
         let client_listeners = ListenerCollection::resume(state.listener_state, client_send)?;
 
         let server = Server::restore_from(state.server_state,
+                                          Arc::clone(&event_log),
                                           &client_listeners,
                                           client_recv,
-                                          server_recv,
-                                          new_send)?;
+                                          server_recv
+                                    )?;
 
-        (event_log, client_listeners, server, true)
+        (event_log, client_listeners, server)
     }
     else
     {
         let epoch = EpochId::new(chrono::Utc::now().timestamp());
-        let event_log = ReplicatedEventLog::new(server_config.server_id, epoch, server_send, new_recv, network_config, server_config.node_config);
+        let event_log = Arc::new(ReplicatedEventLog::new(
+                                    server_config.server_id,
+                                    epoch,
+                                    server_send,
+                                    network_config,
+                                    server_config.node_config
+                                ));
 
         let client_listeners = ListenerCollection::new(client_send)?;
+
+        let network = if opts.bootstrap_network {
+            Network::new()
+        } else {
+            *event_log.sync_to_network().await
+        };
 
         let server = Server::new(server_config.server_id,
                                  epoch,
                                  server_config.server_name,
+                                 network,
+                                 Arc::clone(&event_log),
                                  client_recv,
                                  server_recv,
-                                 new_send
                             );
 
         if let Some(conf) = server_config.tls_config {
@@ -178,7 +192,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
             client_listeners.add_listener(listener.address.parse().unwrap(), conn_type)?;
         }
 
-        (event_log, client_listeners, server, false)
+        (event_log, client_listeners, server)
     };
 
     let (management_send, management_recv) = channel(128);
@@ -231,14 +245,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
         server
     }.instrument(tracing::info_span!("management event pump")));
 
-    // Only run the initial sync if we're not upgrading - if we are, then we already have the
-    // initial state persisted
-    if ! is_upgrade && ! opts.bootstrap_network
-    {
-        event_log.sync_to_network().await;
-    }
-
-    let sync_task = tokio::spawn(event_log.sync_task(shutdown_send.subscribe()));
+    let sync_task = event_log.start_sync(shutdown_send.subscribe());
 
     // Run the actual server - we don't use spawn() here because Server isn't Send/Sync
     let shutdown_action = server.run(management_recv, server_shutdown_recv).await;
@@ -248,7 +255,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     let management_server = management_task.await?;
 
     shutdown_send.send(shutdown_action.clone())?;
-    let (sync_state,_) = tokio::join!(
+    let (_,_) = tokio::join!(
         sync_task,
         management_server.wait()
     );
@@ -275,11 +282,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
         {
             let server_state = server.save_state().await?;
             let listener_state = client_listeners.save().await?;
+            // Now that the Server has been consumed to turn it into a saved state,
+            // its reference to the event log is gone, and we can unwrap the Arc
+            let sync_state = Arc::try_unwrap(event_log)
+                                 .unwrap_or_else(|_| panic!("Failed to unwrap event log"))
+                                 .save_state()
+                                 .expect("Failed to save event log state");
 
             upgrade::exec_upgrade(&exe_path, opts, upgrade::ApplicationState {
                 server_state,
                 listener_state,
-                sync_state: sync_state??
+                sync_state
             });
         }
     }

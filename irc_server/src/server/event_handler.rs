@@ -332,24 +332,30 @@ impl Server
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     fn handle_new_server(&self, detail: &update::NewServer) -> HandleResult
     {
+        tracing::info!("Got new server");
+
         let server = self.net.server(detail.id)?;
 
-        self.event_submitter.try_send(EventLogUpdate::ServerJoin(*server.name(), server.id(), server.epoch()))?;
+        self.event_log.enable_server(*server.name(), server.id());
 
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     fn handle_server_quit(&self, detail: &update::ServerQuit) -> HandleResult
     {
+        tracing::info!("Got server quit");
+
         if detail.server.id == self.my_id
         {
             // The network thinks we're no longer alive. Shut down to avoid desyncs
             panic!("Network thinks we're dead. Making it so");
         }
 
-        self.event_submitter.try_send(EventLogUpdate::ServerQuit(detail.server.name, detail.server.id, detail.server.epoch))?;
+        self.event_log.disable_server(detail.server.name, detail.server.id, detail.server.epoch);
 
         Ok(())
     }

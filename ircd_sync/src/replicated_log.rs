@@ -14,6 +14,7 @@ use tokio::{
         Receiver,
         channel,
     },
+    sync::Mutex,
     sync::broadcast,
     select,
     task::JoinHandle,
@@ -22,7 +23,22 @@ use tokio::{
 use std::{
     time::Duration,
     collections::HashMap,
+    sync::Arc,
+    sync::RwLock,
 };
+
+use thiserror::Error;
+
+#[derive(Debug,Error)]
+pub enum EventLogSaveError
+{
+    #[error("Sync task is still running")]
+    TaskStillRunning,
+    #[error("{0}")]
+    InternalError(&'static str),
+    #[error("Unknown error: {0}")]
+    UnknownError(#[from] Box<dyn std::error::Error>)
+}
 
 /// Saved state for a [ReplicatedEventLog], used to save and restore across an upgrade
 #[derive(Debug,serde::Serialize,serde::Deserialize)]
@@ -31,6 +47,7 @@ pub struct ReplicatedEventLogState
     server: (ServerId, EpochId),
     log_state: EventLogState,
     server_tombstones: HashMap<ServerId, (ServerName, EpochId)>,
+    network_state: GossipNetworkState,
 }
 
 /// A replicated event log.
@@ -39,14 +56,27 @@ pub struct ReplicatedEventLogState
 /// network of servers.
 pub struct ReplicatedEventLog
 {
-    log: EventLog,
-    net: Network,
-    server_send: Sender<NetworkMessage>,
-    log_recv: Receiver<Event>,
-    update_recv: Receiver<EventLogUpdate>,
-    network_recv: Receiver<Request>,
+    shared_state: Arc<SharedState>,
+    task_state: Arc<Mutex<TaskState>>,
+    new_event_send: Sender<(ObjectId, EventDetails)>,
+    net: Arc<GossipNetwork>,
+}
+
+struct SharedState
+{
     server: (ServerId, EpochId),
-    server_tombstones: HashMap<ServerId, (ServerName, EpochId)>,
+    server_tombstones: RwLock<HashMap<ServerId, (ServerName, EpochId)>>,
+}
+
+struct TaskState
+{
+    log: EventLog,
+    net: Arc<GossipNetwork>,
+    new_event_recv: Receiver<(ObjectId, EventDetails)>,
+    network_recv: Receiver<Request>,
+    log_recv: Receiver<Event>,
+    server_send: Sender<NetworkMessage>,
+    shared_state: Arc<SharedState>,
 }
 
 impl ReplicatedEventLog
@@ -55,10 +85,9 @@ impl ReplicatedEventLog
     ///
     /// ## Arguments
     ///
-    /// - `idgen`: Event ID generator
+    /// - `server_id`: Our server ID, for use in generating event IDs
+    /// - `epoch`: Our epoch ID, for use in generating event IDs
     /// - `server_send`: channel for [`NetworkMessage`]s to be processed
-    /// - `update_receiver`: channel for the log to receive [`EventLogUpdate`]
-    ///   messages
     /// - `net_config`: global configuration for the gossip network
     /// - `node_config`: configuration specific for this node in the network
     ///
@@ -69,77 +98,139 @@ impl ReplicatedEventLog
     pub fn new(server_id: ServerId,
                epoch: EpochId,
                server_send: Sender<NetworkMessage>,
-               update_recv: Receiver<EventLogUpdate>,
                net_config: NetworkConfig,
                node_config: NodeConfig,
             ) -> Self
     {
         let (log_send, log_recv) = channel(128);
         let (net_send, net_recv) = channel(128);
+        let (new_event_send, new_event_recv) = channel(128);
+
+        let net = Arc::new(GossipNetwork::new(net_config, node_config, net_send));
+
+        let shared_state = Arc::new(SharedState {
+            server: (server_id, epoch),
+            server_tombstones: RwLock::new(HashMap::new()),
+        });
+
+        let task_state = Arc::new(Mutex::new(TaskState {
+            log: EventLog::new(EventIdGenerator::new(server_id, epoch, 0), Some(log_send)),
+            net: Arc::clone(&net),
+            new_event_recv,
+            network_recv: net_recv,
+            log_recv,
+            server_send,
+            shared_state: Arc::clone(&shared_state)
+        }));
 
         Self {
-            log: EventLog::new(EventIdGenerator::new(server_id, epoch, 0), Some(log_send)),
-            net: Network::new(net_config, node_config, net_send),
-
-            server_send,
-            log_recv,
-            update_recv,
-            network_recv: net_recv,
-            server: (server_id, epoch),
-            server_tombstones: HashMap::new(),
+            shared_state,
+            task_state,
+            net,
+            new_event_send,
         }
     }
 
     /// Construct a `ReplicatedEventLog` from a previously saved state
     /// and given set of configs.
     ///
-    /// `state` contains a state object previously returned on completion of
-    /// [`sync_task`](Self::sync_task); the other arguments are as for
+    /// `state` contains a state object previously returned from
+    /// [`save_state`](Self::save_state); the other arguments are as for
     /// [`new`](Self::new)
     pub fn restore(state: ReplicatedEventLogState,
                server_send: Sender<NetworkMessage>,
-               update_receiver: Receiver<EventLogUpdate>,
                net_config: NetworkConfig,
                node_config: NodeConfig,
             ) -> Self
     {
         let (log_send, log_recv) = channel(128);
         let (net_send, net_recv) = channel(128);
+        let (new_event_send, new_event_recv) = channel(128);
 
-        let log = EventLog::restore(state.log_state, Some(log_send));
+        let net = Arc::new(GossipNetwork::restore(state.network_state, net_config, node_config, net_send));
+
+        let shared_state = Arc::new(SharedState {
+            server: state.server,
+            server_tombstones: RwLock::new(state.server_tombstones),
+        });
+
+        let task_state = Arc::new(Mutex::new(TaskState {
+            log: EventLog::restore(state.log_state, Some(log_send)),
+            net: Arc::clone(&net),
+            new_event_recv,
+            network_recv: net_recv,
+            log_recv,
+            server_send,
+            shared_state: Arc::clone(&shared_state)
+        }));
 
         Self {
-            log,
-            net: Network::new(net_config, node_config, net_send),
-
-            server_send,
-            log_recv,
-            update_recv: update_receiver,
-            network_recv: net_recv,
-            server: state.server,
-            server_tombstones: state.server_tombstones,
+            shared_state,
+            task_state,
+            net,
+            new_event_send,
         }
+    }
+
+    /// Create and propagate a new event.
+    ///
+    /// Arguments are the target object ID, and the event detail.
+    pub fn create_event(&self, target: ObjectId, detail: EventDetails)
+    {
+        self.new_event_send.try_send((target, detail)).expect("Failed to submit new event for creation");
+    }
+
+    /// Disable a given server for sync purposes. This should be called when
+    /// a server is seen to leave the network, and will prevent any incoming sync
+    /// messages originating from this server and epoch being accepted, as well as
+    /// preventing any new outgoing sync messages from being sent to it.
+    pub fn disable_server(&self, name: ServerName, id: ServerId, epoch: EpochId)
+    {
+        self.shared_state.server_tombstones.write().unwrap().insert(id, (name, epoch));
+        self.net.disable_peer(&name.to_string());
+    }
+
+    /// Enable a server for sync purposes. This should be called when a server is
+    /// seen to join the network, and will enable both inbound and outbound
+    /// sync messages for the given server.
+    pub fn enable_server(&self, name: ServerName, id: ServerId)
+    {
+        self.shared_state.server_tombstones.write().unwrap().remove(&id);
+        self.net.enable_peer(&name.to_string());
     }
 
     /// Run and wait for the initial synchronisation to the network.
     ///
     /// This will choose a peer from the provided network configuration,
-    /// request a copy of the current network state from that peer, send it
-    /// (via the `server_send` channel provided to the constructor) to be
-    /// imported, and update the log's event clock to the current value from
+    /// request a copy of the current network state from that peer, return
+    /// it, and update the log's event clock to the current value from
     /// the imported state.
     #[tracing::instrument(skip(self))]
-    pub async fn sync_to_network(&mut self)
+    pub async fn sync_to_network(&self) -> Box<irc_network::Network>
     {
-        let (send, mut recv) = channel(16);
-        let handle = self.start_sync_to_network(send).await;
-
-        while let Some(req) = recv.recv().await
+        let net = 'outer: loop
         {
-            tracing::debug!("Bootstrap message: {:?}", req.message);
-            self.handle_network_request(req).await;
+            let (send, mut recv) = channel(16);
+            let handle = self.start_sync_to_network(send).await;
+
+            while let Some(req) = recv.recv().await
+            {
+                tracing::debug!("Bootstrap message: {:?}", req.message);
+                match req.message.content
+                {
+                    MessageDetail::NetworkState(net) => { break 'outer net; }
+                    _ => { continue; }
+                }
+            }
+            handle.await.expect("Error syncing to network");
+        };
+
+        for server in net.servers()
+        {
+            self.enable_server(*server.name(), server.id());
         }
-        handle.await.expect("Error syncing to network");
+
+        net
     }
 
     async fn start_sync_to_network(&self, sender: Sender<Request>) -> JoinHandle<()>
@@ -147,7 +238,7 @@ impl ReplicatedEventLog
         while let Some(peer) = self.net.choose_any_peer()
         {
             tracing::info!("Requesting network state from {:?}", peer);
-            let msg = Message { source_server: self.server, content: MessageDetail::GetNetworkState };
+            let msg = Message { source_server: self.shared_state.server, content: MessageDetail::GetNetworkState };
             match self.net.send_and_process(peer, msg, sender.clone()).await
             {
                 Ok(handle) => return handle,
@@ -157,9 +248,44 @@ impl ReplicatedEventLog
         panic!("No peer available to sync");
     }
 
+    pub fn start_sync(&self, shutdown: broadcast::Receiver<ShutdownAction>) -> JoinHandle<Result<(), NetworkError>>
+    {
+        let task_state = Arc::clone(&self.task_state);
+        tokio::spawn(async move {
+            task_state.lock().await.sync_task(shutdown).await
+        })
+    }
+
+    pub fn save_state(self) -> Result<ReplicatedEventLogState, EventLogSaveError>
+    {
+        // This set of structs takes a bit of untangling to deconstruct.
+        // First, extract the task state from the mutex. If this fails (because there's
+        // another reference to the Arc), it'll be because the sync task is still running,
+        // so the Err return can indicate that.
+        let task_state = Arc::try_unwrap(self.task_state).map_err(|_| EventLogSaveError::TaskStillRunning)?.into_inner();
+
+        // Now drop the task_state's reference to the shared_state, so that we hold the only one
+        drop(task_state.shared_state);
+        // ...and unwrap it.
+        let shared_state = Arc::try_unwrap(self.shared_state).map_err(|_| EventLogSaveError::InternalError("Couldn't unwrap shared state"))?;
+
+        // Extract the tombstones from the RwLock so we don't have to clone it
+        let server_tombstones = shared_state.server_tombstones.into_inner().unwrap();
+
+        Ok(ReplicatedEventLogState {
+            server: shared_state.server,
+            log_state: task_state.log.save_state(),
+            server_tombstones,
+            network_state: self.net.save_state(),
+        })
+    }
+}
+
+impl TaskState
+{
     /// Run the main network synchronisation task.
     #[tracing::instrument(skip_all)]
-    pub async fn sync_task(mut self, mut shutdown: broadcast::Receiver<ShutdownAction>) -> Result<ReplicatedEventLogState, NetworkError>
+    async fn sync_task(&mut self, mut shutdown: broadcast::Receiver<ShutdownAction>) -> Result<(), NetworkError>
     {
         let listen_task = self.net.spawn_listen_task().await?;
 
@@ -180,25 +306,15 @@ impl ReplicatedEventLog
                         None => break
                     }
                 },
-                update = self.update_recv.recv() => {
+                update = self.new_event_recv.recv() => {
                     tracing::trace!("...from update_recv");
                     match update {
-                        Some(EventLogUpdate::NewEvent(id, detail)) =>
+                        Some((id, detail)) =>
                         {
                             let event = self.log.create(id, detail);
                             tracing::trace!("Server signalled log update: {:?}", event);
                             self.log.add(event.clone());
                             self.net.propagate(&self.message(MessageDetail::NewEvent(event))).await
-                        },
-                        Some(EventLogUpdate::ServerQuit(name, id, epoch)) =>
-                        {
-                            self.server_tombstones.insert(id, (name, epoch));
-                            self.net.disable_peer(&name.to_string());
-                        },
-                        Some(EventLogUpdate::ServerJoin(name, id, _epoch)) =>
-                        {
-                            self.server_tombstones.remove(&id);
-                            self.net.enable_peer(&name.to_string());
                         },
                         None => break
                     }
@@ -220,17 +336,13 @@ impl ReplicatedEventLog
 
         self.net.shutdown();
         listen_task.await?;
-        Ok(ReplicatedEventLogState {
-            server: self.server,
-            log_state: self.log.save_state(),
-            server_tombstones: self.server_tombstones,
-        })
+        Ok(())
     }
 
     /// Make a [`Message`] originating from this server, for submission to the network
     fn message(&self, content: MessageDetail) -> Message
     {
-        Message { source_server: self.server, content }
+        Message { source_server: self.shared_state.server, content }
     }
 
     #[tracing::instrument(skip(self,response))]
@@ -263,19 +375,28 @@ impl ReplicatedEventLog
         is_done
     }
 
+    fn server_is_tombstoned(&self, id: &ServerId, epoch: &EpochId) -> Option<ServerName>
+    {
+        if let Some((name, tombstone_epoch)) = self.shared_state.server_tombstones.read().unwrap().get(&id)
+        {
+            if tombstone_epoch == epoch
+            {
+                return Some(*name);
+            }
+        }
+        None
+    }
+
     #[tracing::instrument(skip(self))]
     async fn handle_network_request(&mut self, req: Request)
     {
         // If this is a server we've seen quit, don't accept any events from it
         let (source_id, source_epoch) = &req.message.source_server;
-        if let Some((name, tombstone_epoch)) = self.server_tombstones.get(&source_id)
+        if let Some(name) = self.server_is_tombstoned(source_id, source_epoch)
         {
-            if tombstone_epoch == source_epoch
-            {
-                tracing::warn!("Got sync message from tombstoned peer {}, rejecting", name);
-                let _ = req.response.send(self.message(MessageDetail::MessageRejected)).await;
-                return;
-            }
+            tracing::warn!("Got sync message from tombstoned peer {}, rejecting", name);
+            let _ = req.response.send(self.message(MessageDetail::MessageRejected)).await;
+            return;
         }
 
         match req.message.content {
@@ -363,7 +484,6 @@ impl ReplicatedEventLog
                 self.log.set_clock(net.clock().clone());
 
                 // Then reset our list of active peers to those that are active in the incoming state
-                self.net.disable_all_peers();
                 for server in net.servers()
                 {
                     self.net.enable_peer(server.name().as_ref());

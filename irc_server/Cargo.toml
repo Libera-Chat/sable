@@ -12,6 +12,7 @@ irc_strings = { path = "../irc_strings" }
 rpc_protocols = { path = "../rpc_protocols" }
 client_listener = { path = "../client_listener" }
 auth_client = { path = "../auth_client" }
+ircd_sync = { path = "../ircd_sync" }
 
 tracing = "0.1"
 inventory = "0.1"
