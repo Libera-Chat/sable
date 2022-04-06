@@ -42,6 +42,7 @@ use command::*;
 
 mod management;
 pub use management::ServerManagementCommand;
+pub use management::ServerManagementCommandType;
 
 mod state_change_receiver;
 
@@ -53,6 +54,7 @@ pub struct Server
 {
     my_id: ServerId,
     name: ServerName,
+    version: String,
     net: Network,
     event_log: Arc<ReplicatedEventLog>,
     epoch: EpochId,
@@ -98,9 +100,15 @@ impl Server
         let (auth_send, auth_recv) = channel(128);
         let (action_send, action_recv) = unbounded_channel();
 
+        if cfg!(feature = "debug") && !net.config().debug_mode
+        {
+            panic!("Server is built with debug code but network has debug disabled")
+        }
+
         Self {
             my_id: id,
             name,
+            version: Self::build_version(),
             net,
             epoch,
             event_log,
@@ -148,6 +156,23 @@ impl Server
     pub fn id(&self) -> ServerId
     {
         self.my_id
+    }
+
+    /// The server's build version
+    pub fn version(&self) -> &str
+    {
+        &self.version
+    }
+
+    /// The server's build flags
+    pub fn server_flags(&self) -> state::ServerFlags
+    {
+        let mut ret = state::ServerFlags::empty();
+        if cfg!(feature = "debug")
+        {
+            ret |= state::ServerFlags::DEBUG;
+        }
+        ret
     }
 
     /// This server's entry in the network state
@@ -235,6 +260,17 @@ impl Server
         ret
     }
 
+    fn build_version() -> String
+    {
+        let git_version = crate::build_data::GIT_COMMIT_HASH.map(|s| format!("-{}", s)).unwrap_or_else(String::new);
+        let git_dirty = if matches!(crate::build_data::GIT_DIRTY, Some(true)) {
+            "-dirty".to_string()
+        } else {
+            String::new()
+        };
+        format!("sable-{}{}{}", crate::build_data::PKG_VERSION, git_version, git_dirty)
+    }
+
     /// Run the server
     ///
     /// Arguments:
@@ -243,7 +279,13 @@ impl Server
     #[tracing::instrument(skip_all)]
     pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {
-        self.submit_event(self.my_id, details::NewServer{ epoch: self.epoch, name: self.name, ts: utils::now() });
+        self.submit_event(self.my_id, details::NewServer {
+            epoch: self.epoch,
+            name: self.name,
+            ts: utils::now(),
+            flags: self.server_flags(),
+            version: self.version().to_string(),
+        });
         let mut check_ping_timer = time::interval(Duration::from_secs(5));
 
         let shutdown_action = loop

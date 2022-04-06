@@ -46,12 +46,16 @@ impl Server
             connection.user_id = Some(user.id());
 
             connection.send(&numeric::Numeric001::new_for(&self.name.to_string(), &user.nick(), "test", &user.nick()));
+            connection.send(&numeric::Numeric002::new_for(&self.name.to_string(), &user.nick(), &self.name, &self.version));
             for line in self.isupport.data().iter()
             {
                 connection.send(&numeric::ISupport::new_for(&self.name.to_string(), &user.nick(), line));
             }
 
-            connection.send(&message::Mode::new(&user, &user, &user.mode()?.format()))
+            connection.send(&message::Mode::new(&user, &user, &user.mode()?.format()));
+
+            connection.send(&message::Notice::new(&self.name.to_string(), &user,
+                    "The network is currently running in debug mode. Do not send any sensitive information such as passwords."));
         }
         Ok(())
     }

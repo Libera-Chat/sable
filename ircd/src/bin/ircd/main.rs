@@ -47,7 +47,7 @@ struct Opts
     /// Start a new network; without this no clients will be accepted until the
     /// server has synced to an existing net
     #[structopt(long)]
-    bootstrap_network: bool,
+    bootstrap_network: Option<PathBuf>,
 }
 
 #[derive(Debug,Deserialize)]
@@ -111,6 +111,13 @@ fn load_tls_server_config(conf: &TlsConfig) -> Result<client_listener::TlsSettin
     Ok(client_listener::TlsSettings { key: server_key, cert_chain })
 }
 
+fn load_network_config(filename: impl AsRef<Path>) -> Result<irc_network::config::NetworkConfig, ircd_sync::ConfigError>
+{
+    let file = File::open(filename)?;
+    let reader = BufReader::new(file);
+    Ok(serde_json::from_reader(reader)?)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
@@ -119,7 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     let opts = Opts::from_args();
     let exe_path = std::env::current_exe()?;
 
-    let network_config = NetworkConfig::load_file(opts.network_conf.clone())?;
+    let sync_config = SyncConfig::load_file(opts.network_conf.clone())?;
     let server_config = ServerConfig::load_file(opts.server_conf.clone())?;
 
     console_subscriber::ConsoleLayer::builder()
@@ -140,7 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
         let state = upgrade::read_upgrade_state(upgrade_fd);
 
-        let event_log = Arc::new(ReplicatedEventLog::restore(state.sync_state, server_send, network_config, server_config.node_config));
+        let event_log = Arc::new(ReplicatedEventLog::restore(state.sync_state, server_send, sync_config, server_config.node_config));
 
         let client_listeners = ListenerCollection::resume(state.listener_state, client_send)?;
 
@@ -160,14 +167,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
                                     server_config.server_id,
                                     epoch,
                                     server_send,
-                                    network_config,
+                                    sync_config,
                                     server_config.node_config
                                 ));
 
         let client_listeners = ListenerCollection::new(client_send)?;
 
-        let network = if opts.bootstrap_network {
-            Network::new()
+        let network = if let Some(net_conf_path) = &opts.bootstrap_network {
+            Network::new(load_network_config(net_conf_path)?)
         } else {
             *event_log.sync_to_network().await
         };

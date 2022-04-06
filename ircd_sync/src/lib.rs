@@ -10,10 +10,11 @@ mod replicated_log;
 
 pub use config::ConfigError;
 pub use config::PeerConfig;
-pub use config::NetworkConfig;
+pub use config::SyncConfig;
 pub use config::NodeConfig;
 pub use eventlog::EventLog;
 pub use eventlog::EventLogState;
+pub use eventlog::EventLogStats;
 pub use network::GossipNetwork;
 pub use network::GossipNetworkState;
 pub use network::NetworkError;

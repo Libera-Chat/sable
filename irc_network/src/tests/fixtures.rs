@@ -20,7 +20,7 @@ impl NetworkBuilder
     pub fn new() -> Self
     {
         Self {
-            net: Network::new(),
+            net: Network::new(config::NetworkConfig::new()),
             id_gen: ObjectIdGenerator::new(ServerId::new(1), EpochId::new(1)),
         }
     }

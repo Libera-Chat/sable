@@ -52,6 +52,7 @@ impl Server
         Ok(Self {
             my_id: state.id,
             name: state.name,
+            version: Self::build_version(),
             net: state.net,
             epoch: state.epoch,
             id_generator: state.id_generator,

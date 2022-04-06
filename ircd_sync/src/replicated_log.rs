@@ -66,11 +66,11 @@ struct SharedState
 {
     server: (ServerId, EpochId),
     server_tombstones: RwLock<HashMap<ServerId, (ServerName, EpochId)>>,
+    log: RwLock<EventLog>,
 }
 
 struct TaskState
 {
-    log: EventLog,
     net: Arc<GossipNetwork>,
     new_event_recv: Receiver<(ObjectId, EventDetails)>,
     network_recv: Receiver<Request>,
@@ -98,7 +98,7 @@ impl ReplicatedEventLog
     pub fn new(server_id: ServerId,
                epoch: EpochId,
                server_send: Sender<NetworkMessage>,
-               net_config: NetworkConfig,
+               net_config: SyncConfig,
                node_config: NodeConfig,
             ) -> Self
     {
@@ -111,10 +111,10 @@ impl ReplicatedEventLog
         let shared_state = Arc::new(SharedState {
             server: (server_id, epoch),
             server_tombstones: RwLock::new(HashMap::new()),
+            log: RwLock::new(EventLog::new(EventIdGenerator::new(server_id, epoch, 0), Some(log_send))),
         });
 
         let task_state = Arc::new(Mutex::new(TaskState {
-            log: EventLog::new(EventIdGenerator::new(server_id, epoch, 0), Some(log_send)),
             net: Arc::clone(&net),
             new_event_recv,
             network_recv: net_recv,
@@ -139,7 +139,7 @@ impl ReplicatedEventLog
     /// [`new`](Self::new)
     pub fn restore(state: ReplicatedEventLogState,
                server_send: Sender<NetworkMessage>,
-               net_config: NetworkConfig,
+               net_config: SyncConfig,
                node_config: NodeConfig,
             ) -> Self
     {
@@ -152,10 +152,10 @@ impl ReplicatedEventLog
         let shared_state = Arc::new(SharedState {
             server: state.server,
             server_tombstones: RwLock::new(state.server_tombstones),
+            log: RwLock::new(EventLog::restore(state.log_state, Some(log_send))),
         });
 
         let task_state = Arc::new(Mutex::new(TaskState {
-            log: EventLog::restore(state.log_state, Some(log_send)),
             net: Arc::clone(&net),
             new_event_recv,
             network_recv: net_recv,
@@ -256,6 +256,11 @@ impl ReplicatedEventLog
         })
     }
 
+    pub fn event_log(&self) -> std::sync::RwLockReadGuard<EventLog>
+    {
+        self.shared_state.log.read().unwrap()
+    }
+
     pub fn save_state(self) -> Result<ReplicatedEventLogState, EventLogSaveError>
     {
         // This set of structs takes a bit of untangling to deconstruct.
@@ -271,10 +276,12 @@ impl ReplicatedEventLog
 
         // Extract the tombstones from the RwLock so we don't have to clone it
         let server_tombstones = shared_state.server_tombstones.into_inner().unwrap();
+        // And the same for the log
+        let log = shared_state.log.into_inner().unwrap();
 
         Ok(ReplicatedEventLogState {
             server: shared_state.server,
-            log_state: task_state.log.save_state(),
+            log_state: log.save_state(),
             server_tombstones,
             network_state: self.net.save_state(),
         })
@@ -311,9 +318,13 @@ impl TaskState
                     match update {
                         Some((id, detail)) =>
                         {
-                            let event = self.log.create(id, detail);
-                            tracing::trace!("Server signalled log update: {:?}", event);
-                            self.log.add(event.clone());
+                            let event = {
+                                let mut log = self.shared_state.log.write().unwrap();
+                                let event = log.create(id, detail);
+                                tracing::trace!("Server signalled log update: {:?}", event);
+                                log.add(event.clone());
+                                event
+                            };
                             self.net.propagate(&self.message(MessageDetail::NewEvent(event))).await
                         },
                         None => break
@@ -346,32 +357,51 @@ impl TaskState
     }
 
     #[tracing::instrument(skip(self,response))]
-    async fn handle_new_event(&mut self, evt: Event, should_propagate: bool, response: &Sender<Message>) -> bool
+    async fn handle_new_event(&mut self, evt: Event, mut should_propagate: bool, response: &Sender<Message>) -> bool
     {
         let mut is_done = true;
-        // Process this event only if we haven't seen it before
-        if self.log.get(&evt.id).is_none()
+        // Calling reserve() here means we don't need to `await` the send operation while holding the lock on `log`
+        let response = response.reserve().await;
+
+        // Anonymous scope here ensures that the lock guard is dropped before calling `propagate` below
         {
-            tracing::trace!("Network sync new event: {:?}", evt);
-            // If we're missing any dependencies, ask for them
-            if !self.log.has_dependencies_for(&evt)
+            let mut log = self.shared_state.log.write().unwrap();
+
+            // Process this event only if we haven't seen it before
+            if log.get(&evt.id).is_none()
             {
-                is_done = false;
-                let missing = self.log.missing_ids_for(&evt.clock);
-                tracing::info!("Requesting missing IDs {:?}", missing);
-                if let Err(e) =
-                    response.send(self.message(MessageDetail::GetEvent(missing))).await
+                tracing::trace!("Network sync new event: {:?}", evt);
+
+                log.add(evt.clone());
+
+                // If we're missing any dependencies, ask for them
+                if !log.has_dependencies_for(&evt)
                 {
-                    tracing::error!("Error sending response to network message: {}", e);
+                    is_done = false;
+                    let missing = log.missing_ids_for(&evt.clock);
+                    tracing::info!("Requesting missing IDs {:?}", missing);
+                    match response
+                    {
+                        Ok(r) => {
+                            r.send(self.message(MessageDetail::GetEvent(missing)));
+                        }
+                        Err(e) => {
+                            tracing::error!("Error sending response to network message: {}", e);
+                        }
+                    }
                 }
             }
-
-            self.log.add(evt.clone());
-            if should_propagate
+            else
             {
-                self.net.propagate(&self.message(MessageDetail::NewEvent(evt))).await;
+                should_propagate = false;
             }
         }
+
+        if should_propagate
+        {
+            self.net.propagate(&self.message(MessageDetail::NewEvent(evt))).await;
+        }
+
         is_done
     }
 
@@ -399,7 +429,8 @@ impl TaskState
             return;
         }
 
-        match req.message.content {
+        match req.message.content
+        {
             MessageDetail::NewEvent(evt) =>
             {
                 if self.handle_new_event(evt, true, &req.response).await
@@ -432,7 +463,7 @@ impl TaskState
             },
             MessageDetail::SyncRequest(clock) =>
             {
-                let new_events: Vec<Event> = self.log.get_since(clock).cloned().collect();
+                let new_events: Vec<Event> = self.shared_state.log.read().unwrap().get_since(clock).cloned().collect();
 
                 if let Err(e) =
                     req.response.send(self.message(MessageDetail::BulkEvents(new_events))).await
@@ -447,7 +478,7 @@ impl TaskState
 
                 for id in ids.iter()
                 {
-                    if let Some(new_event) = self.log.get(id)
+                    if let Some(new_event) = self.shared_state.log.read().unwrap().get(id)
                     {
                         events.push(new_event.clone());
                     }
@@ -480,8 +511,10 @@ impl TaskState
                 tracing::info!("Got new network state; applying");
                 tracing::info!("New event clock is {:?}", net.clock());
 
-                // Set our event clock to the one from the incoming state
-                self.log.set_clock(net.clock().clone());
+                {
+                    // Set our event clock to the one from the incoming state
+                    self.shared_state.log.write().unwrap().set_clock(net.clock().clone());
+                }
 
                 // Then reset our list of active peers to those that are active in the incoming state
                 for server in net.servers()

@@ -42,24 +42,24 @@ pub enum ValidationError
 pub type ValidationResult = Result<(), ValidationError>;
 
 /// Stores the current network state.
-/// 
+///
 /// ## General Principles
-/// 
+///
 /// A `Network` object is fully serializable and cloneable;
-/// all objects within it refer to each other by unique ID 
+/// all objects within it refer to each other by unique ID
 /// and not by reference.
-/// 
+///
 /// The `Network` stores only raw state objects, which themselves provide no
 /// logic or other utility. Short-lived wrapper objects are created and
 /// returned by most public methods, which wrap a reference to the underlying
 /// state and provide convenience accessors for associated objects and various
 /// other pieces of application logic.
-/// 
+///
 /// In line with Rust's borrowing rules, these wrappers cannot outlive the
 /// calling code's borrow of the `Network`, and should not be stored. If a list
 /// of network objects needs to be maintained by code outside of this module,
 /// then it should store object IDs and look them up as required.
-/// 
+///
 /// Most public accessors return a [`LookupResult`] instead of an `Option` to
 /// facilitate handling of missing objects in command handlers.
 #[serde_as]
@@ -111,7 +111,7 @@ pub struct Network
 
 impl Network {
     /// Create an empty network state.
-    pub fn new() -> Network
+    pub fn new(config: config::NetworkConfig) -> Network
     {
         Network {
             nick_bindings: HashMap::new(),
@@ -130,7 +130,7 @@ impl Network {
             servers: HashMap::new(),
             klines: HashMap::new(),
 
-            config: config::NetworkConfig::new(),
+            config,
 
             audit_log: HashMap::new(),
 
@@ -139,31 +139,31 @@ impl Network {
     }
 
     /// Apply an [Event] to the network state.
-    /// 
+    ///
     /// This is the only supported way to update the state. Events should
     /// be applied as they are emitted by the event log.
-    /// 
+    ///
     /// ## Arguments
-    /// 
+    ///
     /// - `event`: the event to apply
     /// - `updates`: an implementation of [NetworkUpdateReceiver] which will
     ///   be used to notify the caller of any changes in network state that result
     ///   from the processing of this event.
-    /// 
+    ///
     /// ## Return Value
-    /// 
+    ///
     /// `Ok(())` if the event was successfully applied. `Err(_)` if there is a
     /// mismatch between the expected target object for the event type and the
     /// provided target ID type.
-    /// 
+    ///
     /// This function is infallible if a properly-formed `Event` is supplied.
-    /// 
+    ///
     /// ## Side Effects
-    /// 
+    ///
     /// - The network state is updated to reflect the application of the event
     /// - The network's event clock is updated to reflect the incoming event ID.
     /// - The `notify_update` method is called zero or more times on `updates`
-    /// 
+    ///
     pub fn apply(&mut self, event: &Event, updates: &dyn NetworkUpdateReceiver) -> Result<(),WrongIdTypeError>
     {
         if self.clock.contains(event.id)
@@ -203,13 +203,13 @@ impl Network {
     }
 
     /// Validate a proposed event against the current network state.
-    /// 
+    ///
     /// This method can be used to identify problems which would occur if the
     /// provided event details were transformed and applied to the current
     /// state. This is provided as a convenience for consumers, and does not
     /// give any guarantee of behaviour if other events are processed between
     /// the validation and eventual application of a given event.
-    /// 
+    ///
     /// Note also that this is not related to whether [`apply`](Self::apply)
     ///  will succeed - `apply` always succeeds provided the event is well-
     /// formed. `validate`  provides advance warning of potentially undesirable

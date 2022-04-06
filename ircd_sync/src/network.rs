@@ -115,7 +115,7 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for NetworkError
 
 impl GossipNetwork
 {
-    pub fn new(net_config: NetworkConfig, node_config: NodeConfig, message_sender: Sender<Request>) -> Self
+    pub fn new(net_config: SyncConfig, node_config: NodeConfig, message_sender: Sender<Request>) -> Self
     {
         let ca_cert = net_config.load_ca_cert().expect("Error loading CA");
 
@@ -152,7 +152,7 @@ impl GossipNetwork
         }
     }
 
-    pub fn restore(state: GossipNetworkState, net_config: NetworkConfig, node_config: NodeConfig, message_sender: Sender<Request>) -> Self
+    pub fn restore(state: GossipNetworkState, net_config: SyncConfig, node_config: NodeConfig, message_sender: Sender<Request>) -> Self
     {
         let ret = Self::new(net_config, node_config, message_sender);
 

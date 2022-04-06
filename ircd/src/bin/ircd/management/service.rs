@@ -1,5 +1,6 @@
 use super::*;
 use irc_server::server::ServerManagementCommand;
+use irc_server::server::ServerManagementCommandType;
 use rpc_protocols::ShutdownAction;
 
 use std::{
@@ -55,6 +56,39 @@ fn internal_error() -> hyper::Result<Response<Body>>
     Ok(response)
 }
 
+impl ManagementService
+{
+    async fn server_management_command(command_sender: Sender<ManagementCommand>, cmd: ServerManagementCommandType) -> Result<Response<Body>, hyper::Error>
+    {
+        let (send, recv) = oneshot::channel();
+        let cmd = ServerManagementCommand { cmd, response: send };
+        if command_sender.send(ManagementCommand::ServerCommand(cmd)).await.is_err()
+        {
+            internal_error()
+        }
+        else if let Ok(response) = recv.await
+        {
+            Ok(Response::new(Body::from(response)))
+        }
+        else
+        {
+            internal_error()
+        }
+    }
+
+    async fn shutdown_command(command_sender: Sender<ManagementCommand>, cmd: ShutdownAction) -> Result<Response<Body>, hyper::Error>
+    {
+        if command_sender.send(ManagementCommand::Shutdown(cmd)).await.is_ok()
+        {
+            Ok(Response::new(Body::empty()))
+        }
+        else
+        {
+            internal_error()
+        }
+    }
+}
+
 impl hyper::service::Service<Request<Body>> for ManagementService
 {
     type Response = Response<Body>;
@@ -78,56 +112,27 @@ impl hyper::service::Service<Request<Body>> for ManagementService
             {
                 (&Method::GET, "/statistics") =>
                 {
-                    let (send, recv) = oneshot::channel();
-                    if command_sender.send(ManagementCommand::ServerCommand(ServerManagementCommand::ServerStatistics(send))).await.is_err()
-                    {
-                        internal_error()
-                    }
-                    else if let Ok(stat) = recv.await
-                    {
-                        Ok(Response::new(Body::from(stat)))
-                    }
-                    else
-                    {
-                        internal_error()
-                    }
+                    Self::server_management_command(command_sender, ServerManagementCommandType::ServerStatistics).await
+                }
+                (&Method::GET, "/dump-network") =>
+                {
+                    Self::server_management_command(command_sender, ServerManagementCommandType::DumpNetwork).await
+                }
+                (&Method::GET, "/dump-events") =>
+                {
+                    Self::server_management_command(command_sender, ServerManagementCommandType::DumpEvents).await
                 }
                 (&Method::POST, "/shutdown") =>
                 {
-                    if command_sender.send(ManagementCommand::Shutdown(ShutdownAction::Shutdown)).await.is_ok()
-                    {
-                        Ok(Response::new(Body::empty()))
-                    }
-                    else
-                    {
-                        internal_error()
-                    }
+                    Self::shutdown_command(command_sender, ShutdownAction::Shutdown).await
                 }
                 (&Method::POST, "/restart") =>
                 {
-                    if command_sender.send(ManagementCommand::Shutdown(ShutdownAction::Restart)).await.is_ok()
-                    {
-                        Ok(Response::new(Body::empty()))
-                    }
-                    else
-                    {
-                        internal_error()
-                    }
+                    Self::shutdown_command(command_sender, ShutdownAction::Restart).await
                 }
                 (&Method::POST, "/upgrade") =>
                 {
-                    if command_sender.send(ManagementCommand::Shutdown(ShutdownAction::Upgrade)).await.is_ok()
-                    {
-                        Ok(Response::new(Body::empty()))
-                    }
-                    else
-                    {
-                        internal_error()
-                    }
-                }
-                (&Method::POST, "/dump-events") =>
-                {
-                    internal_error()
+                    Self::shutdown_command(command_sender, ShutdownAction::Upgrade).await
                 }
                 _ =>
                 {

@@ -136,6 +136,8 @@ EventDetails => {
         pub epoch: EpochId,
         pub name: ServerName,
         pub ts: i64,
+        pub flags: state::ServerFlags,
+        pub version: String,
     }
 
     #[target_type(ServerId)]

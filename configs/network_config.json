@@ -4,5 +4,7 @@
             "name": "stephen",
             "hash": "$6$Hxo5XCCdtSW$OG84xmWZJKxV9iAlD58/FTeLt2T6KjMCIsOC0HBZMFfRQXcKf1HI0s2yHggq6y7L40EZ/B1ueyXZX4fIv9ckC/"
         }
-    ]
+    ],
+
+    "debug_mode": true
 }

@@ -33,6 +33,14 @@ pub struct EventLogState
     clock: EventClock,
 }
 
+#[derive(Debug,serde::Serialize)]
+pub struct EventLogStats
+{
+    pub pending_events: usize,
+    pub current_clock: EventClock,
+    pub last_event_id: EventId,
+}
+
 impl EventLog {
     /// Construct a new `EventLog`. `event_sender`, if `Some`, will receive
     /// notification of all new events as they are added to the log and become
@@ -59,6 +67,9 @@ impl EventLog {
         }
     }
 
+    /// Save the state required to resume operation later
+    ///
+    /// The log is consumed
     pub fn save_state(self) -> EventLogState
     {
         EventLogState {
@@ -93,6 +104,30 @@ impl EventLog {
     /// The log's current event clock
     pub fn clock(&self) -> &EventClock {
         &self.last_event_clock
+    }
+
+    /// Return some statistics about the event log
+    pub fn get_stats(&self) -> EventLogStats
+    {
+        EventLogStats {
+            pending_events: self.pending.len(),
+            current_clock: self.last_event_clock.clone(),
+            last_event_id: self.id_gen.last(),
+        }
+    }
+
+    #[cfg(feature="debug")]
+    /// Access the full list of events stored in the log
+    pub fn all_events(&self) -> impl Iterator<Item=&Event>
+    {
+        self.history.values().map(|m| m.values()).flatten()
+    }
+
+    #[cfg(feature="debug")]
+    /// Access the list of pending events
+    pub fn pending_events(&self) -> impl Iterator<Item=&Event>
+    {
+        self.pending.values()
     }
 
     /// Set the clock for this log.

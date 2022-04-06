@@ -2,8 +2,15 @@
 name = "irc_server"
 version = "0.1.0"
 edition = "2018"
+build = "build.rs"
+
+[features]
+debug = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+built = { version = "0.5", features = [ "git2" ] }
 
 [dependencies]
 ircd_macros = { path = "../ircd_macros" }

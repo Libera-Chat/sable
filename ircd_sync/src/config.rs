@@ -30,7 +30,7 @@ pub struct PeerConfig
 
 /// Configuration of the gossip network
 #[derive(Debug,Serialize,Deserialize)]
-pub struct NetworkConfig
+pub struct SyncConfig
 {
     pub(crate) peers: Vec<PeerConfig>,
     pub(crate) fanout: usize,
@@ -63,7 +63,7 @@ pub enum ConfigError
     MissingField(String)
 }
 
-impl NetworkConfig
+impl SyncConfig
 {
     /// Load the network configuration from a given file path
     pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, ConfigError>

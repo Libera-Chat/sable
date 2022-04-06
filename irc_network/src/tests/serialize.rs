@@ -4,7 +4,7 @@ use super::fixtures::*;
 #[test]
 fn empty_network_can_be_serialized()
 {
-    let net = Network::new();
+    let net = Network::new(config::NetworkConfig::new());
     let _str = serde_json::to_string(&net).unwrap();
 }
 
@@ -30,4 +30,4 @@ fn net_with_user_can_be_serialized()
     let net: Network = serde_json::from_str(&str).unwrap();
     assert_eq!(net.channels().count(), 0);
     assert_eq!(net.users().count(), 1);
-}   
+}

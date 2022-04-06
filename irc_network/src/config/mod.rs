@@ -4,6 +4,7 @@ use serde::{Serialize,Deserialize};
 pub struct NetworkConfig
 {
     pub opers: Vec<OperConfig>,
+    pub debug_mode: bool,
 }
 
 #[derive(Debug,Clone,Serialize,Deserialize)]
@@ -18,7 +19,8 @@ impl NetworkConfig
     pub fn new() -> Self
     {
         Self {
-            opers: Vec::new()
+            opers: Vec::new(),
+            debug_mode: false,
         }
     }
 }

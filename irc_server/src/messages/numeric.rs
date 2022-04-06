@@ -11,6 +11,7 @@ use super::*;
 
 define_messages! {
     001(Welcome)    => { (network_name: &str, nick: &Nickname)  => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
+    002(YourHostIs) => { (server_name: &ServerName, version: &str)     => ":Your host is {server_name}, running version {version}" },
     005(ISupport)   => { (data: &str)                           => "{data} :are supported by this server" },
 
     221(UserModeIs)                => { (modestring: &str)         => ":{modestring}" },

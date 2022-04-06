@@ -18,6 +18,8 @@ impl Network
             epoch: detail.epoch,
             name: detail.name,
             last_ping: detail.ts,
+            flags: detail.flags,
+            version: detail.version.clone(),
         };
 
         self.servers.insert(target, server);

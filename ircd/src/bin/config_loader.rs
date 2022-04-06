@@ -21,7 +21,6 @@ struct Opts
 struct ServerConfig
 {
     server_id: ServerId,
-    server_name: ServerName,
 
     node_config: ircd_sync::NodeConfig,
 }
@@ -48,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
     let opts = Opts::from_args();
 
-    let network_config = ircd_sync::NetworkConfig::load_file(opts.network_conf)?;
+    let sync_config = ircd_sync::SyncConfig::load_file(opts.network_conf)?;
     let server_config = ServerConfig::load_file(opts.server_conf)?;
 
     let config_to_load = load_network_config(opts.config_to_load)?;
@@ -57,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     let (msg_send, _msg_recv) = channel(128);
 
-    let net = ircd_sync::GossipNetwork::new(network_config, server_config.node_config, msg_send);
+    let net = ircd_sync::GossipNetwork::new(sync_config, server_config.node_config, msg_send);
 
     let now = Utc::now().timestamp();
     let epoch = EpochId::new(now);
