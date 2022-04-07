@@ -1,9 +1,11 @@
 use super::*;
 use client_listener::{
     ConnectionId,
-    ConnectionData
 };
-use std::cell::RefCell;
+use crate::client::ClientConnectionState;
+use std::{
+    collections::HashMap,
+};
 
 /// Stores the client connections handled by a [`Server`], and allows lookup by
 /// either connection ID or user ID
@@ -13,20 +15,10 @@ pub(super) struct ConnectionCollection
     user_to_connid: HashMap<UserId, ConnectionId>,
 }
 
-/// Serialised state of a [`ClientConnection`], for later resumption
-#[derive(serde::Serialize,serde::Deserialize)]
-pub(super) struct ClientConnectionState
-{
-    connection_id: ConnectionId,
-    connection_data: ConnectionData,
-    user_id: Option<UserId>,
-    pre_client: Option<PreClient>
-}
-
 /// Serialised state of a [`ConnectionCollection`], for later resumption
 #[derive(serde::Serialize,serde::Deserialize)]
 pub(super) struct ConnectionCollectionState(
-    Vec<ClientConnectionState>
+    Vec<(ConnectionId,ClientConnectionState)>
 );
 
 impl ConnectionCollection
@@ -126,12 +118,7 @@ impl ConnectionCollection
                 .into_iter()
                 .map(|(k,v)| {
                     tracing::trace!("Saving client connection {:?} ({:?})", k, v.user_id);
-                    ClientConnectionState {
-                        connection_id: k,
-                        connection_data: v.connection.save(),
-                        user_id: v.user_id,
-                        pre_client: v.pre_client.map(|cell| cell.into_inner())
-                    }
+                    (k, v.save())
                 })
                 .collect()
         )
@@ -142,19 +129,14 @@ impl ConnectionCollection
     {
         let mut ret = Self::new();
 
-        for conn_data in state.0.into_iter()
+        for (conn_id, conn_data) in state.0.into_iter()
         {
-            tracing::trace!("Restoring client connection {:?} ({:?})", conn_data.connection_id, conn_data.user_id);
-            let cli_conn = ClientConnection {
-                connection: listener_collection.restore_connection(conn_data.connection_data),
-                user_id: conn_data.user_id,
-                pre_client: conn_data.pre_client.map(RefCell::new)
-            };
+            let cli_conn = ClientConnection::restore(conn_data, listener_collection);
             if let Some(user_id) = &cli_conn.user_id
             {
-                ret.user_to_connid.insert(*user_id, conn_data.connection_id);
+                ret.user_to_connid.insert(*user_id, conn_id);
             }
-            ret.client_connections.insert(conn_data.connection_id, cli_conn);
+            ret.client_connections.insert(conn_id, cli_conn);
         }
 
         ret

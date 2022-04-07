@@ -23,6 +23,8 @@ pub use messages::numeric;
 pub use messages::MessageType;
 pub use messages::Numeric;
 
+mod movable;
+
 mod build_data
 {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
