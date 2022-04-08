@@ -229,6 +229,7 @@ impl ReplicatedEventLog
         {
             self.enable_server(*server.name(), server.id());
         }
+        self.shared_state.log.write().expect("event log lock is poisoned?").set_clock(net.clock().clone());
 
         net
     }
