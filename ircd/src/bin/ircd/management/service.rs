@@ -174,10 +174,10 @@ impl hyper::service::Service<Request<Body>> for ManagementService
 
 impl ManagementServer
 {
-    fn server_config(data: TlsData) -> Arc<rustls::ServerConfig>
+    fn server_config(data: TlsData, client_ca: Vec<u8>) -> Arc<rustls::ServerConfig>
     {
         let mut root_store = rustls::RootCertStore::empty();
-        root_store.add(&rustls::Certificate(data.ca)).expect("Error adding certificate to store");
+        root_store.add(&rustls::Certificate(client_ca)).expect("Error adding certificate to store");
 
         Arc::new(rustls::ServerConfig::builder()
             .with_safe_defaults()
@@ -216,12 +216,14 @@ impl ManagementServer
                  mut shutdown: broadcast::Receiver<ShutdownAction>) -> Self
     {
         let (command_sender, command_receiver) = channel(128);
+
+        let client_ca = config.load_client_ca().expect("Failed to load management client CA");
         let service_data = Arc::new(ManagementServiceData{ command_sender, authorised_fingerprints: config.authorised_fingerprints });
 
         let data = Arc::clone(&service_data);
         let listen_address = config.address;
         let server_task = task::spawn(async move {
-            let tls_config = Self::server_config(tls_data);
+            let tls_config = Self::server_config(tls_data, client_ca);
             let acceptor = Arc::new(TlsAcceptor::from(Arc::clone(&tls_config)));
             let listener = TcpListener::bind(&listen_address).await.expect("Failed to bind to management address");
 

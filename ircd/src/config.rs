@@ -6,7 +6,6 @@ pub struct TlsConfig
 {
     pub key_file: PathBuf,
     pub cert_file: PathBuf,
-    pub ca_file: PathBuf,
 }
 
 #[derive(Clone,Debug)]
@@ -14,7 +13,6 @@ pub struct TlsData
 {
     pub key: Vec<u8>,
     pub cert_chain: Vec<Vec<u8>>,
-    pub ca: Vec<u8>,
 }
 
 #[derive(Debug,Deserialize)]
@@ -36,6 +34,7 @@ pub struct AuthorisedFingerprint
 pub struct ManagementConfig
 {
     pub address: SocketAddr,
+    pub client_ca: PathBuf,
     pub authorised_fingerprints: Vec<AuthorisedFingerprint>,
 }
 
@@ -68,10 +67,6 @@ impl TlsConfig
 {
     pub fn load_from_disk(&self) -> Result<TlsData, Box<dyn Error>>
     {
-        let ca_file = File::open(&self.ca_file)?;
-        let mut ca_reader = BufReader::new(ca_file);
-        let ca = rustls_pemfile::certs(&mut ca_reader)?.remove(0);
-
         let cert_file = File::open(&self.cert_file)?;
         let mut cert_reader = BufReader::new(cert_file);
         let cert_chain = rustls_pemfile::certs(&mut cert_reader)?;
@@ -88,7 +83,17 @@ impl TlsConfig
             Some(Item::X509Certificate(_)) | None => Err(ConfigError::FormatError("No private key in file".to_string()))
         }?;
 
-        Ok(TlsData { key: server_key, cert_chain, ca })
+        Ok(TlsData { key: server_key, cert_chain })
+    }
+}
+
+impl ManagementConfig
+{
+    pub fn load_client_ca(&self) -> std::io::Result<Vec<u8>>
+    {
+        let ca_file = File::open(&self.client_ca)?;
+        let mut ca_reader = BufReader::new(ca_file);
+        Ok(rustls_pemfile::certs(&mut ca_reader)?.remove(0))
     }
 }
 
