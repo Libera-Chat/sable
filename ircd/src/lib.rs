@@ -1,5 +1,4 @@
-//! This library exists to be used as a prelude package for command-line binaries,
-//! just importing and re-exporting symbols that are likely to be needed.
+pub mod config;
 
 pub use irc_network::{
     *,

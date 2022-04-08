@@ -84,11 +84,6 @@ impl ConnectionCollection
         }
     }
 
-/*    pub fn get_mut(&mut self, id: ConnectionId) -> Result<&mut ClientConnection, LookupError>
-    {
-        self.client_connections.get_mut(&id).ok_or(LookupError::NoSuchConnectionId)
-    }
-*/
     /// Look up a connection by user ID, returning a mutable reference
     pub fn get_user_mut(&mut self, id: UserId) -> Result<&mut ClientConnection, LookupError>
     {

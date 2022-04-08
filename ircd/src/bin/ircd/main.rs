@@ -1,4 +1,5 @@
 use ircd::*;
+use ircd::config::*;
 use irc_server::{
     Server,
 };
@@ -50,88 +51,27 @@ struct Opts
     bootstrap_network: Option<PathBuf>,
 }
 
-#[derive(Debug,Deserialize)]
-struct TlsConfig
-{
-    key_file: PathBuf,
-    cert_file: PathBuf,
-}
-
-#[derive(Debug,Deserialize)]
-struct ListenerConfig
-{
-    address: String,
-    #[serde(default)]
-    tls: bool,
-}
-
-#[derive(Debug,Deserialize)]
-struct ServerConfig
-{
-    server_id: ServerId,
-    server_name: ServerName,
-
-    management_address: String,
-    console_address: String,
-
-    listeners: Vec<ListenerConfig>,
-
-    tls_config: Option<TlsConfig>,
-    node_config: NodeConfig,
-}
-
-impl ServerConfig
-{
-    pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, ConfigError>
-    {
-        let file = File::open(filename)?;
-        let reader = BufReader::new(file);
-        Ok(serde_json::from_reader(reader)?)
-    }
-}
-
-fn load_tls_server_config(conf: &TlsConfig) -> Result<client_listener::TlsSettings, Box<dyn Error>>
-{
-    let cert_file = File::open(&conf.cert_file)?;
-    let mut cert_reader = BufReader::new(cert_file);
-    let cert_chain = rustls_pemfile::certs(&mut cert_reader)?;
-
-    let key_file = File::open(&conf.key_file)?;
-    let mut key_reader = BufReader::new(key_file);
-
-    let server_key = rustls_pemfile::read_one(&mut key_reader)?;
-
-    use rustls_pemfile::Item;
-
-    let server_key = match server_key {
-        Some(Item::RSAKey(key)) | Some(Item::PKCS8Key(key)) => Ok(key),
-        Some(Item::X509Certificate(_)) | None => Err(ConfigError::FormatError("No private key in file".to_string()))
-    }?;
-
-    Ok(client_listener::TlsSettings { key: server_key, cert_chain })
-}
-
-fn load_network_config(filename: impl AsRef<Path>) -> Result<irc_network::config::NetworkConfig, ircd_sync::ConfigError>
-{
-    let file = File::open(filename)?;
-    let reader = BufReader::new(file);
-    Ok(serde_json::from_reader(reader)?)
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
-    //tracing_subscriber::fmt::init();
-
     let opts = Opts::from_args();
     let exe_path = std::env::current_exe()?;
 
     let sync_config = SyncConfig::load_file(opts.network_conf.clone())?;
     let server_config = ServerConfig::load_file(opts.server_conf.clone())?;
 
-    console_subscriber::ConsoleLayer::builder()
-        .server_addr(server_config.console_address.parse::<SocketAddr>()?)
-        .init();
+    let tls_data = server_config.tls_config.load_from_disk()?;
+
+    if let Some(console_address) = server_config.console_address
+    {
+        console_subscriber::ConsoleLayer::builder()
+            .server_addr(console_address.parse::<SocketAddr>()?)
+            .init();
+    }
+    else
+    {
+        tracing_subscriber::fmt::init();
+    }
 
     let (client_send, client_recv) = channel(128);
     let (server_send, server_recv) = channel(128);
@@ -188,10 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
                                  server_recv,
                             );
 
-        if let Some(conf) = server_config.tls_config {
-            let tls_conf = load_tls_server_config(&conf)?;
-            client_listeners.load_tls_certificates(tls_conf)?;
-        }
+        client_listeners.load_tls_certificates(tls_data.key.clone(), tls_data.cert_chain.clone())?;
 
         for listener in server_config.listeners
         {
@@ -203,13 +140,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     };
 
     let (management_send, management_recv) = channel(128);
-    let management_address = server_config.management_address.clone();
+    let management_config = server_config.management.clone();
 
     let management_shutdown = shutdown_send.subscribe();
     let (mgmt_task_shutdown, mut mgmt_task_shutdown_recv) = oneshot::channel();
 
     let management_task = tokio::spawn(async move {
-        let mut server = management::ManagementServer::start(management_address.parse().unwrap(), management_shutdown);
+        let mut server = management::ManagementServer::start(management_config, tls_data, management_shutdown);
 
         let mut server_shutdown_send = Some(server_shutdown_send);
         loop

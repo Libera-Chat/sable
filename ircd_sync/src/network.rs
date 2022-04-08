@@ -7,11 +7,10 @@ use tokio::{
     net::{
         TcpListener,
         TcpStream,
+        TcpSocket,
     },
     io,
     io::{
-        AsyncRead,
-        AsyncWrite,
         AsyncReadExt,
         AsyncWriteExt,
     },
@@ -51,6 +50,10 @@ use rustls::{
     server::AllowAnyAuthenticatedClient,
 };
 use x509_parser::prelude::*;
+use sha1::{
+    Sha1,
+    Digest,
+};
 
 use rand::prelude::*;
 use thiserror::Error;
@@ -59,7 +62,6 @@ use tracing::instrument;
 /// An interface to the gossip network used to synchronise state.
 pub struct GossipNetwork
 {
-    listen_addr: SocketAddr,
     fanout: usize,
     tls_client_config: Arc<ClientConfig>,
     shutdown_send: Mutex<Option<oneshot::Sender<()>>>,
@@ -72,6 +74,7 @@ pub struct GossipNetwork
 struct NetworkTaskState
 {
     peers: Vec<Peer>,
+    listen_addr: SocketAddr,
     tls_server_config: Arc<ServerConfig>,
     message_sender: Sender<Request>,
 }
@@ -103,6 +106,8 @@ pub enum NetworkError
     AlreadyListening,
     #[error("Internal error: {0}")]
     InternalError(String),
+    #[error("Authorisation failure: {0}")]
+    AuthzError(String),
 }
 
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for NetworkError
@@ -140,11 +145,11 @@ impl GossipNetwork
         peers.retain(|p| p.address != node_config.listen_addr);
 
         Self {
-            listen_addr: node_config.listen_addr,
             fanout: net_config.fanout,
             tls_client_config: Arc::new(client_config),
             shutdown_send: Mutex::new(None),
             task_state: Arc::new(NetworkTaskState {
+                listen_addr: node_config.listen_addr,
                 peers: peers.into_iter().map(|c| Peer { conf: c, enabled: AtomicBool::new(false) }).collect(),
                 tls_server_config: Arc::new(server_config),
                 message_sender,
@@ -276,17 +281,30 @@ impl GossipNetwork
         Ok(self.do_send_to(peer, msg, response_sender).await?)
     }
 
+    fn get_socket_for_addr(addr: &SocketAddr) -> std::io::Result<TcpSocket>
+    {
+        match addr {
+            SocketAddr::V4(_) => TcpSocket::new_v4(),
+            SocketAddr::V6(_) => TcpSocket::new_v6()
+        }
+    }
+
     #[instrument(skip(self,response_sender))]
     async fn do_send_to(&self, peer: &PeerConfig, msg: Message, response_sender: Sender<Request>)
                 -> Result<JoinHandle<()>, NetworkError>
     {
+        let mut local_addr = self.task_state.listen_addr.clone();
+        local_addr.set_port(0);
+        let socket = Self::get_socket_for_addr(&local_addr)?;
+        socket.bind(local_addr)?;
         let connector = TlsConnector::from(Arc::clone(&self.tls_client_config));
-        let conn = TcpStream::connect(peer.address).await?;
+        let conn = socket.connect(peer.address).await?;
         let server_name = (&peer.name as &str).try_into().expect("Invalid server name");
         let stream = connector.connect(server_name, conn).await?;
 
+        let task_state = Arc::clone(&self.task_state);
         Ok(tokio::spawn(async move {
-            if let Err(e) = Self::send_and_handle_response(stream.into(), msg, response_sender).await
+            if let Err(e) = task_state.send_and_handle_response(stream.into(), msg, response_sender).await
             {
                 tracing::error!("Error in outbound network sync connection: {}", e);
             }
@@ -295,7 +313,7 @@ impl GossipNetwork
 
     pub async fn spawn_listen_task(&self) -> Result<JoinHandle<()>, NetworkError>
     {
-        let listener = TcpListener::bind(self.listen_addr).await?;
+        let listener = TcpListener::bind(self.task_state.listen_addr).await?;
         let task_state = Arc::clone(&self.task_state);
 
         let (shutdown_send, shutdown_recv) = oneshot::channel();
@@ -309,17 +327,20 @@ impl GossipNetwork
         }
 
         Ok(tokio::spawn(async move {
-            if let Err(e) = Self::listen_loop(listener, shutdown_recv, task_state).await
+            if let Err(e) = task_state.listen_loop(listener, shutdown_recv).await
             {
                 tracing::error!("Error in network sync listener: {}", e);
             }
         }))
     }
+}
 
-    #[instrument(skip(task_state))]
-    async fn listen_loop(listener: TcpListener, mut shutdown: oneshot::Receiver<()>, task_state: Arc<NetworkTaskState>) -> Result<(), io::Error>
+impl NetworkTaskState
+{
+    #[instrument(skip(self))]
+    async fn listen_loop(self: Arc<NetworkTaskState>, listener: TcpListener, mut shutdown: oneshot::Receiver<()>) -> Result<(), io::Error>
     {
-        let tls_acceptor = TlsAcceptor::from(Arc::clone(&task_state.tls_server_config));
+        let tls_acceptor = TlsAcceptor::from(Arc::clone(&self.tls_server_config));
 
         loop
         {
@@ -330,9 +351,10 @@ impl GossipNetwork
                     if let Ok((conn, _)) = res
                     {
                         let tls_acceptor = tls_acceptor.clone();
-                        let sender = task_state.message_sender.clone();
+                        let sender = self.message_sender.clone();
+                        let self_copy = Arc::clone(&self);
                         tokio::spawn(async move {
-                            if let Err(e) = Self::handle_connection(tls_acceptor, conn, sender).await
+                            if let Err(e) = self_copy.handle_connection(tls_acceptor, conn, sender).await
                             {
                                 tracing::error!("Error in network sync connection handler: {}", e);
                             }
@@ -349,12 +371,12 @@ impl GossipNetwork
         Ok(())
     }
 
-    #[instrument(skip(tls_acceptor))]
-    async fn handle_connection(tls_acceptor: TlsAcceptor, conn: TcpStream, message_sender: Sender<Request>) -> Result<(), NetworkError>
+    #[instrument(skip(tls_acceptor,self))]
+    async fn handle_connection(self: Arc<NetworkTaskState>, tls_acceptor: TlsAcceptor, conn: TcpStream, message_sender: Sender<Request>) -> Result<(), NetworkError>
     {
         let stream = tls_acceptor.accept(conn).await?;
 
-        if let Err(e) = Self::read_and_handle_message(stream.into(), message_sender).await
+        if let Err(e) = self.read_and_handle_message(stream.into(), message_sender).await
         {
             tracing::error!("Error handling message: {}", e);
         }
@@ -362,35 +384,57 @@ impl GossipNetwork
         Ok(())
     }
 
-    #[instrument]
-    async fn send_and_handle_response<IO>(mut stream: TlsStream<IO>, message: Message, response_sender: Sender<Request>) -> Result<(), NetworkError>
-        where IO: AsyncRead + AsyncWrite + Unpin + std::fmt::Debug
+    #[instrument(skip(self))]
+    async fn send_and_handle_response(self: Arc<NetworkTaskState>, mut stream: TlsStream<TcpStream>, message: Message, response_sender: Sender<Request>) -> Result<(), NetworkError>
     {
         let buf = serde_json::to_vec(&message)?;
         stream.write_u32(buf.len().try_into().unwrap()).await?;
         stream.write_all(&buf).await?;
 
-        Self::read_and_handle_message(stream, response_sender).await?;
+        self.read_and_handle_message(stream, response_sender).await?;
 
         Ok(())
     }
 
-    #[instrument]
-    async fn read_and_handle_message<IO>(mut stream: TlsStream<IO>, message_sender: Sender<Request>) -> Result<(), NetworkError>
-        where IO: AsyncRead + AsyncWrite + Unpin + std::fmt::Debug
+    #[instrument(skip(self))]
+    async fn read_and_handle_message(self: Arc<NetworkTaskState>, mut stream: TlsStream<TcpStream>, message_sender: Sender<Request>) -> Result<(), NetworkError>
     {
         // Get the peer name we're talking to from the tls certificate
-        let (_, state) = stream.get_ref();
+        let (tcp_stream, state) = stream.get_ref();
         let peer_certs = state.peer_certificates()
                                     .ok_or(NetworkError::InternalError("No peer certificates?".to_string()))?;
+
         let (_,cert) = X509Certificate::from_der(&peer_certs[0].0)
                                     .map_err(|e| NetworkError::InternalError(format!("Invalid peer certificate? {}", e)))?;
+
         let peer_name = cert.subject()
                             .iter_common_name()
                             .next()
                             .and_then(|cn| cn.as_str().ok())
                             .ok_or(NetworkError::InternalError("Couldn't parse peer CN".to_string()))?
                             .to_string();
+
+        let peer = self.peers.iter()
+                             .find(|p| p.conf.name == peer_name)
+                             .ok_or(NetworkError::AuthzError("Couldn't find peer configuration".to_string()))?;
+        let peer_conf = &peer.conf;
+
+        let remote_addr = tcp_stream.peer_addr()?;
+        if remote_addr.ip() != peer_conf.address.ip()
+        {
+            return Err(NetworkError::AuthzError(format!("IP address doesn't match peer configuration ({}/{})", remote_addr.ip(), peer_conf.address.ip())));
+        }
+
+        let expected_fingerprint = &peer_conf.fingerprint;
+        let mut cert_hasher = Sha1::new();
+        cert_hasher.update(&peer_certs[0].0);
+        let remote_fingerprint = hex::encode(cert_hasher.finalize());
+
+        if &remote_fingerprint != expected_fingerprint
+        {
+            return Err(NetworkError::AuthzError(format!("Certificate doesn't match ({}/{})", remote_fingerprint, expected_fingerprint)));
+        }
+
 
         loop
         {

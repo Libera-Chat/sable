@@ -218,8 +218,9 @@ impl ListenerCollection
 
     /// Load the provided TLS settings. This must be done before a TLS listener can be
     /// created.
-    pub fn load_tls_certificates(&self, settings: TlsSettings) -> Result<(), ListenerError>
+    pub fn load_tls_certificates(&self, key: Vec<u8>, cert_chain: Vec<Vec<u8>>) -> Result<(), ListenerError>
     {
+        let settings = TlsSettings { key, cert_chain };
         Ok(self.control_sender.send(ControlMessage::LoadTlsSettings(settings))?)
     }
 

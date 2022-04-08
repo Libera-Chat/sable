@@ -353,7 +353,7 @@ impl Server
     {
         tracing::info!("Got server quit");
 
-        if detail.server.id == self.my_id
+        if detail.server.id == self.my_id && detail.server.epoch == self.epoch
         {
             // The network thinks we're no longer alive. Shut down to avoid desyncs
             panic!("Network thinks we're dead. Making it so");

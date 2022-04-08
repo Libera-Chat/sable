@@ -26,6 +26,7 @@ pub struct PeerConfig
 {
     pub(crate) name: String,
     pub(crate) address: SocketAddr,
+    pub(crate) fingerprint: String,
 }
 
 /// Configuration of the gossip network

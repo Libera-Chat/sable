@@ -2,15 +2,16 @@ use super::*;
 use irc_server::server::ServerManagementCommand;
 use irc_server::server::ServerManagementCommandType;
 use rpc_protocols::ShutdownAction;
+use ircd::config::*;
 
 use std::{
-    net::SocketAddr,
     future::Future,
     pin::Pin,
     task::{
         Context,
         Poll
-    }
+    },
+    sync::Arc,
 };
 use tokio::{
     sync::{
@@ -22,7 +23,12 @@ use tokio::{
         broadcast,
         oneshot
     },
+    net::{
+        TcpStream,
+        TcpListener,
+    },
     task,
+    select,
 };
 use hyper::{
     Body,
@@ -32,21 +38,41 @@ use hyper::{
     StatusCode,
 };
 use tracing::Instrument;
+use tokio_rustls::{
+    TlsAcceptor,
+};
+use sha1::{
+    Sha1,
+    Digest,
+};
+use thiserror::Error;
 
 pub struct ManagementServer
 {
     command_receiver: Receiver<ManagementCommand>,
     server_task: task::JoinHandle<Result<(), hyper::Error>>,
+    service_data: Arc<ManagementServiceData>,
 }
 
 struct ManagementService
 {
-    command_sender: Sender<ManagementCommand>
+    data: Arc<ManagementServiceData>,
+    authorised_fingerprint: AuthorisedFingerprint,
 }
 
-struct MakeManagementService
+struct ManagementServiceData
 {
-    command_sender: Sender<ManagementCommand>
+    command_sender: Sender<ManagementCommand>,
+    authorised_fingerprints: Vec<AuthorisedFingerprint>
+}
+
+#[derive(Debug,Error)]
+enum ManagementServiceError
+{
+    #[error("Other error: {0}")]
+    Other(&'static str),
+    #[error("Certificate fingerprint not recognised")]
+    InvalidFingerprint,
 }
 
 fn internal_error() -> hyper::Result<Response<Body>>
@@ -103,9 +129,9 @@ impl hyper::service::Service<Request<Body>> for ManagementService
 
     fn call(&mut self, req: Request<Body>) -> Self::Future
     {
-        let command_sender = self.command_sender.clone();
+        let command_sender = self.data.command_sender.clone();
 
-        tracing::info!(method=?req.method(), path=?req.uri().path(), "Got management request");
+        tracing::info!(method=?req.method(), path=?req.uri().path(), user=?self.authorised_fingerprint.name, "Got management request");
 
         Box::pin(async move {
             match (req.method(), req.uri().path())
@@ -146,43 +172,86 @@ impl hyper::service::Service<Request<Body>> for ManagementService
     }
 }
 
-impl<T> hyper::service::Service<T> for MakeManagementService {
-    type Response = ManagementService;
-    type Error = hyper::Error;
-    #[allow(clippy::type_complexity)]
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
-
-    fn poll_ready(&mut self, _: &mut Context) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, _: T) -> Self::Future {
-        let sender = self.command_sender.clone();
-        let fut = async move { Ok(ManagementService { command_sender: sender }) };
-        Box::pin(fut)
-    }
-}
-
 impl ManagementServer
 {
-    pub fn start(listen_addr: SocketAddr, mut shutdown: broadcast::Receiver<ShutdownAction>) -> Self
+    fn server_config(data: TlsData) -> Arc<rustls::ServerConfig>
+    {
+        let mut root_store = rustls::RootCertStore::empty();
+        root_store.add(&rustls::Certificate(data.ca)).expect("Error adding certificate to store");
+
+        Arc::new(rustls::ServerConfig::builder()
+            .with_safe_defaults()
+            .with_client_cert_verifier(rustls::server::AllowAnyAuthenticatedClient::new(root_store.clone()))
+            .with_single_cert(data.cert_chain.into_iter()
+                                             .map(rustls::Certificate)
+                                             .collect(),
+                            rustls::PrivateKey(data.key))
+            .expect("Bad TLS server config"))
+
+    }
+
+    async fn handle_connection(conn: TcpStream, acceptor: Arc<TlsAcceptor>, data: Arc<ManagementServiceData>) -> Result<(), Box<dyn std::error::Error>>
+    {
+        let stream = acceptor.accept(conn).await?;
+        let (_, tls_state) = stream.get_ref();
+        let client_cert = tls_state.peer_certificates().ok_or(ManagementServiceError::Other("Couldn't access peer certificate"))?;
+        let mut hasher = Sha1::new();
+        hasher.update(&client_cert[0].0);
+        let fingerprint = hex::encode(hasher.finalize());
+
+        let authorised_fingerprint = data.authorised_fingerprints.iter()
+                                                                 .find(|f| f.fingerprint == fingerprint)
+                                                                 .ok_or(ManagementServiceError::InvalidFingerprint)?
+                                                                 .clone();
+
+        let service = ManagementService { authorised_fingerprint, data };
+        let http = hyper::server::conn::Http::new();
+        http.serve_connection(stream, service).await?;
+
+        Ok(())
+    }
+
+    pub fn start(config: ManagementConfig,
+                 tls_data: TlsData,
+                 mut shutdown: broadcast::Receiver<ShutdownAction>) -> Self
     {
         let (command_sender, command_receiver) = channel(128);
+        let service_data = Arc::new(ManagementServiceData{ command_sender, authorised_fingerprints: config.authorised_fingerprints });
 
+        let data = Arc::clone(&service_data);
+        let listen_address = config.address;
         let server_task = task::spawn(async move {
-            let command_sender = command_sender;
+            let tls_config = Self::server_config(tls_data);
+            let acceptor = Arc::new(TlsAcceptor::from(Arc::clone(&tls_config)));
+            let listener = TcpListener::bind(&listen_address).await.expect("Failed to bind to management address");
 
-            let service = MakeManagementService { command_sender };
-            let server = hyper::Server::bind(&listen_addr)
-                            .serve(service)
-                            .with_graceful_shutdown(async { shutdown.recv().await.ok(); });
-
-            server.await
+            loop
+            {
+                select!
+                {
+                    res = listener.accept() =>
+                    {
+                        if let Ok((conn, _)) = res
+                        {
+                            if let Err(e) = Self::handle_connection(conn, Arc::clone(&acceptor), Arc::clone(&data)).await
+                            {
+                                tracing::warn!("Error handling management connection: {}", e);
+                            }
+                        }
+                    }
+                    _ = shutdown.recv() =>
+                    {
+                        break;
+                    }
+                }
+            }
+            Ok(())
         }.instrument(tracing::info_span!("management server")));
 
         Self {
             command_receiver,
             server_task,
+            service_data
         }
     }
 
