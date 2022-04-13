@@ -2,7 +2,7 @@ use super::*;
 
 impl Server
 {
-    pub(super) fn apply_action(&mut self, action: CommandAction)
+    pub(super) async fn apply_action(&mut self, action: CommandAction)
     {
         match action {
             CommandAction::RegisterClient(id) => {
@@ -54,14 +54,14 @@ impl Server
                 }
                 for act in actions
                 {
-                    self.submit_event(act.0, act.1);
+                    self.submit_event(act.0, act.1).await;
                 }
             },
             CommandAction::DisconnectUser(user_id) => {
                 self.connections.remove_user(user_id);
             }
             CommandAction::StateChange(id, detail) => {
-                self.submit_event(id, detail);
+                self.submit_event(id, detail).await;
             }
         }
     }

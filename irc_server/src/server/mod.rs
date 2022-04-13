@@ -125,12 +125,12 @@ impl Server
         }
     }
 
-    fn submit_event(&self, id: impl Into<ObjectId>, detail: impl Into<EventDetails>)
+    async fn submit_event(&self, id: impl Into<ObjectId>, detail: impl Into<EventDetails>)
     {
         let id = id.into();
         let detail = detail.into();
         tracing::trace!("Submitting new event {:?} {:?}", id, detail);
-        self.event_log.create_event(id, detail);
+        self.event_log.create_event(id, detail).await;
     }
 
     /// Retrieve the [`ObjectIdGenerator`] used to generate object identifiers
@@ -284,7 +284,7 @@ impl Server
             ts: utils::now(),
             flags: self.server_flags(),
             version: self.version().to_string(),
-        });
+        }).await;
         let mut check_ping_timer = time::interval(Duration::from_secs(5));
 
         let shutdown_action = loop
@@ -292,7 +292,7 @@ impl Server
             // Between each I/O event, see whether there are any actions we need to process synchronously
             while let Ok(act) = self.action_receiver.try_recv()
             {
-                self.apply_action(act);
+                self.apply_action(act).await;
             }
             select! {
                 res = self.connection_events.recv() =>
@@ -385,7 +385,7 @@ impl Server
                 },
                 _ = check_ping_timer.tick() =>
                 {
-                    self.check_pings();
+                    self.check_pings().await;
                 },
                 shutdown = &mut shutdown_channel =>
                 {
@@ -416,7 +416,7 @@ impl Server
         };
 
         let me = self.net.server(self.my_id).expect("Couldn't say I quit as I have no record of myself");
-        self.submit_event(self.my_id, details::ServerQuit { epoch: me.epoch() });
+        self.submit_event(self.my_id, details::ServerQuit { epoch: me.epoch() }).await;
 
         shutdown_action
     }
@@ -456,7 +456,7 @@ impl Server
                             details::UserQuit {
                                 message: format!("I/O error: {}", e)
                             }
-                        ));
+                        )).await;
                     }
                 }
                 self.connections.remove(msg.source);

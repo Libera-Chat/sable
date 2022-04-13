@@ -175,9 +175,9 @@ impl ReplicatedEventLog
     /// Create and propagate a new event.
     ///
     /// Arguments are the target object ID, and the event detail.
-    pub fn create_event(&self, target: ObjectId, detail: EventDetails)
+    pub async fn create_event(&self, target: ObjectId, detail: EventDetails)
     {
-        self.new_event_send.try_send((target, detail)).expect("Failed to submit new event for creation");
+        self.new_event_send.send((target, detail)).await.expect("Failed to submit new event for creation");
     }
 
     /// Disable a given server for sync purposes. This should be called when
