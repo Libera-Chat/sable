@@ -6,6 +6,7 @@ use std::{
     net::SocketAddr,
     path::Path,
     env::current_exe,
+    convert::TryInto,
     io,
 };
 
@@ -39,6 +40,15 @@ use std::process::{
     Child
 };
 
+use nix::{
+    sys::wait::{
+        waitpid,
+        WaitPidFlag,
+        WaitStatus,
+    },
+    unistd::Pid,
+};
+
 /// Saved state which can be used to recreate a [`ListenerCollection`] after an
 /// `exec()` transition.
 #[derive(serde::Serialize,serde::Deserialize)]
@@ -48,6 +58,7 @@ pub struct SavedListenerCollection
     event_receiver: RawFd,
     id_gen: ListenerIdGenerator,
     connection_data: HashMap<ConnectionId, ConnectionData>,
+    child_pid: i32,
 }
 
 type CommResult = std::io::Result<(IpcSender<ControlMessage>, IpcReceiver<InternalConnectionEvent>)>;
@@ -70,6 +81,7 @@ pub struct ListenerCollection
     connection_data: HashMap<ConnectionId, ConnectionData>,
     // We can't reconstruct the Child after save/resume, so we have to do without then
     child_process: Option<Child>,
+    child_pid: Pid,
 }
 
 impl ListenerCollection
@@ -116,14 +128,17 @@ impl ListenerCollection
                     .spawn()?
         };
 
+        let child_pid = Pid::from_raw(child.id().try_into().unwrap());
+
         let comm_task = task::spawn(run_communication_task(control_send, local_control_send.clone(),
-                                            local_control_recv, event_recv, event_channel));
+                                            local_control_recv, event_recv, event_channel, child_pid));
 
         let ret = Self {
             listener_id_generator: ListenerIdGenerator::new(0),
             control_sender: local_control_send,
             comm_task,
             connection_data: HashMap::new(),
+            child_pid,
             child_process: Some(child)
         };
 
@@ -165,7 +180,8 @@ impl ListenerCollection
             control_sender: ctl_fd,
             event_receiver: evt_fd,
             id_gen: self.listener_id_generator,
-            connection_data: self.connection_data
+            connection_data: self.connection_data,
+            child_pid: self.child_pid.as_raw(),
         })
     }
 
@@ -190,14 +206,17 @@ impl ListenerCollection
 
         let (local_control_send, local_control_recv) = unbounded_channel();
 
-        let handle = tokio::spawn(run_communication_task(control_sender, local_control_send.clone(), local_control_recv, event_receiver, event_channel));
+        let child_pid = Pid::from_raw(state.child_pid);
+
+        let handle = tokio::spawn(run_communication_task(control_sender, local_control_send.clone(), local_control_recv, event_receiver, event_channel, child_pid));
 
         Ok(Self {
             control_sender: local_control_send,
             comm_task: handle,
             listener_id_generator: state.id_gen,
             connection_data: state.connection_data,
-            child_process: None
+            child_process: None,
+            child_pid,
         })
     }
 
@@ -249,10 +268,22 @@ async fn run_communication_task<'a>(
         mut local_control_recv: UnboundedReceiver<ControlMessage>,
         event_receiver: IpcReceiver<InternalConnectionEvent>,
         event_sender: Sender<ConnectionEvent>,
+        child_pid: Pid,
     ) -> CommResult
 {
     loop
     {
+        match waitpid(child_pid, Some(WaitPidFlag::WNOHANG))
+        {
+            Ok(WaitStatus::StillAlive) => {}
+            Ok(status) => {
+                panic!("Client listener process exited with status {:?}", status);
+            }
+            Err(e) => {
+                panic!("Couldn't check listener process status: {}", e);
+            }
+        }
+
         select! {
             event = event_receiver.recv() =>
             {

@@ -345,6 +345,7 @@ dependencies = [
  "ircd_macros",
  "libc",
  "memfd",
+ "nix 0.24.1",
  "rustls",
  "serde",
  "serde_json",
