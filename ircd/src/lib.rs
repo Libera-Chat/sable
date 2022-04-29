@@ -1,4 +1,6 @@
 pub mod config;
+pub mod tracing_config;
+mod strip_comments;
 
 pub use irc_network::{
     *,

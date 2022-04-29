@@ -42,13 +42,13 @@ fn prepare_upgrade(state: ApplicationState) -> RawFd
     memfd.into_raw_fd()
 }
 
-pub(super) fn exec_upgrade(exe: &Path, opts: super::Opts, state: ApplicationState) -> !
+pub(super) fn exec_upgrade(exe: &Path, server_conf: &Path, network_conf: &Path, state: ApplicationState) -> !
 {
     let fd = prepare_upgrade(state);
     let args = ["--server-conf",
-                opts.server_conf.to_str().unwrap(),
+                server_conf.to_str().unwrap(),
                 "--network-conf",
-                opts.network_conf.to_str().unwrap(),
+                network_conf.to_str().unwrap(),
                 "--upgrade-state-fd",
                 &fd.to_string()];
 

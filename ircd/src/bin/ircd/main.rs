@@ -10,7 +10,6 @@ use std::{
     process::Command,
     env,
     os::unix::process::CommandExt,
-    net::SocketAddr,
     sync::Arc,
 };
 
@@ -19,6 +18,7 @@ use tokio::{
     select
 };
 use tracing::Instrument;
+use tracing_subscriber::util::SubscriberInitExt;
 
 mod management
 {
@@ -49,29 +49,30 @@ struct Opts
     /// server has synced to an existing net
     #[structopt(long)]
     bootstrap_network: Option<PathBuf>,
+
+    /// Run in foreground without daemonising
+    #[structopt(short,long)]
+    foreground: bool
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>>
+/// The async entry point for the application.
+///
+/// We can't use `[tokio::main]` because the tokio runtime can't survive daemonising,
+/// so this is called after daemonising and manually initialising the runtime.
+async fn sable_main(server_conf_path: &Path,
+                    server_config: ServerConfig,
+                    sync_conf_path: &Path,
+                    sync_config: SyncConfig,
+                    tls_data: TlsData,
+                    upgrade_fd: Option<i32>,
+                    bootstrap_network: Option<irc_network::config::NetworkConfig>,
+                ) -> Result<(), Box<dyn std::error::Error>>
 {
-    let opts = Opts::from_args();
     let exe_path = std::env::current_exe()?;
 
-    let sync_config = SyncConfig::load_file(opts.network_conf.clone())?;
-    let server_config = ServerConfig::load_file(opts.server_conf.clone())?;
+    println!("uid={}", nix::unistd::getuid());
 
-    let tls_data = server_config.tls_config.load_from_disk()?;
-
-    if let Some(console_address) = server_config.console_address
-    {
-        console_subscriber::ConsoleLayer::builder()
-            .server_addr(console_address.parse::<SocketAddr>()?)
-            .init();
-    }
-    else
-    {
-        tracing_subscriber::fmt::init();
-    }
+    ircd::tracing_config::build_subscriber(server_config.log)?.init();
 
     let (client_send, client_recv) = channel(128);
     let (server_send, server_recv) = channel(128);
@@ -82,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     let (shutdown_send, _shutdown_recv) = broadcast::channel(1);
     let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
 
-    let (event_log, client_listeners, mut server) = if let Some(upgrade_fd) = opts.upgrade_state_fd {
+    let (event_log, client_listeners, mut server) = if let Some(upgrade_fd) = upgrade_fd {
         tracing::info!("Got upgrade FD {}", upgrade_fd);
 
         let state = upgrade::read_upgrade_state(upgrade_fd);
@@ -113,8 +114,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
         let client_listeners = ListenerCollection::new(client_send)?;
 
-        let network = if let Some(net_conf_path) = &opts.bootstrap_network {
-            Network::new(load_network_config(net_conf_path)?)
+        let network = if let Some(net_conf) = bootstrap_network {
+            Network::new(net_conf)
         } else {
             *event_log.sync_to_network().await
         };
@@ -233,11 +234,67 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
                                  .save_state()
                                  .expect("Failed to save event log state");
 
-            upgrade::exec_upgrade(&exe_path, opts, upgrade::ApplicationState {
+            upgrade::exec_upgrade(&exe_path, server_conf_path, sync_conf_path, upgrade::ApplicationState {
                 server_state,
                 listener_state,
                 sync_state
             });
         }
     }
+}
+
+/// Main entry point.
+///
+/// Because the tokio runtime can't survive forking, `main()` loads the application
+/// configs (in order to report as many errors as possible before daemonising), daemonises,
+/// initialises the tokio runtime, and begins the async entry point [`sable_main`].
+pub fn main() -> Result<(), Box<dyn std::error::Error>>
+{
+    let opts = Opts::from_args();
+
+    let sync_config = SyncConfig::load_file(opts.network_conf.clone())?;
+    let server_config = ServerConfig::load_file(opts.server_conf.clone())?;
+
+    let tls_data = server_config.tls_config.load_from_disk()?;
+
+    let bootstrap_conf = opts.bootstrap_network.map(|path| load_network_config(path)).transpose()?;
+
+    if !server_config.log.dir.is_dir()
+    {
+        std::fs::create_dir_all(&server_config.log.dir).expect("failed to create log directory");
+    }
+
+    if !opts.foreground
+    {
+        let mut daemon = daemonize::Daemonize::new()
+                            .exit_action(|| println!("Running in background mode"))
+                            .working_directory(std::env::current_dir()?);
+
+        if let Some(stdout) = &server_config.log.stdout
+        {
+            daemon = daemon.stdout(File::create(&server_config.log.prefix_file(stdout)).unwrap());
+        }
+        if let Some(stderr) = &server_config.log.stderr
+        {
+            daemon = daemon.stderr(File::create(&server_config.log.prefix_file(stderr)).unwrap());
+        }
+        if let Some(pidfile) = &server_config.log.pidfile
+        {
+            daemon = daemon.pid_file(server_config.log.prefix_file(pidfile));
+        }
+
+        daemon.start().expect("Failed to fork to background");
+    }
+
+    let runtime = tokio::runtime::Runtime::new()?;
+
+    runtime.block_on(sable_main(&opts.server_conf,
+                                server_config,
+                                &opts.network_conf,
+                                sync_config,
+                                tls_data,
+                                opts.upgrade_state_fd,
+                                bootstrap_conf,
+                            ))
+
 }
