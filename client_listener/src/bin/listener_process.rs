@@ -26,5 +26,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     };
 
     let mut process = ListenerProcess::new(control_recv, event_send);
-    process.run().await
+    process.run().await.expect("Error in listener process");
+    Ok(())
 }
