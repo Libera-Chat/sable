@@ -51,3 +51,15 @@ impl<T> std::ops::Deref for Movable<T>
         }
     }
 }
+
+impl<T> std::ops::DerefMut for Movable<T>
+{
+    fn deref_mut(&mut self) -> &mut T
+    {
+        match self
+        {
+            Self::Empty => panic!("Attempted to deref an empty Movable"),
+            Self::Full(value) => value
+        }
+    }
+}

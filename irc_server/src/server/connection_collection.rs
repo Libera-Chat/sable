@@ -13,6 +13,7 @@ pub(super) struct ConnectionCollection
 {
     client_connections: HashMap<ConnectionId, ClientConnection>,
     user_to_connid: HashMap<UserId, ConnectionId>,
+    action_sender: UnboundedSender<CommandAction>,
 }
 
 /// Serialised state of a [`ConnectionCollection`], for later resumption
@@ -24,11 +25,41 @@ pub(super) struct ConnectionCollectionState(
 impl ConnectionCollection
 {
     /// Contruct a [`ConnectionCollection`]
-    pub fn new() -> Self {
+    pub fn new(action_sender: UnboundedSender<CommandAction>) -> Self {
         Self {
             client_connections: HashMap::new(),
             user_to_connid: HashMap::new(),
+            action_sender
         }
+    }
+
+    /// Called by the [`Server`] for each new network message received.
+    ///
+    /// Finds the relevant [`ClientConnection`] and adds to the receive queue.
+    /// If the queue is full, the connection is closed with an appropriate error message
+    pub fn new_message(&mut self, conn_id: ConnectionId, message: String)
+    {
+        if let Some(conn) = self.client_connections.get_mut(&conn_id)
+        {
+            if conn.new_message(message).is_err()
+            {
+                // An error return here means that the connection's receive queue is full,
+                // so they should be disconnected for flooding. First, check whether it's a
+                // registered user connection, or a pre-client
+                if let Some(user_id) = conn.user_id
+                {
+                    // Registered user, so we need to inform the network they're going
+                    let event_detail = irc_network::event::details::UserQuit { message: "Excess Flood".to_string() };
+                    self.action_sender.send(CommandAction::StateChange(user_id.into(), event_detail.into())).expect("Failed to submit event");
+                }
+                self.remove(conn_id);
+            }
+        }
+    }
+
+    pub fn poll_messages<'a>(&'a mut self) -> impl Iterator<Item=(ConnectionId, String)> + 'a
+    {
+        self.client_connections.iter_mut().flat_map(|(id,conn)| conn.poll_messages().map(move |message| (*id, message)))
     }
 
     /// Insert a new connection, with no associated user ID
@@ -73,6 +104,12 @@ impl ConnectionCollection
     pub fn get(&self, id: ConnectionId) -> Result<&ClientConnection, LookupError>
     {
         self.client_connections.get(&id).ok_or(LookupError::NoSuchConnectionId)
+    }
+
+    /// Look up a connection by ID, returning a mutable reference
+    pub fn get_mut(&mut self, id: ConnectionId) -> Result<&mut ClientConnection, LookupError>
+    {
+        self.client_connections.get_mut(&id).ok_or(LookupError::NoSuchConnectionId)
     }
 
     /// Look up a connection by user ID
@@ -120,9 +157,11 @@ impl ConnectionCollection
     }
 
     /// Restore a collection from a previously stored state
-    pub fn restore_from(state: ConnectionCollectionState, listener_collection: &client_listener::ListenerCollection) -> Self
+    pub fn restore_from(state: ConnectionCollectionState,
+                        listener_collection: &client_listener::ListenerCollection,
+                        action_sender: UnboundedSender<CommandAction>) -> Self
     {
-        let mut ret = Self::new();
+        let mut ret = Self::new(action_sender);
 
         for (conn_id, conn_data) in state.0.into_iter()
         {

@@ -25,6 +25,8 @@ pub use messages::Numeric;
 
 mod movable;
 
+mod throttled_queue;
+
 mod build_data
 {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));

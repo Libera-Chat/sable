@@ -114,9 +114,9 @@ impl Server
             id_generator: ObjectIdGenerator::new(id, epoch),
             rpc_receiver,
             action_receiver: action_recv,
-            action_submitter: action_send,
+            action_submitter: action_send.clone(),
             connection_events,
-            connections: ConnectionCollection::new(),
+            connections: ConnectionCollection::new(action_send.clone()),
             command_dispatcher: command::CommandDispatcher::new(),
             policy_service: StandardPolicyService::new(),
             auth_client: AuthClient::new(auth_send).expect("Couldn't create auth client"),
@@ -289,7 +289,11 @@ impl Server
 
         let shutdown_action = loop
         {
-            // Between each I/O event, see whether there are any actions we need to process synchronously
+            // Before looking for an I/O event, do our internal bookkeeping.
+            // First, take inbound client messages and process them
+            self.process_pending_client_messages().await;
+
+            // Then, see whether there are any actions we need to process synchronously
             while let Ok(act) = self.action_receiver.try_recv()
             {
                 self.apply_action(act).await;
@@ -437,15 +441,7 @@ impl Server
             ConnectionEventDetail::Message(m) => {
                 tracing::info!(msg=?m, "Got message");
 
-                if let Some(message) = ClientMessage::parse(msg.source, &m)
-                {
-                    let processor = CommandProcessor::new(self);
-                    processor.process_message(message).await;
-                }
-                else
-                {
-                    tracing::info!("Failed parsing")
-                }
+                self.connections.new_message(msg.source, m);
             },
             ConnectionEventDetail::Error(e) => {
                 tracing::error!(error=?e, "Got connection error");
@@ -460,6 +456,22 @@ impl Server
                     }
                 }
                 self.connections.remove(msg.source);
+            }
+        }
+    }
+
+    async fn process_pending_client_messages(&mut self)
+    {
+        for (conn_id, message) in self.connections.poll_messages().collect::<Vec<_>>()
+        {
+            if let Some(parsed) = ClientMessage::parse(conn_id, &message)
+            {
+                let processor = CommandProcessor::new(self);
+                processor.process_message(parsed).await;
+            }
+            else
+            {
+                tracing::info!("Failed parsing")
             }
         }
     }

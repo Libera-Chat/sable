@@ -2,6 +2,7 @@ use irc_network::*;
 use super::*;
 use client_listener::*;
 use crate::movable::Movable;
+use crate::throttled_queue::*;
 
 use std::cell::RefCell;
 use std::net::IpAddr;
@@ -11,11 +12,16 @@ pub struct ClientConnection
 {
     /// The underlying network connection
     pub connection: Movable<Connection>,
+
     /// The user ID, if this connection has completed registration
     pub user_id: Option<UserId>,
+
     /// The registration information received so far, if this connection has not
     /// yet completed registration
-    pub pre_client: Option<RefCell<PreClient>>
+    pub pre_client: Option<RefCell<PreClient>>,
+
+    // Pending lines to be processed
+    receive_queue: Movable<ThrottledQueue<String>>,
 }
 
 /// Serialised state of a [`ClientConnection`], for later resumption
@@ -24,7 +30,8 @@ pub(super) struct ClientConnectionState
 {
     connection_data: ConnectionData,
     user_id: Option<UserId>,
-    pre_client: Option<PreClient>
+    pre_client: Option<PreClient>,
+    receive_queue: ThrottledQueue<String>,
 }
 
 /// Information received from a client connection that has not yet completed registration
@@ -43,10 +50,17 @@ impl ClientConnection
     /// Construct a `ClientConnection` from an underlying [`Connection`]
     pub fn new(conn: Connection) -> Self
     {
+        let throttle_settings = ThrottleSettings {
+            num: 1,
+            time: 1,
+            burst: 4
+        };
+
         Self {
             connection: Movable::new(conn),
             user_id: None,
-            pre_client: Some(RefCell::new(PreClient::new()))
+            pre_client: Some(RefCell::new(PreClient::new())),
+            receive_queue: Movable::new(ThrottledQueue::new(throttle_settings, 16)),
         }
     }
 
@@ -57,6 +71,7 @@ impl ClientConnection
             connection_data: self.connection.unwrap().save(),
             user_id: self.user_id,
             pre_client: self.pre_client.take().map(|c| c.into_inner()),
+            receive_queue: self.receive_queue.unwrap(),
         }
     }
 
@@ -67,7 +82,8 @@ impl ClientConnection
         Self {
             connection: Movable::new(listener_collection.restore_connection(state.connection_data)),
             user_id: state.user_id,
-            pre_client: state.pre_client.map(RefCell::new)
+            pre_client: state.pre_client.map(RefCell::new),
+            receive_queue: Movable::new(state.receive_queue),
         }
     }
 
@@ -94,6 +110,20 @@ impl ClientConnection
     {
         self.connection.send(format!("ERROR :{}", msg));
         self.connection.close();
+    }
+
+    /// Notify that a new message has been received on this connection
+    ///
+    /// Returns `Ok(())` on success, `Err(message)` if the connection's receive queue is full
+    pub fn new_message(&mut self, message: String) -> Result<(), String>
+    {
+        self.receive_queue.add(message)
+    }
+
+    /// Poll for messages that the throttle permits to be processed
+    pub fn poll_messages<'a>(&'a mut self) -> impl Iterator<Item=String> + 'a
+    {
+        self.receive_queue.iter_mut()
     }
 }
 
