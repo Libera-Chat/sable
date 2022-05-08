@@ -23,7 +23,7 @@ use memfd::*;
 use tokio::{
 //    select,
     sync::mpsc::{
-        channel
+        unbounded_channel
     },
 };
 
@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
     tracing_subscriber::fmt::init();
 
-    let (event_send, mut event_recv) = channel(128);
+    let (event_send, mut event_recv) = unbounded_channel();
 
     let args: Vec<_> = std::env::args().collect();
 

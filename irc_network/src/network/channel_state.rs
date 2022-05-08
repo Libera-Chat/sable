@@ -10,12 +10,58 @@ impl Network {
         self.channels.values().find(|c| c.mode == mode_id)
     }
 
-    pub(super) fn new_channel(&mut self, target: ChannelId, _event: &Event, details: &details::NewChannel, _updates: &dyn NetworkUpdateReceiver)
+    /// Called when an event attempts to create a channel with a name that already exists, to
+    /// determine whether the new or the existing channel should override the other.
+    ///
+    /// Returns true if the incoming channel should override, false if the existing one
+    fn should_replace_channel(&self, existing_id: ChannelId, new_id: ChannelId) -> bool
     {
-        if let Ok(_existing) = self.channel_by_name(&details.name)
+        // This "can't" happen if one event depends on the other, because if either server had seen
+        // the channel exist then it wouldn't have emitted the event that creates a conflict.
+        // As such, assume that we only need to handle the case where neither event depends on the
+        // other, and so we can use an arbitrary but consistent criterion, in this case lexical
+        // comparison of channel IDs.
+        new_id < existing_id
+    }
+
+    /// Rename a channel
+    fn do_rename_channel(&mut self, channel_id: ChannelId, new_name: ChannelName, updates: &dyn NetworkUpdateReceiver)
+    {
+        if let Some(channel) = self.channels.get_mut(&channel_id)
         {
-            // TODO: handle conflict
-            panic!("Conflicting channel names");
+            let old_name = channel.name;
+            channel.name = new_name;
+
+            updates.notify(update::ChannelRename {
+                id: channel_id,
+                old_name: old_name,
+                new_name: new_name,
+            });
+        }
+    }
+
+    pub(super) fn new_channel(&mut self, target: ChannelId, _event: &Event, details: &details::NewChannel, updates: &dyn NetworkUpdateReceiver)
+    {
+        // Take a local copy in case we need to change the name due to a collision
+        let mut details = details.clone();
+
+        if let Ok(existing) = self.raw_channel_by_name(&details.name)
+        {
+            let existing_id = existing.id;
+
+            // First we pick a "winner"
+            if self.should_replace_channel(existing_id, target)
+            {
+                // The new one wins. Rename the existing channel
+                let newname = state_utils::hashed_channel_name_for(existing_id);
+
+                self.do_rename_channel(existing_id, newname, updates);
+            }
+            else
+            {
+                // The old one wins. Change the name of this one
+                details.name = state_utils::hashed_channel_name_for(target);
+            }
         }
         let channel = state::Channel::new(target, details.name, details.mode);
         self.channels.insert(channel.id, channel);

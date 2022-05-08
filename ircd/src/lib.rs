@@ -11,7 +11,8 @@ pub use structopt::StructOpt;
 
 pub use tokio::{
     sync::mpsc::{
-        channel
+        channel,
+        unbounded_channel,
     },
     sync::oneshot,
     time

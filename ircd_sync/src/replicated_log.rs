@@ -11,8 +11,10 @@ use rpc_protocols::*;
 use tokio::{
     sync::mpsc::{
         Sender,
-        Receiver,
+        UnboundedSender,
+        UnboundedReceiver,
         channel,
+        unbounded_channel,
     },
     sync::Mutex,
     sync::broadcast,
@@ -58,7 +60,7 @@ pub struct ReplicatedEventLog
 {
     shared_state: Arc<SharedState>,
     task_state: Arc<Mutex<TaskState>>,
-    new_event_send: Sender<(ObjectId, EventDetails)>,
+    new_event_send: UnboundedSender<(ObjectId, EventDetails)>,
     net: Arc<GossipNetwork>,
 }
 
@@ -72,10 +74,10 @@ struct SharedState
 struct TaskState
 {
     net: Arc<GossipNetwork>,
-    new_event_recv: Receiver<(ObjectId, EventDetails)>,
-    network_recv: Receiver<Request>,
-    log_recv: Receiver<Event>,
-    server_send: Sender<NetworkMessage>,
+    new_event_recv: UnboundedReceiver<(ObjectId, EventDetails)>,
+    network_recv: UnboundedReceiver<Request>,
+    log_recv: UnboundedReceiver<Event>,
+    server_send: UnboundedSender<NetworkMessage>,
     shared_state: Arc<SharedState>,
 }
 
@@ -97,14 +99,14 @@ impl ReplicatedEventLog
     /// server for processing.
     pub fn new(server_id: ServerId,
                epoch: EpochId,
-               server_send: Sender<NetworkMessage>,
+               server_send: UnboundedSender<NetworkMessage>,
                net_config: SyncConfig,
                node_config: NodeConfig,
             ) -> Self
     {
-        let (log_send, log_recv) = channel(128);
-        let (net_send, net_recv) = channel(128);
-        let (new_event_send, new_event_recv) = channel(128);
+        let (log_send, log_recv) = unbounded_channel();
+        let (net_send, net_recv) = unbounded_channel();
+        let (new_event_send, new_event_recv) = unbounded_channel();
 
         let net = Arc::new(GossipNetwork::new(net_config, node_config, net_send));
 
@@ -138,14 +140,14 @@ impl ReplicatedEventLog
     /// [`save_state`](Self::save_state); the other arguments are as for
     /// [`new`](Self::new)
     pub fn restore(state: ReplicatedEventLogState,
-               server_send: Sender<NetworkMessage>,
+               server_send: UnboundedSender<NetworkMessage>,
                net_config: SyncConfig,
                node_config: NodeConfig,
             ) -> Self
     {
-        let (log_send, log_recv) = channel(128);
-        let (net_send, net_recv) = channel(128);
-        let (new_event_send, new_event_recv) = channel(128);
+        let (log_send, log_recv) = unbounded_channel();
+        let (net_send, net_recv) = unbounded_channel();
+        let (new_event_send, new_event_recv) = unbounded_channel();
 
         let net = Arc::new(GossipNetwork::restore(state.network_state, net_config, node_config, net_send));
 
@@ -177,7 +179,7 @@ impl ReplicatedEventLog
     /// Arguments are the target object ID, and the event detail.
     pub async fn create_event(&self, target: ObjectId, detail: EventDetails)
     {
-        self.new_event_send.send((target, detail)).await.expect("Failed to submit new event for creation");
+        self.new_event_send.send((target, detail)).expect("Failed to submit new event for creation");
     }
 
     /// Disable a given server for sync purposes. This should be called when
@@ -210,7 +212,7 @@ impl ReplicatedEventLog
     {
         let net = 'outer: loop
         {
-            let (send, mut recv) = channel(16);
+            let (send, mut recv) = unbounded_channel();
             let handle = self.start_sync_to_network(send).await;
 
             while let Some(req) = recv.recv().await
@@ -234,7 +236,7 @@ impl ReplicatedEventLog
         net
     }
 
-    async fn start_sync_to_network(&self, sender: Sender<Request>) -> JoinHandle<()>
+    async fn start_sync_to_network(&self, sender: UnboundedSender<Request>) -> JoinHandle<()>
     {
         while let Some(peer) = self.net.choose_any_peer()
         {
@@ -306,7 +308,7 @@ impl TaskState
                         Some(evt) => {
                             tracing::trace!("Log emitted event: {:?}", evt);
 
-                            if self.server_send.send(NetworkMessage::NewEvent(evt)).await.is_err()
+                            if self.server_send.send(NetworkMessage::NewEvent(evt)).is_err()
                             {
                                 break;
                             }
@@ -495,7 +497,7 @@ impl TaskState
             {
                 tracing::trace!("Processing get network state request");
                 let (send,mut recv) = channel(1);
-                if let Err(e) = self.server_send.send(NetworkMessage::ExportNetworkState(send)).await
+                if let Err(e) = self.server_send.send(NetworkMessage::ExportNetworkState(send))
                 {
                     tracing::error!("Error sending network request to server: {}", e);
                 }
@@ -523,7 +525,7 @@ impl TaskState
                     self.net.enable_peer(server.name().as_ref());
                 }
 
-                if let Err(e) = self.server_send.send(NetworkMessage::ImportNetworkState(net)).await
+                if let Err(e) = self.server_send.send(NetworkMessage::ImportNetworkState(net))
                 {
                     tracing::error!("Error sending network state to server: {}", e);
                 }

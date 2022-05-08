@@ -342,17 +342,18 @@ dependencies = [
 name = "client_listener"
 version = "0.1.0"
 dependencies = [
+ "console-subscriber",
  "ircd_macros",
  "libc",
  "memfd",
  "nix 0.24.1",
  "rustls",
+ "sable_ipc",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
  "tokio-rustls",
- "tokio-unix-ipc",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1771,6 +1772,16 @@ name = "ryu"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73b4b750c782965c211b42f022f59af1fbceabdd026623714f104152f1ec149f"
+
+[[package]]
+name = "sable_ipc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "serde",
+ "thiserror",
+ "tokio",
+]
 
 [[package]]
 name = "scopeguard"

@@ -69,6 +69,7 @@ pub struct Network
     // All of these maps are serialised as an array of tuples
     // because their keys don't serialise as strings, so can't be
     // used as a JSON object key.
+
     #[serde_as(as = "Vec<(_,_)>")]
     nick_bindings: HashMap<Nickname, state::NickBinding>,
     #[serde_as(as = "Vec<(_,_)>")]

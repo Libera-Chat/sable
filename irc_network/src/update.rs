@@ -90,6 +90,11 @@ NetworkStateChange => {
         pub id: InviteId,
         pub source: UserId,
     }
+    struct ChannelRename {
+        pub id: ChannelId,
+        pub old_name: ChannelName,
+        pub new_name: ChannelName,
+    }
     struct NewMessage {
         pub message: MessageId,
     }

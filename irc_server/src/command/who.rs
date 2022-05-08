@@ -26,7 +26,7 @@ impl WhoHandler<'_>
     fn make_who_reply(&self, target: &wrapper::User, channel: Option<&wrapper::Channel>,
                       membership: Option<&wrapper::Membership>, server: &wrapper::Server) -> numeric::WhoReply
     {
-        let chname = channel.map(|c| c.name()).unwrap_or("*");
+        let chname = channel.map(|c| c.name().value() as &str).unwrap_or("*");
         let status = format!("H{}", membership.map(|m| m.permissions().to_prefixes()).unwrap_or_else(|| "".to_string()));
         make_numeric!(WhoReply, chname, target, server, &status, 0)
     }
@@ -44,7 +44,7 @@ impl WhoHandler<'_>
             cmd.connection.send(&reply.format_for(self.server, source));
         }
 
-        let endofwho = make_numeric!(EndOfWho, chan.name());
+        let endofwho = make_numeric!(EndOfWho, chan.name().value());
         cmd.connection.send(&endofwho.format_for(self.server, source));
 
         Ok(())

@@ -12,7 +12,6 @@ use std::{
 
 use tokio::{
     sync::mpsc::{
-        Sender,
         UnboundedSender,
         UnboundedReceiver,
         unbounded_channel
@@ -21,7 +20,7 @@ use tokio::{
     task,
     task::JoinHandle,
 };
-use tokio_unix_ipc::{
+use sable_ipc::{
     Sender as IpcSender,
     Receiver as IpcReceiver,
     channel as ipc_channel
@@ -30,8 +29,6 @@ use tokio_unix_ipc::{
 use std::os::unix::{
     io::{
         RawFd,
-        IntoRawFd,
-        FromRawFd
     },
     process::CommandExt
 };
@@ -89,7 +86,7 @@ impl ListenerCollection
     /// Create a new `ListenerCollection` with an automatically guessed worker process
     /// executable. `new` will look for an executable named `listener_process` in the
     /// same directory as the currently running executable, then call `with_exe_path`.
-    pub fn new(event_channel: Sender<ConnectionEvent>) -> std::io::Result<Self>
+    pub fn new(event_channel: UnboundedSender<ConnectionEvent>) -> std::io::Result<Self>
     {
         let my_path = current_exe()?;
         let dir = my_path.parent().ok_or(io::ErrorKind::NotFound)?;
@@ -103,16 +100,16 @@ impl ListenerCollection
     /// The worker process will be spawned, along with an asynchronous task to run
     /// communications. Incoming connections, data and other events will be notified
     /// via `event_channel`.
-    pub fn with_exe_path(exec_path: impl AsRef<Path>, event_channel: Sender<ConnectionEvent>) -> std::io::Result<Self>
+    pub fn with_exe_path(exec_path: impl AsRef<Path>, event_channel: UnboundedSender<ConnectionEvent>) -> std::io::Result<Self>
     {
-        let (control_send, control_recv) = ipc_channel()?;
-        let (event_send, event_recv) = ipc_channel()?;
+        let (control_send, control_recv) = ipc_channel(crate::MAX_CONTROL_SIZE)?;
+        let (event_send, event_recv) = ipc_channel(crate::MAX_MSG_SIZE)?;
         let (local_control_send, local_control_recv) = unbounded_channel();
 
         let child = unsafe
         {
-            let control_fd = control_recv.into_raw_fd();
-            let event_fd = event_send.into_raw_fd();
+            let control_fd = control_recv.into_raw_fd()?;
+            let event_fd = event_send.into_raw_fd()?;
 
             Command::new(exec_path.as_ref())
                     .args([control_fd.to_string(), event_fd.to_string()])
@@ -161,8 +158,8 @@ impl ListenerCollection
 
         let (ctl_fd, evt_fd) = unsafe
         {
-            let control_fd = ctl_send.into_raw_fd();
-            let event_fd = evt_recv.into_raw_fd();
+            let control_fd = ctl_send.into_raw_fd()?;
+            let event_fd = evt_recv.into_raw_fd()?;
 
             use libc::{fcntl, F_GETFD, F_SETFD, FD_CLOEXEC};
 
@@ -196,12 +193,12 @@ impl ListenerCollection
     /// method) along with any application-specific state relating to them; they can then
     /// be recreated using [`restore_connection`](Self::restore_connection) on the
     /// recreated listener collection.
-    pub fn resume(state: SavedListenerCollection, event_channel: Sender<ConnectionEvent>) -> std::io::Result<Self>
+    pub fn resume(state: SavedListenerCollection, event_channel: UnboundedSender<ConnectionEvent>) -> std::io::Result<Self>
     {
         let (control_sender, event_receiver) = unsafe
         {
-            (IpcSender::<ControlMessage>::from_raw_fd(state.control_sender),
-             IpcReceiver::<InternalConnectionEvent>::from_raw_fd(state.event_receiver))
+            (IpcSender::<ControlMessage>::from_raw_fd(state.control_sender, crate::MAX_MSG_SIZE)?,
+             IpcReceiver::<InternalConnectionEvent>::from_raw_fd(state.event_receiver, crate::MAX_MSG_SIZE)?)
         };
 
         let (local_control_send, local_control_recv) = unbounded_channel();
@@ -267,7 +264,7 @@ async fn run_communication_task<'a>(
         local_control_send: UnboundedSender<ControlMessage>,
         mut local_control_recv: UnboundedReceiver<ControlMessage>,
         event_receiver: IpcReceiver<InternalConnectionEvent>,
-        event_sender: Sender<ConnectionEvent>,
+        event_sender: UnboundedSender<ConnectionEvent>,
         child_pid: Pid,
     ) -> CommResult
 {
@@ -309,7 +306,7 @@ async fn run_communication_task<'a>(
                         },
                         _ => continue
                     };
-                    if let Err(e) = event_sender.send(translated_event).await {
+                    if let Err(e) = event_sender.send(translated_event) {
                         tracing::error!("Error sending connection event: {}", e);
                     }
                 }
@@ -321,19 +318,20 @@ async fn run_communication_task<'a>(
                     Some(control) => {
                         if matches!(control, ControlMessage::Shutdown)
                         {
-                            control_send.send(control).await?;
+                            control_send.send(&control).await.expect("Failed to send control");
                             break;
                         }
                         else if matches!(control, ControlMessage::SaveForUpgrade)
                         {
                             break;
                         }
-                        control_send.send(control).await?;
+                        control_send.send(&control).await.expect("Failed to send control");
                     }
                     None => break
                 }
             }
         }
     }
+
     Ok((control_send, event_receiver))
 }

@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     tracing_subscriber::fmt::init();
 
-    let (msg_send, _msg_recv) = channel(128);
+    let (msg_send, _msg_recv) = unbounded_channel();
 
     let net = ircd_sync::GossipNetwork::new(sync_config, server_config.node_config, msg_send);
 

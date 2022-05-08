@@ -3,7 +3,7 @@ use irc_network::event::*;
 use irc_network::id::*;
 use tokio::sync::mpsc::*;
 
-fn drain_from(log: &mut Receiver<Event>) -> Vec<Event>
+fn drain_from(log: &mut UnboundedReceiver<Event>) -> Vec<Event>
 {
     let mut v = Vec::new();
 
@@ -20,7 +20,7 @@ fn simple()
     let server_id = ServerId::new(1);
     let epoch_id = EpochId::new(1);
     let idgen = EventIdGenerator::new(server_id, epoch_id, 1);
-    let (sender, mut receiver) = channel::<Event>(10);
+    let (sender, mut receiver) = unbounded_channel::<Event>();
     let mut log = EventLog::new(idgen, Some(sender));
 
     let uid = UserId::new(server_id, epoch_id, 1);
@@ -44,7 +44,7 @@ fn out_of_order()
     let server_id = ServerId::new(1);
     let epoch_id = EpochId::new(1);
     let idgen = EventIdGenerator::new(server_id, epoch_id, 1);
-    let (sender, mut receiver) = channel::<Event>(10);
+    let (sender, mut receiver) = unbounded_channel::<Event>();
     let mut log = EventLog::new(idgen, Some(sender));
 
     let uid = UserId::new(server_id, epoch_id, 1);

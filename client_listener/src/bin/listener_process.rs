@@ -1,9 +1,8 @@
 use client_listener::*;
 
 use std::env;
-use std::os::unix::io::FromRawFd;
 
-use tokio_unix_ipc::{
+use sable_ipc::{
     Sender as IpcSender,
     Receiver as IpcReceiver,
 };
@@ -11,6 +10,8 @@ use tokio_unix_ipc::{
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
+    console_subscriber::init();
+
     let mut args = env::args();
     args.next();
 
@@ -22,10 +23,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     let (control_recv, event_send) = unsafe
     {
-        (IpcReceiver::<ControlMessage>::from_raw_fd(control_fd), IpcSender::<InternalConnectionEvent>::from_raw_fd(event_fd))
+        (IpcReceiver::<ControlMessage>::from_raw_fd(control_fd, client_listener::MAX_CONTROL_SIZE).expect("Failed to unpack control receiver"),
+         IpcSender::<InternalConnectionEvent>::from_raw_fd(event_fd, client_listener::MAX_MSG_SIZE).expect("Failed to unpack event sender"))
     };
 
     let mut process = ListenerProcess::new(control_recv, event_send);
     process.run().await.expect("Error in listener process");
+    tracing::warn!("listener shutting down");
     Ok(())
 }

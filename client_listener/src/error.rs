@@ -27,6 +27,10 @@ pub enum ListenerError
     NoTlsConfig,
     #[error("I/O Error: {0}")]
     IoError(String),
+    #[error("Control queue full")]
+    ControlQueueFull,
+    #[error("Listener control queue closed")]
+    ControlQueueClosed,
     #[error("Error communicating with listener process")]
     CommunicationError,
 }
@@ -60,6 +64,18 @@ impl<T> From<TrySendError<T>> for ConnectionError
         {
             TrySendError::Full(_) => Self::SendQueueFull,
             TrySendError::Closed(_) => Self::Closed
+        }
+    }
+}
+
+impl<T> From<TrySendError<T>> for ListenerError
+{
+    fn from(e: TrySendError<T>) -> Self
+    {
+        match e
+        {
+            TrySendError::Full(_) => Self::ControlQueueFull,
+            TrySendError::Closed(_) => Self::ControlQueueClosed
         }
     }
 }

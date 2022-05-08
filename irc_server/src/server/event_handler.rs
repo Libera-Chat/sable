@@ -25,6 +25,7 @@ impl Server
             ChannelJoin(details) => self.handle_join(details),
             ChannelPart(details) => self.handle_part(details),
             ChannelInvite(details) => self.handle_invite(details),
+            ChannelRename(details) => self.handle_channel_rename(details),
             MembershipFlagChange(details) => self.handle_chan_perm_change(details),
             NewMessage(details) => self.handle_new_message(details),
             NewServer(details) => self.handle_new_server(details),
@@ -253,28 +254,7 @@ impl Server
             }
         }
 
-        if let Ok(conn) = self.connections.get_user(user.id()) {
-            if ! membership.permissions().is_empty()
-            {
-                let (mut changes, args) = utils::format_channel_perm_changes(&user, &membership.permissions(), &MembershipFlagSet::new());
-
-                changes += " ";
-                changes += &args.join(" ");
-
-                let msg = message::Mode::new(self, &channel, &changes);
-                conn.send(&msg);
-            }
-
-            if let Ok(topic) = self.net.topic_for_channel(channel.id())
-            {
-                conn.send(&numeric::TopicIs::new(&channel, topic.text())
-                          .format_for(self, &user));
-                conn.send(&numeric::TopicSetBy::new(&channel, topic.setter(), topic.timestamp())
-                          .format_for(self, &user));
-            }
-
-            crate::utils::send_channel_names(self, conn, &channel)?;
-        }
+        self.notify_joining_user(&membership)?;
 
         Ok(())
     }
@@ -314,6 +294,24 @@ impl Server
 
         let msg = message::Invite::new(&source, &target, &chan);
         self.send_to_user_if_local(&target, msg);
+        Ok(())
+    }
+
+    fn handle_channel_rename(&self, detail: &update::ChannelRename) -> HandleResult
+    {
+        let channel = self.net.channel(detail.id)?;
+
+        for member in channel.members()
+        {
+            let user = member.user()?;
+            if self.connections.get_user(user.id()).is_ok()
+            {
+                let part_message = message::Part::new(&user, channel.name(), "Channel name changing");
+                self.send_to_user_if_local(&user, part_message);
+                self.notify_joining_user(&member).ok();
+            }
+        }
+
         Ok(())
     }
 

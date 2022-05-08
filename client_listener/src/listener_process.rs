@@ -10,7 +10,7 @@ use tokio::{
     },
     select,
 };
-use tokio_unix_ipc::{
+use sable_ipc::{
     Sender as IpcSender,
     Receiver as IpcReceiver,
 };
@@ -21,7 +21,7 @@ use tokio_unix_ipc::{
 pub struct ListenerProcess
 {
     control_receiver: IpcReceiver<ControlMessage>,
-    event_sender: IpcSender<InternalConnectionEvent>,
+    event_sender: Arc<IpcSender<InternalConnectionEvent>>,
     tls_config: Option<Arc<rustls::ServerConfig>>,
 
     listeners: HashMap<ListenerId, Listener>,
@@ -34,7 +34,7 @@ impl ListenerProcess
     {
         Self {
             control_receiver,
-            event_sender,
+            event_sender: Arc::new(event_sender),
             tls_config: None,
             listeners: HashMap::new(),
             connections: HashMap::new(),
@@ -71,10 +71,29 @@ impl ListenerProcess
             .with_single_cert(certs, key)?))
     }
 
+    /// Send an event to the parent process, spawning the task into the background.
+    ///
+    /// Spawning a separate task avoids blocking the communication task, but does mean
+    /// losing the ability to respond to errors, which will be logged instead of returned.
+    fn send_event(&self, event: InternalConnectionEvent)
+    {
+        let event_sender = Arc::clone(&self.event_sender);
+        tokio::spawn(async move {
+            if let Err(e) = event_sender.send(&event).await
+            {
+                tracing::error!("Error sending connection event: {}", e);
+            }
+        });
+    }
+
     pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>>
     {
         let (event_send, mut event_recv) = channel(128);
 
+        // Golden rule of this loop: don't await anything that could possibly block.
+        // If this task blocks on, e.g., sending to a connection's channel when it's full,
+        // and that connection task blocks on trying to send to us while the event channel
+        // is full, the whole listener process will deadlock.
         loop
         {
             select!
@@ -87,7 +106,10 @@ impl ListenerProcess
                         {
                             if let Some(conn) = self.connections.get(&id)
                             {
-                                conn.control_channel.send(msg).await?;
+                                if let Err(e) = conn.control_channel.try_send(msg)
+                                {
+                                    self.send_event(InternalConnectionEvent::ConnectionError(id, e.into()));
+                                }
                             }
                         }
                         Ok(ControlMessage::Listener(id, msg)) =>
@@ -106,7 +128,7 @@ impl ListenerProcess
                                         }
                                         Err(e) =>
                                         {
-                                            self.event_sender.send(InternalConnectionEvent::ListenerError(id,e)).await?;
+                                            self.send_event(InternalConnectionEvent::ListenerError(id,e));
                                         }
                                     }
                                 }
@@ -114,7 +136,10 @@ impl ListenerProcess
                                 {
                                     if let Some(listener) = self.listeners.get(&id)
                                     {
-                                        listener.control_channel.send(msg).await?;
+                                        if let Err(e) = listener.control_channel.try_send(msg)
+                                        {
+                                            self.send_event(InternalConnectionEvent::ListenerError(id, e.into()));
+                                        }
                                     }
                                 }
                             }
@@ -127,7 +152,7 @@ impl ListenerProcess
                             }
                             else
                             {
-                                self.event_sender.send(InternalConnectionEvent::BadTlsConfig).await?;
+                                self.send_event(InternalConnectionEvent::BadTlsConfig);
                             }
                         }
                         Ok(ControlMessage::Shutdown) =>
@@ -141,7 +166,7 @@ impl ListenerProcess
                         }
                         Err(_) =>
                         {
-                            self.event_sender.send(InternalConnectionEvent::CommunicationError).await?;
+                            self.send_event(InternalConnectionEvent::CommunicationError);
                             break;
                         }
                     }
@@ -152,12 +177,15 @@ impl ListenerProcess
                     {
                         Some(InternalConnectionEventType::New(conn)) =>
                         {
-                            self.event_sender.send(InternalConnectionEvent::NewConnection(conn.data())).await?;
+                            let data = conn.data();
+                            tracing::trace!("Sending new connection {:?}", data);
+                            self.send_event(InternalConnectionEvent::NewConnection(data));
                             self.connections.insert(conn.id, conn);
                         }
                         Some(InternalConnectionEventType::Event(evt)) =>
                         {
-                            self.event_sender.send(evt).await?;
+                            tracing::trace!("Sending connection event {:?}", evt);
+                            self.send_event(evt);
                         }
                         None => break
                     }

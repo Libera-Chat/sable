@@ -74,8 +74,8 @@ async fn sable_main(server_conf_path: &Path,
 
     ircd::tracing_config::build_subscriber(server_config.log)?.init();
 
-    let (client_send, client_recv) = channel(128);
-    let (server_send, server_recv) = channel(128);
+    let (client_send, client_recv) = unbounded_channel();
+    let (server_send, server_recv) = unbounded_channel();
 
     // There are two shutdown channels, one for the Server task and one for everything else.
     // The Server needs to shut down first, because it'll panic if any of the others disappears

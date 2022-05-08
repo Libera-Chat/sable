@@ -3,7 +3,6 @@ use client_listener::ConnectionId;
 
 use tokio::{
     sync::mpsc::{
-        Sender,
         UnboundedSender,
         UnboundedReceiver,
         unbounded_channel,
@@ -60,7 +59,7 @@ async fn run_communication_task(
         control_sender: IpcSender<ControlMessage>,
         event_receiver: IpcReceiver<AuthEvent>,
         mut control_receiver: UnboundedReceiver<ControlMessage>,
-        event_sender: Sender<AuthEvent>,
+        event_sender: UnboundedSender<AuthEvent>,
         mut shutdown_receiver: oneshot::Receiver<()>
     ) -> CommResult
 {
@@ -69,7 +68,7 @@ async fn run_communication_task(
         select!(
             event = event_receiver.recv() =>
             {
-                if let Err(e) = event_sender.send(event?).await {
+                if let Err(e) = event_sender.send(event?) {
                     tracing::error!("Error sending connection event: {}", e);
                 }
         },
@@ -113,7 +112,7 @@ impl AuthClient
     ///
     /// As for `with_exe_path`, this function returns a `std::io::Result` because
     /// spawning the child process may fail.
-    pub fn new(event_channel: Sender<AuthEvent>) -> std::io::Result<Self>
+    pub fn new(event_channel: UnboundedSender<AuthEvent>) -> std::io::Result<Self>
     {
         let my_path = current_exe()?;
         let dir = my_path.parent().ok_or(io::ErrorKind::NotFound)?;
@@ -132,7 +131,7 @@ impl AuthClient
     ///
     /// The return type is `std::io::Result` because spawning the child process may fail, in
     /// which case none of the functionality would be available.
-    pub fn with_exe_path(exec_path: impl AsRef<Path>, event_channel: Sender<AuthEvent>) -> std::io::Result<Self>
+    pub fn with_exe_path(exec_path: impl AsRef<Path>, event_channel: UnboundedSender<AuthEvent>) -> std::io::Result<Self>
     {
         let (control_send, control_recv) = ipc_channel()?;
         let (event_send, event_recv) = ipc_channel()?;
@@ -252,7 +251,7 @@ impl AuthClient
     /// worker process, and will therefore start to emit result objects for any
     /// operations which were begun before [`save_state`](Self::save_state) was called
     ///  on the previous client object.
-    pub fn resume(state: AuthClientState, event_channel: Sender<AuthEvent>) -> std::io::Result<Self>
+    pub fn resume(state: AuthClientState, event_channel: UnboundedSender<AuthEvent>) -> std::io::Result<Self>
     {
         let (control_send, event_recv) = unsafe
         {

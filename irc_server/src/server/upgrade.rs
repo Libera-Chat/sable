@@ -42,11 +42,11 @@ impl Server
             state: ServerState,
             event_log: Arc<ReplicatedEventLog>,
             listener_collection: &client_listener::ListenerCollection,
-            connection_events: Receiver<ConnectionEvent>,
-            rpc_receiver: Receiver<NetworkMessage>,
+            connection_events: UnboundedReceiver<ConnectionEvent>,
+            rpc_receiver: UnboundedReceiver<NetworkMessage>,
         ) -> std::io::Result<Self>
     {
-        let (auth_send, auth_recv) = channel(128);
+        let (auth_send, auth_recv) = unbounded_channel();
         let (action_send, action_recv) = unbounded_channel();
 
         Ok(Self {

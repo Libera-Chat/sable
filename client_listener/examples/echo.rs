@@ -9,7 +9,7 @@ use std::{
 use tokio::{
 //    select,
     sync::mpsc::{
-        channel
+        unbounded_channel
     },
 };
 
@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     tracing_subscriber::fmt::init();
 
     let mut connections = HashMap::new();
-    let (event_send, mut event_recv) = channel(128);
+    let (event_send, mut event_recv) = unbounded_channel();
 
     let addr: SocketAddr = "127.0.0.1:5555".parse()?;
     let exe = current_exe()?.parent().unwrap().parent().unwrap().join("listener_process");

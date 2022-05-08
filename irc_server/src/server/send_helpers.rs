@@ -1,4 +1,5 @@
 use super::*;
+use crate::errors::*;
 
 impl Server
 {
@@ -38,5 +39,36 @@ impl Server
         if let Ok(conn) = self.connections.get_user(user.id()) {
             conn.send(&msg);
         }
+    }
+
+    pub(super) fn notify_joining_user(&self, membership: &wrapper::Membership) -> HandleResult
+    {
+        let user = membership.user()?;
+        let channel = membership.channel()?;
+
+        if let Ok(conn) = self.connections.get_user(user.id()) {
+            if ! membership.permissions().is_empty()
+            {
+                let (mut changes, args) = utils::format_channel_perm_changes(&user, &membership.permissions(), &MembershipFlagSet::new());
+
+                changes += " ";
+                changes += &args.join(" ");
+
+                let msg = message::Mode::new(self, &channel, &changes);
+                conn.send(&msg);
+            }
+
+            if let Ok(topic) = self.net.topic_for_channel(channel.id())
+            {
+                conn.send(&numeric::TopicIs::new(&channel, topic.text())
+                          .format_for(self, &user));
+                conn.send(&numeric::TopicSetBy::new(&channel, topic.setter(), topic.timestamp())
+                          .format_for(self, &user));
+            }
+
+            crate::utils::send_channel_names(self, conn, &channel)?;
+        }
+
+        Ok(())
     }
 }

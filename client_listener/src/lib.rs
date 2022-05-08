@@ -10,6 +10,13 @@
 //! Once a listener has been created, new connections and any events on existing
 //! connections will be sent via the provided event channel.
 
+/// Maximum serialised size of a client message
+pub const MAX_MSG_SIZE:u64 = 1024;
+
+/// Maximum serialised size of a control message
+/// NB: this needs to include the size of the TLS cert chain
+pub const MAX_CONTROL_SIZE:u64 = 10485760;
+
 pub mod id;
 pub use id::*;
 

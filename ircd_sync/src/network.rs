@@ -16,8 +16,8 @@ use tokio::{
     },
     sync::{
         mpsc::{
-            Sender,
-            channel
+            UnboundedSender,
+            channel,
         },
         oneshot,
     },
@@ -76,7 +76,7 @@ struct NetworkTaskState
     peers: Vec<Peer>,
     listen_addr: SocketAddr,
     tls_server_config: Arc<ServerConfig>,
-    message_sender: Sender<Request>,
+    message_sender: UnboundedSender<Request>,
 }
 
 struct Peer
@@ -120,7 +120,7 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for NetworkError
 
 impl GossipNetwork
 {
-    pub fn new(net_config: SyncConfig, node_config: NodeConfig, message_sender: Sender<Request>) -> Self
+    pub fn new(net_config: SyncConfig, node_config: NodeConfig, message_sender: UnboundedSender<Request>) -> Self
     {
         let ca_cert = net_config.load_ca_cert().expect("Error loading CA");
 
@@ -157,7 +157,7 @@ impl GossipNetwork
         }
     }
 
-    pub fn restore(state: GossipNetworkState, net_config: SyncConfig, node_config: NodeConfig, message_sender: Sender<Request>) -> Self
+    pub fn restore(state: GossipNetworkState, net_config: SyncConfig, node_config: NodeConfig, message_sender: UnboundedSender<Request>) -> Self
     {
         let ret = Self::new(net_config, node_config, message_sender);
 
@@ -274,7 +274,7 @@ impl GossipNetwork
         }
     }
 
-    pub async fn send_and_process(&self, peer: &PeerConfig, msg: Message, response_sender: Sender<Request>)
+    pub async fn send_and_process(&self, peer: &PeerConfig, msg: Message, response_sender: UnboundedSender<Request>)
                  -> Result<JoinHandle<()>, NetworkError>
     {
         tracing::trace!("Sending to {:?}: {:?}", peer.address, msg);
@@ -290,7 +290,7 @@ impl GossipNetwork
     }
 
     #[instrument(skip(self,response_sender))]
-    async fn do_send_to(&self, peer: &PeerConfig, msg: Message, response_sender: Sender<Request>)
+    async fn do_send_to(&self, peer: &PeerConfig, msg: Message, response_sender: UnboundedSender<Request>)
                 -> Result<JoinHandle<()>, NetworkError>
     {
         let mut local_addr = self.task_state.listen_addr.clone();
@@ -372,7 +372,10 @@ impl NetworkTaskState
     }
 
     #[instrument(skip(tls_acceptor,self))]
-    async fn handle_connection(self: Arc<NetworkTaskState>, tls_acceptor: TlsAcceptor, conn: TcpStream, message_sender: Sender<Request>) -> Result<(), NetworkError>
+    async fn handle_connection(self: Arc<NetworkTaskState>,
+                               tls_acceptor: TlsAcceptor,
+                               conn: TcpStream,
+                               message_sender: UnboundedSender<Request>) -> Result<(), NetworkError>
     {
         let stream = tls_acceptor.accept(conn).await?;
 
@@ -385,7 +388,10 @@ impl NetworkTaskState
     }
 
     #[instrument(skip(self))]
-    async fn send_and_handle_response(self: Arc<NetworkTaskState>, mut stream: TlsStream<TcpStream>, message: Message, response_sender: Sender<Request>) -> Result<(), NetworkError>
+    async fn send_and_handle_response(self: Arc<NetworkTaskState>,
+                                      mut stream: TlsStream<TcpStream>,
+                                      message: Message,
+                                      response_sender: UnboundedSender<Request>) -> Result<(), NetworkError>
     {
         let buf = serde_json::to_vec(&message)?;
         stream.write_u32(buf.len().try_into().unwrap()).await?;
@@ -397,7 +403,9 @@ impl NetworkTaskState
     }
 
     #[instrument(skip(self))]
-    async fn read_and_handle_message(self: Arc<NetworkTaskState>, mut stream: TlsStream<TcpStream>, message_sender: Sender<Request>) -> Result<(), NetworkError>
+    async fn read_and_handle_message(self: Arc<NetworkTaskState>,
+                                     mut stream: TlsStream<TcpStream>,
+                                     message_sender: UnboundedSender<Request>) -> Result<(), NetworkError>
     {
         // Get the peer name we're talking to from the tls certificate
         let (tcp_stream, state) = stream.get_ref();
@@ -459,7 +467,7 @@ impl NetworkTaskState
                 message: msg
             };
 
-            message_sender.send(req).await?;
+            message_sender.send(req)?;
 
             while let Some(response) = req_recv.recv().await
             {

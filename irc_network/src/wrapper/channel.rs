@@ -14,8 +14,8 @@ impl Channel<'_> {
     }
 
     /// The channel's name
-    pub fn name(&self) -> &str {
-        self.data.name.value()
+    pub fn name(&self) -> &ChannelName {
+        &self.data.name
     }
 
     /// The [ChannelMode] for this channel

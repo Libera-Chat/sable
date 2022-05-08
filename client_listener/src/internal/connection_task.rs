@@ -16,15 +16,12 @@ use tokio::{
     select,
 };
 
-
 pub(crate) struct ConnectionTask<S> {
     id: ConnectionId,
     conn: S,
     control_channel: Receiver<ConnectionControlDetail>,
     event_channel: Sender<InternalConnectionEventType>
 }
-
-
 
 impl<S> ConnectionTask<S>
     where S: AsyncRead + AsyncWrite
@@ -77,7 +74,6 @@ impl<S> ConnectionTask<S>
                 }
             }
         }
-        tracing::info!("closing {:?}", self.id);
         if self.event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(self.id, ConnectionError::Closed))).await.is_err() {
             tracing::error!("Error notifying connection closed on {:?}", self.id);
         }

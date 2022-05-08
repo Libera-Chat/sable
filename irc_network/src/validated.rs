@@ -70,10 +70,14 @@ define_validated! {
     }
 
     ChannelName(ArrayString<64> casefolded) {
-        if ! value.starts_with('#') {
-            return Self::error(value);
+        if value.starts_with('#') || value.starts_with('&')
+        {
+            Ok(())
         }
-        Ok(())
+        else
+        {
+            Self::error(value)
+        }
     }
 
     ServerName(ArrayString<64>) {

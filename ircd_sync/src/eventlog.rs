@@ -8,7 +8,7 @@ use std::{
     ops::Bound::*
 };
 use tokio::sync::mpsc::{
-    Sender,
+    UnboundedSender,
 };
 use chrono::prelude::*;
 
@@ -21,7 +21,7 @@ pub struct EventLog {
     history: BTreeMap<ServerId, BTreeMap<EventId, Event>>,
     pending: HashMap<EventId, Event>,
     id_gen: EventIdGenerator,
-    event_sender: Option<Sender<Event>>,
+    event_sender: Option<UnboundedSender<Event>>,
     last_event_clock: EventClock,
 }
 
@@ -45,7 +45,7 @@ impl EventLog {
     /// Construct a new `EventLog`. `event_sender`, if `Some`, will receive
     /// notification of all new events as they are added to the log and become
     /// ready for processing by the [`Network`](irc_network::Network).
-    pub fn new(idgen: EventIdGenerator, event_sender: Option<Sender<Event>>) -> Self {
+    pub fn new(idgen: EventIdGenerator, event_sender: Option<UnboundedSender<Event>>) -> Self {
         Self {
             history: BTreeMap::new(),
             pending: HashMap::new(),
@@ -56,7 +56,7 @@ impl EventLog {
     }
 
     /// Restore an `EventLog` from a previously saved state
-    pub fn restore(state: EventLogState, event_sender: Option<Sender<Event>>) -> Self
+    pub fn restore(state: EventLogState, event_sender: Option<UnboundedSender<Event>>) -> Self
     {
         Self {
             history: BTreeMap::new(),
@@ -257,7 +257,7 @@ impl EventLog {
     {
         if let Some(send) = &self.event_sender
         {
-            send.try_send(event.clone()).expect("failed to broadcast event");
+            send.send(event.clone()).expect("failed to broadcast event");
         }
     }
 }

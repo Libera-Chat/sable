@@ -16,7 +16,6 @@ use client_listener::{
 use tokio::{
     sync::mpsc::{
         Receiver,
-        channel,
         UnboundedSender,
         UnboundedReceiver,
         unbounded_channel
@@ -58,15 +57,15 @@ pub struct Server
     event_log: Arc<ReplicatedEventLog>,
     epoch: EpochId,
     id_generator: ObjectIdGenerator,
-    rpc_receiver: Receiver<NetworkMessage>,
+    rpc_receiver: UnboundedReceiver<NetworkMessage>,
     action_receiver: UnboundedReceiver<CommandAction>,
     action_submitter: UnboundedSender<CommandAction>,
-    connection_events: Receiver<ConnectionEvent>,
+    connection_events: UnboundedReceiver<ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
     connections: ConnectionCollection,
     policy_service: StandardPolicyService,
     auth_client: AuthClient,
-    auth_events: Receiver<AuthEvent>,
+    auth_events: UnboundedReceiver<AuthEvent>,
     isupport: ISupportBuilder,
 }
 
@@ -92,11 +91,11 @@ impl Server
                name: ServerName,
                net: Network,
                event_log: Arc<ReplicatedEventLog>,
-               connection_events: Receiver<ConnectionEvent>,
-               rpc_receiver: Receiver<NetworkMessage>,
+               connection_events: UnboundedReceiver<ConnectionEvent>,
+               rpc_receiver: UnboundedReceiver<NetworkMessage>,
             ) -> Self
     {
-        let (auth_send, auth_recv) = channel(128);
+        let (auth_send, auth_recv) = unbounded_channel();
         let (action_send, action_recv) = unbounded_channel();
 
         if cfg!(feature = "debug") && !net.config().debug_mode
@@ -289,18 +288,27 @@ impl Server
 
         let shutdown_action = loop
         {
+            tracing::trace!("server run loop");
+
             // Before looking for an I/O event, do our internal bookkeeping.
             // First, take inbound client messages and process them
             self.process_pending_client_messages().await;
 
+            tracing::trace!("Processed pending messages");
+
             // Then, see whether there are any actions we need to process synchronously
             while let Ok(act) = self.action_receiver.try_recv()
             {
+                tracing::trace!(?act, "Got pending CommandAction");
                 self.apply_action(act).await;
             }
+
+            tracing::trace!("Housekeeping done, waiting for I/O");
+
             select! {
                 res = self.connection_events.recv() =>
                 {
+                    tracing::trace!("...from connection_events");
                     match res {
                         Some(msg) => {
                             self.process_connection_event(msg).await;
@@ -312,6 +320,7 @@ impl Server
                 },
                 res = self.auth_events.recv() =>
                 {
+                    tracing::trace!("...from auth_events");
                     match res
                     {
                         Some(AuthEvent::DnsResult(msg)) =>
@@ -354,6 +363,7 @@ impl Server
                 },
                 res = self.rpc_receiver.recv() =>
                 {
+                    tracing::trace!("...from rpc_receiver");
                     match res {
                         Some(NetworkMessage::NewEvent(event)) =>
                         {
@@ -376,6 +386,7 @@ impl Server
                 },
                 res = management_channel.recv() =>
                 {
+                    tracing::trace!("...from management_channel");
                     match res {
                         Some(cmd) =>
                         {
@@ -389,6 +400,7 @@ impl Server
                 },
                 _ = check_ping_timer.tick() =>
                 {
+                    tracing::trace!("...from check_ping_timer");
                     self.check_pings().await;
                 },
                 shutdown = &mut shutdown_channel =>

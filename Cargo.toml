@@ -9,6 +9,7 @@ members = [
     "rpc_protocols",
     "client_listener",
     "auth_client",
+    "sable_ipc",
 ]
 
 # Incremental builds break inventory
