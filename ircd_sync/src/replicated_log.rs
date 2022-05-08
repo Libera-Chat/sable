@@ -240,7 +240,7 @@ impl ReplicatedEventLog
     {
         while let Some(peer) = self.net.choose_any_peer()
         {
-            tracing::info!("Requesting network state from {:?}", peer);
+            tracing::debug!("Requesting network state from {:?}", peer);
             let msg = Message { source_server: self.shared_state.server, content: MessageDetail::GetNetworkState };
             match self.net.send_and_process(peer, msg, sender.clone()).await
             {
@@ -382,7 +382,7 @@ impl TaskState
                 {
                     is_done = false;
                     let missing = log.missing_ids_for(&evt.clock);
-                    tracing::info!("Requesting missing IDs {:?}", missing);
+                    tracing::debug!("Requesting missing IDs {:?}", missing);
                     match response
                     {
                         Ok(r) => {
@@ -511,8 +511,8 @@ impl TaskState
             },
             MessageDetail::NetworkState(net) =>
             {
-                tracing::info!("Got new network state; applying");
-                tracing::info!("New event clock is {:?}", net.clock());
+                tracing::debug!("Got new network state; applying");
+                tracing::debug!("New event clock is {:?}", net.clock());
 
                 {
                     // Set our event clock to the one from the incoming state

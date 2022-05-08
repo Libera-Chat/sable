@@ -337,7 +337,7 @@ impl Server
     #[tracing::instrument(skip(self))]
     fn handle_new_server(&self, detail: &update::NewServer) -> HandleResult
     {
-        tracing::info!("Got new server");
+        tracing::trace!("Got new server");
 
         let server = self.net.server(detail.id)?;
 
@@ -349,7 +349,7 @@ impl Server
     #[tracing::instrument(skip(self))]
     fn handle_server_quit(&self, detail: &update::ServerQuit) -> HandleResult
     {
-        tracing::info!("Got server quit");
+        tracing::trace!("Got server quit");
 
         if detail.server.id == self.my_id && detail.server.epoch == self.epoch
         {

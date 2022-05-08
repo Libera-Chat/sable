@@ -131,7 +131,7 @@ impl hyper::service::Service<Request<Body>> for ManagementService
     {
         let command_sender = self.data.command_sender.clone();
 
-        tracing::info!(method=?req.method(), path=?req.uri().path(), user=?self.authorised_fingerprint.name, "Got management request");
+        tracing::debug!(method=?req.method(), path=?req.uri().path(), user=?self.authorised_fingerprint.name, "Got management request");
 
         Box::pin(async move {
             match (req.method(), req.uri().path())

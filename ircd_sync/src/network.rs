@@ -192,7 +192,7 @@ impl GossipNetwork
 
     pub fn enable_peer(&self, name: &str)
     {
-        tracing::info!(name, "enabling peer");
+        tracing::debug!(name, "enabling peer");
         for p in self.task_state.peers.iter()
         {
             if p.conf.name == name
@@ -204,7 +204,7 @@ impl GossipNetwork
 
     pub fn disable_peer(&self, name: &str)
     {
-        tracing::info!(name, "disabling peer");
+        tracing::debug!(name, "disabling peer");
 
         for p in self.task_state.peers.iter()
         {

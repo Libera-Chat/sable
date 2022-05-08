@@ -326,7 +326,7 @@ impl Server
                         Some(AuthEvent::DnsResult(msg)) =>
                         {
                             if let Ok(conn) = self.connections.get(msg.conn) {
-                                tracing::info!("DNS lookup finished for {:?}: {}/{:?}", msg.conn,
+                                tracing::trace!("DNS lookup finished for {:?}: {}/{:?}", msg.conn,
                                                                                 conn.remote_addr(),
                                                                                 msg.hostname
                                                                                 );
@@ -442,7 +442,7 @@ impl Server
     {
         match msg.detail {
             ConnectionEventDetail::NewConnection(conn) => {
-                tracing::info!("Got new connection");
+                tracing::trace!("Got new connection");
                 let conn = ClientConnection::new(conn);
 
                 conn.send(&message::Notice::new(self, &conn.pre_client,
@@ -451,12 +451,11 @@ impl Server
                 self.connections.add(msg.source, conn);
             },
             ConnectionEventDetail::Message(m) => {
-                tracing::info!(msg=?m, "Got message");
+                tracing::trace!(msg=?m, "Got message");
 
                 self.connections.new_message(msg.source, m);
             },
             ConnectionEventDetail::Error(e) => {
-                tracing::error!(error=?e, "Got connection error");
                 if let Ok(conn) = self.connections.get(msg.source) {
                     if let Some(userid) = conn.user_id {
                         self.apply_action(CommandAction::state_change(
@@ -483,7 +482,7 @@ impl Server
             }
             else
             {
-                tracing::info!("Failed parsing")
+                tracing::info!(?message, "Failed parsing")
             }
         }
     }

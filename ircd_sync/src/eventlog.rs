@@ -163,7 +163,7 @@ impl EventLog {
         }
         else
         {
-            tracing::info!("Deferring event {:?}; event clock={:?} my clock={:?}", e.id, e.clock, self.last_event_clock);
+            tracing::debug!("Deferring event {:?}; event clock={:?} my clock={:?}", e.id, e.clock, self.last_event_clock);
             self.pending.insert(e.id, e);
         }
     }
@@ -247,7 +247,7 @@ impl EventLog {
         {
             if let Some(event) = self.pending.remove(&id)
             {
-                tracing::info!("Adding satisfied deferred event {:?}", event);
+                tracing::debug!("Adding satisfied deferred event {:?}", event);
                 self.do_add(event);
             }
         }
