@@ -16,6 +16,7 @@ use std::{
         IntoRawFd,
     },
 };
+use parking_lot::Mutex;
 use thiserror::Error;
 
 use bincode::{
@@ -104,6 +105,7 @@ pub struct Receiver<T: DeserializeOwned>
     // Option is purely so we can move out of this while implementing Drop
     socket: Option<UnixDatagram>,
     max_len: u64,
+    recv_buffer: Mutex<Vec<u8>>,
     _phantom: PhantomData<T>
 }
 
@@ -111,17 +113,27 @@ impl<T: DeserializeOwned> Receiver<T>
 {
     fn new(socket: UnixDatagram, max_len: u64) -> Self
     {
-        Self { socket: Some(socket), max_len, _phantom: PhantomData }
+        let mut recv_buf = Vec::new();
+        recv_buf.resize(max_len as usize, 0u8);
+
+        Self { socket: Some(socket), max_len, recv_buffer: Mutex::new(recv_buf), _phantom: PhantomData }
     }
 
     pub async fn recv(&self) -> Result<T>
     {
-        let mut buffer = Vec::with_capacity(self.max_len as usize);
-        buffer.resize(self.max_len as usize, 0u8);
+        let sock = self.socket.as_ref().unwrap();
 
-        let recv_len = self.socket.as_ref().unwrap().recv(&mut buffer).await?;
+        loop {
+            sock.readable().await?;
 
-        Ok(DefaultOptions::new().with_limit(self.max_len).deserialize(&buffer[..recv_len])?)
+            let mut buffer = self.recv_buffer.lock();
+
+            if let Ok(recv_len) = sock.try_recv(&mut buffer)
+            {
+                break Ok(DefaultOptions::new().with_limit(self.max_len).deserialize(&buffer[..recv_len])?);
+
+            }
+        }
     }
 
     pub unsafe fn from_raw_fd(fd: RawFd, max_size: u64) -> std::io::Result<Self>
