@@ -306,8 +306,10 @@ impl Server
             let user = member.user()?;
             if self.connections.get_user(user.id()).is_ok()
             {
-                let part_message = message::Part::new(&user, channel.name(), "Channel name changing");
+                let part_message = message::Part::new(&user, &detail.old_name, "Channel name changing");
+                let join_message = message::Join::new(&user, &channel);
                 self.send_to_user_if_local(&user, part_message);
+                self.send_to_user_if_local(&user, join_message);
                 self.notify_joining_user(&member).ok();
             }
         }
