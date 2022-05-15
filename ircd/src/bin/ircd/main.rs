@@ -264,7 +264,9 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>>
         std::fs::create_dir_all(&server_config.log.dir).expect("failed to create log directory");
     }
 
-    if !opts.foreground
+    // Don't re-daemonise if we're upgrading; in that case if we're supposed to be daemonised then
+    // we already are.
+    if !opts.foreground && opts.upgrade_state_fd.is_none()
     {
         let mut daemon = daemonize::Daemonize::new()
                             .exit_action(|| println!("Running in background mode"))
