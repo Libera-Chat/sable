@@ -18,9 +18,11 @@ pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Chan
         '='
     };
 
+    let user_is_on_chan = user.is_in_channel(channel.id()).is_some();
+
     for member in channel.members()
     {
-        if server.policy().can_see_user_on_channel(&user, &member).is_err()
+        if !user_is_on_chan && server.policy().can_see_user_on_channel(&user, &member).is_err()
         {
             continue;
         }
