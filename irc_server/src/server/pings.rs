@@ -1,6 +1,6 @@
 use super::*;
 
-const PINGOUT_DURATION: i64 = 60;
+const PINGOUT_DURATION: i64 = 240;
 
 impl Server
 {

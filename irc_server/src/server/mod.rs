@@ -284,7 +284,7 @@ impl Server
             flags: self.server_flags(),
             version: self.version().to_string(),
         }).await;
-        let mut check_ping_timer = time::interval(Duration::from_secs(5));
+        let mut check_ping_timer = time::interval(Duration::from_secs(60));
 
         let shutdown_action = loop
         {
