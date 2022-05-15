@@ -2,7 +2,13 @@ use crate::*;
 use internal::*;
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{
+        AtomicBool,
+        Ordering,
+    },
+};
 
 use tokio::{
     sync::mpsc::{
@@ -25,7 +31,9 @@ pub struct ListenerProcess
     tls_config: Option<Arc<rustls::ServerConfig>>,
 
     listeners: HashMap<ListenerId, Listener>,
-    connections: HashMap<ConnectionId, InternalConnection>
+    connections: HashMap<ConnectionId, InternalConnection>,
+
+    shutdown_flag: Arc<AtomicBool>,
 }
 
 impl ListenerProcess
@@ -38,6 +46,7 @@ impl ListenerProcess
             tls_config: None,
             listeners: HashMap::new(),
             connections: HashMap::new(),
+            shutdown_flag: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -78,10 +87,12 @@ impl ListenerProcess
     fn send_event(&self, event: InternalConnectionEvent)
     {
         let event_sender = Arc::clone(&self.event_sender);
+        let shutdown_flag = Arc::clone(&self.shutdown_flag);
         tokio::spawn(async move {
             if let Err(e) = event_sender.send(&event).await
             {
-                tracing::error!("Error sending connection event: {}", e);
+                shutdown_flag.store(true, Ordering::Relaxed);
+                panic!("Error sending connection event: {}", e);
             }
         });
     }
@@ -96,6 +107,12 @@ impl ListenerProcess
         // is full, the whole listener process will deadlock.
         loop
         {
+            if self.shutdown_flag.load(Ordering::Relaxed)
+            {
+                tracing::info!("Listener shutting down due to send error");
+                break;
+            }
+
             select!
             {
                 control = self.control_receiver.recv() =>
