@@ -16,6 +16,7 @@ pub struct ServerState
     id_generator: ObjectIdGenerator,
     connections: ConnectionCollectionState,
     auth_state: AuthClientState,
+    client_caps: CapabilityRepository,
 }
 
 impl Server
@@ -31,6 +32,7 @@ impl Server
             id_generator: self.id_generator,
             connections: self.connections.save_state(),
             auth_state: self.auth_client.save_state().await?,
+            client_caps: self.client_caps,
         })
     }
 
@@ -67,6 +69,7 @@ impl Server
             auth_client: AuthClient::resume(state.auth_state, auth_send)?,
             auth_events: auth_recv,
             isupport: Self::build_basic_isupport(),
+            client_caps: state.client_caps,
         })
     }
 }

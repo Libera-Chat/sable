@@ -6,6 +6,7 @@ use utils::OrLog;
 use rpc_protocols::*;
 use auth_client::*;
 use ircd_sync::ReplicatedEventLog;
+use crate::capability::*;
 
 use client_listener::{
     ConnectionEvent,
@@ -67,6 +68,7 @@ pub struct Server
     auth_client: AuthClient,
     auth_events: UnboundedReceiver<AuthEvent>,
     isupport: ISupportBuilder,
+    client_caps: CapabilityRepository,
 }
 
 impl Server
@@ -121,6 +123,7 @@ impl Server
             auth_client: AuthClient::new(auth_send).expect("Couldn't create auth client"),
             auth_events: auth_recv,
             isupport: Self::build_basic_isupport(),
+            client_caps: CapabilityRepository::new(),
         }
     }
 
@@ -203,6 +206,12 @@ impl Server
         let ret = self.connections.get(id).ok();
         tracing::trace!("Looking up connection id {:?}, {}", id, if ret.is_some() {"found"}else{"not found"});
         ret
+    }
+
+    /// The [`CapabilityRepository`] describing the server's supported client capability flags
+    pub fn client_capabilities(&self) -> &CapabilityRepository
+    {
+        &self.client_caps
     }
 
     fn lookup_message_source(&self, id: ObjectId) -> Result<Box<dyn messages::MessageSource + '_>, LookupError>

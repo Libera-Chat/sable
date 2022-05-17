@@ -23,6 +23,9 @@ pub use messages::numeric;
 pub use messages::MessageType;
 pub use messages::Numeric;
 
+mod capability;
+use capability::TaggableMessage;
+
 mod movable;
 
 mod throttled_queue;

@@ -1,4 +1,5 @@
 use super::*;
+use crate::TaggableMessage;
 use irc_network::update;
 use irc_network::NetworkStateChange;
 use irc_network::wrapper::ObjectWrapper;
@@ -322,7 +323,8 @@ impl Server
         let message = self.net.message(detail.message)?;
         let source = message.source()?;
 
-        let message_send = message::Message::new(&source, &message.target()?, message.message_type(), message.text());
+        let message_send = message::Message::new(&source, &message.target()?, message.message_type(), message.text())
+                                                .with_tag(capability::server_time::server_time_tag(message.ts()));
 
         match message.target()? {
             wrapper::MessageTarget::Channel(channel) => {

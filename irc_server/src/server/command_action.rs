@@ -5,7 +5,8 @@ impl Server
     pub(super) async fn apply_action(&mut self, action: CommandAction)
     {
         match action {
-            CommandAction::RegisterClient(id) => {
+            CommandAction::RegisterClient(id) =>
+            {
                 let mut should_add_user = None;
                 let mut actions: Vec<(ObjectId, EventDetails)> = Vec::new();
                 if let Ok(conn) = self.connections.get(id)
@@ -56,11 +57,23 @@ impl Server
                 {
                     self.submit_event(act.0, act.1).await;
                 }
-            },
-            CommandAction::DisconnectUser(user_id) => {
+            }
+
+            CommandAction::UpdateConnectionCaps(conn_id, new_caps) =>
+            {
+                if let Ok(connection) = self.connections.get_mut(conn_id)
+                {
+                    connection.capabilities = new_caps;
+                }
+            }
+
+            CommandAction::DisconnectUser(user_id) =>
+            {
                 self.connections.remove_user(user_id);
             }
-            CommandAction::StateChange(id, detail) => {
+
+            CommandAction::StateChange(id, detail) =>
+            {
                 self.submit_event(id, detail).await;
             }
         }

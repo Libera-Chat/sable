@@ -1043,6 +1043,7 @@ version = "0.1.0"
 dependencies = [
  "ambassador",
  "auth_client",
+ "bitflags",
  "built",
  "chrono",
  "client_listener",
@@ -1051,6 +1052,7 @@ dependencies = [
  "irc_strings",
  "ircd_macros",
  "ircd_sync",
+ "itertools",
  "pwhash",
  "rpc_protocols",
  "rustls",

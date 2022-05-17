@@ -3,6 +3,7 @@ use super::*;
 use client_listener::*;
 use crate::movable::Movable;
 use crate::throttled_queue::*;
+use crate::capability::*;
 
 use std::cell::RefCell;
 use std::net::IpAddr;
@@ -22,6 +23,9 @@ pub struct ClientConnection
 
     // Pending lines to be processed
     receive_queue: Movable<ThrottledQueue<String>>,
+
+    /// Capability flags
+    pub capabilities: ClientCapabilitySet
 }
 
 /// Serialised state of a [`ClientConnection`], for later resumption
@@ -32,6 +36,7 @@ pub(super) struct ClientConnectionState
     user_id: Option<UserId>,
     pre_client: Option<PreClient>,
     receive_queue: ThrottledQueue<String>,
+    capabilities: ClientCapabilitySet,
 }
 
 /// Information received from a client connection that has not yet completed registration
@@ -61,6 +66,7 @@ impl ClientConnection
             user_id: None,
             pre_client: Some(RefCell::new(PreClient::new())),
             receive_queue: Movable::new(ThrottledQueue::new(throttle_settings, 16)),
+            capabilities: ClientCapabilitySet::new(),
         }
     }
 
@@ -72,6 +78,7 @@ impl ClientConnection
             user_id: self.user_id,
             pre_client: self.pre_client.take().map(|c| c.into_inner()),
             receive_queue: self.receive_queue.unwrap(),
+            capabilities: self.capabilities,
         }
     }
 
@@ -84,6 +91,7 @@ impl ClientConnection
             user_id: state.user_id,
             pre_client: state.pre_client.map(RefCell::new),
             receive_queue: Movable::new(state.receive_queue),
+            capabilities: state.capabilities,
         }
     }
 
@@ -100,9 +108,9 @@ impl ClientConnection
     }
 
     /// Send a protocol message to this connection
-    pub fn send(&self, msg: &dyn messages::MessageType)
+    pub fn send(&self, msg: &dyn messages::MessageTypeFormat)
     {
-        self.connection.send(msg.to_string())
+        self.connection.send(msg.format_for_client_caps(&self.capabilities))
     }
 
     /// Close this connection with an error message
@@ -148,7 +156,7 @@ impl PreClient {
             nick: None,
             realname: None,
             hostname: None,
-            cap_in_progress: false
+            cap_in_progress: false,
         }
     }
 

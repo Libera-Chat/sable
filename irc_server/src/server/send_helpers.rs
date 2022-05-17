@@ -1,9 +1,10 @@
 use super::*;
 use crate::errors::*;
+use crate::messages::*;
 
 impl Server
 {
-    pub(super) fn send_to_channel_members(&self, chan: &wrapper::Channel, msg: impl MessageType)
+    pub(super) fn send_to_channel_members(&self, chan: &wrapper::Channel, msg: impl MessageTypeFormat)
     {
         for m in chan.members()
         {
@@ -16,7 +17,7 @@ impl Server
         }
     }
 
-    pub(super) fn send_to_channel_members_where(&self, chan: &wrapper::Channel, msg: impl MessageType,
+    pub(super) fn send_to_channel_members_where(&self, chan: &wrapper::Channel, msg: impl MessageTypeFormat,
                         pred: impl Fn(&wrapper::Membership) -> bool
                     )
     {
@@ -34,7 +35,7 @@ impl Server
         }
     }
 
-    pub(super) fn send_to_user_if_local(&self, user: &wrapper::User, msg: impl MessageType)
+    pub(super) fn send_to_user_if_local(&self, user: &wrapper::User, msg: impl MessageTypeFormat)
     {
         if let Ok(conn) = self.connections.get_user(user.id()) {
             conn.send(&msg);

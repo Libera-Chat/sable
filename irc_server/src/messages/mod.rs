@@ -90,8 +90,22 @@ impl MessageTarget for CommandSource<'_>
 }
 
 /// Trait describing a client protocol message type
-pub trait MessageType : std::fmt::Display + std::fmt::Debug
+pub trait MessageType : std::fmt::Debug + MessageTypeFormat
 { }
+
+/// Trait that determines how to format a client message
+pub trait MessageTypeFormat
+{
+    fn format_for_client_caps(&self, caps: &super::capability::ClientCapabilitySet) -> String;
+}
+
+impl<T: std::fmt::Display> MessageTypeFormat for T
+{
+    fn format_for_client_caps(&self, _caps: &super::capability::ClientCapabilitySet) -> String
+    {
+        self.to_string()
+    }
+}
 
 /// A `Numeric` that has been formatted for a specific source and target
 #[derive(Debug)]

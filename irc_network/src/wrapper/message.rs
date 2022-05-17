@@ -50,6 +50,12 @@ impl Message<'_> {
     {
         &self.data.text
     }
+
+    /// The message's timestamp
+    pub fn ts(&self) -> i64
+    {
+        self.data.ts
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for Message<'a> {

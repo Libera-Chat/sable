@@ -29,8 +29,13 @@ pub enum CommandAction {
     /// here; the remaining [`Event`](event::Event) fields are filled in by the
     /// event log.
     StateChange(ObjectId, event::EventDetails),
+
     /// Indicate that the given connection is ready to register
     RegisterClient(ConnectionId),
+
+    /// Update a connection's client caps
+    UpdateConnectionCaps(ConnectionId, ClientCapabilitySet),
+
     /// Disconnect the given user. The handler should first inform the user of the reason,
     /// if appropriate
     DisconnectUser(UserId),

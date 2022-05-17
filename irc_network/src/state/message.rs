@@ -19,6 +19,7 @@ pub struct Message
     pub id: MessageId,
     pub source: UserId,
     pub target: ObjectId,
+    pub ts: i64,
     pub message_type: MessageType,
     pub text: String,
 }
