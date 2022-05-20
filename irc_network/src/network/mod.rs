@@ -74,15 +74,9 @@ pub struct Network
     nick_bindings: HashMap<Nickname, state::NickBinding>,
     #[serde_as(as = "Vec<(_,_)>")]
     users: HashMap<UserId, state::User>,
-    #[serde_as(as = "Vec<(_,_)>")]
-    user_modes: HashMap<UserModeId, state::UserMode>,
 
     #[serde_as(as = "Vec<(_,_)>")]
     channels: HashMap<ChannelId, state::Channel>,
-    #[serde_as(as = "Vec<(_,_)>")]
-    channel_modes: HashMap<ChannelModeId, state::ChannelMode>,
-    #[serde_as(as = "Vec<(_,_)>")]
-    channel_list_modes: HashMap<ListModeId, state::ListMode>,
     #[serde_as(as = "Vec<(_,_)>")]
     list_mode_entries: HashMap<ListModeEntryId, state::ListModeEntry>,
     #[serde_as(as = "Vec<(_,_)>")]
@@ -117,12 +111,9 @@ impl Network {
         Network {
             nick_bindings: HashMap::new(),
             users: HashMap::new(),
-            user_modes: HashMap::new(),
 
             channels: HashMap::new(),
-            channel_modes: HashMap::new(),
             channel_topics: HashMap::new(),
-            channel_list_modes: HashMap::new(),
             list_mode_entries: HashMap::new(),
             memberships: HashMap::new(),
             channel_invites: HashMap::new(),
@@ -176,11 +167,9 @@ impl Network {
             BindNickname => self.bind_nickname,
             NewUser => self.new_user,
             UserQuit => self.user_quit,
-            NewUserMode => self.new_user_mode,
             UserModeChange => self.user_mode_change,
             OperUp => self.oper_up,
             NewChannel => self.new_channel,
-            NewChannelMode => self.new_channel_mode,
             ChannelModeChange => self.channel_mode_change,
             NewListModeEntry => self.new_list_mode_entry,
             DelListModeEntry => self.del_list_mode_entry,

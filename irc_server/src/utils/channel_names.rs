@@ -12,7 +12,7 @@ pub fn send_channel_names(server: &Server, to: &ClientConnection, channel: &Chan
     let mut current_line = String::new();
     const CONTENT_LEN:usize = 300;
 
-    let pub_or_secret = if channel.mode()?.has_mode(ChannelModeFlag::Secret) {
+    let pub_or_secret = if channel.mode().has_mode(ChannelModeFlag::Secret) {
         '@'
     } else {
         '='

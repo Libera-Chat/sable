@@ -15,9 +15,9 @@ impl ListModeEntry<'_> {
     }
 
     /// The mode list to which this belongs
-    pub fn list(&self) -> LookupResult<wrapper::ListMode>
+    pub fn channel(&self) -> LookupResult<wrapper::Channel>
     {
-        self.network.list_mode(self.data.list)
+        self.network.channel(self.data.list.channel())
     }
 
     /// The hostmask being banned (or whatever else)

@@ -22,7 +22,7 @@ command_handler!("MODE" => ModeHandler {
                 return numeric_error!(CantChangeOtherUserMode);
             }
 
-            let mode = source.mode()?;
+            let mode = source.mode();
 
             let mut sent_unknown = false;
             let mut added = UserModeSet::new();
@@ -69,7 +69,7 @@ command_handler!("MODE" => ModeHandler {
             if !added.is_empty() || !removed.is_empty()
             {
                 let detail = event::UserModeChange { changed_by: source.id().into(), added, removed };
-                self.action(CommandAction::state_change(mode.id(), detail))?;
+                self.action(CommandAction::state_change(source.id(), detail))?;
             }
         }
         Ok(())
@@ -81,7 +81,7 @@ impl ModeHandler<'_>
     fn handle_channel_mode(&mut self, source: &wrapper::User, cmd: &ClientCommand, cname: ChannelName, args: &mut ArgList) -> CommandResult
     {
         let chan = self.server.network().channel_by_name(&cname)?;
-        let mode = chan.mode()?;
+        let mode = chan.mode();
 
         if args.is_empty()
         {
@@ -145,8 +145,7 @@ impl ModeHandler<'_>
                         }
                         else if let Some(list_type) = ListModeType::from_char(c)
                         {
-                            let mode = chan.mode()?;
-                            let list = mode.list(list_type)?;
+                            let list = chan.list(list_type);
 
                             if dir == Direction::Query || args.is_empty()
                             {
@@ -217,7 +216,7 @@ impl ModeHandler<'_>
                     removed,
                     key_change,
                 };
-                self.action(CommandAction::state_change(mode.id(), detail))?;
+                self.action(CommandAction::state_change(chan.id(), detail))?;
             }
         }
         Ok(())

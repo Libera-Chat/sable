@@ -35,8 +35,6 @@ impl Network {
                 state_utils::hashed_nick_for(user.id)
             };
 
-            self.user_modes.remove(&user.mode_id);
-
             Some(update::UserQuit {
                 user,
                 nickname: removed_nickname,
@@ -161,7 +159,7 @@ impl Network {
                                     detail.username,
                                     detail.visible_hostname,
                                     detail.realname.clone(),
-                                    detail.mode_id,
+                                    detail.mode.clone(),
                                 );
 
         // First insert the user (with no nickname yet) so that the nick binding can see
@@ -191,25 +189,15 @@ impl Network {
         }
     }
 
-    pub(super) fn new_user_mode(&mut self, target: UserModeId, _event: &Event, mode: &details::NewUserMode, _updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn user_mode_change(&mut self, target: UserId, _event: &Event, mode: &details::UserModeChange, updates: &dyn NetworkUpdateReceiver)
     {
-        let mode = state::UserMode::new(target, mode.mode);
-        self.user_modes.insert(target, mode);
-    }
+        if let Some(user) = self.users.get_mut(&target)
+        {
+            user.mode.modes |= mode.added;
+            user.mode.modes &= !mode.removed;
 
-    pub(super) fn user_mode_change(&mut self, target: UserModeId, _event: &Event, mode: &details::UserModeChange, updates: &dyn NetworkUpdateReceiver)
-    {
-        if let Some(umode) = self.user_modes.get_mut(&target)
-        {
-            umode.modes |= mode.added;
-            umode.modes &= !mode.removed;
-        }
-        let mut user = self.users.values().filter(|u| u.mode_id == target);
-        if let Some(user) = user.next()
-        {
             updates.notify(update::UserModeChange {
                 user_id: user.id,
-                mode_id: target,
                 added: mode.added,
                 removed: mode.removed,
                 changed_by: mode.changed_by,

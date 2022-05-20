@@ -11,20 +11,12 @@ pub enum LookupError
     WrongType,
     #[error("No such user id {0:?}")]
     NoSuchUser(UserId),
-    #[error("No such user mode id {0:?}")]
-    NoSuchUserMode(UserModeId),
-    #[error("No user with mode id {0:?}")]
-    NoUserForMode(UserModeId),
     #[error("No such channel id {0:?}")]
     NoSuchChannel(ChannelId),
-    #[error("No such channel mode id {0:?}")]
-    NoSuchChannelMode(ChannelModeId),
-    #[error("No channel with mode id {0:?}")]
-    NoChannelForMode(ChannelModeId),
     #[error("No such banlist id {0:?}")]
     NoSuchListMode(ListModeId),
-    #[error("No channel mode corresponds to banlist id {0:?}")]
-    NoModeForList(ListModeId),
+    #[error("No channel corresponds to banlist id {0:?}")]
+    NoChannelForList(ListModeId),
     #[error("No such channel topic id {0:?}")]
     NoSuchChannelTopic(ChannelTopicId),
     #[error("No topic for channel id {0:?}")]

@@ -8,7 +8,6 @@ impl Server
             CommandAction::RegisterClient(id) =>
             {
                 let mut should_add_user = None;
-                let mut actions: Vec<(ObjectId, EventDetails)> = Vec::new();
                 if let Ok(conn) = self.connections.get(id)
                 {
                     if ! self.policy().check_user_access(self, &self.net, conn)
@@ -23,27 +22,21 @@ impl Server
                         // if someone else takes the nickname in between
                         let pre_client = pre_client_rc.borrow();
                         let new_user_id = self.id_generator.next_user();
-                        let new_user_mode_id = self.id_generator.next_user_mode();
 
                         let mut umodes = UserModeSet::new();
                         if conn.connection.is_tls() {
                             umodes |= UserModeFlag::TlsConnection;
                         }
 
-                        let details = event::details::NewUserMode {
-                            mode: umodes
-                        };
-                        actions.push((new_user_mode_id.into(), details.into()));
-
                         let details = event::details::NewUser {
                             nickname: *pre_client.nick.as_ref().unwrap(),
                             username: *pre_client.user.as_ref().unwrap(),
                             visible_hostname: *pre_client.hostname.as_ref().unwrap(),
                             realname: pre_client.realname.as_ref().unwrap().clone(),
-                            mode_id: new_user_mode_id,
+                            mode: state::UserMode::new(umodes),
                             server: self.my_id,
                         };
-                        actions.push((new_user_id.into(), details.into()));
+                        self.submit_event(new_user_id, details).await;
 
                         should_add_user = Some((new_user_id, id));
                     }
@@ -52,10 +45,6 @@ impl Server
                 if let Some((user_id, conn_id)) = should_add_user
                 {
                     self.connections.add_user(user_id, conn_id);
-                }
-                for act in actions
-                {
-                    self.submit_event(act.0, act.1).await;
                 }
             }
 

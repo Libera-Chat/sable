@@ -58,12 +58,6 @@ impl Network {
         self.user(self.nick_bindings.get(nick).ok_or_else(|| NoSuchNick(nick.to_string()))?.user)
     }
 
-    /// Look up a user mode object by ID
-    pub fn user_mode(&self, id: UserModeId) -> LookupResult<wrapper::UserMode>
-    {
-        self.user_modes.get(&id).ok_or(NoSuchUserMode(id)).wrap(self)
-    }
-
     /// Look up a channel by ID
     pub fn channel(&self, id: ChannelId) -> LookupResult<wrapper::Channel> {
         self.channels.get(&id).ok_or(NoSuchChannel(id)).wrap(self)
@@ -91,22 +85,16 @@ impl Network {
         self.channels.values().find(|x| &x.name == name).ok_or_else(|| NoSuchChannelName(name.to_string())).wrap(self)
     }
 
-    /// Look up a channel mode by ID.
-    pub fn channel_mode(&self, id: ChannelModeId) -> LookupResult<wrapper::ChannelMode>
-    {
-        self.channel_modes.get(&id).ok_or(NoSuchChannelMode(id)).wrap(self)
-    }
-
     /// Look up a ban-type list by ID
-    pub fn list_mode(&self, id: ListModeId) -> LookupResult<wrapper::ListMode>
+    pub fn list_mode(&self, id: ListModeId) -> wrapper::ListMode
     {
-        self.channel_list_modes.get(&id).ok_or(NoSuchListMode(id)).wrap(self)
+        wrapper::ListMode::new(self, id)
     }
 
     /// Find the channel mode entry corresponding to a given banlist
-    pub fn mode_for_list(&self, id: ListModeId) -> LookupResult<wrapper::ChannelMode>
+    pub fn channel_for_list(&self, id: ListModeId) -> LookupResult<wrapper::Channel>
     {
-        self.channel_modes.get(&id.mode()).ok_or(NoModeForList(id)).wrap(self)
+        self.channels.get(&id.channel()).ok_or(NoChannelForList(id)).wrap(self)
     }
 
     /// The list entries belonging to a given list ID

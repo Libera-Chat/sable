@@ -54,7 +54,7 @@ impl Server
                 connection.send(&numeric::ISupport::new_for(&self.name.to_string(), &user.nick(), line));
             }
 
-            connection.send(&message::Mode::new(&user, &user, &user.mode()?.format()));
+            connection.send(&message::Mode::new(&user, &user, &user.mode().format()));
 
             connection.send(&message::Notice::new(&self.name.to_string(), &user,
                     "The network is currently running in debug mode. Do not send any sensitive information such as passwords."));
@@ -150,8 +150,7 @@ impl Server
 
     fn handle_channel_mode_change(&self, detail: &update::ChannelModeChange) -> HandleResult
     {
-        let mode = self.net.channel_mode(detail.mode)?;
-        let chan = mode.channel()?;
+        let chan = self.net.channel(detail.channel)?;
         let source = self.lookup_message_source(detail.changed_by)?;
 
         let (mut changes, params) = utils::format_cmode_changes(detail);

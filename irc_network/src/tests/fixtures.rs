@@ -46,26 +46,16 @@ impl NetworkBuilder
 
     pub fn add_channel(&mut self, name: ChannelName)
     {
-        let mode_id = self.id_gen.next_channel_mode();
-
-        self.apply(mode_id, details::NewChannelMode { mode: ChannelModeSet::new() });
-
         self.apply(self.id_gen.next_channel(), details::NewChannel {
-                mode: mode_id,
+                mode: state::ChannelMode::new(ChannelModeSet::default()),
                 name: name
             });
     }
 
     pub fn add_user(&mut self, nick: Nickname)
     {
-        let mode_id = self.id_gen.next_user_mode();
-
-        self.apply(mode_id, details::NewUserMode {
-                mode: UserModeSet::new()
-            });
-
         self.apply(self.id_gen.next_user(), details::NewUser {
-                mode_id: mode_id,
+                mode: state::UserMode::new(UserModeSet::default()),
                 nickname: nick,
                 username: Username::from_str("a").unwrap(),
                 realname: "user".to_string(),

@@ -33,7 +33,6 @@ NetworkStateChange => {
     /// A user's mode has changed
     struct UserModeChange {
         pub user_id: UserId,
-        pub mode_id: UserModeId,
         pub added: UserModeSet,
         pub removed: UserModeSet,
         pub changed_by: ObjectId,
@@ -55,7 +54,6 @@ NetworkStateChange => {
     /// A channel's mode has changed
     struct ChannelModeChange {
         pub channel: ChannelId,
-        pub mode: ChannelModeId,
         pub added: ChannelModeSet,
         pub removed: ChannelModeSet,
         pub key_change: OptionChange<ChannelKey>,

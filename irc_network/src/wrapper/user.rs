@@ -51,8 +51,8 @@ impl User<'_> {
     }
 
     /// The user's current modes
-    pub fn mode(&self) -> LookupResult<UserMode> {
-        self.network.user_mode(self.data.mode_id)
+    pub fn mode(&self) -> UserMode {
+        UserMode::wrap(self.network, &self.data.mode)
     }
 
     /// The server through which the user is connected

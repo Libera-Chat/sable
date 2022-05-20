@@ -36,21 +36,21 @@ impl ChannelPolicyService for StandardChannelPolicy
 {
     fn can_join(&self, user: &User, channel: &Channel, key: Option<ChannelKey>) -> PermissionResult
     {
-        let chan_key = channel.mode()?.key();
+        let chan_key = channel.mode().key();
         if chan_key.is_some() && key != chan_key
         {
             return numeric_error!(BadChannelKey, channel)
         }
 
-        if channel.mode()?.has_mode(ChannelModeFlag::InviteOnly)
+        if channel.mode().has_mode(ChannelModeFlag::InviteOnly)
             && user.has_invite_for(channel.id()).is_none()
-            && self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Invex)?).is_none()
+            && self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Invex)).is_none()
         {
             return numeric_error!(InviteOnlyChannel, channel);
         }
 
-        if self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
-            && self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_none()
+        if self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Ban)).is_some()
+            && self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Except)).is_none()
         {
             return numeric_error!(BannedOnChannel, channel)
         }
@@ -69,15 +69,15 @@ impl ChannelPolicyService for StandardChannelPolicy
                 return Ok(());
             }
         }
-        else if channel.mode()?.has_mode(ChannelModeFlag::NoExternal)
+        else if channel.mode().has_mode(ChannelModeFlag::NoExternal)
         {
             // If it's +n and they're not in it, no point testing anything else
             return numeric_error!(CannotSendToChannel, channel);
         }
 
-        if (self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Ban)?).is_some()
-                || self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Quiet)?).is_some())
-              && self.ban_resolver.user_matches_list(user, &channel.mode()?.list(ListModeType::Except)?).is_none()
+        if (self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Ban)).is_some()
+                || self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Quiet)).is_some())
+              && self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Except)).is_none()
         {
             return numeric_error!(CannotSendToChannel, channel);
         }
@@ -94,8 +94,8 @@ impl ChannelPolicyService for StandardChannelPolicy
             return Ok(());
         }
 
-        let chan_is_secret = chan.mode()?.has_mode(ChannelModeFlag::Secret);
-        let user_is_invis = member.user()?.mode()?.has_mode(UserModeFlag::Invisible);
+        let chan_is_secret = chan.mode().has_mode(ChannelModeFlag::Secret);
+        let user_is_invis = member.user()?.mode().has_mode(UserModeFlag::Invisible);
         if chan_is_secret || user_is_invis
         {
             return numeric_error!(NotOnChannel, &chan);
@@ -110,7 +110,7 @@ impl ChannelPolicyService for StandardChannelPolicy
 
     fn can_set_topic(&self, user: &User, channel: &Channel, _topic: &str) -> PermissionResult
     {
-        if channel.mode()?.has_mode(ChannelModeFlag::TopicLock)
+        if channel.mode().has_mode(ChannelModeFlag::TopicLock)
         {
             is_channel_operator(user, channel)
         }

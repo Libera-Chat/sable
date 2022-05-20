@@ -20,7 +20,7 @@ EventDetails => {
         pub username: Username,
         pub visible_hostname: Hostname,
         pub realname: String,
-        pub mode_id: UserModeId,
+        pub mode: state::UserMode,
         pub server: ServerId,
     }
 
@@ -29,12 +29,7 @@ EventDetails => {
         pub message: String,
     }
 
-    #[target_type(UserModeId)]
-    struct NewUserMode {
-        pub mode: UserModeSet,
-    }
-
-    #[target_type(UserModeId)]
+    #[target_type(UserId)]
     struct UserModeChange {
         pub changed_by: ObjectId,
         pub added: UserModeSet,
@@ -49,15 +44,10 @@ EventDetails => {
     #[target_type(ChannelId)]
     struct NewChannel {
         pub name: ChannelName,
-        pub mode: ChannelModeId,
+        pub mode: state::ChannelMode,
     }
 
-    #[target_type(ChannelModeId)]
-    struct NewChannelMode {
-        pub mode: ChannelModeSet,
-    }
-
-    #[target_type(ChannelModeId)]
+    #[target_type(ChannelId)]
     struct ChannelModeChange {
         pub changed_by: ObjectId,
         pub added: ChannelModeSet,

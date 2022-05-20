@@ -14,20 +14,16 @@ impl Network
                 oper_name: details.oper_name.clone()
             });
 
-            if let Some(mode) = self.user_modes.get_mut(&user.mode_id)
-            {
-                mode.modes |= UserModeFlag::Oper;
+            user.mode.modes |= UserModeFlag::Oper;
 
-                if new_oper
-                {
-                    updates.notify(update::UserModeChange {
-                        user_id: target,
-                        mode_id: user.mode_id,
-                        added: UserModeFlag::Oper.into(),
-                        removed: UserModeSet::new(),
-                        changed_by: target.into()
-                    });
-                }
+            if new_oper
+            {
+                updates.notify(update::UserModeChange {
+                    user_id: target,
+                    added: UserModeFlag::Oper.into(),
+                    removed: UserModeSet::new(),
+                    changed_by: target.into()
+                });
             }
         }
     }

@@ -16,11 +16,9 @@ object_ids!(ObjectId (ObjectIdGenerator) {
     Epoch: (LocalId,);
     Event: sequential;
     User: sequential;
-    UserMode: sequential;
     Channel: sequential;
-    ChannelMode: sequential;
     ChannelTopic: sequential;
-    ListMode: (ChannelModeId,ListModeType);
+    ListMode: (ChannelId,ListModeType);
     ListModeEntry: sequential;
     Message: sequential;
 
@@ -48,7 +46,7 @@ impl NicknameId {
 }
 
 impl ListModeId {
-    pub fn mode(&self) -> ChannelModeId { self.0 }
+    pub fn channel(&self) -> ChannelId { self.0 }
     pub fn list_type(&self) -> ListModeType { self.1 }
 }
 

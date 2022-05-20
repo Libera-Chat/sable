@@ -34,7 +34,7 @@ pub struct User {
     pub visible_host: Hostname,
     pub realname: String,
 
-    pub mode_id: UserModeId,
+    pub mode: UserMode,
     pub oper_privileges: Option<UserPrivileges>,
 }
 
@@ -42,7 +42,6 @@ pub struct User {
 /// the mode.
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct UserMode {
-    pub id: UserModeId,
     pub modes: UserModeSet,
 }
 
@@ -64,7 +63,7 @@ impl NickBinding
 impl User {
     pub fn new(id: UserId, server: ServerId,
                user: Username, visible_host: Hostname,
-               realname: String, mode_id: UserModeId) -> Self
+               realname: String, mode: UserMode) -> Self
     {
         Self {
             id,
@@ -72,17 +71,16 @@ impl User {
             user,
             visible_host,
             realname,
-            mode_id,
+            mode,
             oper_privileges: None,
         }
     }
 }
 
 impl UserMode {
-    pub fn new(id: UserModeId, modes: UserModeSet) -> Self
+    pub fn new(modes: UserModeSet) -> Self
     {
         Self {
-            id,
             modes
         }
     }

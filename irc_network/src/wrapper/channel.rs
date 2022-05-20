@@ -19,8 +19,15 @@ impl Channel<'_> {
     }
 
     /// The [ChannelMode] for this channel
-    pub fn mode(&self) -> LookupResult<ChannelMode> {
-        self.network.channel_mode(self.data.mode)
+    pub fn mode(&self) -> ChannelMode {
+        ChannelMode::wrap(self.network, &self.data.mode)
+    }
+
+    /// Get the list mode object belonging to this channel of the given type
+    pub fn list(&self, list_type: ListModeType) -> ListMode
+    {
+        let list_id = ListModeId::new(self.data.id, list_type);
+        self.network.list_mode(list_id)
     }
 
     /// Iterate over the channel's members

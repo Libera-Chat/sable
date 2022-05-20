@@ -21,11 +21,10 @@ command_handler!("JOIN" => JoinHandler {
                     (channel.id(), MembershipFlagSet::new())
                 },
                 Err(_) => {
-                    let newmode_details = event::NewChannelMode { mode: ChannelModeSet::default() };
-                    let cmode_id = self.server.ids().next_channel_mode();
-                    self.action(CommandAction::state_change(cmode_id, newmode_details))?;
-
-                    let details = event::NewChannel { name: chname, mode: cmode_id };
+                    let details = event::NewChannel {
+                        name: chname,
+                        mode: state::ChannelMode::new(ChannelModeSet::default()),
+                    };
                     let channel_id = self.server.ids().next_channel();
                     self.action(CommandAction::state_change(channel_id, details))?;
                     (channel_id, MembershipFlagFlag::Op.into())

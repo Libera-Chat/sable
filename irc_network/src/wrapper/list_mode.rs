@@ -1,42 +1,38 @@
 use crate::*;
 
-/// A wrapper around a [`state::ChannelMode`]
+/// A (virtual) wrapper around a ban-type list for a channel
 pub struct ListMode<'a> {
     network: &'a Network,
-    data: &'a state::ListMode,
+    id: ListModeId,
 }
 
-impl ListMode<'_> {
+impl<'a> ListMode<'a> {
     /// Return this object's ID
     pub fn id(&self) -> ListModeId
     {
-        self.data.id
+        self.id
     }
 
     /// The list type
     pub fn list_type(&self) -> ListModeType
     {
-        self.data.list_type
+        self.id.list_type()
     }
 
-    /// The corresponding channel mode structure
-    pub fn mode(&self) -> LookupResult<wrapper::ChannelMode>
+    /// The corresponding channel object
+    pub fn channel(&self) -> LookupResult<wrapper::Channel>
     {
-        self.network.mode_for_list(self.data.id)
+        self.network.channel(self.id.channel())
     }
 
     /// The entries in the list
     pub fn entries(&self) -> impl Iterator<Item=wrapper::ListModeEntry>
     {
-        self.network.entries_for_list(self.data.id)
+        self.network.entries_for_list(self.id)
     }
-}
 
-impl<'a> super::ObjectWrapper<'a> for ListMode<'a> {
-    type Underlying = state::ListMode;
-
-    fn wrap(network: &'a Network, data: &'a state::ListMode) -> Self
+    pub(crate)fn new(network: &'a Network, id: ListModeId) -> Self
     {
-        Self { network, data }
+        Self { network, id: id }
     }
 }

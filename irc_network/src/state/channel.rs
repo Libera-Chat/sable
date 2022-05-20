@@ -12,7 +12,7 @@ use irc_strings::matches::Pattern;
 pub struct Channel {
     pub id: ChannelId,
     pub name: ChannelName,
-    pub mode: ChannelModeId,
+    pub mode: ChannelMode,
 }
 
 /// A channel membership
@@ -27,16 +27,8 @@ pub struct Membership {
 /// A channel mode
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct ChannelMode {
-    pub id: ChannelModeId,
     pub modes: ChannelModeSet,
     pub key: Option<ChannelKey>,
-}
-
-/// A channel list-type mode (e.g. bqeI)
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct ListMode {
-    pub id: ListModeId,
-    pub list_type: ListModeType,
 }
 
 /// An entry in a list mode
@@ -69,16 +61,16 @@ pub struct ChannelInvite {
 }
 
 impl Channel {
-    pub fn new(id: ChannelId, name: ChannelName, mode: ChannelModeId) -> Self
+    pub fn new(id: ChannelId, name: ChannelName, mode: ChannelMode) -> Self
     {
         Channel { id, name, mode }
     }
 }
 
 impl ChannelMode {
-    pub fn new(id: ChannelModeId, modes: ChannelModeSet) -> Self
+    pub fn new(modes: ChannelModeSet) -> Self
     {
-        ChannelMode { id, modes, key: None }
+        ChannelMode { modes, key: None }
     }
 }
 
@@ -93,13 +85,6 @@ impl Membership {
     pub fn new(id: MembershipId, user: UserId, channel: ChannelId, permissions: MembershipFlagSet) -> Membership
     {
         Membership{ id, user, channel, permissions }
-    }
-}
-
-impl ListMode {
-    pub fn new(id: ListModeId, list_type: ListModeType) -> Self
-    {
-        Self { id, list_type }
     }
 }
 
