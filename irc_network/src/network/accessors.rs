@@ -52,6 +52,20 @@ impl Network {
         self.raw_nick_bindings().find(|b| b.user == user).ok_or(NoNickForUser(user)).wrap(self)
     }
 
+    /// Return a nickname for the given user. If a nick binding for that user exists, it is used,
+    /// otherwise a hashed nickname (as used in collision resolution) is returned
+    pub fn infallible_nick_for_user(&self, user: UserId) -> Nickname
+    {
+        if let Ok(binding) = self.nick_binding_for_user(user)
+        {
+            binding.nick()
+        }
+        else
+        {
+            state_utils::hashed_nick_for(user)
+        }
+    }
+
     /// Look up the user currently using the given nickname
     pub fn user_by_nick(&self, nick: &Nickname) -> LookupResult<wrapper::User>
     {

@@ -41,7 +41,7 @@ impl Server
 
     fn handle_new_user(&mut self, detail: &update::NewUser) -> HandleResult
     {
-        let user = self.net.user(detail.user)?;
+        let user = self.net.user(detail.user.user.id)?;
         if let Ok(connection) = self.connections.get_user_mut(user.id())
         {
             connection.pre_client = None;
@@ -66,12 +66,12 @@ impl Server
     {
         // This fires after the nick change is applied to the network state, so we
         // have to construct the n!u@h string explicitly
-        let source = self.net.user(detail.user)?;
+        let source = self.net.user(detail.user.id)?;
         let source_string = format!("{}!{}@{}", detail.old_nick, source.user(), source.visible_host());
         let message = message::Nick::new(&source_string, &detail.new_nick);
         let mut notified = HashSet::new();
 
-        if let Ok(conn) = self.connections.get_user(detail.user)
+        if let Ok(conn) = self.connections.get_user(source.id())
         {
             notified.insert(conn.id());
             conn.send(&message);
@@ -98,13 +98,10 @@ impl Server
 
     fn handle_umode_change(&mut self, details: &update::UserModeChange) -> HandleResult
     {
-        let user = self.net.user(details.user_id)?;
-        let source = self.lookup_message_source(details.changed_by)?;
-
-        if let Ok(conn) = self.connections.get_user(user.id())
+        if let Ok(conn) = self.connections.get_user(details.user.user.id)
         {
-            conn.send(&message::Mode::new(source.as_ref(),
-                                          &user,
+            conn.send(&message::Mode::new(&details.changed_by,
+                                          &details.user,
                                           &utils::format_umode_changes(&details.added, &details.removed)));
         }
         Ok(())
@@ -112,7 +109,7 @@ impl Server
 
     fn handle_user_quit(&mut self, detail: &update::UserQuit) -> HandleResult
     {
-        if let Some(conn) = self.connections.remove_user(detail.user.id)
+        if let Some(conn) = self.connections.remove_user(detail.user.user.id)
         {
             conn.send(&message::Error::new(&format!("Closing link: {}", detail.message)));
         }
@@ -132,8 +129,7 @@ impl Server
         {
             if let Ok(conn) = self.connections.get_user(u)
             {
-                let nuh = format!("{}!{}@{}", detail.nickname, detail.user.user, detail.user.visible_host);
-                conn.send(&message::Quit::new(&nuh, &detail.message));
+                conn.send(&message::Quit::new(&detail.user, &detail.message));
             }
         }
         Ok(())
@@ -150,30 +146,27 @@ impl Server
 
     fn handle_channel_mode_change(&self, detail: &update::ChannelModeChange) -> HandleResult
     {
-        let chan = self.net.channel(detail.channel)?;
-        let source = self.lookup_message_source(detail.changed_by)?;
-
         let (mut changes, params) = utils::format_cmode_changes(detail);
         for p in params
         {
             changes.push(' ');
             changes.push_str(&p);
         }
-        let msg = message::Mode::new(source.as_ref(), &chan, &changes);
 
-        self.send_to_channel_members(&chan, msg);
+        let msg = message::Mode::new(&detail.changed_by, &detail.channel, &changes);
+
+        self.send_to_channel_members(&wrapper::Channel::wrap(&self.net, &detail.channel), msg);
 
         Ok(())
     }
 
     fn handle_list_mode_added(&self, detail: &update::ListModeAdded) -> HandleResult
     {
-        let chan = self.net.channel(detail.channel)?;
+        let chan = self.net.channel(detail.channel.id)?;
         let mode_char = detail.list_type.mode_letter();
-        let source = self.lookup_message_source(detail.set_by)?;
 
         let changes = format!("+{} {}", mode_char, detail.pattern);
-        let msg = message::Mode::new(source.as_ref(), &chan, &changes);
+        let msg = message::Mode::new(&detail.set_by, &chan, &changes);
 
         self.send_to_channel_members_where(&chan, msg,
                 |m| self.policy().should_see_list_change(m, detail.list_type)
@@ -184,12 +177,11 @@ impl Server
 
     fn handle_list_mode_removed(&self, detail: &update::ListModeRemoved) -> HandleResult
     {
-        let chan = self.net.channel(detail.channel)?;
+        let chan = self.net.channel(detail.channel.id)?;
         let mode_char = detail.list_type.mode_letter();
-        let source = self.lookup_message_source(detail.removed_by)?;
 
         let changes = format!("-{} {}", mode_char, detail.pattern);
-        let msg = message::Mode::new(source.as_ref(), &chan, &changes);
+        let msg = message::Mode::new(&detail.removed_by, &chan, &changes);
 
         self.send_to_channel_members_where(&chan, msg,
             |m| self.policy().should_see_list_change(m, detail.list_type)
@@ -200,11 +192,9 @@ impl Server
 
     fn handle_channel_topic(&self, detail: &update::ChannelTopicChange) -> HandleResult
     {
-        let topic = self.net.channel_topic(detail.topic)?;
-        let chan = topic.channel()?;
+        let chan = self.net.channel(detail.channel.id)?;
 
-        let source = self.lookup_message_source(detail.setter)?;
-        let msg = message::Topic::new(source.as_ref(), &chan, &detail.new_text);
+        let msg = message::Topic::new(&detail.setter, &chan, &detail.new_text);
 
         for m in chan.members()
         {
@@ -218,17 +208,13 @@ impl Server
 
     fn handle_chan_perm_change(&self, detail: &update::MembershipFlagChange) -> HandleResult
     {
-        let membership = self.net.membership(detail.membership)?;
-        let chan = membership.channel()?;
-        let target = membership.user()?;
-        let source = self.lookup_message_source(detail.changed_by)?;
-
-        let (mut changes, args) = utils::format_channel_perm_changes(&target, &detail.added, &detail.removed);
+        let (mut changes, args) = utils::format_channel_perm_changes(&detail.user.nickname, &detail.added, &detail.removed);
 
         changes += " ";
         changes += &args.join(" ");
 
-        let msg = message::Mode::new(source.as_ref(), &chan, &changes);
+        let msg = message::Mode::new(&detail.changed_by, &detail.channel, &changes);
+        let chan = self.net.channel(detail.channel.id)?;
 
         for m in chan.members()
         {
@@ -242,7 +228,7 @@ impl Server
 
     fn handle_join(&self, detail: &update::ChannelJoin) -> HandleResult
     {
-        let membership = self.net.membership(detail.membership)?;
+        let membership = self.net.membership(detail.membership.id)?;
         let user = membership.user()?;
         let channel = membership.channel()?;
 
@@ -262,7 +248,7 @@ impl Server
     fn handle_part(&self, detail: &update::ChannelPart) -> HandleResult
     {
         let source = self.net.user(detail.membership.user)?;
-        let message = message::Part::new(&source, &detail.channel_name, &detail.message);
+        let message = message::Part::new(&source, &detail.channel.name, &detail.message);
 
         // This gets called after the part is applied to the network state,
         // so the user themselves needs to be notified separately.
@@ -288,18 +274,14 @@ impl Server
 
     fn handle_invite(&self, detail: &update::ChannelInvite) -> HandleResult
     {
-        let target = self.net.user(detail.id.user())?;
-        let chan = self.net.channel(detail.id.channel())?;
-        let source = self.net.user(detail.source)?;
-
-        let msg = message::Invite::new(&source, &target, &chan);
-        self.send_to_user_if_local(&target, msg);
+        let msg = message::Invite::new(&detail.source, &detail.user, &detail.channel.name);
+        self.send_to_user_id_if_local(detail.user.user.id, msg);
         Ok(())
     }
 
     fn handle_channel_rename(&self, detail: &update::ChannelRename) -> HandleResult
     {
-        let channel = self.net.channel(detail.id)?;
+        let channel = self.net.channel(detail.channel.id)?;
 
         for member in channel.members()
         {
@@ -319,19 +301,21 @@ impl Server
 
     fn handle_new_message(&self, detail: &update::NewMessage) -> HandleResult
     {
-        let message = self.net.message(detail.message)?;
-        let source = message.source()?;
+        let message_send = message::Message::new(&detail.source,
+                                                 &detail.target,
+                                                 detail.message.message_type,
+                                                 &detail.message.text)
+                                        .with_tag(capability::server_time::server_time_tag(detail.message.ts));
 
-        let message_send = message::Message::new(&source, &message.target()?, message.message_type(), message.text())
-                                                .with_tag(capability::server_time::server_time_tag(message.ts()));
-
-        match message.target()? {
-            wrapper::MessageTarget::Channel(channel) => {
-                self.send_to_channel_members_where(&channel, message_send, |m| m.user_id() != source.id());
+        match &detail.target {
+            update::HistoricMessageTarget::Channel(channel) => {
+                self.send_to_channel_members_where(&wrapper::Channel::wrap(&self.net, &channel), message_send,
+                                                    |m| if let update::HistoricMessageSource::User(u) = &detail.source { u.user.id != m.user_id() } else { true });
             },
-            wrapper::MessageTarget::User(user) => {
-                self.send_to_user_if_local(&user, message_send);
+            update::HistoricMessageTarget::User(user) => {
+                self.send_to_user_if_local(&wrapper::User::wrap(&self.net, &user.user), message_send);
             },
+            update::HistoricMessageTarget::Unknown => ()
         }
 
         Ok(())
@@ -342,7 +326,7 @@ impl Server
     {
         tracing::trace!("Got new server");
 
-        let server = self.net.server(detail.id)?;
+        let server = self.net.server(detail.server.id)?;
 
         self.event_log.enable_server(*server.name(), server.id());
 
@@ -367,7 +351,7 @@ impl Server
 
     fn report_audit_entry(&self, detail: &update::NewAuditLogEntry) -> HandleResult
     {
-        let entry = self.net.audit_entry(detail.id)?;
+        let entry = self.net.audit_entry(detail.entry.id)?;
         let text = serde_json::to_string(&entry).unwrap_or_else(|e| format!("ERROR: failed to serialize audit event: {}", e));
 
         for conn in self.connections.iter()

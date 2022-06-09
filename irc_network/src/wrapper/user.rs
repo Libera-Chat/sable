@@ -19,15 +19,7 @@ impl User<'_> {
     /// computed nickname used in case of binding collisions.
     pub fn nick(&self) -> Nickname
     {
-        if let Ok(binding) = self.nick_binding()
-        {
-            binding.nick()
-        }
-        else
-        {
-            tracing::error!("Attempted to get nickname of user {:?} without a nick binding", self.data.id);
-            state_utils::hashed_nick_for(self.data.id)
-        }
+        self.network.infallible_nick_for_user(self.data.id)
     }
 
     /// Return the nickname binding currently active for this user

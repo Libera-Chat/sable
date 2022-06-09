@@ -39,6 +39,33 @@ impl MessageSource for wrapper::User<'_>
     fn format(&self) -> String { format!("{}!{}@{}", self.nick(), self.user(), self.visible_host()) }
 }
 
+impl MessageSource for update::HistoricMessageSource
+{
+    fn format(&self) -> String
+    {
+        match self
+        {
+            Self::User(historic_user) => {
+                <update::HistoricUser as MessageSource>::format(&historic_user)
+            }
+            Self::Server(server) => {
+                server.name.to_string()
+            }
+            Self::Unknown => {
+                "*".to_string()
+            }
+        }
+    }
+}
+
+impl MessageSource for update::HistoricUser
+{
+    fn format(&self) -> String
+    {
+        format!("{}!{}@{}", self.nickname, self.user.user, self.user.visible_host)
+    }
+}
+
 impl MessageTarget for wrapper::User<'_>
 {
     fn format(&self) -> String { self.nick().to_string() }
@@ -47,6 +74,11 @@ impl MessageTarget for wrapper::User<'_>
 impl MessageTarget for wrapper::Channel<'_>
 {
     fn format(&self) -> String { self.name().to_string() }
+}
+
+impl MessageTarget for state::Channel
+{
+    fn format(&self) -> String { self.name.to_string() }
 }
 
 impl MessageTarget for client::PreClient
@@ -62,6 +94,24 @@ impl MessageTarget for Option<std::cell::RefCell<client::PreClient>>
 impl MessageTarget for Nickname
 {
     fn format(&self) -> String { self.value().to_string() }
+}
+
+impl MessageTarget for update::HistoricUser
+{
+    fn format(&self) -> String { self.nickname.to_string() }
+}
+
+impl MessageTarget for update::HistoricMessageTarget
+{
+    fn format(&self) -> String
+    {
+        match self
+        {
+            Self::Channel(c) => c.name.to_string(),
+            Self::User(hu) => hu.nickname.to_string(),
+            Self::Unknown => "*".to_string()
+        }
+    }
 }
 
 impl MessageTarget for wrapper::MessageTarget<'_>

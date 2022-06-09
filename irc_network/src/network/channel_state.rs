@@ -28,7 +28,7 @@ impl Network {
             channel.name = new_name;
 
             updates.notify(update::ChannelRename {
-                id: channel_id,
+                channel: channel.clone(),
                 old_name: old_name,
                 new_name: new_name,
             });
@@ -77,11 +77,11 @@ impl Network {
             };
 
             updates.notify(update::ChannelModeChange {
-                channel: channel.id,
+                channel: channel.clone(),
                 added: details.added,
                 removed: details.removed,
                 key_change: details.key_change,
-                changed_by: details.changed_by,
+                changed_by: self.translate_state_change_source(details.changed_by),
             });
         }
     }
@@ -128,13 +128,6 @@ impl Network {
 
         // If there was an existing topic for this channel, there isn't any more. Carry on.
 
-        let update = update::ChannelTopicChange{
-            topic: target,
-            new_text: details.text.clone(),
-            setter: details.setter,
-            timestamp: event.timestamp,
-        };
-
         let setter_info = self.translate_setter_info(details.setter);
 
         let new_topic = state::ChannelTopic::new(
@@ -144,8 +137,20 @@ impl Network {
             setter_info,
             event.timestamp
         );
-        self.channel_topics.insert(target, new_topic);
-        updates.notify(update);
+
+        if let Some(channel) = self.channels.get(&details.channel)
+        {
+            let update = update::ChannelTopicChange{
+                channel: channel.clone(),
+                topic: new_topic.clone(),
+                new_text: details.text.clone(),
+                setter: self.translate_state_change_source(details.setter),
+                timestamp: event.timestamp,
+            };
+
+            self.channel_topics.insert(target, new_topic);
+            updates.notify(update);
+        }
     }
 
     pub(super) fn new_list_mode_entry(&mut self, target: ListModeEntryId, event: &Event, details: &details::NewListModeEntry, updates: &dyn NetworkUpdateReceiver)
@@ -164,11 +169,10 @@ impl Network {
         if let Some(channel) = self.channels.get(&details.list.channel())
         {
             let update = update::ListModeAdded {
-                channel: channel.id,
-                list: details.list,
+                channel: channel.clone(),
                 list_type: details.list.list_type(),
                 pattern: details.pattern.clone(),
-                set_by: details.setter.into(),
+                set_by: self.translate_state_change_source(details.setter.into()),
             };
             updates.notify(update);
         }
@@ -181,11 +185,10 @@ impl Network {
             if let Some(channel) = self.channels.get(&removed.list.channel())
             {
                 let update = update::ListModeRemoved {
-                    channel: channel.id,
-                    list: removed.list,
+                    channel: channel.clone(),
                     list_type: removed.list.list_type(),
                     pattern: removed.pattern,
-                    removed_by: details.removed_by.into(),
+                    removed_by: self.translate_state_change_source(details.removed_by.into()),
                 };
                 updates.notify(update);
             }
@@ -199,44 +202,61 @@ impl Network {
             membership.permissions |= details.added;
             membership.permissions &= !details.removed;
 
-            updates.notify(update::MembershipFlagChange {
-                membership: target,
-                added: details.added,
-                removed: details.removed,
-                changed_by: details.changed_by,
-            });
+            if let (Some(channel), Some(user)) = (
+                self.channels.get(&target.channel()), self.users.get(&target.user())
+            )
+            {
+                updates.notify(update::MembershipFlagChange {
+                    membership: membership.clone(),
+                    user: self.translate_historic_user(user.clone()),
+                    channel: channel.clone(),
+                    added: details.added,
+                    removed: details.removed,
+                    changed_by: self.translate_state_change_source(details.changed_by),
+                });
+            }
         }
     }
 
     pub(super) fn user_joined_channel(&mut self, target: MembershipId, _event: &Event, details: &details::ChannelJoin, updates: &dyn NetworkUpdateReceiver)
     {
         let membership = state::Membership::new(target, details.user, details.channel, details.permissions);
-        self.memberships.insert(membership.id, membership);
+        self.memberships.insert(membership.id, membership.clone());
 
         // If there was an invite for them, it's no longer needed
         self.channel_invites.remove(&InviteId::new(details.user, details.channel));
 
-        let update = update::ChannelJoin {
-            membership: target
-        };
-        updates.notify(update);
+        if let (Some(channel), Some(user)) = (
+            self.channels.get(&target.channel()), self.users.get(&target.user())
+        )
+        {
+            let update = update::ChannelJoin {
+                membership,
+                user: self.translate_historic_user(user.clone()),
+                channel: channel.clone()
+            };
+            updates.notify(update);
+        }
     }
 
     pub(super) fn user_left_channel(&mut self, target: MembershipId, _event: &Event, details: &details::ChannelPart, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(removed_membership) = self.memberships.remove(&target)
         {
-            let channel_name = self.channels.get(&removed_membership.channel).map(|c| c.name);
             let empty = ! self.memberships.iter().any(|(_,v)| v.channel == removed_membership.channel);
             if empty
             {
                 self.remove_channel(removed_membership.channel, updates);
             }
 
-            if let Some(name) = channel_name {
+            if let (Some(channel), Some(user)) = (
+                self.channels.get(&target.channel()), self.users.get(&target.user())
+            )
+            {
                 let update = update::ChannelPart {
                     membership: removed_membership,
-                    channel_name: name,
+                    user: self.translate_historic_user(user.clone()),
+                    channel: channel.clone(),
                     message: details.message.clone()
                 };
                 updates.notify(update);
@@ -247,8 +267,20 @@ impl Network {
     pub(super) fn new_channel_invite(&mut self, target: InviteId, event: &Event, detail: &details::ChannelInvite, updates: &dyn NetworkUpdateReceiver)
     {
         let invite = state::ChannelInvite::new(target, detail.source, event.timestamp);
-        self.channel_invites.insert(invite.id, invite);
-        updates.notify(update::ChannelInvite { id: target, source: detail.source });
+        self.channel_invites.insert(invite.id, invite.clone());
+
+        if let (Some(channel), Some(user)) = (
+            self.channels.get(&target.channel()), self.users.get(&target.user())
+        )
+        {
+            let update = update::ChannelInvite {
+                invite,
+                source: self.translate_state_change_source(detail.source.into()),
+                user: self.translate_historic_user(user.clone()),
+                channel: channel.clone(),
+            };
+            updates.notify(update);
+        }
     }
 
     fn remove_channel(&mut self, id: ChannelId, _updates: &dyn NetworkUpdateReceiver)

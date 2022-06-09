@@ -22,9 +22,9 @@ impl Network
             version: detail.version.clone(),
         };
 
-        self.servers.insert(target, server);
+        self.servers.insert(target, server.clone());
 
-        updates.notify(update::NewServer { id: target });
+        updates.notify(update::NewServer { server });
     }
 
     pub(super) fn server_ping(&mut self, target: ServerId, _event: &Event, detail: &details::ServerPing, _updates: &dyn NetworkUpdateReceiver)

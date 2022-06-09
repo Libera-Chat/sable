@@ -36,7 +36,7 @@ impl Network {
             };
 
             Some(update::UserQuit {
-                user,
+                user: self.translate_historic_user(user),
                 nickname: removed_nickname,
                 message,
                 memberships: removed_memberships
@@ -88,7 +88,7 @@ impl Network {
                 // The ID-based nick isn't bound. Do so.
                 let new_binding = NickBinding::new(new_nick, user_id, trigger.timestamp, trigger.id);
                 let update = UserNickChange {
-                    user: user.id,
+                    user: user.clone(),
                     old_nick: from,
                     new_nick: new_binding.nick
                 };
@@ -126,14 +126,17 @@ impl Network {
         // If we get here, then either there was no conflict or the existing binding has been removed,
         // and we can continue
         let new_binding = state::NickBinding::new(*target.nick(), user, event.timestamp, event.id);
-        let update = UserNickChange {
-            user,
-            old_nick: prev_nick,
-            new_nick: new_binding.nick
-        };
+        if let Some(user_object) = self.users.get(&user)
+        {
+            let update = UserNickChange {
+                user: user_object.clone(),
+                old_nick: prev_nick,
+                new_nick: new_binding.nick
+            };
 
-        self.nick_bindings.insert(new_binding.nick, new_binding);
-        updates.notify(update);
+            self.nick_bindings.insert(new_binding.nick, new_binding);
+            updates.notify(update);
+        }
     }
 
     pub(super) fn bind_nickname(&mut self, target: NicknameId, event: &Event, binding: &details::BindNickname, updates: &dyn NetworkUpdateReceiver)
@@ -164,7 +167,7 @@ impl Network {
 
         // First insert the user (with no nickname yet) so that the nick binding can see
         // a user to bind to
-        self.users.insert(target, user);
+        self.users.insert(target, user.clone());
 
         // Then insert the nick binding to associate a nickname
         // If there's a nick collision, we need to use the nick provided by the user as the 'from' nickname
@@ -172,7 +175,7 @@ impl Network {
         self.do_bind_nickname(NicknameId::new(detail.nickname), target, detail.nickname, event, updates);
 
         let update = update::NewUser {
-            user: target
+            user: self.translate_historic_user(user)
         };
         updates.notify(update);
     }
@@ -196,11 +199,13 @@ impl Network {
             user.mode.modes |= mode.added;
             user.mode.modes &= !mode.removed;
 
+            let update_user = user.clone();
+
             updates.notify(update::UserModeChange {
-                user_id: user.id,
+                user: self.translate_historic_user(update_user),
                 added: mode.added,
                 removed: mode.removed,
-                changed_by: mode.changed_by,
+                changed_by: self.translate_state_change_source(mode.changed_by),
             });
         }
     }

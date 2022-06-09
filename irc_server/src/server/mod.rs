@@ -214,15 +214,6 @@ impl Server
         &self.client_caps
     }
 
-    fn lookup_message_source(&self, id: ObjectId) -> Result<Box<dyn messages::MessageSource + '_>, LookupError>
-    {
-        match id {
-            ObjectId::User(u) => Ok(Box::new(self.net.user(u)?)),
-            ObjectId::Server(_) => Ok(Box::new(self)), // TODO
-            _ => Err(LookupError::WrongType),
-        }
-    }
-
     #[tracing::instrument(skip(self))]
     fn apply_event(&mut self, event: Event)
     {

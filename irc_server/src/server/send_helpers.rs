@@ -37,7 +37,11 @@ impl Server
 
     pub(super) fn send_to_user_if_local(&self, user: &wrapper::User, msg: impl MessageTypeFormat)
     {
-        if let Ok(conn) = self.connections.get_user(user.id()) {
+        self.send_to_user_id_if_local(user.id(), msg)
+    }
+    pub(super) fn send_to_user_id_if_local(&self, user_id: UserId, msg: impl MessageTypeFormat)
+    {
+        if let Ok(conn) = self.connections.get_user(user_id) {
             conn.send(&msg);
         }
     }
@@ -50,7 +54,7 @@ impl Server
         if let Ok(conn) = self.connections.get_user(user.id()) {
             if ! membership.permissions().is_empty()
             {
-                let (mut changes, args) = utils::format_channel_perm_changes(&user, &membership.permissions(), &MembershipFlagSet::new());
+                let (mut changes, args) = utils::format_channel_perm_changes(&user.nick(), &membership.permissions(), &MembershipFlagSet::new());
 
                 changes += " ";
                 changes += &args.join(" ");

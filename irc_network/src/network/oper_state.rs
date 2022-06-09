@@ -18,11 +18,13 @@ impl Network
 
             if new_oper
             {
+                let update_user = user.clone();
+
                 updates.notify(update::UserModeChange {
-                    user_id: target,
+                    user: self.translate_historic_user(update_user),
                     added: UserModeFlag::Oper.into(),
                     removed: UserModeSet::new(),
-                    changed_by: target.into()
+                    changed_by: self.translate_state_change_source(target.into())
                 });
             }
         }

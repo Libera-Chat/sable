@@ -12,9 +12,9 @@ impl Network
             fields: details.fields.clone(),
         };
 
-        self.audit_log.insert(target, entry);
+        self.audit_log.insert(target, entry.clone());
 
-        let update = update::NewAuditLogEntry { id: target };
+        let update = update::NewAuditLogEntry { entry: entry };
         updates.notify(update);
     }
 }

@@ -14,8 +14,11 @@ impl Network
             text: details.text.clone()
         };
         self.messages.insert(target, message.clone());
+
         updates.notify(update::NewMessage {
-            message: message.id
+            message: message,
+            source: self.translate_state_change_source(details.source.into()),
+            target: self.translate_message_target(details.target.into())
         });
     }
 }

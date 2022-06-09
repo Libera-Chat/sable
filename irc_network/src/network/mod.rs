@@ -211,6 +211,57 @@ impl Network {
             _ => Ok(())
         }
     }
+
+    /// Translate an object ID into a [`update::HistoricMessageSource`]
+    pub(crate) fn translate_state_change_source(&self, id: ObjectId) -> update::HistoricMessageSource
+    {
+        match id
+        {
+            ObjectId::User(user_id) => {
+                if let Some(user) = self.users.get(&user_id)
+                {
+                    Some(update::HistoricMessageSource::User(self.translate_historic_user(user.clone())))
+                }
+                else
+                {
+                    None
+                }
+            },
+            ObjectId::Server(server_id) => self.servers.get(&server_id).map(|s| update::HistoricMessageSource::Server(s.clone())),
+            _ => None
+        }.unwrap_or(update::HistoricMessageSource::Unknown)
+    }
+
+    /// Translate a [`User`] to a [`HistoricUser`] based on the current network state
+    pub(crate) fn translate_historic_user(&self, user: state::User) -> update::HistoricUser
+    {
+        let nickname = self.infallible_nick_for_user(user.id);
+        update::HistoricUser { nickname, user }
+    }
+
+    /// Translate an [`ObjectId`] into a [`HistoricMessageTarget`] for storage in history log
+    pub(crate) fn translate_message_target(&self, id: ObjectId) -> update::HistoricMessageTarget
+    {
+        match id
+        {
+            ObjectId::User(user_id) => {
+                if let Some(user) = self.users.get(&user_id)
+                {
+                    Some(update::HistoricMessageTarget::User(self.translate_historic_user(user.clone())))
+                }
+                else
+                {
+                    None
+                }
+            }
+            ObjectId::Channel(channel_id) => {
+                self.channels.get(&channel_id).map(|c| update::HistoricMessageTarget::Channel(c.clone()))
+            }
+            _ => {
+                None
+            }
+        }.unwrap_or(update::HistoricMessageTarget::Unknown)
+    }
 }
 
 mod accessors;

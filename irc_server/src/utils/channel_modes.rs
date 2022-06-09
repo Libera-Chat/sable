@@ -1,4 +1,4 @@
-use irc_network::wrapper::*;
+use irc_network::Nickname;
 use irc_network::modes::*;
 use irc_network::update::*;
 use irc_network::OptionChange;
@@ -41,12 +41,10 @@ pub fn format_cmode_changes(detail: &ChannelModeChange) -> (String, Vec<String>)
     (changes, params)
 }
 
-pub fn format_channel_perm_changes(target: &User, added: &MembershipFlagSet, removed: &MembershipFlagSet) -> (String, Vec<String>)
+pub fn format_channel_perm_changes(nick: &Nickname, added: &MembershipFlagSet, removed: &MembershipFlagSet) -> (String, Vec<String>)
 {
     let mut changes = String::new();
     let mut args = Vec::new();
-
-    let nick = target.nick();
 
     if ! added.is_empty()
     {
