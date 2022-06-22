@@ -1,5 +1,5 @@
 //! Defines mode flag enumerations and sets
-use ircd_macros::mode_flags;
+use sable_macros::mode_flags;
 use serde::{Serialize,Deserialize};
 use strum::{
     EnumIter

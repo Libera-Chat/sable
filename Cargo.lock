@@ -343,12 +343,12 @@ name = "client_listener"
 version = "0.1.0"
 dependencies = [
  "console-subscriber",
- "ircd_macros",
  "libc",
  "memfd",
  "nix 0.24.1",
  "rustls",
  "sable_ipc",
+ "sable_macros",
  "serde",
  "serde_json",
  "thiserror",
@@ -1029,12 +1029,12 @@ dependencies = [
  "daemonize",
  "hex",
  "hyper",
- "ircd_macros",
  "memfd",
  "nix 0.24.1",
  "rustls",
  "rustls-pemfile",
  "sable_ircd",
+ "sable_macros",
  "sable_network",
  "serde",
  "serde_json",
@@ -1048,16 +1048,6 @@ dependencies = [
  "tracing-appender",
  "tracing-core",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "ircd_macros"
-version = "0.1.0"
-dependencies = [
- "convert_case",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1708,10 +1698,10 @@ dependencies = [
  "chrono",
  "client_listener",
  "inventory",
- "ircd_macros",
  "itertools",
  "pwhash",
  "rustls",
+ "sable_macros",
  "sable_network",
  "serde",
  "serde_json",
@@ -1720,6 +1710,16 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tracing",
+]
+
+[[package]]
+name = "sable_macros"
+version = "0.1.0"
+dependencies = [
+ "convert_case",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1736,13 +1736,13 @@ dependencies = [
  "hashers",
  "hex",
  "inventory",
- "ircd_macros",
  "itertools",
  "parking_lot 0.12.0",
  "pwhash",
  "rand",
  "rustls",
  "rustls-pemfile",
+ "sable_macros",
  "serde",
  "serde_json",
  "serde_with",

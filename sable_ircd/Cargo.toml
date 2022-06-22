@@ -9,7 +9,7 @@ debug = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ircd_macros = { path = "../ircd_macros" }
+sable_macros = { path = "../sable_macros" }
 sable_network = { path = "../sable_network" }
 client_listener = { path = "../client_listener" }
 auth_client = { path = "../auth_client" }

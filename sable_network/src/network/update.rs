@@ -2,7 +2,7 @@
 
 use crate::network::state;
 use crate::prelude::*;
-use ircd_macros::event_details;
+use sable_macros::event_details;
 
 #[derive(Debug)]
 pub struct WrongEventTypeError;

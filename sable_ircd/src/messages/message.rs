@@ -1,7 +1,7 @@
 use sable_network::prelude::*;
 use wrapper::Channel;
 
-use ircd_macros::define_messages;
+use sable_macros::define_messages;
 use super::*;
 
 define_messages! {

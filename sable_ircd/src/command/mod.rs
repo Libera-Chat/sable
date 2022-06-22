@@ -6,7 +6,7 @@ use client::*;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
-use ircd_macros::command_handler;
+use sable_macros::command_handler;
 
 use command_processor::*;
 

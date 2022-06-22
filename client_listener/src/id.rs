@@ -1,4 +1,4 @@
-use ircd_macros::object_ids;
+use sable_macros::object_ids;
 use thiserror::Error;
 
 #[derive(Debug,Error)]

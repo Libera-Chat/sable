@@ -1,4 +1,4 @@
-use ircd_macros::define_messages;
+use sable_macros::define_messages;
 use sable_network::network::wrapper::{
     User,
     Channel,

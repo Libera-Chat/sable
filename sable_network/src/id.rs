@@ -1,6 +1,6 @@
 //! Defines the various object and event ID types
 
-use ircd_macros::object_ids;
+use sable_macros::object_ids;
 use thiserror::Error;
 use super::validated::*;
 use super::modes::ListModeType;

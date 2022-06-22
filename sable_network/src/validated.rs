@@ -1,6 +1,6 @@
 //! Defines validated string types for various names and identifiers
 
-use ircd_macros::define_validated;
+use sable_macros::define_validated;
 use thiserror::Error;
 use arrayvec::ArrayString;
 use std::convert::{TryFrom,Into};

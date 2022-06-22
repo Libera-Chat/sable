@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "ircd_macros",
+    "sable_macros",
     "sable_network",
     "sable_ircd",
     "ircd",

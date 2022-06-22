@@ -4,7 +4,7 @@ use crate::prelude::*;
 use crate::network::event::*;
 use crate::network::update::*;
 
-use ircd_macros::dispatch_event;
+use sable_macros::dispatch_event;
 
 use thiserror::Error;
 use serde::{
