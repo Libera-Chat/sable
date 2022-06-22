@@ -12,6 +12,12 @@ pub mod sync;
 
 pub mod server;
 
+pub mod types
+{
+    mod pattern;
+    pub use pattern::*;
+}
+
 pub mod utils;
 
 mod build_data

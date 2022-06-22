@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use irc_strings::matches::Pattern;
 
 /// A wrapper around a [`state::ChannelMode`]
 pub struct ListModeEntry<'a> {

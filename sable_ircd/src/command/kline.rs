@@ -1,6 +1,5 @@
 use super::*;
 use event::*;
-use irc_strings::matches::Pattern;
 use state::{
     AuditLogCategory,
     AuditLogField

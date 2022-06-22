@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
 use ircd_macros::{event_details,target_type};
-use irc_strings::matches::Pattern;
 
 pub struct WrongEventTypeError;
 

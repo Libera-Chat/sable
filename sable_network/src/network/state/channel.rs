@@ -4,7 +4,6 @@ use serde::{
     Serialize,
     Deserialize
 };
-use irc_strings::matches::Pattern;
 
 /// A channel
 #[derive(Debug,Clone,Serialize,Deserialize)]

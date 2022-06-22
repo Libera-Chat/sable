@@ -2,7 +2,6 @@
 #![allow(clippy::new_without_default)]
 
 use sable_network::prelude::*;
-use irc_strings::matches::Pattern;
 use wrapper::*;
 
 use crate::*;

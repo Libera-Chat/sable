@@ -1,6 +1,5 @@
 use super::*;
 use super::ArgList;
-use irc_strings::matches::Pattern;
 
 command_handler!("MODE" => ModeHandler {
     fn min_parameters(&self) -> usize { 1 }

@@ -3,7 +3,6 @@
 use crate::network::state;
 use crate::prelude::*;
 use ircd_macros::event_details;
-use irc_strings::matches::Pattern;
 
 #[derive(Debug)]
 pub struct WrongEventTypeError;

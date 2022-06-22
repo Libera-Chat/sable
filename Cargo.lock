@@ -1019,15 +1019,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 
 [[package]]
-name = "irc_strings"
-version = "0.1.0"
-dependencies = [
- "convert_case",
- "serde",
- "wildmatch",
-]
-
-[[package]]
 name = "ircd"
 version = "0.1.0"
 dependencies = [
@@ -1717,7 +1708,6 @@ dependencies = [
  "chrono",
  "client_listener",
  "inventory",
- "irc_strings",
  "ircd_macros",
  "itertools",
  "pwhash",
@@ -1741,11 +1731,11 @@ dependencies = [
  "bitflags",
  "built",
  "chrono",
+ "convert_case",
  "futures",
  "hashers",
  "hex",
  "inventory",
- "irc_strings",
  "ircd_macros",
  "itertools",
  "parking_lot 0.12.0",
@@ -1762,6 +1752,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tracing",
+ "wildmatch",
  "x509-parser",
 ]
 

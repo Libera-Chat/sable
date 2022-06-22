@@ -3,7 +3,6 @@ members = [
     "ircd_macros",
     "sable_network",
     "sable_ircd",
-    "irc_strings",
     "ircd",
     "client_listener",
     "auth_client",

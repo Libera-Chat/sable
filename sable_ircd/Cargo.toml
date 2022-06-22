@@ -11,7 +11,6 @@ debug = []
 [dependencies]
 ircd_macros = { path = "../ircd_macros" }
 sable_network = { path = "../sable_network" }
-irc_strings = { path = "../irc_strings" }
 client_listener = { path = "../client_listener" }
 auth_client = { path = "../auth_client" }
 

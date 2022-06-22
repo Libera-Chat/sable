@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use irc_strings::matches::Pattern;
 
 /// A wrapper around a [`state::KLine`]
 pub struct KLine<'a> {

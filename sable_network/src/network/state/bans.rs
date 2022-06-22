@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-use irc_strings::matches::Pattern;
-
 use serde::{
     Serialize,
     Deserialize

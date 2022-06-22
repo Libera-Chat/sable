@@ -17,4 +17,5 @@ pub use crate::{
     rpc,
     server::Server,
     sync::*,
+    types::*,
 };
