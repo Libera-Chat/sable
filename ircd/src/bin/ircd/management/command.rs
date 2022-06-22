@@ -1,5 +1,5 @@
-use irc_server::server::ServerManagementCommand;
-use rpc_protocols::ShutdownAction;
+use sable_ircd::server::ServerManagementCommand;
+use sable_network::rpc::ShutdownAction;
 
 pub enum ManagementCommand
 {

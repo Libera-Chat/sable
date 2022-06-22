@@ -1,7 +1,8 @@
 use super::*;
-use irc_server::server::ServerManagementCommand;
-use irc_server::server::ServerManagementCommandType;
-use rpc_protocols::ShutdownAction;
+use sable_ircd::prelude::*;
+use server::ServerManagementCommand;
+use server::ServerManagementCommandType;
+use sable_network::rpc::ShutdownAction;
 use ircd::config::*;
 
 use std::{

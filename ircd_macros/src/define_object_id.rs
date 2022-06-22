@@ -140,12 +140,12 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 
             impl std::convert::TryFrom<#enum_name> for #id_typename
             {
-                type Error = crate::id::WrongIdTypeError;
+                type Error = WrongIdTypeError;
 
-                fn try_from(id: #enum_name) -> Result<Self, crate::id::WrongIdTypeError> {
+                fn try_from(id: #enum_name) -> Result<Self, WrongIdTypeError> {
                     match id {
                         #enum_name::#typename(x) => Ok(x),
-                        _ => Err(crate::id::WrongIdTypeError)
+                        _ => Err(WrongIdTypeError)
                     }
                 }
             }

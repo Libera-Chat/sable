@@ -120,7 +120,7 @@ pub fn target_type_attribute(attr: TokenStream, item: TokenStream) -> TokenStrea
     quote!(
         #item
 
-        impl crate::event::DetailType for #name
+        impl crate::network::event::DetailType for #name
         {
             type Target = #target_typename;
         }

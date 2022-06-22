@@ -2,11 +2,8 @@ pub mod config;
 pub mod tracing_config;
 mod strip_comments;
 
-pub use irc_network::{
-    *,
-    event::*,
-};
-pub use ircd_sync::*;
+pub use sable_ircd::prelude::*;
+pub use sable_network::prelude::*;
 pub use structopt::StructOpt;
 
 pub use tokio::{

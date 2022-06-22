@@ -181,7 +181,7 @@ impl ManagementConfig
     }
 }
 
-pub fn load_network_config(filename: impl AsRef<Path>) -> Result<irc_network::config::NetworkConfig, ircd_sync::ConfigError>
+pub fn load_network_config(filename: impl AsRef<Path>) -> Result<sable_network::network::config::NetworkConfig, sable_network::sync::ConfigError>
 {
     let file = File::open(filename)?;
     let reader = BufReader::new(file);

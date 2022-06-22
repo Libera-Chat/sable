@@ -1,0 +1,31 @@
+[package]
+name = "sable_ircd"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+debug = []
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ircd_macros = { path = "../ircd_macros" }
+sable_network = { path = "../sable_network" }
+irc_strings = { path = "../irc_strings" }
+client_listener = { path = "../client_listener" }
+auth_client = { path = "../auth_client" }
+
+tracing = "0.1"
+inventory = "0.1"
+thiserror = "1"
+serde_json = "1"
+chrono = "0.4"
+ambassador = "0.2"
+strum = { version = "0.23", features = [ "derive" ] }
+pwhash = "1"
+tokio-rustls = "0.23"
+rustls = "0.20"
+bitflags = "1.3"
+itertools = "0.10"
+serde = { version = "1", features = [ "derive" ] }
+tokio = { version = "1.14", features = [ "full" ] }

@@ -1,5 +1,5 @@
 use auth_client::*;
-use irc_network::*;
+use sable_network::prelude::*;
 use client_listener::ConnectionId;
 
 use tokio::{

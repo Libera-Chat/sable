@@ -22,12 +22,12 @@ struct ServerConfig
 {
     server_id: ServerId,
 
-    node_config: ircd_sync::NodeConfig,
+    node_config: sable_network::sync::NodeConfig,
 }
 
 impl ServerConfig
 {
-    pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, ircd_sync::ConfigError>
+    pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, sable_network::sync::ConfigError>
     {
         let file = File::open(filename)?;
         let reader = BufReader::new(file);
@@ -35,7 +35,7 @@ impl ServerConfig
     }
 }
 
-fn load_network_config(filename: impl AsRef<Path>) -> Result<irc_network::config::NetworkConfig, ircd_sync::ConfigError>
+fn load_network_config(filename: impl AsRef<Path>) -> Result<sable_network::network::config::NetworkConfig, sable_network::sync::ConfigError>
 {
     let file = File::open(filename)?;
     let reader = BufReader::new(file);
@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
     let opts = Opts::from_args();
 
-    let sync_config = ircd_sync::SyncConfig::load_file(opts.network_conf)?;
+    let sync_config = sable_network::sync::SyncConfig::load_file(opts.network_conf)?;
     let server_config = ServerConfig::load_file(opts.server_conf)?;
 
     let config_to_load = load_network_config(opts.config_to_load)?;
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
 
     let (msg_send, _msg_recv) = unbounded_channel();
 
-    let net = ircd_sync::GossipNetwork::new(sync_config, server_config.node_config, msg_send);
+    let net = sable_network::sync::GossipNetwork::new(sync_config, server_config.node_config, msg_send);
 
     let now = Utc::now().timestamp();
     let epoch = EpochId::new(now);
@@ -66,14 +66,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
         target: ConfigId::new(1).into(),
         timestamp: now,
         clock: EventClock::new(),
-        details: details::LoadConfig {
+        details: event::details::LoadConfig {
             config: config_to_load
         }.into()
     };
 
-    net.propagate(&ircd_sync::Message {
+    net.propagate(&sable_network::sync::Message {
         source_server: (server_config.server_id, epoch),
-        content: ircd_sync::MessageDetail::NewEvent(event)
+        content: sable_network::sync::MessageDetail::NewEvent(event)
     }).await;
 
     // Because we discarded the receive half of the channel above, the normal process of

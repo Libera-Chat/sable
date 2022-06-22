@@ -1,5 +1,5 @@
 use client_listener::ConnectionId;
-use irc_network::Hostname;
+use sable_network::validated::Hostname;
 
 /// The result of a DNS lookup
 #[derive(Debug,serde::Serialize,serde::Deserialize)]

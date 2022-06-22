@@ -130,8 +130,8 @@ name = "auth_client"
 version = "0.1.0"
 dependencies = [
  "client_listener",
- "irc_network",
  "libc",
+ "sable_network",
  "serde",
  "serde_json",
  "thiserror",
@@ -1019,53 +1019,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 
 [[package]]
-name = "irc_network"
-version = "0.1.0"
-dependencies = [
- "arrayvec",
- "bitflags",
- "hashers",
- "inventory",
- "irc_strings",
- "ircd_macros",
- "itertools",
- "serde",
- "serde_json",
- "serde_with",
- "strum",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "irc_server"
-version = "0.1.0"
-dependencies = [
- "ambassador",
- "auth_client",
- "bitflags",
- "built",
- "chrono",
- "client_listener",
- "inventory",
- "irc_network",
- "irc_strings",
- "ircd_macros",
- "ircd_sync",
- "itertools",
- "pwhash",
- "rpc_protocols",
- "rustls",
- "serde",
- "serde_json",
- "strum",
- "thiserror",
- "tokio",
- "tokio-rustls",
- "tracing",
-]
-
-[[package]]
 name = "irc_strings"
 version = "0.1.0"
 dependencies = [
@@ -1085,15 +1038,13 @@ dependencies = [
  "daemonize",
  "hex",
  "hyper",
- "irc_network",
- "irc_server",
  "ircd_macros",
- "ircd_sync",
  "memfd",
  "nix 0.24.1",
- "rpc_protocols",
  "rustls",
  "rustls-pemfile",
+ "sable_ircd",
+ "sable_network",
  "serde",
  "serde_json",
  "sha1",
@@ -1116,28 +1067,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "ircd_sync"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "futures",
- "hex",
- "irc_network",
- "rand",
- "rpc_protocols",
- "rustls",
- "rustls-pemfile",
- "serde",
- "serde_json",
- "sha1",
- "thiserror",
- "tokio",
- "tokio-rustls",
- "tracing",
- "x509-parser",
 ]
 
 [[package]]
@@ -1726,14 +1655,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rpc_protocols"
-version = "0.1.0"
-dependencies = [
- "irc_network",
- "tokio",
-]
-
-[[package]]
 name = "rusticata-macros"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1784,6 +1705,64 @@ dependencies = [
  "serde",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "sable_ircd"
+version = "0.1.0"
+dependencies = [
+ "ambassador",
+ "auth_client",
+ "bitflags",
+ "chrono",
+ "client_listener",
+ "inventory",
+ "irc_strings",
+ "ircd_macros",
+ "itertools",
+ "pwhash",
+ "rustls",
+ "sable_network",
+ "serde",
+ "serde_json",
+ "strum",
+ "thiserror",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+]
+
+[[package]]
+name = "sable_network"
+version = "0.1.0"
+dependencies = [
+ "ambassador",
+ "arrayvec",
+ "bitflags",
+ "built",
+ "chrono",
+ "futures",
+ "hashers",
+ "hex",
+ "inventory",
+ "irc_strings",
+ "ircd_macros",
+ "itertools",
+ "parking_lot 0.12.0",
+ "pwhash",
+ "rand",
+ "rustls",
+ "rustls-pemfile",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "sha1",
+ "strum",
+ "thiserror",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+ "x509-parser",
 ]
 
 [[package]]

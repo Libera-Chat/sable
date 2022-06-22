@@ -12,11 +12,9 @@ stringreader = "0.1"
 [dependencies]
 
 ircd_macros = { path = "../ircd_macros" }
-ircd_sync = { path = "../ircd_sync" }
-irc_network = { path = "../irc_network" }
-irc_server = { path = "../irc_server" }
+sable_network = { path = "../sable_network" }
+sable_ircd = { path = "../sable_ircd" }
 client_listener = { path = "../client_listener" }
-rpc_protocols = { path = "../rpc_protocols" }
 
 tracing = "0.1"
 tracing-core = "0.1"

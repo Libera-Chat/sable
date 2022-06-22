@@ -1,5 +1,5 @@
 use ircd::*;
-use irc_server::server::*;
+use sable_ircd::server::*;
 
 use std::os::unix::{
     io::{
@@ -19,7 +19,7 @@ use memfd::*;
 #[derive(Serialize,Deserialize)]
 pub struct ApplicationState
 {
-    pub server_state: ServerState,
+    pub server_state: ClientServerState,
     pub listener_state: client_listener::SavedListenerCollection,
     pub sync_state: ReplicatedEventLogState,
 }

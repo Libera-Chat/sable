@@ -181,7 +181,7 @@ impl AuthClient
     ///  - If the original IP address is not in the set of addresses returned from the forward query,
     ///    return None
     ///  - Trim the trailing '.' from the name
-    ///  - Convert the resulting name to a [`Hostname`](irc_network::Hostname). If this fails, return None.
+    ///  - Convert the resulting name to a [`Hostname`](sable_network::validated::Hostname). If this fails, return None.
     ///  - Return the resulting `Hostname`.
     ///
     /// Note that 'return' above refers to generating a `DnsResult` message over the channel provided

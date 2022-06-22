@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 client_listener = { path = "../client_listener" }
-irc_network = { path = "../irc_network" }
+sable_network = { path = "../sable_network" }
 
 tracing = "0.1"
 thiserror = "1"

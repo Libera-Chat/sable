@@ -1,10 +1,8 @@
 use ircd::*;
 use ircd::config::*;
-use irc_server::{
-    Server,
-};
 use client_listener::*;
-use rpc_protocols::ShutdownAction;
+
+use sable_network::rpc::ShutdownAction;
 
 use std::{
     process::Command,
@@ -65,7 +63,7 @@ async fn sable_main(server_conf_path: &Path,
                     sync_config: SyncConfig,
                     tls_data: TlsData,
                     upgrade_fd: Option<i32>,
-                    bootstrap_network: Option<irc_network::config::NetworkConfig>,
+                    bootstrap_network: Option<sable_network::network::config::NetworkConfig>,
                 ) -> Result<(), Box<dyn std::error::Error>>
 {
     let exe_path = std::env::current_exe()?;
@@ -92,7 +90,7 @@ async fn sable_main(server_conf_path: &Path,
 
         let client_listeners = ListenerCollection::resume(state.listener_state, client_send)?;
 
-        let server = Server::restore_from(state.server_state,
+        let server = ClientServer::restore_from(state.server_state,
                                           Arc::clone(&event_log),
                                           &client_listeners,
                                           client_recv,
@@ -120,13 +118,13 @@ async fn sable_main(server_conf_path: &Path,
             *event_log.sync_to_network().await
         };
 
-        let server = Server::new(server_config.server_id,
+        let server = ClientServer::new(server_config.server_id,
                                  epoch,
                                  server_config.server_name,
                                  network,
                                  Arc::clone(&event_log),
-                                 client_recv,
                                  server_recv,
+                                 client_recv,
                             );
 
         client_listeners.load_tls_certificates(tls_data.key.clone(), tls_data.cert_chain.clone())?;

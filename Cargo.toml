@@ -1,12 +1,10 @@
 [workspace]
 members = [
     "ircd_macros",
-    "ircd_sync",
-    "irc_network",
-    "irc_server",
+    "sable_network",
+    "sable_ircd",
     "irc_strings",
     "ircd",
-    "rpc_protocols",
     "client_listener",
     "auth_client",
     "sable_ipc",

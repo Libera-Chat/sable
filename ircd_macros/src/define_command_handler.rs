@@ -44,18 +44,18 @@ pub fn command_handler(input: TokenStream) -> TokenStream
     quote!(
         pub(crate) struct #name<'a>
         {
-            server: &'a Server,
+            server: &'a ClientServer,
             processor: &'a CommandProcessor<'a>,
         }
 
         impl<'a> #name<'a>
         {
-            pub fn new(server: &'a Server, proc: &'a CommandProcessor<'a>) -> Self
+            pub fn new(server: &'a ClientServer, proc: &'a CommandProcessor<'a>) -> Self
             {
                 Self{ server: server, processor: proc }
             }
 
-            pub fn action(&mut self, act: CommandAction) -> irc_network::ValidationResult
+            pub fn action(&mut self, act: CommandAction) -> sable_network::network::ValidationResult
             {
                 if let CommandAction::StateChange(i, d) = &act {
                     self.server.network().validate(*i, d)?;
@@ -72,7 +72,7 @@ pub fn command_handler(input: TokenStream) -> TokenStream
 
         impl CommandHandlerFactory for #factory
         {
-            fn create<'a>(&self, server: &'a Server, proc: &'a CommandProcessor<'a>) -> Box<dyn CommandHandler + 'a>
+            fn create<'a>(&self, server: &'a ClientServer, proc: &'a CommandProcessor<'a>) -> Box<dyn CommandHandler + 'a>
             { Box::new(#name::new(server, proc)) }
         }
 
