@@ -7,8 +7,14 @@ use strum::EnumIter;
 mod repository;
 pub use repository::*;
 
+mod capability_message;
+pub use capability_message::*;
+
 pub mod message_tag;
 pub use message_tag::TaggableMessage;
+
+mod with_tags;
+pub(crate) use with_tags::WithSupportedTags;
 
 pub mod server_time;
 
@@ -50,7 +56,8 @@ define_capabilities! (
     ClientCapability
     {
         MessageTags: 0x01 => "message-tags",
-        ServerTime:  0x02 => "server-time"
+        ServerTime:  0x02 => "server-time",
+        EchoMessage: 0x04 => "echo-message"
     }
 );
 
@@ -67,6 +74,11 @@ impl ClientCapabilitySet
     pub fn has(&self, cap: ClientCapability) -> bool
     {
         0 != self.0 & cap as u64
+    }
+
+    pub fn has_all(&self, caps: ClientCapabilitySet) -> bool
+    {
+        (self.0 & caps.0) == caps.0
     }
 
     pub fn set(&mut self, cap: ClientCapability)

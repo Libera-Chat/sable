@@ -1,33 +1,35 @@
 use super::*;
 
+use ChannelPermissionError::*;
+
 /// Standard implementation of [`ChannelPolicyService`]
 pub struct StandardChannelPolicy
 {
-    ban_resolver: Box<dyn BanResolver>
+    ban_resolver: StandardBanResolver
 }
 
 impl StandardChannelPolicy {
     pub fn new() -> Self
     {
         Self {
-            ban_resolver: Box::new(StandardBanResolver::new())
+            ban_resolver: StandardBanResolver::new()
         }
     }
 }
 
-fn is_channel_operator(user: &User, channel: &Channel) -> PermissionResult
+fn is_channel_operator<'a>(user: &User, channel: &Channel) -> PermissionResult
 {
     if let Some(membership) = user.is_in_channel(channel.id())
     {
         if membership.permissions().is_set(MembershipFlagFlag::Op) {
             Ok(())
         } else {
-            numeric_error!(ChanOpPrivsNeeded, channel)
+            Err(PermissionError::Channel(*channel.name(), UserNotOp))
         }
     }
     else
     {
-        numeric_error!(NotOnChannel, channel)
+        Err(PermissionError::Channel(*channel.name(), UserNotOnChannel))
     }
 }
 
@@ -38,20 +40,20 @@ impl ChannelPolicyService for StandardChannelPolicy
         let chan_key = channel.mode().key();
         if chan_key.is_some() && key != chan_key
         {
-            return numeric_error!(BadChannelKey, channel)
+            return Err(PermissionError::Channel(*channel.name(), BadChannelKey));
         }
 
         if channel.mode().has_mode(ChannelModeFlag::InviteOnly)
             && user.has_invite_for(channel.id()).is_none()
             && self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Invex)).is_none()
         {
-            return numeric_error!(InviteOnlyChannel, channel);
+            return Err(PermissionError::Channel(*channel.name(), InviteOnlyChannel));
         }
 
         if self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Ban)).is_some()
             && self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Except)).is_none()
         {
-            return numeric_error!(BannedOnChannel, channel)
+            return Err(PermissionError::Channel(*channel.name(), UserIsBanned));
         }
 
         Ok(())
@@ -71,14 +73,14 @@ impl ChannelPolicyService for StandardChannelPolicy
         else if channel.mode().has_mode(ChannelModeFlag::NoExternal)
         {
             // If it's +n and they're not in it, no point testing anything else
-            return numeric_error!(CannotSendToChannel, channel);
+            return Err(PermissionError::Channel(*channel.name(), CannotSendToChannel));
         }
 
         if (self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Ban)).is_some()
                 || self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Quiet)).is_some())
               && self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Except)).is_none()
         {
-            return numeric_error!(CannotSendToChannel, channel);
+            return Err(PermissionError::Channel(*channel.name(), CannotSendToChannel));
         }
 
         Ok(())
@@ -97,7 +99,7 @@ impl ChannelPolicyService for StandardChannelPolicy
         let user_is_invis = member.user()?.mode().has_mode(UserModeFlag::Invisible);
         if chan_is_secret || user_is_invis
         {
-            return numeric_error!(NotOnChannel, &chan);
+            return Err(PermissionError::Channel(*chan.name(), UserNotOnChannel));
         }
         Ok(())
     }

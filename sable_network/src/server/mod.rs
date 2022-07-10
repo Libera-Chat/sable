@@ -6,6 +6,10 @@ use crate::network::event::*;
 use crate::sync::ReplicatedEventLog;
 use crate::rpc::NetworkMessage;
 
+use crate::policy::PolicyService;
+use crate::saveable::Saveable;
+
+use parking_lot::RwLockReadGuard;
 use tokio::{
     sync::{
         mpsc::{
@@ -32,12 +36,14 @@ pub type NetworkReadGuard<'a> = parking_lot::RwLockReadGuard<'a, Network>;
 
 mod pings;
 mod update_receiver;
+mod history;
 
 mod upgrade;
 pub use upgrade::ServerState;
 
 /// An IRC client server.
-pub struct Server
+pub struct Server<Policy = crate::policy::StandardPolicyService>
+    where Policy: PolicyService
 {
     my_id: ServerId,
     name: ServerName,
@@ -46,13 +52,15 @@ pub struct Server
     event_log: Arc<ReplicatedEventLog>,
     epoch: EpochId,
     id_generator: ObjectIdGenerator,
-    // This needs to be a tokio mutex because we hold it for the duration of `run(), which awaits a lot
+    // This needs to be a tokio mutex because we hold it for the duration of `run()`, which awaits a lot
     rpc_receiver: tokio::sync::Mutex<UnboundedReceiver<NetworkMessage>>,
-    state_change_sender: UnboundedSender<NetworkStateChange>
+    history_log: RwLock<NetworkHistoryLog>,
+    subscriber: UnboundedSender<NetworkHistoryUpdate>,
+    policy_service: Policy,
 }
 
 
-impl Server
+impl<Policy: crate::policy::PolicyService> Server<Policy>
 {
     /// Construct a server.
     ///
@@ -75,7 +83,8 @@ impl Server
                net: Network,
                event_log: Arc<ReplicatedEventLog>,
                rpc_receiver: UnboundedReceiver<NetworkMessage>,
-               state_change_sender: UnboundedSender<NetworkStateChange>,
+               subscriber: UnboundedSender<NetworkHistoryUpdate>,
+               policy_service: Policy,
             ) -> Self
     {
         if cfg!(feature = "debug") && !net.config().debug_mode
@@ -92,7 +101,9 @@ impl Server
             event_log,
             id_generator: ObjectIdGenerator::new(id, epoch),
             rpc_receiver: Mutex::new(rpc_receiver),
-            state_change_sender,
+            history_log: RwLock::new(NetworkHistoryLog::new()),
+            subscriber,
+            policy_service,
         }
     }
 
@@ -120,7 +131,19 @@ impl Server
         self.net.read_recursive()
     }
 
-    /// Access the event log
+    /// Access the policy service
+    pub fn policy(&self) -> &Policy
+    {
+        &self.policy_service
+    }
+
+    /// Access the network history
+    pub fn history(&self) -> RwLockReadGuard<NetworkHistoryLog>
+    {
+        self.history_log.read()
+    }
+
+    /// Access the event log.
     pub fn event_log(&self) -> std::sync::RwLockReadGuard<EventLog>
     {
         self.event_log.event_log()
@@ -183,7 +206,13 @@ impl Server
     {
         tracing::trace!("Applying inbound event");
 
-        self.net.write().apply(&event, self).expect(&format!("Event {:?} failed to apply", event));
+        // We need to queue up the emitted updates and process them after `apply()` returns and we've released
+        // the write lock on `net`. The handlers for various network updates require read access to `net`.
+        let mut update_queue = crate::network::SavedUpdateReceiver::new();
+
+        self.net.write().apply(&event, &update_queue).expect(&format!("Event {:?} failed to apply", event));
+
+        update_queue.playback(self);
     }
 
     #[tracing::instrument(skip_all)]

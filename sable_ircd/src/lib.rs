@@ -2,7 +2,6 @@ mod command;
 mod capability;
 mod dns;
 mod messages;
-mod policy;
 mod utils;
 mod errors;
 mod throttled_queue;

@@ -14,8 +14,10 @@ pub use crate::{
         LookupResult,
     },
     modes::*,
+    policy,
     rpc,
     server::Server,
     sync::*,
     types::*,
+    history::*,
 };

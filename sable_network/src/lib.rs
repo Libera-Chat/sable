@@ -4,9 +4,15 @@ pub mod id;
 pub mod validated;
 pub mod modes;
 
+pub mod history;
+
 pub mod network;
 
+pub mod policy;
+
 pub mod rpc;
+
+pub mod saveable;
 
 pub mod sync;
 

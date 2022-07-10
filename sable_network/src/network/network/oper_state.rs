@@ -3,7 +3,7 @@ use crate::network::state::*;
 
 impl Network
 {
-    pub(super) fn oper_up(&mut self, target: UserId, _event: &Event, details: &details::OperUp, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn oper_up(&mut self, target: UserId, event: &Event, details: &details::OperUp, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(user) = self.users.get_mut(&target)
         {
@@ -24,7 +24,7 @@ impl Network
                     added: UserModeFlag::Oper.into(),
                     removed: UserModeSet::new(),
                     changed_by: self.translate_state_change_source(target.into())
-                });
+                }, event);
             }
         }
     }

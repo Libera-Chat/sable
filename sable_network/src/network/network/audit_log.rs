@@ -14,6 +14,6 @@ impl Network
         self.audit_log.insert(target, entry.clone());
 
         let update = update::NewAuditLogEntry { entry: entry };
-        updates.notify(update);
+        updates.notify(update, event);
     }
 }

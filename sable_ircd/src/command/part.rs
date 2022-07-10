@@ -16,7 +16,7 @@ command_handler!("PART" => PartHandler {
             let details = event::ChannelPart{ message: msg };
             self.action(CommandAction::state_change(membership_id, details))?;
         } else {
-            return numeric_error!(NotOnChannel, &channel);
+            return numeric_error!(NotOnChannel, &chname);
         }
         Ok(())
     }

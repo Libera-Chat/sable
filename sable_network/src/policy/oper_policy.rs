@@ -4,7 +4,7 @@ use super::*;
 #[delegatable_trait]
 pub trait OperAuthenticationService
 {
-    fn authenticate(&self, oper_config: &sable_network::network::config::OperConfig, user: &str, pass: &str) -> bool;
+    fn authenticate(&self, oper_config: &crate::network::config::OperConfig, user: &str, pass: &str) -> bool;
 }
 
 /// Makes authorisation decisions regarding oper actions

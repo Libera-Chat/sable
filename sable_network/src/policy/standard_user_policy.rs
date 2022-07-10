@@ -1,5 +1,7 @@
 use super::*;
 
+use UserPermissionError::*;
+
 /// Standard implementation of [`UserPolicyService`]
 pub struct StandardUserPolicy
 {
@@ -20,7 +22,7 @@ impl UserPolicyService for StandardUserPolicy
     {
         match mode
         {
-            UserModeFlag::Oper | UserModeFlag::TlsConnection => Err(PermissionError::CustomError),
+            UserModeFlag::Oper | UserModeFlag::TlsConnection => Err(PermissionError::User(ReadOnlyUmode)),
             _ => Ok(())
         }
     }

@@ -11,7 +11,7 @@ struct NopUpdateReceiver;
 
 impl NetworkUpdateReceiver for NopUpdateReceiver
 {
-    fn notify_update(&self, _update: NetworkStateChange)
+    fn notify_update(&self, _update: NetworkStateChange, _event: &Event)
     { }
 }
 

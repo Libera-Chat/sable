@@ -21,7 +21,7 @@ impl Network {
     }
 
     /// Rename a channel
-    fn do_rename_channel(&mut self, channel_id: ChannelId, new_name: ChannelName, updates: &dyn NetworkUpdateReceiver)
+    fn do_rename_channel(&mut self, channel_id: ChannelId, new_name: ChannelName, event: &Event, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(channel) = self.channels.get_mut(&channel_id)
         {
@@ -32,11 +32,11 @@ impl Network {
                 channel: channel.clone(),
                 old_name: old_name,
                 new_name: new_name,
-            });
+            }, event);
         }
     }
 
-    pub(super) fn new_channel(&mut self, target: ChannelId, _event: &Event, details: &details::NewChannel, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn new_channel(&mut self, target: ChannelId, event: &Event, details: &details::NewChannel, updates: &dyn NetworkUpdateReceiver)
     {
         // Take a local copy in case we need to change the name due to a collision
         let mut details = details.clone();
@@ -51,7 +51,7 @@ impl Network {
                 // The new one wins. Rename the existing channel
                 let newname = state_utils::hashed_channel_name_for(existing_id);
 
-                self.do_rename_channel(existing_id, newname, updates);
+                self.do_rename_channel(existing_id, newname, event, updates);
             }
             else
             {
@@ -63,7 +63,7 @@ impl Network {
         self.channels.insert(channel.id, channel);
     }
 
-    pub(super) fn channel_mode_change(&mut self, target: ChannelId, _event: &Event, details: &details::ChannelModeChange, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn channel_mode_change(&mut self, target: ChannelId, event: &Event, details: &details::ChannelModeChange, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(channel) = self.channels.get_mut(&target)
         {
@@ -83,7 +83,7 @@ impl Network {
                 removed: details.removed,
                 key_change: details.key_change,
                 changed_by: self.translate_state_change_source(details.changed_by),
-            });
+            }, event);
         }
     }
 
@@ -150,7 +150,7 @@ impl Network {
             };
 
             self.channel_topics.insert(target, new_topic);
-            updates.notify(update);
+            updates.notify(update, event);
         }
     }
 
@@ -175,11 +175,11 @@ impl Network {
                 pattern: details.pattern.clone(),
                 set_by: self.translate_state_change_source(details.setter.into()),
             };
-            updates.notify(update);
+            updates.notify(update, event);
         }
     }
 
-    pub(super) fn del_list_mode_entry(&mut self, target: ListModeEntryId, _event: &Event, details: &details::DelListModeEntry, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn del_list_mode_entry(&mut self, target: ListModeEntryId, event: &Event, details: &details::DelListModeEntry, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(removed) = self.list_mode_entries.remove(&target)
         {
@@ -191,12 +191,12 @@ impl Network {
                     pattern: removed.pattern,
                     removed_by: self.translate_state_change_source(details.removed_by.into()),
                 };
-                updates.notify(update);
+                updates.notify(update, event);
             }
         }
     }
 
-    pub(super) fn channel_permission_change(&mut self, target: MembershipId, _event: &Event, details: &details::MembershipFlagChange, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn channel_permission_change(&mut self, target: MembershipId, event: &Event, details: &details::MembershipFlagChange, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(membership) = self.memberships.get_mut(&target)
         {
@@ -214,12 +214,12 @@ impl Network {
                     added: details.added,
                     removed: details.removed,
                     changed_by: self.translate_state_change_source(details.changed_by),
-                });
+                }, event);
             }
         }
     }
 
-    pub(super) fn user_joined_channel(&mut self, target: MembershipId, _event: &Event, details: &details::ChannelJoin, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn user_joined_channel(&mut self, target: MembershipId, event: &Event, details: &details::ChannelJoin, updates: &dyn NetworkUpdateReceiver)
     {
         let membership = state::Membership::new(target, details.user, details.channel, details.permissions);
         self.memberships.insert(membership.id, membership.clone());
@@ -236,11 +236,11 @@ impl Network {
                 user: self.translate_historic_user(user.clone()),
                 channel: channel.clone()
             };
-            updates.notify(update);
+            updates.notify(update, event);
         }
     }
 
-    pub(super) fn user_left_channel(&mut self, target: MembershipId, _event: &Event, details: &details::ChannelPart, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn user_left_channel(&mut self, target: MembershipId, event: &Event, details: &details::ChannelPart, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(removed_membership) = self.memberships.remove(&target)
         {
@@ -260,7 +260,7 @@ impl Network {
                     channel: channel.clone(),
                     message: details.message.clone()
                 };
-                updates.notify(update);
+                updates.notify(update, event);
             }
         }
     }
@@ -280,7 +280,7 @@ impl Network {
                 user: self.translate_historic_user(user.clone()),
                 channel: channel.clone(),
             };
-            updates.notify(update);
+            updates.notify(update, event);
         }
     }
 

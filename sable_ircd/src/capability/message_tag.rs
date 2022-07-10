@@ -36,9 +36,9 @@ pub struct TaggedMessage<T>
     tags: Vec<MessageTag>
 }
 
-impl <'a, T: MessageType> MessageTypeFormat for TaggedMessage<T>
+impl <T: MessageType> MessageTypeFormat for TaggedMessage<T>
 {
-    fn format_for_client_caps(&self, caps: &ClientCapabilitySet) -> String
+    fn format_for_client_caps(&self, caps: &ClientCapabilitySet) -> Option<String>
     {
         let mut result = String::new();
 
@@ -62,9 +62,9 @@ impl <'a, T: MessageType> MessageTypeFormat for TaggedMessage<T>
             result.push_str(" ");
         }
 
-        result.push_str(&self.message.format_for_client_caps(caps));
+        result.push_str(&self.message.format_for_client_caps(caps)?);
 
-        result
+        Some(result)
     }
 }
 

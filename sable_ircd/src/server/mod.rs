@@ -4,7 +4,6 @@ use messages::*;
 
 use sable_network::prelude::*;
 use event::*;
-use policy::*;
 use rpc::*;
 
 use auth_client::*;
@@ -35,8 +34,8 @@ mod upgrade;
 pub use upgrade::ClientServerState;
 
 mod command_action;
-mod event_handler;
-mod send_helpers;
+mod update_handler;
+mod user_access;
 
 
 pub struct ClientServer
@@ -46,14 +45,13 @@ pub struct ClientServer
     connection_events: UnboundedReceiver<ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
     connections: ConnectionCollection,
-    policy_service: StandardPolicyService,
     auth_client: AuthClient,
     auth_events: UnboundedReceiver<AuthEvent>,
     isupport: ISupportBuilder,
     client_caps: CapabilityRepository,
 
     server: Arc<Server>,
-    state_change_receiver: UnboundedReceiver<NetworkStateChange>,
+    history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
 }
 
 impl ClientServer
@@ -67,11 +65,13 @@ impl ClientServer
                connection_events: UnboundedReceiver<ConnectionEvent>,
             ) -> Self
     {
-        let (state_change_sender, state_change_receiver) = unbounded_channel();
+        let (history_sender, history_receiver) = unbounded_channel();
         let (action_submitter, action_receiver) = unbounded_channel();
         let (auth_sender, auth_events) = unbounded_channel();
 
-        let server = Arc::new(Server::new(id, epoch, name, net, event_log, rpc_receiver, state_change_sender));
+        let policy = policy::StandardPolicyService::new();
+
+        let server = Arc::new(Server::new(id, epoch, name, net, event_log, rpc_receiver, history_sender, policy));
 
         Self {
             action_receiver,
@@ -79,13 +79,12 @@ impl ClientServer
             connection_events,
             command_dispatcher: CommandDispatcher::new(),
             connections: ConnectionCollection::new(action_submitter),
-            policy_service: StandardPolicyService::new(),
             auth_client: AuthClient::new(auth_sender).unwrap(),
             auth_events,
             isupport: ISupportBuilder::new(),
             client_caps: CapabilityRepository::new(),
             server,
-            state_change_receiver,
+            history_receiver,
         }
     }
 
@@ -117,9 +116,9 @@ impl ClientServer
     }
 
     /// Access the currently used [`PolicyService`]
-    pub(crate) fn policy(&self) -> &dyn PolicyService
+    pub(crate) fn policy(&self) -> &dyn sable_network::policy::PolicyService
     {
-        &self.policy_service
+        self.server.policy()
     }
 
     /// Find a client connection
@@ -229,13 +228,9 @@ impl ClientServer
 
         loop
         {
-            tracing::trace!("server run loop");
-
             // Before looking for an I/O event, do our internal bookkeeping.
             // First, take inbound client messages and process them
             self.process_pending_client_messages().await;
-
-            tracing::trace!("Processed pending messages");
 
             // Then, see whether there are any actions we need to process synchronously
             while let Ok(act) = self.action_receiver.try_recv()
@@ -243,8 +238,6 @@ impl ClientServer
                 tracing::trace!(?act, "Got pending CommandAction");
                 self.apply_action(act).await;
             }
-
-            tracing::trace!("Housekeeping done, waiting for I/O");
 
             let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(250));
             tokio::pin!(timeout);
@@ -264,12 +257,18 @@ impl ClientServer
                         Err(e) => panic!("Server task exited abnormally ({})", e)
                     };
                 },
-                res = self.state_change_receiver.recv() =>
+                res = self.history_receiver.recv() =>
                 {
-                    tracing::trace!(?res, "...from state_change_receiver");
+                    tracing::trace!(?res, "...from history_receiver");
                     match res
                     {
-                        Some(state_change) => self.handle_network_update(state_change),
+                        Some(update) =>
+                        {
+                            if let Err(e) = self.handle_history_update(update)
+                            {
+                                tracing::error!("Error handing history update: {}", e);
+                            }
+                        }
                         None => panic!("Lost server"),
                     };
                 },

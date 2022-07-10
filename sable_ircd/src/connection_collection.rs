@@ -134,13 +134,13 @@ impl ConnectionCollection
             Some(connid) => self.client_connections.get_mut(connid).ok_or(LookupError::NoSuchConnectionId)
         }
     }
-
+/*
     /// Iterate over connections
     pub fn iter(&self) -> impl Iterator<Item=&ClientConnection>
     {
         self.client_connections.values()
     }
-
+*/
     /// Get the number of managed connections
     pub fn len(&self) -> usize
     {

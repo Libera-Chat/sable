@@ -194,7 +194,7 @@ NetworkStateChange => {
 pub trait NetworkUpdateReceiver
 {
     /// Notify the receiver of a network state change
-    fn notify_update(&self, update: NetworkStateChange);
+    fn notify_update(&self, update: NetworkStateChange, source_event: &Event);
 }
 
 use std::convert::Into;
@@ -202,13 +202,13 @@ use std::convert::Into;
 /// Helper to make sending updates easier
 pub(crate) trait NetworkUpdateHelper
 {
-    fn notify(&self, update: impl Into<NetworkStateChange>);
+    fn notify(&self, update: impl Into<NetworkStateChange>, source_event: &Event);
 }
 
 impl<T: NetworkUpdateReceiver + ?Sized> NetworkUpdateHelper for T
 {
-    fn notify(&self, update: impl Into<NetworkStateChange>)
+    fn notify(&self, update: impl Into<NetworkStateChange>, source_event: &Event)
     {
-        self.notify_update(update.into());
+        self.notify_update(update.into(), source_event);
     }
 }

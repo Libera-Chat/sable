@@ -1,5 +1,7 @@
 use super::*;
-use sable_network::network::config::OperConfig;
+use crate::network::config::OperConfig;
+
+use UserPermissionError::*;
 
 use pwhash::unix;
 
@@ -32,7 +34,7 @@ impl OperPolicyService for StandardOperPolicy
         }
         else
         {
-            numeric_error!(NotOper)
+            Err(PermissionError::User(NotOper))
         }
     }
 

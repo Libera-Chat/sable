@@ -146,14 +146,14 @@ pub trait MessageType : std::fmt::Debug + MessageTypeFormat
 /// Trait that determines how to format a client message
 pub trait MessageTypeFormat
 {
-    fn format_for_client_caps(&self, caps: &super::capability::ClientCapabilitySet) -> String;
+    fn format_for_client_caps(&self, caps: &super::capability::ClientCapabilitySet) -> Option<String>;
 }
 
 impl<T: std::fmt::Display> MessageTypeFormat for T
 {
-    fn format_for_client_caps(&self, _caps: &super::capability::ClientCapabilitySet) -> String
+    fn format_for_client_caps(&self, _caps: &super::capability::ClientCapabilitySet) -> Option<String>
     {
-        self.to_string()
+        Some(self.to_string())
     }
 }
 
@@ -179,3 +179,4 @@ pub trait Numeric : std::fmt::Debug
 
 pub mod message;
 pub mod numeric;
+pub mod history;

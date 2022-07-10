@@ -110,7 +110,10 @@ impl ClientConnection
     /// Send a protocol message to this connection
     pub fn send(&self, msg: &dyn messages::MessageTypeFormat)
     {
-        self.connection.send(msg.format_for_client_caps(&self.capabilities))
+        if let Some(formatted) = msg.format_for_client_caps(&self.capabilities)
+        {
+            self.connection.send(formatted)
+        }
     }
 
     /// Close this connection with an error message

@@ -46,6 +46,4 @@ impl<'a> super::ObjectWrapper<'a> for Membership<'a> {
     {
         Self { network, data }
     }
-
-
 }

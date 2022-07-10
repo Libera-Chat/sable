@@ -46,21 +46,20 @@ impl ClientServer
     {
         let (auth_send, auth_recv) = unbounded_channel();
         let (action_send, action_recv) = unbounded_channel();
-        let (state_change_sender, state_change_receiver) = unbounded_channel();
+        let (history_sender, history_receiver) = unbounded_channel();
 
         Ok(Self {
-            server: Arc::new(Server::restore_from(state.server_state, event_log, rpc_receiver, state_change_sender)?),
+            server: Arc::new(Server::restore_from(state.server_state, event_log, rpc_receiver, history_sender)?),
             action_receiver: action_recv,
             action_submitter: action_send.clone(),
             connection_events,
             connections: ConnectionCollection::restore_from(state.connections, listener_collection, action_send),
             command_dispatcher: command::CommandDispatcher::new(),
-            policy_service: StandardPolicyService::new(),
             auth_client: AuthClient::resume(state.auth_state, auth_send)?,
             auth_events: auth_recv,
             isupport: Self::build_basic_isupport(),
             client_caps: state.client_caps,
-            state_change_receiver
+            history_receiver
         })
     }
 }

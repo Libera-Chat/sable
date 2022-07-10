@@ -73,6 +73,9 @@ pub mod update;
 pub use update::NetworkStateChange;
 pub use update::NetworkUpdateReceiver;
 
+mod update_receiver;
+pub use update_receiver::SavedUpdateReceiver;
+
 mod option_change;
 pub use option_change::OptionChange;
 

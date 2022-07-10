@@ -26,12 +26,12 @@ impl CapabilityRepository
             all_caps,
         }
     }
-
+/*
     pub fn iter(&self) -> impl Iterator<Item=&ClientCapability>
     {
         self.supported_caps.values()
     }
-
+*/
     pub fn supported_caps(&self) -> &str
     {
         &self.all_caps

@@ -71,14 +71,14 @@ impl Network {
                     // existing binding. Kill both users, and drop the old binding.
                     if let Some(update) = self.remove_user(existing_id_binding.user, "Nickname collision".to_string())
                     {
-                        updates.notify(update);
+                        updates.notify(update, trigger);
                     }
                 }
 
                 // Whichever way the above test went, we need to kill the newer user.
                 if let Some(update) = self.remove_user(user_id, "Nickname collision".to_string())
                 {
-                    updates.notify(update);
+                    updates.notify(update, trigger);
                 }
             }
             else
@@ -91,7 +91,7 @@ impl Network {
                     new_nick: new_binding.nick
                 };
                 self.nick_bindings.insert(new_nick, new_binding);
-                updates.notify(update);
+                updates.notify(update, trigger);
             }
         }
     }
@@ -133,7 +133,7 @@ impl Network {
             };
 
             self.nick_bindings.insert(new_binding.nick, new_binding);
-            updates.notify(update);
+            updates.notify(update, event);
         }
     }
 
@@ -175,7 +175,7 @@ impl Network {
         let update = update::NewUser {
             user: self.translate_historic_user(user)
         };
-        updates.notify(update);
+        updates.notify(update, event);
     }
 
     pub(super) fn validate_new_user(&self, _target: UserId, user: &details::NewUser) -> ValidationResult
@@ -190,7 +190,7 @@ impl Network {
         }
     }
 
-    pub(super) fn user_mode_change(&mut self, target: UserId, _event: &Event, mode: &details::UserModeChange, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn user_mode_change(&mut self, target: UserId, event: &Event, mode: &details::UserModeChange, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(user) = self.users.get_mut(&target)
         {
@@ -204,15 +204,15 @@ impl Network {
                 added: mode.added,
                 removed: mode.removed,
                 changed_by: self.translate_state_change_source(mode.changed_by),
-            });
+            }, event);
         }
     }
 
-    pub(super) fn user_quit(&mut self, target: UserId, _event: &Event, quit: &details::UserQuit, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn user_quit(&mut self, target: UserId, event: &Event, quit: &details::UserQuit, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(update) = self.remove_user(target, quit.message.clone())
         {
-            updates.notify(update);
+            updates.notify(update, event);
         }
     }
 }

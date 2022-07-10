@@ -2,13 +2,13 @@ use super::*;
 
 impl Network
 {
-    pub(super) fn new_server(&mut self, target: ServerId, _event: &Event, detail: &details::NewServer, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn new_server(&mut self, target: ServerId, event: &Event, detail: &details::NewServer, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(existing_epoch) = self.servers.get(&target).map(|s| s.epoch)
         {
             if existing_epoch != detail.epoch
             {
-                self.delete_server(target, updates);
+                self.delete_server(target, event, updates);
             }
         }
 
@@ -23,7 +23,7 @@ impl Network
 
         self.servers.insert(target, server.clone());
 
-        updates.notify(update::NewServer { server });
+        updates.notify(update::NewServer { server }, event);
     }
 
     pub(super) fn server_ping(&mut self, target: ServerId, _event: &Event, detail: &details::ServerPing, _updates: &dyn NetworkUpdateReceiver)
@@ -34,7 +34,7 @@ impl Network
         }
     }
 
-    pub(super) fn server_quit(&mut self, target: ServerId, _event: &Event, detail: &details::ServerQuit, updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn server_quit(&mut self, target: ServerId, event: &Event, detail: &details::ServerQuit, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(server) = self.servers.get(&target) {
             if server.epoch != detail.epoch
@@ -42,10 +42,10 @@ impl Network
                 return;
             }
         }
-        self.delete_server(target, updates);
+        self.delete_server(target, event, updates);
     }
 
-    fn delete_server(&mut self, target: ServerId, updates: &dyn NetworkUpdateReceiver)
+    fn delete_server(&mut self, target: ServerId, event: &Event, updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(removed) = self.servers.remove(&target)
         {
@@ -71,11 +71,11 @@ impl Network
 
             updates.notify(update::ServerQuit {
                 server: removed
-            });
+            }, event);
 
             updates.notify(update::BulkUserQuit {
                 items: quit_updates
-            });
+            }, event);
         }
     }
 }

@@ -276,6 +276,35 @@ impl From<ValidationError> for CommandError
     }
 }
 
+impl From<policy::PermissionError> for CommandError
+{
+    fn from(e: policy::PermissionError) -> Self
+    {
+        use policy::{
+            PermissionError::*,
+            UserPermissionError::*,
+            ChannelPermissionError::*,
+        };
+
+            match e
+        {
+            User(NotOper) => numeric::NotOper::new().into(),
+            User(ReadOnlyUmode) => Self::CustomError, // Setting or unsetting these umodes silently fails
+            Channel(channel_name, channel_err) => {
+                match channel_err
+                {
+                    UserNotOnChannel => numeric::NotOnChannel::new(&channel_name).into(),
+                    UserNotOp => numeric::ChanOpPrivsNeeded::new(&channel_name).into(),
+                    UserIsBanned => numeric::BannedOnChannel::new(&channel_name).into(),
+                    CannotSendToChannel => numeric::CannotSendToChannel::new(&channel_name).into(),
+                    InviteOnlyChannel => numeric::InviteOnlyChannel::new(&channel_name).into(),
+                    BadChannelKey => numeric::BadChannelKey::new(&channel_name).into()
+                }
+            },
+            InternalError(e) => Self::UnderlyingError(e)
+        }
+    }
+}
 
 impl CommandError
 {
@@ -283,11 +312,12 @@ impl CommandError
     {
         Self::UnknownError(desc.to_string())
     }
-
+/*
     pub fn inner(err: impl std::error::Error + Clone + 'static) -> CommandError
     {
         CommandError::UnderlyingError(Box::new(err))
     }
+*/
 }
 
 impl From<LookupError> for CommandError
@@ -332,18 +362,5 @@ impl From<HandlerError> for CommandError
 {
     fn from(e: HandlerError) -> Self {
         Self::UnderlyingError(Box::new(e))
-    }
-}
-
-impl From<policy::PermissionError> for CommandError
-{
-    fn from(e: policy::PermissionError) -> Self
-    {
-        match e
-        {
-            policy::PermissionError::Numeric(n) => Self::Numeric(n),
-            policy::PermissionError::CustomError => Self::CustomError,
-            policy::PermissionError::InternalError(e) => Self::UnderlyingError(e)
-        }
     }
 }

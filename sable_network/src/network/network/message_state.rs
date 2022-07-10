@@ -18,6 +18,6 @@ impl Network
             message: message,
             source: self.translate_state_change_source(details.source.into()),
             target: self.translate_message_target(details.target.into())
-        });
+        }, event);
     }
 }
