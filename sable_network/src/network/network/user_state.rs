@@ -34,7 +34,8 @@ impl Network {
             };
 
             Some(update::UserQuit {
-                user: self.translate_historic_user(user),
+                // We can't use `translate_historic_user` because we've already removed the nick binding
+                user: HistoricUser { user, nickname: removed_nickname },
                 nickname: removed_nickname,
                 message,
                 memberships: removed_memberships
