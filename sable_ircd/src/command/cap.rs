@@ -8,7 +8,7 @@ command_handler!("CAP" => CapHandler {
     {
         let mut pre_client = source.borrow_mut();
 
-        match cmd.args[0].as_str()
+        match cmd.args[0].to_ascii_uppercase().as_str()
         {
             "LS" =>
             {
