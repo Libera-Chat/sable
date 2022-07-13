@@ -6,7 +6,7 @@ use client_listener::{
 
 use crate::*;
 use crate::server::ClientServer;
-use crate::messages::numeric;
+use crate::messages::*;
 use crate::errors::*;
 use crate::capability::*;
 use crate::utils::make_numeric;

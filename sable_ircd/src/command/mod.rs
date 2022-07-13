@@ -1,3 +1,5 @@
+use crate::capability::ClientCapabilitySet;
+
 use super::*;
 use sable_network::prelude::*;
 use messages::*;
@@ -22,15 +24,28 @@ pub(crate) trait CommandHandler
     /// Define the minimum number of parameters required for this command.
     fn min_parameters(&self) -> usize;
 
+    /// Define any client capabilities which must be negotiated before this command
+    /// can be used
+    fn required_capabilities(&self) -> ClientCapabilitySet
+    {
+        ClientCapabilitySet::new()
+    }
+
     /// Perform any low-cost validation that may be appropriate before invoking the
     /// relevant handler function. If validation fails, an appropriate `Err` value should
     /// be returned.
     ///
-    /// The default implementation simply checks the number of provided parameters
-    /// against the result of `self.min_parameters()`, returning an appropriate error
-    /// numeric if insufficient parameters were provided.
+    /// The default implementation:
+    ///  * checks whether the handler requires specific client capabilities, and returns an error
+    ///    if these are not met
+    ///  * checks the number of provided parameters against the result of `self.min_parameters()`,
+    ///    returning an appropriate error numeric if insufficient parameters were provided
     fn validate(&self, cmd: &ClientCommand) -> CommandResult
     {
+        if ! cmd.connection.capabilities.has_all(self.required_capabilities())
+        {
+            return numeric_error!(UnknownCommand, &cmd.command);
+        }
         if cmd.args.len() < self.min_parameters()
         {
             return numeric_error!(NotEnoughParameters, &cmd.command);
@@ -147,3 +162,4 @@ mod invite;
 mod kill;
 mod kline;
 mod oper;
+mod chathistory;

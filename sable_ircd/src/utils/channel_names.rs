@@ -1,10 +1,10 @@
 use sable_network::prelude::*;
 use crate::*;
-use crate::client::*;
+use crate::messages::*;
 use crate::errors::*;
 use crate::messages::numeric;
 
-pub fn send_channel_names(server: &ClientServer, to: &ClientConnection, to_user: &wrapper::User, channel: &wrapper::Channel) -> HandleResult
+pub fn send_channel_names(server: &ClientServer, to: &impl MessageSink, to_user: &wrapper::User, channel: &wrapper::Channel) -> HandleResult
 {
     let mut lines = Vec::new();
     let mut current_line = String::new();

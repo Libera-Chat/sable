@@ -32,9 +32,7 @@ pub trait CapableMessage : MessageTypeFormat + Sized
 
     fn with_required_capability(self, cap: ClientCapability) -> CapabilityMessage<Self>
     {
-        let mut cap_set = ClientCapabilitySet::new();
-        cap_set.set(cap);
-        self.with_required_capabilities(cap_set)
+        self.with_required_capabilities(cap.into())
     }
 }
 

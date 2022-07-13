@@ -66,6 +66,39 @@ impl<'a> Iterator for UserHistoryLogIterator<'a>
     }
 }
 
+pub struct ReverseUserHistoryLogIterator<'a>
+{
+    network_log: &'a NetworkHistoryLog,
+    user_log: Option<MappedRwLockReadGuard<'a, ConcurrentLog<LogEntryId>>>,
+    current_index: usize,
+}
+
+impl<'a> Iterator for ReverseUserHistoryLogIterator<'a>
+{
+    type Item = &'a HistoryLogEntry;
+
+    fn next(&mut self) -> Option<&'a HistoryLogEntry>
+    {
+        // Loop to ensure we can skip over entry IDs that are missing from the log.
+        // Returning `None` in that case would signal the end of the iteration; we
+        // only want to do that if the id iterator is exhausted.
+        loop
+        {
+            if self.current_index == 0
+            {
+                break None;
+            }
+            self.current_index -= 1;
+            let next_id = self.user_log.as_ref()?.get(self.current_index)?;
+            let entry = self.network_log.entries.get(*next_id);
+            if entry.is_some()
+            {
+                break entry;
+            }
+        }
+    }
+}
+
 impl NetworkHistoryLog
 {
     pub fn new() -> Self
@@ -83,6 +116,18 @@ impl NetworkHistoryLog
 
         UserHistoryLogIterator {
             current_index: user_log.as_ref().map(|l| l.start_index()).unwrap_or(0),
+            user_log,
+            network_log: self
+        }
+    }
+
+    pub fn entries_for_user_reverse(&self, user: UserId) -> ReverseUserHistoryLogIterator
+    {
+        let user_log = RwLockReadGuard::try_map(self.user_logs.read(),
+                    |logs| logs.get(&user)).ok();
+
+        ReverseUserHistoryLogIterator {
+            current_index: user_log.as_ref().map(|l| l.size()).unwrap_or(0),
             user_log,
             network_log: self
         }

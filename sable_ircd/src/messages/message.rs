@@ -22,5 +22,16 @@ define_messages! {
     Ping    => { (source, target, cookie: &str)             => ":{source} PING {target} :{cookie}" },
     Pong    => { (source, cookie: &str)                     => ":{source} PONG {source} :{cookie}" },
 
-    Error   => { (text: &str)   => "ERROR :{text}" }
+    Error   => { (text: &str)   => "ERROR :{text}" },
+
+    // IRCv3 standard reply messages
+    Fail    => { (command: &str, code: &str, context: &str, description: &str)
+                                => "FAIL {command} {code} {context} :{description}" },
+    Warn    => { (command: &str, code: &str, context: &str, description: &str)
+                                => "WARN {command} {code} {context} :{description}" },
+    Note    => { (command: &str, code: &str, context: &str, description: &str)
+                                => "NOTE {command} {code} {context} :{description}" },
+
+    // Extension messages
+    ChatHistoryTarget => { (target_name: &str, timestamp: &str) => "CHATHISTORY TARGETS {target_name} {timestamp}" }
 }

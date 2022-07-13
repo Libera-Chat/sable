@@ -1,3 +1,4 @@
+use messages::MessageSink;
 use sable_network::prelude::*;
 use super::*;
 use client_listener::*;
@@ -107,15 +108,6 @@ impl ClientConnection
         self.connection.remote_addr
     }
 
-    /// Send a protocol message to this connection
-    pub fn send(&self, msg: &dyn messages::MessageTypeFormat)
-    {
-        if let Some(formatted) = msg.format_for_client_caps(&self.capabilities)
-        {
-            self.connection.send(formatted)
-        }
-    }
-
     /// Close this connection with an error message
     pub fn error(&self, msg: &str)
     {
@@ -135,6 +127,22 @@ impl ClientConnection
     pub fn poll_messages<'a>(&'a mut self) -> impl Iterator<Item=String> + 'a
     {
         self.receive_queue.iter_mut()
+    }
+}
+
+impl MessageSink for ClientConnection
+{
+    fn send(&self, msg: &impl messages::MessageTypeFormat)
+    {
+        if let Some(formatted) = msg.format_for_client_caps(&self.capabilities)
+        {
+            self.connection.send(formatted)
+        }
+    }
+
+    fn user_id(&self) -> Option<UserId>
+    {
+        self.user_id
     }
 }
 

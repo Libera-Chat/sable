@@ -57,7 +57,8 @@ define_capabilities! (
     {
         MessageTags: 0x01 => "message-tags",
         ServerTime:  0x02 => "server-time",
-        EchoMessage: 0x04 => "echo-message"
+        EchoMessage: 0x04 => "echo-message",
+        ChatHistory: 0x08 => "draft/chathistory"
     }
 );
 
@@ -89,5 +90,13 @@ impl ClientCapabilitySet
     pub fn unset(&mut self, cap: ClientCapability)
     {
         self.0 &= !(cap as u64);
+    }
+}
+
+impl From<ClientCapability> for ClientCapabilitySet
+{
+    fn from(cap: ClientCapability) -> Self
+    {
+        Self(cap as u64)
     }
 }

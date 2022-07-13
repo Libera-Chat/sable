@@ -186,9 +186,15 @@ impl<Policy: crate::policy::PolicyService> Server<Policy>
             },
             update::HistoricMessageTarget::User(user) => {
                 self.notify_user(user.user.id, entry.id);
+                // Users should always be allowed to see messages they send
+                if let update::HistoricMessageSource::User(source) = &detail.source
+                {
+                    self.notify_user(source.user.id, entry.id);
+                }
             },
             update::HistoricMessageTarget::Unknown => ()
         }
+
 
         Ok(())
     }

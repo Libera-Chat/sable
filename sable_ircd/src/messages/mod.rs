@@ -114,6 +114,21 @@ impl MessageTarget for update::HistoricMessageTarget
     }
 }
 
+// This may seem counter-intuitive, but there are times we need to
+// format a message source as if it were a target
+impl MessageTarget for update::HistoricMessageSource
+{
+    fn format(&self) -> String
+    {
+        match self
+        {
+            Self::Server(s) => s.name.to_string(),
+            Self::User(u) => u.nickname.to_string(),
+            Self::Unknown => "*".to_string()
+        }
+    }
+}
+
 impl MessageTarget for wrapper::MessageTarget<'_>
 {
     fn format(&self) -> String
@@ -180,3 +195,6 @@ pub trait Numeric : std::fmt::Debug
 pub mod message;
 pub mod numeric;
 pub mod history;
+
+mod message_sink;
+pub use message_sink::*;
