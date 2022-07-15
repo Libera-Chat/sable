@@ -24,6 +24,8 @@ use std::{
     sync::Arc,
 };
 
+use futures::future::OptionFuture;
+
 use strum::IntoEnumIterator;
 
 mod management;
@@ -219,12 +221,14 @@ impl ClientServer
     /// - `management_channel`: receives management commands from the management service
     /// - `shutdown_channel`: used to signal the server to shut down
     #[tracing::instrument(skip_all)]
-    pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
+    pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {
         let (server_shutdown, server_shutdown_recv) = oneshot::channel();
         let mut server_shutdown = Some(server_shutdown);
 
         let mut server_task = tokio::spawn(Arc::clone(&self.server).run(server_shutdown_recv));
+
+        let mut shutdown_channel = OptionFuture::from(Some(shutdown_channel));
 
         loop
         {
@@ -343,14 +347,15 @@ impl ClientServer
                 },
                 shutdown = &mut shutdown_channel =>
                 {
+                    shutdown_channel = None.into();
                     match shutdown
                     {
-                        Err(e) =>
+                        Some(Err(e)) =>
                         {
                             tracing::error!("Got error ({}) from shutdown channel; exiting", e);
                             break ShutdownAction::Shutdown;
                         }
-                        Ok(action) =>
+                        Some(Ok(action)) =>
                         {
                             // Signal the underlying network server to shut down, but keep going
                             // until it does so that we can process any state changes it emits
@@ -359,6 +364,7 @@ impl ClientServer
                                 server_shutdown.send(action).expect("Failed to signal server shutdown");
                             }
                         }
+                        None => ()
                     }
                 },
             }

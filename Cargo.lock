@@ -360,9 +360,9 @@ dependencies = [
 
 [[package]]
 name = "concurrent_log"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71016e48c675b7ee7f00b121c139f2ac9de0d1fab480df8792684f64c6a129ca"
+checksum = "7de38e064beae33ef2398e9480d30cde54cab47d7820f0315a58ddb101c6ee9c"
 dependencies = [
  "parking_lot 0.12.0",
  "serde",
@@ -750,9 +750,9 @@ dependencies = [
 
 [[package]]
 name = "ghost"
-version = "0.1.2"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a5bcf1bbeab73aa4cf2fde60a846858dc036163c7c33bec309f8d17de785479"
+checksum = "b93490550b1782c589a350f2211fff2e34682e25fed17ef53fc4fa8fe184975e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1707,6 +1707,7 @@ dependencies = [
  "bitflags",
  "chrono",
  "client_listener",
+ "futures",
  "inventory",
  "itertools",
  "pwhash",
@@ -1746,7 +1747,6 @@ dependencies = [
  "futures",
  "hashers",
  "hex",
- "inventory",
  "itertools",
  "parking_lot 0.12.0",
  "pwhash",

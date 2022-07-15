@@ -8,7 +8,12 @@ use std::{
 use serde::{
     Serialize,
     Deserialize,
+    ser::SerializeSeq,
 };
+use serde_with::{
+    serde_as
+};
+
 use parking_lot::{
     RwLock,
     RwLockReadGuard,
@@ -30,10 +35,46 @@ pub struct HistoryLogEntry
 
 type UserHistoryLog = ConcurrentLog<LogEntryId>;
 
+struct UserLogMapConversion;
+
+impl serde_with::SerializeAs<RwLock<HashMap<UserId, UserHistoryLog>>> for UserLogMapConversion
+{
+    fn serialize_as<S>(source: &RwLock<HashMap<UserId, UserHistoryLog>>, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer
+    {
+        let lock = source.read_recursive();
+        let mut seq = serializer.serialize_seq(Some(lock.len()))?;
+        for pair in lock.iter()
+        {
+            seq.serialize_element(&pair)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de> serde_with::DeserializeAs<'de, RwLock<HashMap<UserId, UserHistoryLog>>> for UserLogMapConversion
+{
+    fn deserialize_as<D>(deserializer: D) -> Result<RwLock<HashMap<UserId, UserHistoryLog>>, D::Error>
+        where
+            D: serde::Deserializer<'de>
+    {
+        let vec = Vec::<(UserId, UserHistoryLog)>::deserialize(deserializer)?;
+        let mut map = HashMap::new();
+        for (k, v) in vec
+        {
+            map.insert(k, v);
+        }
+        Ok(RwLock::new(map))
+    }
+}
+
+#[serde_as]
 #[derive(Debug,Serialize,Deserialize)]
 pub struct NetworkHistoryLog
 {
     pub(super) entries: ConcurrentLog<HistoryLogEntry>,
+    #[serde_as(as = "UserLogMapConversion")]
     pub(super) user_logs: RwLock<HashMap<UserId, UserHistoryLog>>,
 }
 
@@ -135,7 +176,6 @@ impl NetworkHistoryLog
 
     pub fn add(&self, details: NetworkStateChange, timestamp: i64) -> &HistoryLogEntry
     {
-        // We know this won't already exist because we control the entry IDs
         let index = self.entries.push_with_index(HistoryLogEntry {
             id: 0,
             timestamp,
