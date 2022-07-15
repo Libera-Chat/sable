@@ -33,14 +33,6 @@ pub fn dispatch_event_async(input: TokenStream) -> TokenStream
     dispatch_event::dispatch_event(input, true)
 }
 
-mod define_command_handler;
-
-#[proc_macro]
-pub fn command_handler(input: TokenStream) -> TokenStream
-{
-    define_command_handler::command_handler(input)
-}
-
 mod define_object_id;
 
 #[proc_macro]

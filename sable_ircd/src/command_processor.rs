@@ -217,7 +217,7 @@ impl<'a> CommandProcessor<'a>
                         ) -> Result<(), CommandError>
     {
         if let Some(factory) = self.command_dispatcher.resolve_command(&message.command) {
-            let mut handler = factory.create(self.server, self);
+            let mut handler = factory(self.server);
             let cmd = ClientCommand {
                  server: self.server,
                  connection,

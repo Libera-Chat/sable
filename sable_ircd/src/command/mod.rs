@@ -8,8 +8,6 @@ use client::*;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
-use sable_macros::command_handler;
-
 use command_processor::*;
 
 /// A convenience definition for the result type returned from command handlers
@@ -93,19 +91,13 @@ pub(crate) trait CommandHandler
     }
 }
 
-/// Factory trait to construct command handlers. Implemented internally by the `command_handler`
-/// macro; there is generally no need to implement this in application code.
-pub(crate) trait CommandHandlerFactory
-{
-    /// Create an object implementing [`CommandHandler`].
-    fn create<'a>(&self, server: &'a ClientServer, proc: &'a CommandProcessor<'a>) -> Box<dyn CommandHandler + 'a>;
-}
+type CommandHandlerFactory = fn(&ClientServer) -> Box<dyn CommandHandler + '_>;
 
 /// A command handler registration. Constructed by the `command_handler` macro.
 pub(crate) struct CommandRegistration
 {
-    command: String,
-    handler: Box<dyn CommandHandlerFactory>,
+    command: &'static str,
+    handler: CommandHandlerFactory,
 }
 
 /// A command dispatcher. Collects registered command handlers and allows lookup by
@@ -113,7 +105,7 @@ pub(crate) struct CommandRegistration
 pub(crate) struct CommandDispatcher
 {
     #[allow(clippy::borrowed_box)]
-    handlers: HashMap<String, &'static Box<dyn CommandHandlerFactory>>
+    handlers: HashMap<String, CommandHandlerFactory>
 }
 
 inventory::collect!(CommandRegistration);
@@ -127,7 +119,7 @@ impl CommandDispatcher {
         let mut map = HashMap::new();
 
         for reg in inventory::iter::<CommandRegistration> {
-            map.insert(reg.command.to_ascii_uppercase(), &reg.handler);
+            map.insert(reg.command.to_ascii_uppercase(), reg.handler);
         }
 
         Self {
@@ -138,9 +130,59 @@ impl CommandDispatcher {
     /// Look up the handler factory corresponding to a given command.
     // &Box actually makes sense for a return value given the type in the hashmap
     #[allow(clippy::borrowed_box)]
-    pub fn resolve_command(&self, cmd: &str) -> Option<&Box<dyn CommandHandlerFactory>>
+    pub fn resolve_command(&self, cmd: &str) -> Option<CommandHandlerFactory>
     {
         self.handlers.get(&cmd.to_ascii_uppercase()).copied()
+    }
+}
+
+macro_rules! command_handler {
+    ($cmd:literal => $typename:ident $body:tt) =>
+    {
+        struct $typename<'a>
+        {
+            server: &'a crate::server::ClientServer,
+        }
+
+        impl<'a> $typename<'a>
+        {
+            pub fn new(server: &'a crate::server::ClientServer) -> Self
+            {
+                Self{ server }
+            }
+
+            // Not all handlers will actually use this, which is OK
+            #[allow(dead_code)]
+            pub fn action(&mut self, act: crate::command_processor::CommandAction) -> sable_network::network::ValidationResult
+            {
+                if let CommandAction::StateChange(i, d) = &act {
+                    self.server.network().validate(*i, d)?;
+                }
+                self.server.add_action(act);
+                Ok(())
+            }
+        }
+
+        impl<'a> CommandHandler for $typename<'a>
+        $body
+
+        mod registration
+        {
+            // macro_rules macros can't modify identifiers they're given, so we're stuck with this
+            #[allow(non_snake_case)]
+            mod $typename
+            {
+                fn factory_function(server: &crate::server::ClientServer) -> Box<dyn crate::command::CommandHandler + '_>
+                {
+                    Box::new(super::super::$typename::new(server))
+                }
+
+                inventory::submit!(crate::command::CommandRegistration {
+                    command: $cmd,
+                    handler: factory_function
+                });
+            }
+        }
     }
 }
 
