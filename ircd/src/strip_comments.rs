@@ -96,7 +96,7 @@ impl<R: Read> Read for StripComments<R>
 
                 if let Some(idx) = line.find("//")
                 {
-                    self.buf.extend_from_slice(&line[0..idx].as_bytes());
+                    self.buf.extend_from_slice(line[0..idx].as_bytes());
                 }
                 else
                 {

@@ -26,5 +26,10 @@ impl<T> From<tokio::sync::mpsc::error::TrySendError<T>> for HandlerError
     fn from(err: tokio::sync::mpsc::error::TrySendError<T>) -> Self { Self::InternalError(err.to_string()) }
 }
 
+impl From<std::fmt::Error> for HandlerError
+{
+    fn from(e: std::fmt::Error) -> Self { Self::InternalError(e.to_string()) }
+}
+
 pub type HandleResult = Result<(), HandlerError>;
 

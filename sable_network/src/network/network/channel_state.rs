@@ -30,8 +30,8 @@ impl Network {
 
             updates.notify(update::ChannelRename {
                 channel: channel.clone(),
-                old_name: old_name,
-                new_name: new_name,
+                old_name,
+                new_name,
             }, event);
         }
     }

@@ -124,7 +124,7 @@ impl ClientConnection
     }
 
     /// Poll for messages that the throttle permits to be processed
-    pub fn poll_messages<'a>(&'a mut self) -> impl Iterator<Item=String> + 'a
+    pub fn poll_messages(&mut self) -> impl Iterator<Item=String> + '_
     {
         self.receive_queue.iter_mut()
     }

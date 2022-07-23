@@ -33,6 +33,6 @@ impl<'a> ListMode<'a> {
 
     pub(crate)fn new(network: &'a Network, id: ListModeId) -> Self
     {
-        Self { network, id: id }
+        Self { network, id }
     }
 }

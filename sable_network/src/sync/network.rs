@@ -278,7 +278,7 @@ impl GossipNetwork
                  -> Result<JoinHandle<()>, NetworkError>
     {
         tracing::trace!("Sending to {:?}: {:?}", peer.address, msg);
-        Ok(self.do_send_to(peer, msg, response_sender).await?)
+        self.do_send_to(peer, msg, response_sender).await
     }
 
     fn get_socket_for_addr(addr: &SocketAddr) -> std::io::Result<TcpSocket>
@@ -293,7 +293,7 @@ impl GossipNetwork
     async fn do_send_to(&self, peer: &PeerConfig, msg: Message, response_sender: UnboundedSender<Request>)
                 -> Result<JoinHandle<()>, NetworkError>
     {
-        let mut local_addr = self.task_state.listen_addr.clone();
+        let mut local_addr = self.task_state.listen_addr;
         local_addr.set_port(0);
         let socket = Self::get_socket_for_addr(&local_addr)?;
         socket.bind(local_addr)?;
@@ -410,7 +410,7 @@ impl NetworkTaskState
         // Get the peer name we're talking to from the tls certificate
         let (tcp_stream, state) = stream.get_ref();
         let peer_certs = state.peer_certificates()
-                                    .ok_or(NetworkError::InternalError("No peer certificates?".to_string()))?;
+                                    .ok_or_else(|| NetworkError::InternalError("No peer certificates?".to_string()))?;
 
         let (_,cert) = X509Certificate::from_der(&peer_certs[0].0)
                                     .map_err(|e| NetworkError::InternalError(format!("Invalid peer certificate? {}", e)))?;
@@ -419,12 +419,12 @@ impl NetworkTaskState
                             .iter_common_name()
                             .next()
                             .and_then(|cn| cn.as_str().ok())
-                            .ok_or(NetworkError::InternalError("Couldn't parse peer CN".to_string()))?
+                            .ok_or_else(|| NetworkError::InternalError("Couldn't parse peer CN".to_string()))?
                             .to_string();
 
         let peer = self.peers.iter()
                              .find(|p| p.conf.name == peer_name)
-                             .ok_or(NetworkError::AuthzError("Couldn't find peer configuration".to_string()))?;
+                             .ok_or_else(|| NetworkError::AuthzError("Couldn't find peer configuration".to_string()))?;
         let peer_conf = &peer.conf;
 
         let remote_addr = tcp_stream.peer_addr()?;

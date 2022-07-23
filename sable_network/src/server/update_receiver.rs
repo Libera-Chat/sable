@@ -180,7 +180,7 @@ impl<Policy: crate::policy::PolicyService> Server<Policy>
         match &detail.target {
             update::HistoricMessageTarget::Channel(channel) => {
                 let network = self.network();
-                let channel = wrapper::Channel::wrap(&*network, &channel);
+                let channel = wrapper::Channel::wrap(&*network, channel);
 
                 self.notify_channel_members(&channel, entry);
             },

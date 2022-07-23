@@ -54,7 +54,7 @@ impl ClientServer
 
             if let Some(entry) = log.get(entry_id)
             {
-                entry.send_to(conn, &entry)?;
+                entry.send_to(conn, entry)?;
             }
         }
 
@@ -71,7 +71,7 @@ impl ClientServer
             connection.user_id = Some(user.id());
 
             connection.send(&numeric::Numeric001::new_for(&self.server.name().to_string(), &user.nick(), "test", &user.nick()));
-            connection.send(&numeric::Numeric002::new_for(&self.server.name().to_string(), &user.nick(), &self.server.name(), self.server.version()));
+            connection.send(&numeric::Numeric002::new_for(&self.server.name().to_string(), &user.nick(), self.server.name(), self.server.version()));
             for line in self.isupport.data().iter()
             {
                 connection.send(&numeric::ISupport::new_for(&self.server.name().to_string(), &user.nick(), line));

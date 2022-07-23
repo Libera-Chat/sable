@@ -62,7 +62,7 @@ impl ConnectionCollection
         }
     }
 
-    pub fn poll_messages<'a>(&'a mut self) -> impl Iterator<Item=(ConnectionId, String)> + 'a
+    pub fn poll_messages(&mut self) -> impl Iterator<Item=(ConnectionId, String)> + '_
     {
         self.client_connections.iter_mut().flat_map(|(id,conn)| conn.poll_messages().map(move |message| (*id, message)))
     }

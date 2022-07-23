@@ -255,7 +255,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>>
 
     let tls_data = server_config.tls_config.load_from_disk()?;
 
-    let bootstrap_conf = opts.bootstrap_network.map(|path| load_network_config(path)).transpose()?;
+    let bootstrap_conf = opts.bootstrap_network.map(load_network_config).transpose()?;
 
     if !server_config.log.dir.is_dir()
     {

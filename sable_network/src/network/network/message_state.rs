@@ -15,9 +15,9 @@ impl Network
         self.messages.insert(target, message.clone());
 
         updates.notify(update::NewMessage {
-            message: message,
+            message,
             source: self.translate_state_change_source(details.source.into()),
-            target: self.translate_message_target(details.target.into())
+            target: self.translate_message_target(details.target)
         }, event);
     }
 }

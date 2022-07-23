@@ -104,7 +104,6 @@ pub(crate) struct CommandRegistration
 /// command name.
 pub(crate) struct CommandDispatcher
 {
-    #[allow(clippy::borrowed_box)]
     handlers: HashMap<String, CommandHandlerFactory>
 }
 

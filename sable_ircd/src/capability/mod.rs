@@ -100,3 +100,11 @@ impl From<ClientCapability> for ClientCapabilitySet
         Self(cap as u64)
     }
 }
+
+impl Default for ClientCapabilitySet
+{
+    fn default() -> Self
+    {
+        Self::new()
+    }
+}

@@ -142,6 +142,7 @@ impl<'a> Iterator for ReverseUserHistoryLogIterator<'a>
 
 impl NetworkHistoryLog
 {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self
     {
         Self {
@@ -200,7 +201,7 @@ impl NetworkHistoryLog
             }
             None => {
                 let mut user_logs_write = RwLockUpgradableReadGuard::upgrade(user_logs);
-                let log = user_logs_write.entry(user_id).or_insert(ConcurrentLog::new());
+                let log = user_logs_write.entry(user_id).or_insert_with(ConcurrentLog::new);
                 log.push(entry_id);
             }
         };

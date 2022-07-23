@@ -184,7 +184,7 @@ impl ReplicatedEventLog
     pub fn disable_server(&self, name: ServerName, id: ServerId, epoch: EpochId)
     {
         self.shared_state.server_tombstones.write().unwrap().insert(id, (name, epoch));
-        self.net.disable_peer(&name.to_string());
+        self.net.disable_peer(name.as_ref());
     }
 
     /// Enable a server for sync purposes. This should be called when a server is
@@ -193,7 +193,7 @@ impl ReplicatedEventLog
     pub fn enable_server(&self, name: ServerName, id: ServerId)
     {
         self.shared_state.server_tombstones.write().unwrap().remove(&id);
-        self.net.enable_peer(&name.to_string());
+        self.net.enable_peer(name.as_ref());
     }
 
     /// Run and wait for the initial synchronisation to the network.
@@ -405,7 +405,7 @@ impl TaskState
 
     fn server_is_tombstoned(&self, id: &ServerId, epoch: &EpochId) -> Option<ServerName>
     {
-        if let Some((name, tombstone_epoch)) = self.shared_state.server_tombstones.read().unwrap().get(&id)
+        if let Some((name, tombstone_epoch)) = self.shared_state.server_tombstones.read().unwrap().get(id)
         {
             if tombstone_epoch == epoch
             {

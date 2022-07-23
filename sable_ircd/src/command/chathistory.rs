@@ -220,10 +220,7 @@ impl ChatHistoryHandler<'_>
 
             if let Some(target_name) = self.target_name_for_entry(source.id(), entry)
             {
-                if ! found_targets.contains_key(&target_name)
-                {
-                    found_targets.insert(target_name, entry.timestamp);
-                }
+                found_targets.entry(target_name).or_insert(entry.timestamp);
             }
 
             // If this pushes us past the the requested limit, stop
@@ -259,7 +256,7 @@ impl ChatHistoryHandler<'_>
 
             if let Some(event_target) = self.target_name_for_entry(source.id(), entry)
             {
-                if &event_target == target
+                if event_target == target
                 {
                     entries.push(entry);
                 }
@@ -300,7 +297,7 @@ impl ChatHistoryHandler<'_>
 
             if let Some(event_target) = self.target_name_for_entry(source.id(), entry)
             {
-                if &event_target == target
+                if event_target == target
                 {
                     entries.push(entry);
                 }

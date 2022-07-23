@@ -25,7 +25,7 @@ command_handler!("CAP" => CapHandler {
             {
                 pre_client.cap_in_progress = true;
 
-                let requested_arg = cmd.args.get(1).ok_or(make_numeric!(NotEnoughParameters, "CAP"))?;
+                let requested_arg = cmd.args.get(1).ok_or_else(|| make_numeric!(NotEnoughParameters, "CAP"))?;
 
                 if let Some(requested_caps) = self.translate_caps(requested_arg.split_whitespace())
                 {

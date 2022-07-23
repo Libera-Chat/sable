@@ -58,7 +58,7 @@ impl InternalDnsClient
                 },
                 Err(_) => None
             };
-            let name = name.map(|n| Hostname::convert(n.trim_end_matches('.')).ok()).flatten();
+            let name = name.and_then(|n| Hostname::convert(n.trim_end_matches('.')).ok());
             let _res = chan.send(DnsResult { conn: conn_id, hostname: name});
         });
     }

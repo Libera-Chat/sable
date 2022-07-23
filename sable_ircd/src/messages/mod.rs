@@ -46,7 +46,7 @@ impl MessageSource for update::HistoricMessageSource
         match self
         {
             Self::User(historic_user) => {
-                <update::HistoricUser as MessageSource>::format(&historic_user)
+                <update::HistoricUser as MessageSource>::format(historic_user)
             }
             Self::Server(server) => {
                 server.name.to_string()

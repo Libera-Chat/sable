@@ -47,7 +47,7 @@ impl<T> std::ops::Deref for Movable<T>
         match self
         {
             Self::Empty => panic!("Attempted to deref an empty Movable"),
-            Self::Full(value) => &value
+            Self::Full(value) => value
         }
     }
 }

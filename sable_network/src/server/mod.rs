@@ -210,7 +210,7 @@ impl<Policy: crate::policy::PolicyService> Server<Policy>
         // the write lock on `net`. The handlers for various network updates require read access to `net`.
         let mut update_queue = crate::network::SavedUpdateReceiver::new();
 
-        self.net.write().apply(&event, &update_queue).expect(&format!("Event {:?} failed to apply", event));
+        self.net.write().apply(&event, &update_queue).unwrap_or_else(|_| panic!("Event {:?} failed to apply", event));
 
         update_queue.playback(self);
     }

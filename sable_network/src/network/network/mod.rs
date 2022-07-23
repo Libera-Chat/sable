@@ -219,14 +219,9 @@ impl Network {
         match id
         {
             ObjectId::User(user_id) => {
-                if let Some(user) = self.users.get(&user_id)
-                {
-                    Some(update::HistoricMessageSource::User(self.translate_historic_user(user.clone())))
-                }
-                else
-                {
-                    None
-                }
+                self.users.get(&user_id).map(|user| {
+                    update::HistoricMessageSource::User(self.translate_historic_user(user.clone()))
+                })
             },
             ObjectId::Server(server_id) => self.servers.get(&server_id).map(|s| update::HistoricMessageSource::Server(s.clone())),
             _ => None
@@ -246,14 +241,9 @@ impl Network {
         match id
         {
             ObjectId::User(user_id) => {
-                if let Some(user) = self.users.get(&user_id)
-                {
-                    Some(update::HistoricMessageTarget::User(self.translate_historic_user(user.clone())))
-                }
-                else
-                {
-                    None
-                }
+                self.users.get(&user_id).map(|user| {
+                    update::HistoricMessageTarget::User(self.translate_historic_user(user.clone()))
+                })
             }
             ObjectId::Channel(channel_id) => {
                 self.channels.get(&channel_id).map(|c| update::HistoricMessageTarget::Channel(c.clone()))

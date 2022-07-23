@@ -56,7 +56,7 @@ impl SendHistoryItem for update::UserNickChange
     {
         let source_str = format!("{}!{}@{}", self.old_nick, self.user.user, self.user.visible_host);
         let message = message::Nick::new(&source_str, &self.new_nick)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
         conn.send(&message);
 
@@ -69,7 +69,7 @@ impl SendHistoryItem for update::UserModeChange
     fn send_to(&self, conn: &impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult
     {
         let message = message::Mode::new(&self.user, &self.user, &format_umode_changes(&self.added, &self.removed))
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
 
         conn.send(&message);
@@ -83,7 +83,7 @@ impl SendHistoryItem for update::UserQuit
     fn send_to(&self, conn: &impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult
     {
         let message = message::Quit::new(&self.user, &self.message)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
         conn.send(&message);
 
@@ -111,7 +111,7 @@ impl SendHistoryItem for update::ChannelModeChange
         }
 
         let message = message::Mode::new(&self.changed_by, &self.channel, &changes)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
         conn.send(&message);
 
@@ -124,7 +124,7 @@ impl SendHistoryItem for update::ChannelTopicChange
     fn send_to(&self, conn: &impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult
     {
         let message = message::Topic::new(&self.setter, &self.channel.name, &self.new_text)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
         conn.send(&message);
 
@@ -138,7 +138,7 @@ impl SendHistoryItem for update::ListModeAdded
     {
         let text = format!("+{} {}", self.list_type.mode_letter(), self.pattern);
         let message = message::Mode::new(&self.set_by, &self.channel, &text)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
         conn.send(&message);
         Ok(())
     }
@@ -150,7 +150,7 @@ impl SendHistoryItem for update::ListModeRemoved
     {
         let text = format!("-{} {}", self.list_type.mode_letter(), self.pattern);
         let message = message::Mode::new(&self.removed_by, &self.channel, &text)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
         conn.send(&message);
         Ok(())
     }
@@ -166,7 +166,7 @@ impl SendHistoryItem for update::MembershipFlagChange
         changes += &args.join(" ");
 
         let message = message::Mode::new(&self.changed_by, &self.channel, &changes)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
         conn.send(&message);
 
@@ -179,7 +179,7 @@ impl SendHistoryItem for update::ChannelJoin
     fn send_to(&self, conn: &impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult
     {
         let message = message::Join::new(&self.user, &self.channel.name)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
         conn.send(&message);
 
@@ -192,7 +192,7 @@ impl SendHistoryItem for update::ChannelPart
     fn send_to(&self, conn: &impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult
     {
         let message = message::Part::new(&self.user, &self.channel.name, &self.message)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
         conn.send(&message);
 
@@ -205,7 +205,7 @@ impl SendHistoryItem for update::ChannelInvite
     fn send_to(&self, conn: &impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult
     {
         let message = message::Invite::new(&self.source, &self.user, &self.channel.name)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
         conn.send(&message);
 
@@ -227,7 +227,7 @@ impl SendHistoryItem for update::NewMessage
     fn send_to(&self, conn: &impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult
     {
         let message = message::Message::new(&self.source, &self.target, self.message.message_type, &self.message.text)
-                                    .with_tags_from(&from_entry);
+                                    .with_tags_from(from_entry);
 
         // Users should only see their own messages echoed if they've asked for it
         match &self.source

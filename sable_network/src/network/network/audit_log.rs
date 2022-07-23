@@ -13,7 +13,7 @@ impl Network
 
         self.audit_log.insert(target, entry.clone());
 
-        let update = update::NewAuditLogEntry { entry: entry };
+        let update = update::NewAuditLogEntry { entry };
         updates.notify(update, event);
     }
 }

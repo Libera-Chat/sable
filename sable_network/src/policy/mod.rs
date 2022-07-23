@@ -80,6 +80,6 @@ impl crate::saveable::Saveable for StandardPolicyService
 {
     type Saved = ();
 
-    fn save(self) -> Self::Saved { () }
+    fn save(self) -> Self::Saved {  }
     fn restore(_from: Self::Saved) -> Self { Self::new() }
 }

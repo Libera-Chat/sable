@@ -1,17 +1,17 @@
 #[macro_export]
 macro_rules! make_numeric {
     ($type:ident) => {
-        crate::messages::numeric::$type::new()
+        $crate::messages::numeric::$type::new()
     };
     ($type:ident, $($args:expr),*) => {
-        crate::messages::numeric::$type::new($($args),*)
+        $crate::messages::numeric::$type::new($($args),*)
     };
 }
 
 #[macro_export]
 macro_rules! numeric_error {
     ($($args:tt)*) => {
-        Err(crate::make_numeric!( $($args)* ).into())
+        Err($crate::make_numeric!( $($args)* ).into())
     }
 }
 

@@ -17,7 +17,7 @@ impl StandardChannelPolicy {
     }
 }
 
-fn is_channel_operator<'a>(user: &User, channel: &Channel) -> PermissionResult
+fn is_channel_operator(user: &User, channel: &Channel) -> PermissionResult
 {
     if let Some(membership) = user.is_in_channel(channel.id())
     {

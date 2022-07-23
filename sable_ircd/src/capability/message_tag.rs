@@ -46,20 +46,20 @@ impl <T: MessageType> MessageTypeFormat for TaggedMessage<T>
 
         if let Some(first_tag) = supported_tags.next()
         {
-            result.push_str("@");
+            result.push('@');
             result.push_str(&first_tag.name);
-            result.push_str("=");
+            result.push('=');
             result.push_str(&first_tag.value);
 
             for tag in supported_tags
             {
-                result.push_str(";");
+                result.push(';');
                 result.push_str(&tag.name);
-                result.push_str("=");
+                result.push('=');
                 result.push_str(&tag.value);
             }
 
-            result.push_str(" ");
+            result.push(' ');
         }
 
         result.push_str(&self.message.format_for_client_caps(caps)?);

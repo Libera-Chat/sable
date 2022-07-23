@@ -39,6 +39,6 @@ impl CapabilityRepository
 
     pub fn find(&self, name: &str) -> Option<ClientCapability>
     {
-        self.supported_caps.get(name).map(|c| *c)
+        self.supported_caps.get(name).copied()
     }
 }

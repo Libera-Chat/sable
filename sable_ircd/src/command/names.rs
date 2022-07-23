@@ -9,7 +9,7 @@ command_handler!("NAMES" => NamesHandler {
         let net = self.server.network();
         let channel = net.channel_by_name(&chname)?;
 
-        crate::utils::send_channel_names(self.server, cmd.connection, &source, &channel)?;
+        crate::utils::send_channel_names(self.server, cmd.connection, source, &channel)?;
 
         Ok(())
     }
