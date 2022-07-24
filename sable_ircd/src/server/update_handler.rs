@@ -48,7 +48,7 @@ impl ClientServer
 
     fn notify_user_update(&self, user_id: UserId, entry_id: LogEntryId) -> HandleResult
     {
-        if let Ok(conn) = self.connections.get_user(user_id)
+        for conn in self.connections.get_user(user_id)
         {
             let log = self.server.history();
 
@@ -65,7 +65,7 @@ impl ClientServer
     {
         let net = self.server.network();
         let user = net.user(detail.user.user.id)?;
-        if let Ok(connection) = self.connections.get_user_mut(user.id())
+        for connection in self.connections.get_user_mut(user.id())
         {
             connection.pre_client = None;
             connection.user_id = Some(user.id());

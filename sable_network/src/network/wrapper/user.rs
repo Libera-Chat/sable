@@ -87,6 +87,12 @@ impl User<'_> {
     {
         format!("{}!{}@{}", self.nick().value(), self.data.user.value(), self.data.visible_host.value())
     }
+
+    /// Return the user's session key, if any
+    pub fn session_key(&self) -> Option<&state::UserSessionKey>
+    {
+        self.data.session_key.as_ref()
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for User<'a> {

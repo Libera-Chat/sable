@@ -186,12 +186,23 @@ impl ClientServer
             ConnectionEventDetail::Error(e) => {
                 if let Ok(conn) = self.connections.get(msg.source) {
                     if let Some(userid) = conn.user_id {
-                        self.apply_action(CommandAction::state_change(
-                            userid,
-                            details::UserQuit {
-                                message: format!("I/O error: {}", e)
-                            }
-                        )).await;
+                        // If the user has a session key set, then they're in persistent session mode
+                        // and shouldn't be quit just because one of their connections closed
+                        let should_quit = if let Ok(user) = self.network().user(userid) {
+                            user.session_key().is_none()
+                        } else {
+                            true
+                        };
+
+                        if should_quit
+                        {
+                            self.apply_action(CommandAction::state_change(
+                                userid,
+                                details::UserQuit {
+                                    message: format!("I/O error: {}", e)
+                                }
+                            )).await;
+                        }
                     }
                 }
                 self.connections.remove(msg.source);

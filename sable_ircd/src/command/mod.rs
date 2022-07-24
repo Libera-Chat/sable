@@ -204,3 +204,4 @@ mod kill;
 mod kline;
 mod oper;
 mod chathistory;
+mod session;

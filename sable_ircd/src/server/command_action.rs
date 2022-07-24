@@ -50,6 +50,17 @@ impl ClientServer
                 }
             }
 
+            CommandAction::AttachToUser(connection_id, user_id) =>
+            {
+                if let Ok(conn) = self.connections.get_mut(connection_id)
+                {
+                    conn.pre_client = None;
+                    conn.user_id = Some(user_id);
+
+                    self.connections.add_user(user_id, connection_id);
+                }
+            }
+
             CommandAction::UpdateConnectionCaps(conn_id, new_caps) =>
             {
                 if let Ok(connection) = self.connections.get_mut(conn_id)

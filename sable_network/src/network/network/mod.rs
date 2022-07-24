@@ -187,6 +187,7 @@ impl Network {
             ServerQuit => self.server_quit,
             LoadConfig => self.load_config,
             NewAuditLogEntry => self.new_audit_log,
+            EnablePersistentSession => self.enable_persistent_session,
         })?;
 
         self.clock.update_with_id(event.id);

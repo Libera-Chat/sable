@@ -1699,11 +1699,13 @@ dependencies = [
  "inventory",
  "itertools",
  "pwhash",
+ "rand",
  "rustls",
  "sable_macros",
  "sable_network",
  "serde",
  "serde_json",
+ "sha256",
  "strum",
  "thiserror",
  "tokio",
@@ -1869,6 +1871,16 @@ dependencies = [
  "cpufeatures",
  "digest 0.9.0",
  "opaque-debug",
+]
+
+[[package]]
+name = "sha256"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e84a7f596c081d359de5e06a83877138bc3c4483591e1af1916e1472e6e146e"
+dependencies = [
+ "hex",
+ "sha2",
 ]
 
 [[package]]

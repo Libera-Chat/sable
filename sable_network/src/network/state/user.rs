@@ -35,6 +35,19 @@ pub struct User {
 
     pub mode: UserMode,
     pub oper_privileges: Option<UserPrivileges>,
+
+    pub session_key: Option<UserSessionKey>,
+}
+
+/// A persistent session key. If present on a [`User`], then that user's session
+/// is persistent, and knowledge of the key can be used by subsequent connections
+/// to attach to the existing session
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct UserSessionKey
+{
+    pub timestamp: i64,
+    pub enabled_by: EventId,
+    pub key_hash: String,
 }
 
 /// A user mode. Changing modes does not need to update the user object, only
@@ -49,7 +62,6 @@ pub struct UserMode {
 pub struct UserPrivileges {
     pub oper_name: String,
 }
-
 
 impl NickBinding
 {
@@ -72,6 +84,7 @@ impl User {
             realname,
             mode,
             oper_privileges: None,
+            session_key: None,
         }
     }
 }

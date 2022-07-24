@@ -1,5 +1,5 @@
 use super::*;
-use crate::network::state_utils;
+use crate::{network::state_utils, prelude::state::UserSessionKey};
 
 
 impl Network {
@@ -214,6 +214,34 @@ impl Network {
         if let Some(update) = self.remove_user(target, quit.message.clone())
         {
             updates.notify(update, event);
+        }
+    }
+
+    pub(super) fn enable_persistent_session(&mut self, target: UserId, event: &Event, detail: &details::EnablePersistentSession, _updates: &dyn NetworkUpdateReceiver)
+    {
+        if let Some(user) = self.users.get_mut(&target)
+        {
+            // If there's an existing key, then do conflict resolution
+            if let Some(session_key) = &user.session_key
+            {
+                // Newest wins - users should be able to regenerate keys if needed
+                if session_key.timestamp > event.timestamp
+                {
+                    return;
+                }
+                // If the TSes are the same, then do the usual lexicographical event ID comparison to tiebreak
+                if session_key.timestamp == event.timestamp && session_key.enabled_by < event.id
+                {
+                    return;
+                }
+            }
+
+            // If we get here, then we should update
+            user.session_key = Some(UserSessionKey {
+                timestamp: event.timestamp,
+                enabled_by: event.id,
+                key_hash: detail.key_hash.clone(),
+            });
         }
     }
 }

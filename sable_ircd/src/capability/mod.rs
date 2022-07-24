@@ -55,10 +55,11 @@ macro_rules! define_capabilities {
 define_capabilities! (
     ClientCapability
     {
-        MessageTags: 0x01 => "message-tags",
-        ServerTime:  0x02 => "server-time",
-        EchoMessage: 0x04 => "echo-message",
-        ChatHistory: 0x08 => "draft/chathistory"
+        MessageTags:            0x01 => "message-tags",
+        ServerTime:             0x02 => "server-time",
+        EchoMessage:            0x04 => "echo-message",
+        ChatHistory:            0x08 => "draft/chathistory",
+        PersistentSession:      0x10 => "sable/persistent-session"
     }
 );
 

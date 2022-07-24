@@ -28,3 +28,5 @@ itertools = "0.10"
 serde = { version = "1", features = [ "derive" ] }
 tokio = { version = "1.14", features = [ "full" ] }
 futures = "0.3"
+rand = "0.8"
+sha256 = "1"

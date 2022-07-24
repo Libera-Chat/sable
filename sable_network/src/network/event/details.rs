@@ -149,4 +149,9 @@ EventDetails => {
         pub category: state::AuditLogCategory,
         pub fields: Vec<(state::AuditLogField, String)>
     }
+
+    #[target_type(UserId)]
+    struct EnablePersistentSession {
+        pub key_hash: String
+    }
 });
