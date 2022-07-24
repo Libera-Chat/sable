@@ -183,6 +183,17 @@ impl SendHistoryItem for update::ChannelJoin
 
         conn.send(&message);
 
+        if ! self.membership.permissions.is_empty()
+        {
+            let (mut changes, args) = format_channel_perm_changes(&self.user.nickname, &self.membership.permissions, &MembershipFlagSet::new());
+
+            changes += " ";
+            changes += &args.join(" ");
+
+            let msg = message::Mode::new(&self.user, &self.channel, &changes);
+            conn.send(&msg);
+        }
+
         Ok(())
     }
 }

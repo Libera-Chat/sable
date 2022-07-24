@@ -1,7 +1,7 @@
 use super::*;
 use crate::capability::*;
 use crate::utils;
-use messages::history::SendHistoryItem;
+use messages::send_history::SendHistoryItem;
 use sable_network::network::update::HistoricMessageTarget;
 
 use std::cmp::{

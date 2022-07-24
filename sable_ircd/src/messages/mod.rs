@@ -194,7 +194,8 @@ pub trait Numeric : std::fmt::Debug
 
 pub mod message;
 pub mod numeric;
-pub mod history;
+pub mod send_history;
+pub mod send_realtime;
 
 mod message_sink;
 pub use message_sink::*;

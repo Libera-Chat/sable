@@ -1,4 +1,4 @@
-use messages::history::SendHistoryItem;
+use messages::send_realtime::SendRealtimeItem;
 
 use super::*;
 use crate::errors::HandleResult;
@@ -54,7 +54,7 @@ impl ClientServer
 
             if let Some(entry) = log.get(entry_id)
             {
-                entry.send_to(conn, entry)?;
+                entry.send_now(conn, entry, self)?;
             }
         }
 
