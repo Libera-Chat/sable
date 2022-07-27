@@ -1,3 +1,5 @@
+//! Command handlers.
+
 use crate::capability::ClientCapabilitySet;
 
 use super::*;

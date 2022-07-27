@@ -1,5 +1,6 @@
 use super::*;
 
+/// Trait describing an object to which a client protocol message can be sent
 pub trait MessageSink
 {
     /// Send a protocol message to this sink

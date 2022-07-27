@@ -39,7 +39,11 @@ mod command_action;
 mod update_handler;
 mod user_access;
 
-
+/// A client server.
+///
+/// This type uses the [`Server`](sable_network::Server) struct to link to the network
+/// and process state. It consumes the stream of history output by `Server`, and speaks
+/// IRC client protocol.
 pub struct ClientServer
 {
     action_receiver: UnboundedReceiver<CommandAction>,
@@ -58,6 +62,7 @@ pub struct ClientServer
 
 impl ClientServer
 {
+    /// Create a new `ClientServer`
     pub fn new(id: ServerId,
                epoch: EpochId,
                name: ServerName,
@@ -90,21 +95,25 @@ impl ClientServer
         }
     }
 
+    /// Access the network state
     pub fn network(&self) -> sable_network::server::NetworkReadGuard<'_>
     {
         self.server.network()
     }
 
+    /// The ID generator used to identify objects created by this server
     pub fn ids(&self) -> &ObjectIdGenerator
     {
         self.server.ids()
     }
 
+    /// The underlying network server
     pub fn server(&self) -> &Server
     {
         &self.server
     }
 
+    /// This server's name
     pub fn name(&self) -> &ServerName
     {
         self.server.name()

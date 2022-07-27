@@ -41,7 +41,7 @@ mod history;
 mod upgrade;
 pub use upgrade::ServerState;
 
-/// An IRC client server.
+/// A network server.
 pub struct Server<Policy = crate::policy::StandardPolicyService>
     where Policy: PolicyService
 {
@@ -75,7 +75,8 @@ impl<Policy: crate::policy::PolicyService> Server<Policy>
     /// - `event_log`: A `ReplicatedEventLog` that syncs to the network
     /// - `rpc_receiver`: channel to receive messages from the network synchronisation.
     ///   Should be shared with the `ReplicatedEventLog`.
-    /// - `state_change_sender`: channel to send out network state changes for consumption
+    /// - `subscriber`: channel to send out network state changes for consumption
+    /// = `policy_service`: a policy service
     ///
     pub fn new(id: ServerId,
                epoch: EpochId,
