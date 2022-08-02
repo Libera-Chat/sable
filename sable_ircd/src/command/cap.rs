@@ -15,7 +15,7 @@ command_handler!("CAP" => CapHandler {
                 pre_client.cap_in_progress = true;
 
                 cmd.connection.send(&message::Cap::new(self.server,
-                                                       &*pre_client,
+                                                       &UnknownTarget,
                                                        "LS",
                                                        self.server.client_capabilities().supported_caps()));
 
@@ -37,14 +37,14 @@ command_handler!("CAP" => CapHandler {
                     self.action(CommandAction::UpdateConnectionCaps(cmd.connection.id(), new_caps))?;
 
                     cmd.connection.send(&message::Cap::new(self.server,
-                        &*pre_client,
+                        &UnknownTarget,
                         "ACK",
                         requested_arg));
                 }
                 else
                 {
                     cmd.connection.send(&message::Cap::new(self.server,
-                        &*pre_client,
+                        &UnknownTarget,
                         "NAK",
                         requested_arg));
                 }

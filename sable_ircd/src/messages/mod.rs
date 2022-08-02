@@ -1,6 +1,5 @@
 use sable_network::prelude::*;
 use crate::command_processor::*;
-use crate::client;
 
 /// Trait describing an object that can be the source of a client protocol message
 pub trait MessageSource
@@ -13,6 +12,10 @@ pub trait MessageTarget
 {
     fn format(&self) -> String;
 }
+
+/// Placeholder type to denote that a message is being sent to a target whose name we
+/// don't know - e.g. a pre-registration client, or a snote being sent to multiple users
+pub struct UnknownTarget;
 
 impl MessageSource for &crate::ClientServer
 {
@@ -81,12 +84,7 @@ impl MessageTarget for state::Channel
     fn format(&self) -> String { self.name.to_string() }
 }
 
-impl MessageTarget for client::PreClient
-{
-    fn format(&self) -> String { "*".to_string() }
-}
-
-impl MessageTarget for Option<std::cell::RefCell<client::PreClient>>
+impl MessageTarget for UnknownTarget
 {
     fn format(&self) -> String { "*".to_string() }
 }
@@ -149,7 +147,7 @@ impl MessageTarget for CommandSource<'_>
         match self
         {
             Self::User(u) => <wrapper::User as MessageTarget>::format(u),
-            Self::PreClient(pc) => <client::PreClient as MessageTarget>::format(&*pc.borrow())
+            Self::PreClient(_) => "*".to_string()
         }
     }
 }

@@ -24,7 +24,7 @@ impl ClientServer
             let pre_client: &PreClient = &pre_client.borrow();
             if let Some(kline) = self.find_kline(net, pre_client)
             {
-                client.send(&numeric::YoureBanned::new(kline.reason()).format_for(server, pre_client));
+                client.send(&numeric::YoureBanned::new(kline.reason()).format_for(server, &UnknownTarget));
                 return false;
             }
         }
