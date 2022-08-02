@@ -320,20 +320,19 @@ impl ClientServer
                                                                                 conn.remote_addr(),
                                                                                 msg.hostname
                                                                                 );
-                                if let Some(pc_rc) = &conn.pre_client {
-                                    let mut pc = pc_rc.borrow_mut();
+                                if let Some(pc) = &conn.pre_client {
                                     if let Some(hostname) = msg.hostname {
                                         conn.send(&message::Notice::new(self, &UnknownTarget,
                                                         &format!("*** Found your hostname: {}", hostname)));
 
-                                        pc.hostname = Some(hostname);
+                                        pc.hostname.set(hostname).ok();
                                     } else {
                                         conn.send(&message::Notice::new(self, &UnknownTarget,
                                                         "*** Couldn't look up your hostname"));
                                         let no_hostname = Hostname::convert(conn.remote_addr());
                                         match no_hostname {
-                                            Ok(n) => pc.hostname = Some(n),
-                                            Err(e) => conn.error(&e.to_string())
+                                            Ok(n) => { pc.hostname.set(n).ok(); }
+                                            Err(e) => { conn.error(&e.to_string()); }
                                         }
                                     }
                                     if pc.can_register() {

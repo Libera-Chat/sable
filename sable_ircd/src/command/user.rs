@@ -3,12 +3,14 @@ use super::*;
 command_handler!("USER" => UserHandler {
     fn min_parameters(&self) -> usize { 4 }
 
-    fn handle_preclient(&mut self, source: &RefCell<PreClient>, cmd: &ClientCommand) -> CommandResult
+    fn handle_preclient(&mut self, source: &PreClient, cmd: &ClientCommand) -> CommandResult
     {
-        let mut c = source.borrow_mut();
-        c.user = Some(Username::new_coerce(&cmd.args[0]));
-        c.realname = Some(cmd.args[3].clone());
-        if c.can_register()
+        // Ignore these results; they'll only fail if USER was already successfully processed
+        // from this pre-client. If that happens we silently ignore the new values.
+        source.user.set(Username::new_coerce(&cmd.args[0])).ok();
+        source.realname.set(cmd.args[3].clone()).ok();
+
+        if source.can_register()
         {
             self.action(CommandAction::RegisterClient(cmd.connection.id()))?;
         }

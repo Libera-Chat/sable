@@ -4,7 +4,7 @@ impl ClientServer
 {
     pub(super) fn find_kline<'a>(&self, net: &'a Network, client: &PreClient) -> Option<wrapper::KLine<'a>>
     {
-        if let (Some(user), Some(host)) = (client.user, client.hostname)
+        if let (Some(user), Some(host)) = (client.user.get(), client.hostname.get())
         {
             for kline in net.klines()
             {
@@ -21,7 +21,6 @@ impl ClientServer
     {
         if let Some(pre_client) = &client.pre_client
         {
-            let pre_client: &PreClient = &pre_client.borrow();
             if let Some(kline) = self.find_kline(net, pre_client)
             {
                 client.send(&numeric::YoureBanned::new(kline.reason()).format_for(server, &UnknownTarget));

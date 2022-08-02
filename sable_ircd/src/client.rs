@@ -5,9 +5,15 @@ use client_listener::*;
 use crate::movable::Movable;
 use crate::throttled_queue::*;
 use crate::capability::*;
+use crate::utils::WrapOption;
 
-use std::cell::RefCell;
 use std::net::IpAddr;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+
+use once_cell::sync::OnceCell;
+use serde::*;
+use serde_with::serde_as;
 
 /// A client protocol connection
 pub struct ClientConnection
@@ -20,7 +26,7 @@ pub struct ClientConnection
 
     /// The registration information received so far, if this connection has not
     /// yet completed registration
-    pub pre_client: Option<RefCell<PreClient>>,
+    pub pre_client: Option<PreClient>,
 
     // Pending lines to be processed
     receive_queue: Movable<ThrottledQueue<String>>,
@@ -41,14 +47,19 @@ pub(super) struct ClientConnectionState
 }
 
 /// Information received from a client connection that has not yet completed registration
-#[derive(Debug,serde::Serialize,serde::Deserialize)]
+#[serde_as]
+#[derive(Debug,Serialize,Deserialize)]
 pub struct PreClient
 {
-    pub user: Option<Username>,
-    pub nick: Option<Nickname>,
-    pub realname: Option<String>,
-    pub hostname: Option<Hostname>,
-    pub cap_in_progress: bool,
+    #[serde_as (as = "WrapOption<Username>")]
+    pub user: OnceCell<Username>,
+    #[serde_as (as = "WrapOption<Nickname>")]
+    pub nick: OnceCell<Nickname>,
+    #[serde_as (as = "WrapOption<String>")]
+    pub realname: OnceCell<String>,
+    #[serde_as (as = "WrapOption<Hostname>")]
+    pub hostname: OnceCell<Hostname>,
+    pub cap_in_progress: AtomicBool,
 }
 
 impl ClientConnection
@@ -65,7 +76,7 @@ impl ClientConnection
         Self {
             connection: Movable::new(conn),
             user_id: None,
-            pre_client: Some(RefCell::new(PreClient::new())),
+            pre_client: Some(PreClient::new()),
             receive_queue: Movable::new(ThrottledQueue::new(throttle_settings, 16)),
             capabilities: ClientCapabilitySet::new(),
         }
@@ -77,7 +88,7 @@ impl ClientConnection
         ClientConnectionState {
             connection_data: self.connection.unwrap().save(),
             user_id: self.user_id,
-            pre_client: self.pre_client.take().map(|c| c.into_inner()),
+            pre_client: self.pre_client.take(), // Take because we can't move out of ClientConnection which is Drop
             receive_queue: self.receive_queue.unwrap(),
             capabilities: self.capabilities,
         }
@@ -90,7 +101,7 @@ impl ClientConnection
         Self {
             connection: Movable::new(listener_collection.restore_connection(state.connection_data)),
             user_id: state.user_id,
-            pre_client: state.pre_client.map(RefCell::new),
+            pre_client: state.pre_client,
             receive_queue: Movable::new(state.receive_queue),
             capabilities: state.capabilities,
         }
@@ -163,18 +174,22 @@ impl PreClient {
     pub fn new() -> Self
     {
         Self {
-            user: None,
-            nick: None,
-            realname: None,
-            hostname: None,
-            cap_in_progress: false,
+            user: OnceCell::new(),
+            nick: OnceCell::new(),
+            realname: OnceCell::new(),
+            hostname: OnceCell::new(),
+            cap_in_progress: AtomicBool::new(false),
         }
     }
 
     /// Determine whether this connection is ready to complete registration
     pub fn can_register(&self) -> bool
     {
-        let result = self.user.is_some() && self.nick.is_some() && self.hostname.is_some() && !self.cap_in_progress;
+        let result = self.user.get().is_some()
+                    && self.nick.get().is_some()
+                    && self.hostname.get().is_some()
+                    && !self.cap_in_progress.load(Ordering::Relaxed);
+
         tracing::trace!(?self, result, "PreClient::can_register");
         result
     }

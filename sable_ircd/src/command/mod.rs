@@ -8,7 +8,6 @@ use messages::*;
 use client::*;
 
 use std::collections::HashMap;
-use std::cell::RefCell;
 
 use command_processor::*;
 
@@ -73,7 +72,7 @@ pub(crate) trait CommandHandler
     /// registration.
     ///
     /// The default produces an error numeric instructing the client to register.
-    fn handle_preclient<'a>(&mut self, _source: &'a RefCell<PreClient>, _cmd: &ClientCommand) -> CommandResult
+    fn handle_preclient<'a>(&mut self, _source: &'a PreClient, _cmd: &ClientCommand) -> CommandResult
     {
         numeric_error!(NotRegistered)
     }

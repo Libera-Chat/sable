@@ -1,18 +1,18 @@
 use super::*;
 use crate::capability::*;
 
+use std::sync::atomic::Ordering;
+
 command_handler!("CAP" => CapHandler {
     fn min_parameters(&self) -> usize { 1 }
 
-    fn handle_preclient(&mut self, source: &RefCell<PreClient>, cmd: &ClientCommand) -> CommandResult
+    fn handle_preclient(&mut self, pre_client: &PreClient, cmd: &ClientCommand) -> CommandResult
     {
-        let mut pre_client = source.borrow_mut();
-
         match cmd.args[0].to_ascii_uppercase().as_str()
         {
             "LS" =>
             {
-                pre_client.cap_in_progress = true;
+                pre_client.cap_in_progress.store(true, Ordering::Relaxed);
 
                 cmd.connection.send(&message::Cap::new(self.server,
                                                        &UnknownTarget,
@@ -23,7 +23,7 @@ command_handler!("CAP" => CapHandler {
             }
             "REQ" =>
             {
-                pre_client.cap_in_progress = true;
+                pre_client.cap_in_progress.store(true, Ordering::Relaxed);
 
                 let requested_arg = cmd.args.get(1).ok_or_else(|| make_numeric!(NotEnoughParameters, "CAP"))?;
 
@@ -54,7 +54,7 @@ command_handler!("CAP" => CapHandler {
             }
             "END" =>
             {
-                pre_client.cap_in_progress = false;
+                pre_client.cap_in_progress.store(false, Ordering::Relaxed);
                 if pre_client.can_register()
                 {
                     self.action(CommandAction::RegisterClient(cmd.connection.id()))?;

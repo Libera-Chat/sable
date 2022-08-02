@@ -4,7 +4,7 @@ use event::*;
 command_handler!("NICK" => NickHandler {
     fn min_parameters(&self) -> usize { 1 }
 
-    fn handle_preclient(&mut self, source: &RefCell<PreClient>, cmd: &ClientCommand) -> CommandResult
+    fn handle_preclient(&mut self, source: &PreClient, cmd: &ClientCommand) -> CommandResult
     {
         let nick = Nickname::from_str(&cmd.args[0])?;
         if self.server.network().nick_binding(&nick).is_ok()
@@ -13,9 +13,9 @@ command_handler!("NICK" => NickHandler {
         }
         else
         {
-            let mut c = source.borrow_mut();
-            c.nick = Some(nick);
-            if c.can_register()
+            source.nick.set(nick).ok(); // Ignore the result; if the preclient already has a nick then we silently ignore
+                                        // a new one
+            if source.can_register()
             {
                 self.action(CommandAction::RegisterClient(cmd.connection.id()))?;
             }

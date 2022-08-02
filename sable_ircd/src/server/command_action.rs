@@ -18,11 +18,10 @@ impl ClientServer
                         }
                     }
 
-                    if let Some(pre_client_rc) = &conn.pre_client
+                    if let Some(pre_client) = &conn.pre_client
                     {
                         // We don't delete the preclient here, because it's possible the event will fail to apply
                         // if someone else takes the nickname in between
-                        let pre_client = pre_client_rc.borrow();
                         let new_user_id = self.ids().next_user();
 
                         let mut umodes = UserModeSet::new();
@@ -31,10 +30,10 @@ impl ClientServer
                         }
 
                         let details = event::details::NewUser {
-                            nickname: *pre_client.nick.as_ref().unwrap(),
-                            username: *pre_client.user.as_ref().unwrap(),
-                            visible_hostname: *pre_client.hostname.as_ref().unwrap(),
-                            realname: pre_client.realname.as_ref().unwrap().clone(),
+                            nickname: *pre_client.nick.get().unwrap(),
+                            username: *pre_client.user.get().unwrap(),
+                            visible_hostname: *pre_client.hostname.get().unwrap(),
+                            realname: pre_client.realname.get().unwrap().clone(),
                             mode: state::UserMode::new(umodes),
                             server: self.server.id(),
                         };

@@ -42,7 +42,7 @@ command_handler!("SESSION" => SessionHandler {
         }
     }
 
-    fn handle_preclient(&mut self, _source: &RefCell<PreClient>, cmd: &ClientCommand) -> CommandResult
+    fn handle_preclient(&mut self, _source: &PreClient, cmd: &ClientCommand) -> CommandResult
     {
         let subcommand = cmd.args[0].to_ascii_uppercase();
 
