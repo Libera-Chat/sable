@@ -82,10 +82,10 @@ impl ClientServer
 
         Self {
             action_receiver,
-            action_submitter: action_submitter.clone(),
+            action_submitter: action_submitter,
             connection_events,
             command_dispatcher: CommandDispatcher::new(),
-            connections: ConnectionCollection::new(action_submitter),
+            connections: ConnectionCollection::new(),
             auth_client: AuthClient::new(auth_sender).unwrap(),
             auth_events,
             isupport: Self::build_basic_isupport(),
@@ -231,6 +231,24 @@ impl ClientServer
             else
             {
                 tracing::info!(?message, "Failed parsing")
+            }
+        }
+
+        for flooded in self.connections.flooded_connections()
+        {
+            if let Some(user_id) = flooded.user_id()
+            {
+                if let Ok(user) = self.server.network().user(user_id)
+                {
+                    if user.session_key().is_some()
+                    {
+                        // Don't kill a multi-connection or persistent user because one connection flooded off
+                        continue;
+                    }
+
+                    self.server.submit_event(user_id, event::details::UserQuit { message: "Excess Flood".to_string() });
+                    flooded.error("Excess Flood");
+                }
             }
         }
     }

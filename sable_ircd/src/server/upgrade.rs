@@ -51,9 +51,9 @@ impl ClientServer
         Ok(Self {
             server: Arc::new(Server::restore_from(state.server_state, event_log, rpc_receiver, history_sender)?),
             action_receiver: action_recv,
-            action_submitter: action_send.clone(),
+            action_submitter: action_send,
             connection_events,
-            connections: ConnectionCollection::restore_from(state.connections, listener_collection, action_send),
+            connections: ConnectionCollection::restore_from(state.connections, listener_collection),
             command_dispatcher: command::CommandDispatcher::new(),
             auth_client: AuthClient::resume(state.auth_state, auth_send)?,
             auth_events: auth_recv,

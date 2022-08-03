@@ -8,17 +8,13 @@ use std::{
     collections::HashMap,
 };
 
-use tokio::sync::mpsc::{
-    UnboundedSender,
-};
-
 /// Stores the client connections handled by a [`ClientServer`], and allows lookup by
 /// either connection ID or user ID
 pub(super) struct ConnectionCollection
 {
     client_connections: HashMap<ConnectionId, ClientConnection>,
     user_to_connid: HashMap<UserId, Vec<ConnectionId>>,
-    action_sender: UnboundedSender<CommandAction>,
+    flooded_connections: Vec<ClientConnection>,
 }
 
 /// Iterator over connections belonging to a given user
@@ -37,18 +33,19 @@ pub(super) struct UserConnectionIterMut<'a>
 
 /// Serialised state of a [`ConnectionCollection`], for later resumption
 #[derive(serde::Serialize,serde::Deserialize)]
-pub(super) struct ConnectionCollectionState(
-    Vec<(ConnectionId,ClientConnectionState)>
-);
+pub(super) struct ConnectionCollectionState{
+    clients: Vec<(ConnectionId,ClientConnectionState)>,
+    flooded: Vec<ClientConnectionState>
+}
 
 impl ConnectionCollection
 {
     /// Contruct a [`ConnectionCollection`]
-    pub fn new(action_sender: UnboundedSender<CommandAction>) -> Self {
+    pub fn new() -> Self {
         Self {
             client_connections: HashMap::new(),
             user_to_connid: HashMap::new(),
-            action_sender
+            flooded_connections: Vec::new(),
         }
     }
 
@@ -65,13 +62,10 @@ impl ConnectionCollection
                 // An error return here means that the connection's receive queue is full,
                 // so they should be disconnected for flooding. First, check whether it's a
                 // registered user connection, or a pre-client
-                if let Some(user_id) = conn.user_id
+                if let Some(conn) = self.client_connections.remove(&conn_id)
                 {
-                    // Registered user, so we need to inform the network they're going
-                    let event_detail = event::details::UserQuit { message: "Excess Flood".to_string() };
-                    self.action_sender.send(CommandAction::StateChange(user_id.into(), event_detail.into())).expect("Failed to submit event");
+                    self.flooded_connections.push(conn);
                 }
-                self.remove(conn_id);
             }
         }
     }
@@ -171,28 +165,34 @@ impl ConnectionCollection
         self.client_connections.len()
     }
 
+    /// Drain the list of flooded-off connections for processing
+    pub fn flooded_connections(&mut self) -> impl Iterator<Item=ClientConnection> + '_
+    {
+        self.flooded_connections.drain(..)
+    }
+
     /// Save the collection state for later resumption
     pub fn save_state(self) -> ConnectionCollectionState
     {
-        ConnectionCollectionState(
-            self.client_connections
+        ConnectionCollectionState{
+            clients: self.client_connections
                 .into_iter()
                 .map(|(k,v)| {
                     tracing::trace!("Saving client connection {:?} ({:?})", k, v.user_id);
                     (k, v.save())
                 })
-                .collect()
-        )
+                .collect(),
+            flooded: self.flooded_connections.into_iter().map(ClientConnection::save).collect()
+        }
     }
 
     /// Restore a collection from a previously stored state
     pub fn restore_from(state: ConnectionCollectionState,
-                        listener_collection: &client_listener::ListenerCollection,
-                        action_sender: UnboundedSender<CommandAction>) -> Self
+                        listener_collection: &client_listener::ListenerCollection) -> Self
     {
-        let mut ret = Self::new(action_sender);
+        let mut ret = Self::new();
 
-        for (conn_id, conn_data) in state.0.into_iter()
+        for (conn_id, conn_data) in state.clients.into_iter()
         {
             let cli_conn = ClientConnection::restore(conn_data, listener_collection);
             if let Some(user_id) = &cli_conn.user_id
@@ -201,6 +201,9 @@ impl ConnectionCollection
             }
             ret.client_connections.insert(conn_id, cli_conn);
         }
+        ret.flooded_connections = state.flooded.into_iter()
+                                               .map(|s| ClientConnection::restore(s, listener_collection))
+                                               .collect();
 
         ret
     }
