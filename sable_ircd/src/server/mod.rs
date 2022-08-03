@@ -88,7 +88,7 @@ impl ClientServer
             connections: ConnectionCollection::new(action_submitter),
             auth_client: AuthClient::new(auth_sender).unwrap(),
             auth_events,
-            isupport: ISupportBuilder::new(),
+            isupport: Self::build_basic_isupport(),
             client_caps: CapabilityRepository::new(),
             server,
             history_receiver,
