@@ -229,7 +229,7 @@ impl Network {
         }.unwrap_or(update::HistoricMessageSource::Unknown)
     }
 
-    /// Translate a [`User`] to a [`HistoricUser`] based on the current network state
+    /// Translate a [`state::User`] to a [`HistoricUser`] based on the current network state
     pub(crate) fn translate_historic_user(&self, user: state::User) -> update::HistoricUser
     {
         let nickname = self.infallible_nick_for_user(user.id);

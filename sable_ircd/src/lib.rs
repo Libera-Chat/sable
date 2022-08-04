@@ -1,7 +1,9 @@
+#![allow(rustdoc::private_intra_doc_links)]
+
 //! IRC client server logic.
 //!
 //! This crate primarily exists to support the [`ClientServer`] type, which
-//! extends the [`sable_network::Server`] logic to implement a client server.
+//! extends the [`sable_network::server::Server`] logic to implement a client server.
 //!
 //! # Architecture
 //!
@@ -9,9 +11,10 @@
 //!
 //!   * An event log
 //!   * The receiving half of the event log's RPC channel
-//!   * The receiving half of a [`ListenerCollection`]'s event channel
+//!   * The receiving half of a [`ListenerCollection`](client_listener::ListenerCollection)'s
+//!     event channel
 //!
-//! The first two of those are passed through to the [`Server`](sable_network::Server);
+//! The first two of those are passed through to the [`Server`](sable_network::server::Server);
 //! the latter is used to receive client connections.
 //!
 //! When the [`run`](ClientServer::run) function is called, it spawns the `Server`'s
@@ -38,9 +41,8 @@
 //! Command handlers run with a read-only view of the network and server state. For simple
 //! information retrieval (`whois`, `names` and the like), this isn't an issue and the
 //! relevant information can simply be sent. For handlers which need to mutate state,
-//! they can call [`self.action`](command::CommandHandler::action) to emit a
-//! `CommandAction`. These actions will be processed by the `ClientServer`'s event loop
-//! and the relevant state changes applied.
+//! they can call `self.action` to emit a `CommandAction`. These actions will be processed
+//! by the `ClientServer`'s event loop and the relevant state changes applied.
 //!
 //! The most common `CommandAction` variant will be `StateChange`, which creates a new
 //! event in the network event log. The event details must be sent to the event log to

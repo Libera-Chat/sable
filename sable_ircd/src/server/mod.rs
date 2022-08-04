@@ -41,7 +41,7 @@ mod user_access;
 
 /// A client server.
 ///
-/// This type uses the [`Server`](sable_network::Server) struct to link to the network
+/// This type uses the [`Server`](sable_network::server::Server) struct to link to the network
 /// and process state. It consumes the stream of history output by `Server`, and speaks
 /// IRC client protocol.
 pub struct ClientServer
@@ -126,7 +126,7 @@ impl ClientServer
         self.action_submitter.send(act).unwrap();
     }
 
-    /// Access the currently used [`PolicyService`]
+    /// Access the currently used [`PolicyService`](sable_network::policy::PolicyService)
     pub(crate) fn policy(&self) -> &dyn sable_network::policy::PolicyService
     {
         self.server.policy()
