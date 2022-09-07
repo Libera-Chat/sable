@@ -96,7 +96,7 @@ impl ClientServer
     }
 
     /// Access the network state
-    pub fn network(&self) -> sable_network::server::NetworkReadGuard<'_>
+    pub fn network(&self) -> Arc<Network>
     {
         self.server.network()
     }

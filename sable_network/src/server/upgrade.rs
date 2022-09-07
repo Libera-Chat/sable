@@ -22,7 +22,7 @@ impl<Policy: PolicyService + Saveable> Server<Policy>
         ServerState {
             id: self.my_id,
             name: self.name,
-            net: self.net.into_inner(),
+            net: Arc::try_unwrap(self.net.into_inner()).unwrap(),
             epoch: self.epoch,
             id_generator: self.id_generator,
             history_log: self.history_log.into_inner(),
@@ -45,7 +45,7 @@ impl<Policy: PolicyService + Saveable> Server<Policy>
             my_id: state.id,
             name: state.name,
             version: Self::build_version(),
-            net: RwLock::new(state.net),
+            net: RwLock::new(Arc::new(state.net)),
             epoch: state.epoch,
             id_generator: state.id_generator,
             event_log,

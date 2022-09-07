@@ -32,8 +32,6 @@ use parking_lot::{
     RwLock,
 };
 
-pub type NetworkReadGuard<'a> = parking_lot::RwLockReadGuard<'a, Network>;
-
 mod pings;
 mod update_receiver;
 mod history;
@@ -48,7 +46,7 @@ pub struct Server<Policy = crate::policy::StandardPolicyService>
     my_id: ServerId,
     name: ServerName,
     version: String,
-    net: RwLock<Network>,
+    net: RwLock<Arc<Network>>,
     event_log: Arc<ReplicatedEventLog>,
     epoch: EpochId,
     id_generator: ObjectIdGenerator,
@@ -97,7 +95,7 @@ impl<Policy: crate::policy::PolicyService> Server<Policy>
             my_id: id,
             name,
             version: Self::build_version(),
-            net: RwLock::new(net),
+            net: RwLock::new(Arc::new(net)),
             epoch,
             event_log,
             id_generator: ObjectIdGenerator::new(id, epoch),
@@ -123,13 +121,13 @@ impl<Policy: crate::policy::PolicyService> Server<Policy>
     }
 
     /// Access the IRC network state
-    pub fn network(&self) -> NetworkReadGuard
+    pub fn network(&self) -> Arc<Network>
     {
         // XXX: This is read_recursive() and not read() because the current architecture
         // requires both `CommandProcessor` and the individual handlers to acquire the read
         // lock at the same time. If this were a normal read lock and the `Server` task
         // attempted to acquire the write lock in between those two points, it would deadlock.
-        self.net.read_recursive()
+        Arc::clone(&*self.net.read_recursive())
     }
 
     /// Access the policy service
@@ -211,7 +209,7 @@ impl<Policy: crate::policy::PolicyService> Server<Policy>
         // the write lock on `net`. The handlers for various network updates require read access to `net`.
         let mut update_queue = crate::network::SavedUpdateReceiver::new();
 
-        self.net.write().apply(&event, &update_queue).unwrap_or_else(|_| panic!("Event {:?} failed to apply", event));
+        Arc::make_mut(&mut *self.net.write()).apply(&event, &update_queue).unwrap_or_else(|_| panic!("Event {:?} failed to apply", event));
 
         update_queue.playback(self);
     }
@@ -251,13 +249,13 @@ impl<Policy: crate::policy::PolicyService> Server<Policy>
                             tracing::debug!("Server got state import");
                             // Using replace() here because it works on a mut borrow of the destination;
                             // we can't assign directly to something held by RwLock
-                            let _ = std::mem::replace(&mut *self.net.write(), *new_net);
+                            let _ = std::mem::replace(&mut *self.net.write(), Arc::new(*new_net));
                         },
                         Some(NetworkMessage::ExportNetworkState(channel)) =>
                         {
                             tracing::debug!("Server got state export request; sending");
                             let copied_net = {
-                                self.net.read().clone()
+                                (**self.net.read()).clone()
                             };
                             channel.send(Box::new(copied_net)).await.or_log("Error sending network state for export");
                         },
