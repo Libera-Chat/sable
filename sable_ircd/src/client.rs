@@ -42,7 +42,7 @@ pub(super) struct ClientConnectionState
     connection_data: ConnectionData,
     user_id: Option<UserId>,
     pre_client: Option<PreClient>,
-    receive_queue: ThrottledQueue<String>,
+    receive_queue: SavedThrottledQueue<String>,
     capabilities: ClientCapabilitySet,
 }
 
@@ -89,7 +89,7 @@ impl ClientConnection
             connection_data: self.connection.unwrap().save(),
             user_id: self.user_id,
             pre_client: self.pre_client.take(), // Take because we can't move out of ClientConnection which is Drop
-            receive_queue: self.receive_queue.unwrap(),
+            receive_queue: self.receive_queue.unwrap().save(),
             capabilities: self.capabilities,
         }
     }
@@ -102,7 +102,7 @@ impl ClientConnection
             connection: Movable::new(listener_collection.restore_connection(state.connection_data)),
             user_id: state.user_id,
             pre_client: state.pre_client,
-            receive_queue: Movable::new(state.receive_queue),
+            receive_queue: Movable::new(ThrottledQueue::restore_from(state.receive_queue)),
             capabilities: state.capabilities,
         }
     }
@@ -137,7 +137,7 @@ impl ClientConnection
     /// Poll for messages that the throttle permits to be processed
     pub fn poll_messages(&mut self) -> impl Iterator<Item=String> + '_
     {
-        self.receive_queue.iter_mut()
+        self.receive_queue.iter()
     }
 }
 
