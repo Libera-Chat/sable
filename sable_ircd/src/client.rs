@@ -7,11 +7,16 @@ use crate::throttled_queue::*;
 use crate::capability::*;
 use crate::utils::WrapOption;
 
-use std::net::IpAddr;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
+use std::{
+    net::IpAddr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use once_cell::sync::OnceCell;
+use arc_swap::ArcSwapOption;
 use serde::*;
 use serde_with::serde_as;
 
@@ -22,17 +27,17 @@ pub struct ClientConnection
     pub connection: Movable<Connection>,
 
     /// The user ID, if this connection has completed registration
-    pub user_id: Option<UserId>,
+    user_id: OnceCell<UserId>,
 
     /// The registration information received so far, if this connection has not
     /// yet completed registration
-    pub pre_client: Option<PreClient>,
+    pre_client: ArcSwapOption<PreClient>,
 
     // Pending lines to be processed
     receive_queue: Movable<ThrottledQueue<String>>,
 
     /// Capability flags
-    pub capabilities: ClientCapabilitySet
+    pub capabilities: AtomicCapabilitySet
 }
 
 /// Serialised state of a [`ClientConnection`], for later resumption
@@ -75,10 +80,10 @@ impl ClientConnection
 
         Self {
             connection: Movable::new(conn),
-            user_id: None,
-            pre_client: Some(PreClient::new()),
+            user_id: OnceCell::new(),
+            pre_client: ArcSwapOption::new(Some(Arc::new(PreClient::new()))),
             receive_queue: Movable::new(ThrottledQueue::new(throttle_settings, 16)),
-            capabilities: ClientCapabilitySet::new(),
+            capabilities: AtomicCapabilitySet::new(),
         }
     }
 
@@ -87,10 +92,12 @@ impl ClientConnection
     {
         ClientConnectionState {
             connection_data: self.connection.unwrap().save(),
-            user_id: self.user_id,
-            pre_client: self.pre_client.take(), // Take because we can't move out of ClientConnection which is Drop
+            user_id: self.user_id.get().copied(),
+            pre_client: self.pre_client.load_full()
+                            .map(|a| Arc::try_unwrap(a)
+                                        .unwrap_or_else(|_| panic!("Outstanding reference to preclient while upgrading?"))),
             receive_queue: self.receive_queue.unwrap().save(),
-            capabilities: self.capabilities,
+            capabilities: (&self.capabilities).into(),
         }
     }
 
@@ -100,10 +107,10 @@ impl ClientConnection
     {
         Self {
             connection: Movable::new(listener_collection.restore_connection(state.connection_data)),
-            user_id: state.user_id,
-            pre_client: state.pre_client,
+            user_id: match state.user_id { Some(v) => OnceCell::with_value(v), None => OnceCell::new() },
+            pre_client: ArcSwapOption::new(state.pre_client.map(Arc::new)),
             receive_queue: Movable::new(ThrottledQueue::restore_from(state.receive_queue)),
-            capabilities: state.capabilities,
+            capabilities: state.capabilities.into(),
         }
     }
 
@@ -126,16 +133,35 @@ impl ClientConnection
         self.connection.close();
     }
 
+    /// Return the associated user ID, if any
+    pub fn user_id(&self) -> Option<UserId>
+    {
+        self.user_id.get().copied()
+    }
+
+    /// Return the associated pre-client data, if any
+    pub fn pre_client(&self) -> Option<Arc<PreClient>>
+    {
+        self.pre_client.load_full()
+    }
+
+    /// Set the associated user ID
+    pub fn set_user_id(&self, user_id: UserId)
+    {
+        let _ = self.user_id.set(user_id);
+        self.pre_client.swap(None);
+    }
+
     /// Notify that a new message has been received on this connection
     ///
     /// Returns `Ok(())` on success, `Err(message)` if the connection's receive queue is full
-    pub fn new_message(&mut self, message: String) -> Result<(), String>
+    pub fn new_message(&self, message: String) -> Result<(), String>
     {
         self.receive_queue.add(message)
     }
 
     /// Poll for messages that the throttle permits to be processed
-    pub fn poll_messages(&mut self) -> impl Iterator<Item=String> + '_
+    pub fn poll_messages(&self) -> impl Iterator<Item=String> + '_
     {
         self.receive_queue.iter()
     }
@@ -145,7 +171,7 @@ impl MessageSink for ClientConnection
 {
     fn send(&self, msg: &impl messages::MessageTypeFormat)
     {
-        if let Some(formatted) = msg.format_for_client_caps(&self.capabilities)
+        if let Some(formatted) = msg.format_for_client_caps(&(&self.capabilities).into())
         {
             self.connection.send(formatted)
         }
@@ -153,7 +179,7 @@ impl MessageSink for ClientConnection
 
     fn user_id(&self) -> Option<UserId>
     {
-        self.user_id
+        ClientConnection::user_id(self)
     }
 }
 

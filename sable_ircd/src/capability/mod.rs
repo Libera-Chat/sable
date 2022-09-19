@@ -3,6 +3,7 @@ use serde::{
     Deserialize
 };
 use strum::EnumIter;
+use std::sync::atomic::{AtomicU64,Ordering};
 
 mod repository;
 pub use repository::*;
@@ -94,11 +95,70 @@ impl ClientCapabilitySet
     }
 }
 
+pub struct AtomicCapabilitySet(AtomicU64);
+
+impl AtomicCapabilitySet
+{
+    pub fn new() -> Self
+    {
+        Self(AtomicU64::new(0))
+    }
+
+    pub fn has(&self, cap: ClientCapability) -> bool
+    {
+        0 != self.0.load(Ordering::Relaxed) & cap as u64
+    }
+
+    pub fn has_all(&self, caps: ClientCapabilitySet) -> bool
+    {
+        (self.0.load(Ordering::Relaxed) & caps.0) == caps.0
+    }
+
+    pub fn set(&self, cap: ClientCapability)
+    {
+        self.0.fetch_or(cap as u64, Ordering::Relaxed);
+    }
+
+    pub fn unset(&mut self, cap: ClientCapability)
+    {
+        self.0.fetch_and(!(cap as u64), Ordering::Relaxed);
+    }
+
+    pub fn reset(&self, caps: ClientCapabilitySet)
+    {
+        self.0.store(caps.0, Ordering::Relaxed);
+    }
+}
+
 impl From<ClientCapability> for ClientCapabilitySet
 {
     fn from(cap: ClientCapability) -> Self
     {
         Self(cap as u64)
+    }
+}
+
+impl From<ClientCapabilitySet> for AtomicCapabilitySet
+{
+    fn from(caps: ClientCapabilitySet) -> Self
+    {
+        Self(AtomicU64::new(caps.0))
+    }
+}
+
+impl From<AtomicCapabilitySet> for ClientCapabilitySet
+{
+    fn from(caps: AtomicCapabilitySet) -> Self
+    {
+        Self(caps.0.load(Ordering::Relaxed))
+    }
+}
+
+impl From<&AtomicCapabilitySet> for ClientCapabilitySet
+{
+    fn from(caps: &AtomicCapabilitySet) -> Self
+    {
+        Self(caps.0.load(Ordering::Relaxed))
     }
 }
 

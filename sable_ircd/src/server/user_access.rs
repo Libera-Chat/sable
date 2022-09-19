@@ -19,9 +19,9 @@ impl ClientServer
 
     pub(super) fn check_user_access(&self, server: &crate::ClientServer, net: &Network, client: &ClientConnection) -> bool
     {
-        if let Some(pre_client) = &client.pre_client
+        if let Some(pre_client) = client.pre_client()
         {
-            if let Some(kline) = self.find_kline(net, pre_client)
+            if let Some(kline) = self.find_kline(net, &*pre_client)
             {
                 client.send(&numeric::YoureBanned::new(kline.reason()).format_for(server, &UnknownTarget));
                 return false;

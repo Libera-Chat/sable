@@ -24,13 +24,6 @@ pub(super) struct UserConnectionIter<'a>
     iter: Option<std::slice::Iter<'a, ConnectionId>>,
 }
 
-/// Mutable iterator over connections belonging to a given user
-pub(super) struct UserConnectionIterMut<'a>
-{
-    connections: &'a mut HashMap<ConnectionId, ClientConnection>,
-    iter: Option<std::slice::Iter<'a, ConnectionId>>,
-}
-
 /// Serialised state of a [`ConnectionCollection`], for later resumption
 #[derive(serde::Serialize,serde::Deserialize)]
 pub(super) struct ConnectionCollectionState{
@@ -103,7 +96,8 @@ impl ConnectionCollection
         if let Some(conn) = self.client_connections.get(&id)
         {
             tracing::trace!("Removing connection {:?}", id);
-            if let Some(userid) = conn.user_id {
+            if let Some(userid) = conn.user_id()
+            {
                 self.user_to_connid.remove(&userid);
             }
         }
@@ -128,26 +122,11 @@ impl ConnectionCollection
         self.client_connections.get(&id).ok_or(LookupError::NoSuchConnectionId)
     }
 
-    /// Look up a connection by ID, returning a mutable reference
-    pub fn get_mut(&mut self, id: ConnectionId) -> Result<&mut ClientConnection, LookupError>
-    {
-        self.client_connections.get_mut(&id).ok_or(LookupError::NoSuchConnectionId)
-    }
-
     /// Iterate over all connections associated with the given user
     pub fn get_user(&self, id: UserId) -> UserConnectionIter<'_>
     {
         UserConnectionIter {
             connections: &self.client_connections,
-            iter: self.user_to_connid.get(&id).map(|c| c.iter())
-        }
-    }
-
-    /// Iterate mutably over all connections associated with the given user
-    pub fn get_user_mut(&mut self, id: UserId) -> UserConnectionIterMut<'_>
-    {
-        UserConnectionIterMut {
-            connections: &mut self.client_connections,
             iter: self.user_to_connid.get(&id).map(|c| c.iter())
         }
     }
@@ -178,7 +157,7 @@ impl ConnectionCollection
             clients: self.client_connections
                 .into_iter()
                 .map(|(k,v)| {
-                    tracing::trace!("Saving client connection {:?} ({:?})", k, v.user_id);
+                    tracing::trace!("Saving client connection {:?} ({:?})", k, v.user_id());
                     (k, v.save())
                 })
                 .collect(),
@@ -195,7 +174,7 @@ impl ConnectionCollection
         for (conn_id, conn_data) in state.clients.into_iter()
         {
             let cli_conn = ClientConnection::restore(conn_data, listener_collection);
-            if let Some(user_id) = &cli_conn.user_id
+            if let Some(user_id) = &cli_conn.user_id()
             {
                 ret.add_user(*user_id, conn_id);
             }
@@ -216,45 +195,5 @@ impl<'a> Iterator for UserConnectionIter<'a>
     fn next(&mut self) -> Option<Self::Item>
     {
         self.iter.as_mut().and_then(|it| it.next().and_then(|id| self.connections.get(id)))
-    }
-}
-
-impl<'a> Iterator for UserConnectionIterMut<'a>
-{
-    type Item = &'a mut ClientConnection;
-
-    fn next(&mut self) -> Option<&'a mut ClientConnection>
-    {
-        let mut_ref = self.iter.as_mut().and_then(|it| it.next().and_then(|id| self.connections.get_mut(id)));
-
-        if let Some(mut_ref) = mut_ref
-        {
-            // Safety: this is unsafe because:
-            //  * The lifetime of the returned mut reference is the lifetime of the iterator (i.e. `self`), but the
-            //    returned type doesn't hold a mut borrow of `self`
-            //  * As a result it's possible to call `next()` while still holding the mut ref returned from the
-            //    previous call to `next()`
-            //  * The compiler doesn't know that subsequent calls to `next()` won't return two mut refs to the same
-            //    item.
-            //
-            // This is safe because:
-            //   * We know that subsequent calls to `next()` on the same iterator won't return two mut refs to the
-            //     same item
-            //   * See the logic and comment in [`ConnectionCollection::add_user`]
-            //
-            // What we're achieving by converting to a pointer and back is to forcibly convert the reference
-            // lifetime to the lifetime of the iterator. Given that we're guaranteeing uniqueness of items
-            // returned by a single iterator, and the iterator itself holds a mut borrow of the collection,
-            // this is safe to do.
-            unsafe
-            {
-                let ptr: *mut ClientConnection = mut_ref;
-                Some(&mut *ptr)
-            }
-        }
-        else
-        {
-            None
-        }
     }
 }

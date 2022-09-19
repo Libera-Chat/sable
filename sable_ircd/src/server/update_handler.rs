@@ -65,10 +65,9 @@ impl ClientServer
     {
         let net = self.server.network();
         let user = net.user(detail.user.user.id)?;
-        for connection in self.connections.get_user_mut(user.id())
+        for connection in self.connections.get_user(user.id())
         {
-            connection.pre_client = None;
-            connection.user_id = Some(user.id());
+            connection.set_user_id(user.id());
 
             connection.send(&numeric::Numeric001::new_for(&self.server.name().to_string(), &user.nick(), "test", &user.nick()));
             connection.send(&numeric::Numeric002::new_for(&self.server.name().to_string(), &user.nick(), self.server.name(), self.server.version()));

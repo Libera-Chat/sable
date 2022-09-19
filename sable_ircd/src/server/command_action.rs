@@ -18,7 +18,7 @@ impl ClientServer
                         }
                     }
 
-                    if let Some(pre_client) = &conn.pre_client
+                    if let Some(pre_client) = conn.pre_client()
                     {
                         // We don't delete the preclient here, because it's possible the event will fail to apply
                         // if someone else takes the nickname in between
@@ -51,10 +51,9 @@ impl ClientServer
 
             CommandAction::AttachToUser(connection_id, user_id) =>
             {
-                if let Ok(conn) = self.connections.get_mut(connection_id)
+                if let Ok(conn) = self.connections.get(connection_id)
                 {
-                    conn.pre_client = None;
-                    conn.user_id = Some(user_id);
+                    conn.set_user_id(user_id);
 
                     self.connections.add_user(user_id, connection_id);
                 }
@@ -62,9 +61,9 @@ impl ClientServer
 
             CommandAction::UpdateConnectionCaps(conn_id, new_caps) =>
             {
-                if let Ok(connection) = self.connections.get_mut(conn_id)
+                if let Ok(connection) = self.connections.get(conn_id)
                 {
-                    connection.capabilities = new_caps;
+                    connection.capabilities.reset(new_caps);
                 }
             }
 

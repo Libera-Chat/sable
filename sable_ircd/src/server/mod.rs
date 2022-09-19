@@ -194,7 +194,7 @@ impl ClientServer
             },
             ConnectionEventDetail::Error(e) => {
                 if let Ok(conn) = self.connections.get(msg.source) {
-                    if let Some(userid) = conn.user_id {
+                    if let Some(userid) = conn.user_id() {
                         // If the user has a session key set, then they're in persistent session mode
                         // and shouldn't be quit just because one of their connections closed
                         let should_quit = if let Ok(user) = self.network().user(userid) {
@@ -338,7 +338,7 @@ impl ClientServer
                                                                                 conn.remote_addr(),
                                                                                 msg.hostname
                                                                                 );
-                                if let Some(pc) = &conn.pre_client {
+                                if let Some(pc) = conn.pre_client() {
                                     if let Some(hostname) = msg.hostname {
                                         conn.send(&message::Notice::new(self, &UnknownTarget,
                                                         &format!("*** Found your hostname: {}", hostname)));

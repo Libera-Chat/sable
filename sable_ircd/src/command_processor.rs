@@ -11,6 +11,8 @@ use crate::errors::*;
 use crate::capability::*;
 use crate::utils::make_numeric;
 
+use std::sync::Arc;
+
 /// Utility type to invoke a command handler
 pub(crate) struct CommandProcessor<'a>
 {
@@ -72,7 +74,7 @@ pub enum CommandError
 pub enum CommandSource<'a>
 {
     /// A client connection which has not yet completed registration
-    PreClient(&'a PreClient),
+    PreClient(Arc<PreClient>),
     /// A client connection which is associated with a network user
     User(wrapper::User<'a>),
 }
@@ -238,11 +240,16 @@ impl<'a> CommandProcessor<'a>
     fn translate_message_source<'b>(net: &'b Network, source: &'a ClientConnection) -> Result<CommandSource<'b>, CommandError>
         where 'a: 'b
     {
-        if let Some(user_id) = source.user_id {
+        if let Some(user_id) = source.user_id()
+        {
             Ok(net.user(user_id).map(CommandSource::User)?)
-        } else if let Some(pre_client) = &source.pre_client {
+        }
+        else if let Some(pre_client) = source.pre_client()
+        {
             Ok(CommandSource::PreClient(pre_client))
-        } else {
+        }
+        else
+        {
             Err(CommandError::unknown("Got message from neither preclient nor client"))
         }
     }
