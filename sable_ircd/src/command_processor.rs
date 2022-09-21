@@ -188,10 +188,10 @@ impl<'a> CommandProcessor<'a>
         {
             let net = self.server.network();
 
-            let source = Self::translate_message_source(&*net, conn).expect("Got message from unknown source");
+            let source = Self::translate_message_source(&*net, &*conn).expect("Got message from unknown source");
             let command = message.command.clone();
 
-            if let Err(err) = self.do_process_message(conn, &source, message)
+            if let Err(err) = self.do_process_message(&*conn, &source, message)
             {
                 match err {
                     CommandError::UnderlyingError(err) => {
@@ -237,7 +237,7 @@ impl<'a> CommandProcessor<'a>
         }
     }
 
-    fn translate_message_source<'b>(net: &'b Network, source: &'a ClientConnection) -> Result<CommandSource<'b>, CommandError>
+    fn translate_message_source<'b>(net: &'b Network, source: &ClientConnection) -> Result<CommandSource<'b>, CommandError>
         where 'a: 'b
     {
         if let Some(user_id) = source.user_id()

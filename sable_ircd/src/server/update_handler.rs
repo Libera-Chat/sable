@@ -54,7 +54,7 @@ impl ClientServer
 
             if let Some(entry) = log.get(entry_id)
             {
-                entry.send_now(conn, entry, self)?;
+                entry.send_now(&*conn, entry, self)?;
             }
         }
 

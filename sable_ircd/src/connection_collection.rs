@@ -6,21 +6,22 @@ use client_listener::{
 };
 use std::{
     collections::HashMap,
+    sync::Arc,
 };
 
 /// Stores the client connections handled by a [`ClientServer`], and allows lookup by
 /// either connection ID or user ID
 pub(super) struct ConnectionCollection
 {
-    client_connections: HashMap<ConnectionId, ClientConnection>,
+    client_connections: HashMap<ConnectionId, Arc<ClientConnection>>,
     user_to_connid: HashMap<UserId, Vec<ConnectionId>>,
-    flooded_connections: Vec<ClientConnection>,
+    flooded_connections: Vec<Arc<ClientConnection>>,
 }
 
 /// Iterator over connections belonging to a given user
 pub(super) struct UserConnectionIter<'a>
 {
-    connections: &'a HashMap<ConnectionId, ClientConnection>,
+    connections: &'a HashMap<ConnectionId, Arc<ClientConnection>>,
     iter: Option<std::slice::Iter<'a, ConnectionId>>,
 }
 
@@ -71,7 +72,7 @@ impl ConnectionCollection
     /// Insert a new connection, with no associated user ID
     pub fn add(&mut self, id: ConnectionId, conn: ClientConnection)
     {
-        self.client_connections.insert(id, conn);
+        self.client_connections.insert(id, Arc::new(conn));
     }
 
     /// Associate a user ID with an existing connection ID
@@ -117,9 +118,9 @@ impl ConnectionCollection
     }
 
     /// Look up a connection by ID
-    pub fn get(&self, id: ConnectionId) -> Result<&ClientConnection, LookupError>
+    pub fn get(&self, id: ConnectionId) -> Result<Arc<ClientConnection>, LookupError>
     {
-        self.client_connections.get(&id).ok_or(LookupError::NoSuchConnectionId)
+        self.client_connections.get(&id).map(Arc::clone).ok_or(LookupError::NoSuchConnectionId)
     }
 
     /// Iterate over all connections associated with the given user
@@ -145,7 +146,7 @@ impl ConnectionCollection
     }
 
     /// Drain the list of flooded-off connections for processing
-    pub fn flooded_connections(&mut self) -> impl Iterator<Item=ClientConnection> + '_
+    pub fn flooded_connections(&mut self) -> impl Iterator<Item=Arc<ClientConnection>> + '_
     {
         self.flooded_connections.drain(..)
     }
@@ -158,10 +159,12 @@ impl ConnectionCollection
                 .into_iter()
                 .map(|(k,v)| {
                     tracing::trace!("Saving client connection {:?} ({:?})", k, v.user_id());
-                    (k, v.save())
+                    (k, Arc::try_unwrap(v).unwrap_or_else(|_| panic!("trying to save a connection that's still referenced")).save())
                 })
                 .collect(),
-            flooded: self.flooded_connections.into_iter().map(ClientConnection::save).collect()
+            flooded: self.flooded_connections.into_iter()
+                                            .map(|c| Arc::try_unwrap(c).unwrap_or_else(|_| panic!("trying to save a connection that's still referenced")).save())
+                                            .collect()
         }
     }
 
@@ -178,10 +181,10 @@ impl ConnectionCollection
             {
                 ret.add_user(*user_id, conn_id);
             }
-            ret.client_connections.insert(conn_id, cli_conn);
+            ret.client_connections.insert(conn_id, Arc::new(cli_conn));
         }
         ret.flooded_connections = state.flooded.into_iter()
-                                               .map(|s| ClientConnection::restore(s, listener_collection))
+                                               .map(|s| Arc::new(ClientConnection::restore(s, listener_collection)))
                                                .collect();
 
         ret
@@ -190,10 +193,10 @@ impl ConnectionCollection
 
 impl<'a> Iterator for UserConnectionIter<'a>
 {
-    type Item = &'a ClientConnection;
+    type Item = Arc<ClientConnection>;
 
     fn next(&mut self) -> Option<Self::Item>
     {
-        self.iter.as_mut().and_then(|it| it.next().and_then(|id| self.connections.get(id)))
+        self.iter.as_mut().and_then(|it| it.next().and_then(|id| self.connections.get(id).map(Arc::clone)))
     }
 }

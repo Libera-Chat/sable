@@ -11,7 +11,7 @@ impl ClientServer
                 if let Ok(conn) = self.connections.get(id)
                 {
                     {
-                        if ! self.check_user_access(self, &*self.network(), conn)
+                        if ! self.check_user_access(self, &*self.network(), &*conn)
                         {
                             self.connections.remove(id);
                             return;

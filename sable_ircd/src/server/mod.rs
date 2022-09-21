@@ -133,7 +133,7 @@ impl ClientServer
     }
 
     /// Find a client connection
-    pub fn find_connection(&self, id: ConnectionId) -> Option<&ClientConnection>
+    pub fn find_connection(&self, id: ConnectionId) -> Option<Arc<ClientConnection>>
     {
         let ret = self.connections.get(id).ok();
         tracing::trace!("Looking up connection id {:?}, {}", id, if ret.is_some() {"found"}else{"not found"});
