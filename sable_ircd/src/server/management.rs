@@ -29,7 +29,7 @@ struct ServerStatistics
 
 impl ClientServer
 {
-    pub(super) async fn handle_management_command(&mut self, cmd: ServerManagementCommand)
+    pub(super) async fn handle_management_command(&self, cmd: ServerManagementCommand)
     {
         use ServerManagementCommandType::*;
         let resp = match cmd.cmd

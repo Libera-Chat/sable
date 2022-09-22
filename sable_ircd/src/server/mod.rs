@@ -24,6 +24,8 @@ use std::{
     sync::Arc,
 };
 
+use parking_lot::RwLock;
+
 use futures::future::OptionFuture;
 
 use strum::IntoEnumIterator;
@@ -50,7 +52,7 @@ pub struct ClientServer
     action_submitter: UnboundedSender<CommandAction>,
     connection_events: UnboundedReceiver<ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
-    connections: ConnectionCollection,
+    connections: RwLock<ConnectionCollection>,
     auth_client: AuthClient,
     auth_events: UnboundedReceiver<AuthEvent>,
     isupport: ISupportBuilder,
@@ -85,7 +87,7 @@ impl ClientServer
             action_submitter: action_submitter,
             connection_events,
             command_dispatcher: CommandDispatcher::new(),
-            connections: ConnectionCollection::new(),
+            connections: RwLock::new(ConnectionCollection::new()),
             auth_client: AuthClient::new(auth_sender).unwrap(),
             auth_events,
             isupport: Self::build_basic_isupport(),
@@ -175,7 +177,7 @@ impl ClientServer
 
 
     #[tracing::instrument(skip_all, fields(source = ?msg.source))]
-    async fn process_connection_event(&mut self, msg: ConnectionEvent)
+    async fn process_connection_event(&self, msg: ConnectionEvent)
     {
         match msg.detail {
             ConnectionEventDetail::NewConnection(conn) => {
@@ -185,12 +187,12 @@ impl ClientServer
                 conn.send(&message::Notice::new(self, &UnknownTarget,
                             "*** Looking up your hostname"));
                 self.auth_client.start_dns_lookup(conn.id(), conn.remote_addr());
-                self.connections.add(msg.source, conn);
+                self.connections.write().add(msg.source, conn);
             },
             ConnectionEventDetail::Message(m) => {
                 tracing::trace!(msg=?m, "Got message");
 
-                self.connections.new_message(msg.source, m);
+                self.connections.write().new_message(msg.source, m);
             },
             ConnectionEventDetail::Error(e) => {
                 if let Ok(conn) = self.connections.get(msg.source) {
@@ -214,14 +216,15 @@ impl ClientServer
                         }
                     }
                 }
-                self.connections.remove(msg.source);
+                self.connections.write().remove(msg.source);
             }
         }
     }
 
-    async fn process_pending_client_messages(&mut self)
+    async fn process_pending_client_messages(&self)
     {
-        for (conn_id, message) in self.connections.poll_messages().collect::<Vec<_>>()
+        let connections = self.connections.read();
+        for (conn_id, message) in connections.poll_messages().collect::<Vec<_>>()
         {
             if let Some(parsed) = ClientMessage::parse(conn_id, &message)
             {
@@ -233,8 +236,9 @@ impl ClientServer
                 tracing::info!(?message, "Failed parsing")
             }
         }
+        drop(connections);
 
-        for flooded in self.connections.flooded_connections()
+        for flooded in self.connections.write().flooded_connections()
         {
             if let Some(user_id) = flooded.user_id()
             {

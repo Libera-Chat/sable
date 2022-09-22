@@ -1,19 +1,22 @@
 use super::*;
 
+use parking_lot::RwLockUpgradableReadGuard;
+
 impl ClientServer
 {
-    pub(super) async fn apply_action(&mut self, action: CommandAction)
+    pub(super) async fn apply_action(&self, action: CommandAction)
     {
         match action {
             CommandAction::RegisterClient(id) =>
             {
                 let mut should_add_user = None;
-                if let Ok(conn) = self.connections.get(id)
+                let connections = self.connections.upgradable_read();
+                if let Ok(conn) = connections.get(id)
                 {
                     {
                         if ! self.check_user_access(self, &*self.network(), &*conn)
                         {
-                            self.connections.remove(id);
+                            RwLockUpgradableReadGuard::upgrade(connections).remove(id);
                             return;
                         }
                     }
@@ -45,17 +48,19 @@ impl ClientServer
 
                 if let Some((user_id, conn_id)) = should_add_user
                 {
-                    self.connections.add_user(user_id, conn_id);
+                    RwLockUpgradableReadGuard::upgrade(connections).add_user(user_id, conn_id);
                 }
             }
 
             CommandAction::AttachToUser(connection_id, user_id) =>
             {
-                if let Ok(conn) = self.connections.get(connection_id)
+                // This operation will almost always require the write lock, so just get it immediately
+                let mut connections = self.connections.write();
+                if let Ok(conn) = connections.get(connection_id)
                 {
                     conn.set_user_id(user_id);
 
-                    self.connections.add_user(user_id, connection_id);
+                    connections.add_user(user_id, connection_id);
                 }
             }
 
@@ -69,7 +74,7 @@ impl ClientServer
 
             CommandAction::DisconnectUser(user_id) =>
             {
-                self.connections.remove_user(user_id);
+                self.connections.write().remove_user(user_id);
             }
 
             CommandAction::StateChange(id, detail) =>

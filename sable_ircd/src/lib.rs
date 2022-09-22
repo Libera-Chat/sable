@@ -89,6 +89,7 @@ use command_processor::*;
 
 mod connection_collection;
 use connection_collection::ConnectionCollection;
+use connection_collection::ConnectionCollectionLockHelper;
 use command::*;
 
 mod isupport;

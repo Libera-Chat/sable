@@ -5,7 +5,7 @@ use crate::errors::HandleResult;
 
 impl ClientServer
 {
-    pub(super) fn handle_history_update(&mut self, update: NetworkHistoryUpdate) -> HandleResult
+    pub(super) fn handle_history_update(&self, update: NetworkHistoryUpdate) -> HandleResult
     {
         tracing::trace!(?update, "Got history update");
 
@@ -48,7 +48,7 @@ impl ClientServer
 
     fn notify_user_update(&self, user_id: UserId, entry_id: LogEntryId) -> HandleResult
     {
-        for conn in self.connections.get_user(user_id)
+        for conn in self.connections.read().get_user(user_id)
         {
             let log = self.server.history();
 
@@ -61,11 +61,11 @@ impl ClientServer
         Ok(())
     }
 
-    fn handle_new_user(&mut self, detail: &update::NewUser) -> HandleResult
+    fn handle_new_user(&self, detail: &update::NewUser) -> HandleResult
     {
         let net = self.server.network();
         let user = net.user(detail.user.user.id)?;
-        for connection in self.connections.get_user(user.id())
+        for connection in self.connections.read().get_user(user.id())
         {
             connection.set_user_id(user.id());
 

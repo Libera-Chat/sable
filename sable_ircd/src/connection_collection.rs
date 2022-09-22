@@ -64,9 +64,9 @@ impl ConnectionCollection
         }
     }
 
-    pub fn poll_messages(&mut self) -> impl Iterator<Item=(ConnectionId, String)> + '_
+    pub fn poll_messages(&self) -> impl Iterator<Item=(ConnectionId, String)> + '_
     {
-        self.client_connections.iter_mut().flat_map(|(id,conn)| conn.poll_messages().map(move |message| (*id, message)))
+        self.client_connections.iter().flat_map(|(id,conn)| conn.poll_messages().map(move |message| (*id, message)))
     }
 
     /// Insert a new connection, with no associated user ID
@@ -198,5 +198,25 @@ impl<'a> Iterator for UserConnectionIter<'a>
     fn next(&mut self) -> Option<Self::Item>
     {
         self.iter.as_mut().and_then(|it| it.next().and_then(|id| self.connections.get(id).map(Arc::clone)))
+    }
+}
+
+/// Helper trait to allow calling read methods of [`ConnectionCollection`] directly on an RwLock
+pub trait ConnectionCollectionLockHelper
+{
+    fn get(&self, id: ConnectionId) -> LookupResult<Arc<ClientConnection>>;
+    fn len(&self) -> usize;
+}
+
+impl ConnectionCollectionLockHelper for parking_lot::RwLock<ConnectionCollection>
+{
+    fn get(&self, id: ConnectionId) -> LookupResult<Arc<ClientConnection>>
+    {
+        self.read().get(id)
+    }
+
+    fn len(&self) -> usize
+    {
+        self.read().len()
     }
 }

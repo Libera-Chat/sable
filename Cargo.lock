@@ -1759,6 +1759,7 @@ dependencies = [
  "inventory",
  "itertools",
  "once_cell",
+ "parking_lot 0.12.0",
  "pwhash",
  "rand",
  "rustls",
