@@ -64,4 +64,6 @@ impl<'a> super::ObjectWrapper<'a> for KLine<'a> {
     {
         Self{ _network: net, data }
     }
+
+    fn raw(&self) -> &'a Self::Underlying { self.data }
 }

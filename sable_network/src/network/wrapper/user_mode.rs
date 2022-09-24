@@ -28,4 +28,6 @@ impl<'a> super::ObjectWrapper<'a> for UserMode<'a> {
     {
         Self { _network: network, data }
     }
+
+    fn raw(&self) -> &'a Self::Underlying { self.data }
 }

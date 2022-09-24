@@ -56,4 +56,6 @@ impl<'a> super::ObjectWrapper<'a> for Channel<'a> {
     {
         Self { network, data }
     }
+
+    fn raw(&self) -> &'a Self::Underlying { self.data }
 }

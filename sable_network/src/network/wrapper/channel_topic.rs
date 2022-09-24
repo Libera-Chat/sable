@@ -45,4 +45,6 @@ impl<'a> super::ObjectWrapper<'a> for ChannelTopic<'a> {
     {
         Self { network, data }
     }
+
+    fn raw(&self) -> &'a Self::Underlying { self.data }
 }

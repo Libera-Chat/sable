@@ -102,4 +102,6 @@ impl<'a> super::ObjectWrapper<'a> for User<'a> {
     {
         Self { network, data }
     }
+
+    fn raw(&self) -> &'a Self::Underlying { self.data }
 }

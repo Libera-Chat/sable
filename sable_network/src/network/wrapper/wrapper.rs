@@ -4,6 +4,7 @@ pub trait ObjectWrapper<'a>
 {
     type Underlying: 'a;
     fn wrap(network: &'a Network, obj: &'a Self::Underlying) -> Self;
+    fn raw(&self) -> &'a Self::Underlying;
 }
 
 pub trait WrapOption<'a, T: ObjectWrapper<'a>>

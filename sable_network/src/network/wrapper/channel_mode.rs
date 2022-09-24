@@ -39,4 +39,6 @@ impl<'a> super::ObjectWrapper<'a> for ChannelMode<'a> {
     {
         Self { _network: network, data }
     }
+
+    fn raw(&self) -> &'a Self::Underlying { self.data }
 }

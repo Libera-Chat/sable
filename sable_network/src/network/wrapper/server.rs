@@ -43,4 +43,6 @@ impl<'a> super::ObjectWrapper<'a> for Server<'a> {
     {
         Self { network, data }
     }
+
+    fn raw(&self) -> &'a Self::Underlying { self.data }
 }

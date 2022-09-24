@@ -65,4 +65,6 @@ impl<'a> super::ObjectWrapper<'a> for Message<'a> {
     {
         Self { network, data}
     }
+
+    fn raw(&self) -> &'a Self::Underlying { self.data }
 }
