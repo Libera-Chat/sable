@@ -1,8 +1,8 @@
-use std::cell::{
-    Cell,
-    Ref,
-    RefCell
+use std::{
+    cell::Cell,
+    sync::Arc,
 };
+use arc_swap::ArcSwapOption;
 
 /// A parameter associated with an ISUPPORT entry
 pub enum ISupportParam
@@ -56,7 +56,7 @@ impl ISupportEntry
 pub struct ISupportBuilder
 {
     entries: Vec<ISupportEntry>,
-    cache: RefCell<Option<Vec<String>>>
+    cache: ArcSwapOption<Vec<String>>
 }
 
 impl ISupportBuilder
@@ -67,7 +67,7 @@ impl ISupportBuilder
     {
         Self {
             entries: Vec::new(),
-            cache: RefCell::new(None)
+            cache: ArcSwapOption::new(None)
         }
     }
 
@@ -75,22 +75,20 @@ impl ISupportBuilder
     pub fn add(&mut self, entry: ISupportEntry)
     {
         self.entries.push(entry);
-        self.cache.replace(None);
+        self.cache.swap(None);
     }
 
     /// Return the reply data.
     ///
     /// Return value is a borrowed reference to a `Vec<String>`. Each entry in the
     /// vector should be sent as the final parameter of an 005 numeric message.
-    pub fn data(&self) -> Ref<Vec<String>>
+    pub fn data(&self) -> Arc<Vec<String>>
     {
-        if self.cache.borrow().is_none()
+        if self.cache.load().is_none()
         {
             self.build()
         }
-        Ref::map(self.cache.borrow(),
-            |r| r.as_ref().expect("Failed to build isupport cache")
-        )
+        self.cache.load_full().expect("Failed to build isupport cache")
     }
 
     fn build(&self)
@@ -119,6 +117,6 @@ impl ISupportBuilder
 
         result.push(current.replace(String::new()));
 
-        self.cache.replace(Some(result));
+        self.cache.swap(Some(Arc::new(result)));
     }
 }
