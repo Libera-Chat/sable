@@ -50,16 +50,16 @@ impl ClientServer
 
         Ok(Self {
             server: Arc::new(Server::restore_from(state.server_state, event_log, rpc_receiver, history_sender)?),
-            action_receiver: action_recv,
+            action_receiver: Some(action_recv),
             action_submitter: action_send,
-            connection_events,
+            connection_events: Some(connection_events),
             connections: RwLock::new(ConnectionCollection::restore_from(state.connections, listener_collection)),
             command_dispatcher: command::CommandDispatcher::new(),
             auth_client: AuthClient::resume(state.auth_state, auth_send)?,
-            auth_events: auth_recv,
+            auth_events: Some(auth_recv),
             isupport: Self::build_basic_isupport(),
             client_caps: state.client_caps,
-            history_receiver
+            history_receiver: Some(history_receiver)
         })
     }
 }

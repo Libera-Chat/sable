@@ -48,18 +48,21 @@ mod user_access;
 /// IRC client protocol.
 pub struct ClientServer
 {
-    action_receiver: UnboundedReceiver<CommandAction>,
+    // These are Options to allow `run()` to take ownership of them and then permit
+    // long-lived immutable references to `Self` to be stored in async handlers
+    action_receiver: Option<UnboundedReceiver<CommandAction>>,
+    connection_events: Option<UnboundedReceiver<ConnectionEvent>>,
+    auth_events: Option<UnboundedReceiver<AuthEvent>>,
+    history_receiver: Option<UnboundedReceiver<NetworkHistoryUpdate>>,
+
     action_submitter: UnboundedSender<CommandAction>,
-    connection_events: UnboundedReceiver<ConnectionEvent>,
     command_dispatcher: command::CommandDispatcher,
     connections: RwLock<ConnectionCollection>,
     auth_client: AuthClient,
-    auth_events: UnboundedReceiver<AuthEvent>,
     isupport: ISupportBuilder,
     client_caps: CapabilityRepository,
 
     server: Arc<Server>,
-    history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
 }
 
 impl ClientServer
@@ -83,17 +86,18 @@ impl ClientServer
         let server = Arc::new(Server::new(id, epoch, name, net, event_log, rpc_receiver, history_sender, policy));
 
         Self {
-            action_receiver,
-            action_submitter: action_submitter,
-            connection_events,
+            action_receiver: Some(action_receiver),
+            connection_events: Some(connection_events),
+            history_receiver: Some(history_receiver),
+            auth_client: AuthClient::new(auth_sender).unwrap(),
+
+            action_submitter,
             command_dispatcher: CommandDispatcher::new(),
             connections: RwLock::new(ConnectionCollection::new()),
-            auth_client: AuthClient::new(auth_sender).unwrap(),
-            auth_events,
+            auth_events: Some(auth_events),
             isupport: Self::build_basic_isupport(),
             client_caps: CapabilityRepository::new(),
             server,
-            history_receiver,
         }
     }
 
@@ -272,6 +276,13 @@ impl ClientServer
 
         let mut shutdown_channel = OptionFuture::from(Some(shutdown_channel));
 
+        // Take ownership of these receivers here, so that we no longer need a mut borrow of `self` once the
+        // run loop starts
+        let mut action_receiver = self.action_receiver.take().unwrap();
+        let mut history_receiver = self.history_receiver.take().unwrap();
+        let mut connection_events = self.connection_events.take().unwrap();
+        let mut auth_events = self.auth_events.take().unwrap();
+
         loop
         {
             // Before looking for an I/O event, do our internal bookkeeping.
@@ -279,7 +290,7 @@ impl ClientServer
             self.process_pending_client_messages().await;
 
             // Then, see whether there are any actions we need to process synchronously
-            while let Ok(act) = self.action_receiver.try_recv()
+            while let Ok(act) = action_receiver.try_recv()
             {
                 tracing::trace!(?act, "Got pending CommandAction");
                 self.apply_action(act).await;
@@ -303,7 +314,7 @@ impl ClientServer
                         Err(e) => panic!("Server task exited abnormally ({})", e)
                     };
                 },
-                res = self.history_receiver.recv() =>
+                res = history_receiver.recv() =>
                 {
                     tracing::trace!(?res, "...from history_receiver");
                     match res
@@ -318,7 +329,7 @@ impl ClientServer
                         None => panic!("Lost server"),
                     };
                 },
-                res = self.connection_events.recv() =>
+                res = connection_events.recv() =>
                 {
                     tracing::trace!("...from connection_events");
                     match res {
@@ -330,7 +341,7 @@ impl ClientServer
                         }
                     }
                 },
-                res = self.auth_events.recv() =>
+                res = auth_events.recv() =>
                 {
                     tracing::trace!("...from auth_events");
                     match res
