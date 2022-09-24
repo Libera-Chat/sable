@@ -39,7 +39,7 @@ command_handler!("CHATHISTORY" => ChatHistoryHandler {
                 }
 
                 // The spec allows the from and to timestamps in either order; list_targets requires from < to
-                self.list_targets(cmd.connection, source, min(from_ts, to_ts), max(from_ts, to_ts), limit);
+                self.list_targets(&*cmd.connection, source, min(from_ts, to_ts), max(from_ts, to_ts), limit);
             }
             "LATEST" =>
             {
@@ -64,7 +64,7 @@ command_handler!("CHATHISTORY" => ChatHistoryHandler {
                     return Ok(());
                 }
 
-                self.send_history_for_target_reverse(cmd.connection, source, &target, from_ts, None, limit)?;
+                self.send_history_for_target_reverse(&*cmd.connection, source, &target, from_ts, None, limit)?;
             }
             "BEFORE" =>
             {
@@ -85,7 +85,7 @@ command_handler!("CHATHISTORY" => ChatHistoryHandler {
                     return Ok(());
                 }
 
-                self.send_history_for_target_reverse(cmd.connection, source, &target, None, Some(end_ts), limit)?;
+                self.send_history_for_target_reverse(&*cmd.connection, source, &target, None, Some(end_ts), limit)?;
             }
             "AFTER" =>
             {
@@ -106,7 +106,7 @@ command_handler!("CHATHISTORY" => ChatHistoryHandler {
                     return Ok(());
                 }
 
-                self.send_history_for_target_forward(cmd.connection, source, &target, Some(start_ts), None, limit)?;
+                self.send_history_for_target_forward(&*cmd.connection, source, &target, Some(start_ts), None, limit)?;
             }
             "AROUND" =>
             {
@@ -130,8 +130,8 @@ command_handler!("CHATHISTORY" => ChatHistoryHandler {
                     }
                 };
 
-                self.send_history_for_target_reverse(cmd.connection, source, &target, Some(around_ts), None, Some(limit/2))?;
-                self.send_history_for_target_forward(cmd.connection, source, &target, Some(around_ts), None, Some(limit/2))?;
+                self.send_history_for_target_reverse(&*cmd.connection, source, &target, Some(around_ts), None, Some(limit/2))?;
+                self.send_history_for_target_forward(&*cmd.connection, source, &target, Some(around_ts), None, Some(limit/2))?;
             }
             "BETWEEN" =>
             {
@@ -160,7 +160,7 @@ command_handler!("CHATHISTORY" => ChatHistoryHandler {
                     return Ok(());
                 }
 
-                self.send_history_for_target_forward(cmd.connection, source, &target, Some(start_ts), Some(end_ts), limit)?;
+                self.send_history_for_target_forward(&*cmd.connection, source, &target, Some(start_ts), Some(end_ts), limit)?;
             }
             _ =>
             {

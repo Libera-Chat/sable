@@ -34,6 +34,9 @@ mod management;
 pub use management::ServerManagementCommand;
 pub use management::ServerManagementCommandType;
 
+mod async_handler_collection;
+pub use async_handler_collection::*;
+
 mod upgrade;
 pub use upgrade::ClientServerState;
 
@@ -225,7 +228,8 @@ impl ClientServer
         }
     }
 
-    async fn process_pending_client_messages(&self)
+    fn process_pending_client_messages<'a, 'b>(&'b self, async_handlers: &AsyncHandlerCollection<'a>)
+        where Self: 'a, 'b: 'a
     {
         let connections = self.connections.read();
         for (conn_id, message) in connections.poll_messages().collect::<Vec<_>>()
@@ -233,7 +237,7 @@ impl ClientServer
             if let Some(parsed) = ClientMessage::parse(conn_id, &message)
             {
                 let processor = CommandProcessor::new(self, &self.command_dispatcher);
-                processor.process_message(parsed);
+                processor.process_message(parsed, async_handlers);
             }
             else
             {
@@ -283,11 +287,13 @@ impl ClientServer
         let mut connection_events = self.connection_events.take().unwrap();
         let mut auth_events = self.auth_events.take().unwrap();
 
+        let mut async_handlers = AsyncHandlerCollection::new();
+
         loop
         {
             // Before looking for an I/O event, do our internal bookkeeping.
             // First, take inbound client messages and process them
-            self.process_pending_client_messages().await;
+            self.process_pending_client_messages(&async_handlers);
 
             // Then, see whether there are any actions we need to process synchronously
             while let Ok(act) = action_receiver.try_recv()
@@ -313,6 +319,11 @@ impl ClientServer
                         Ok(action) => break action,
                         Err(e) => panic!("Server task exited abnormally ({})", e)
                     };
+                },
+                _ = async_handlers.poll() =>
+                {
+                    // No need to do anything here; just polling the collection is enough to
+                    // drive execution of any async handlers that are running
                 },
                 res = history_receiver.recv() =>
                 {

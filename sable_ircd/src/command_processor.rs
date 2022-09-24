@@ -1,4 +1,5 @@
 use sable_network::prelude::*;
+use sable_network::network::wrapper::ObjectWrapper;
 use client_listener::{
     ConnectionId,
     ConnectionError
@@ -14,10 +15,10 @@ use crate::utils::make_numeric;
 use std::sync::Arc;
 
 /// Utility type to invoke a command handler
-pub(crate) struct CommandProcessor<'a>
+pub(crate) struct CommandProcessor<'server>
 {
-    server: &'a ClientServer,
-    command_dispatcher: &'a CommandDispatcher,
+    server: &'server ClientServer,
+    command_dispatcher: &'server CommandDispatcher,
 }
 
 /// An action that can be triggered by a command handler.
@@ -79,20 +80,34 @@ pub enum CommandSource<'a>
     User(wrapper::User<'a>),
 }
 
+/// Internal representation of a `CommandSource`
+enum InternalCommandSource
+{
+    PreClient(Arc<PreClient>),
+    User(*const state::User),
+}
+
 /// A client command to be handled
-pub struct ClientCommand<'a>
+pub struct ClientCommand<'server>
 {
     /// The [`Server`] instance
-    pub server: &'a ClientServer,
+    pub server: &'server ClientServer,
     /// The connection from which the command originated
-    pub connection: &'a ClientConnection,
+    pub connection: Arc<ClientConnection>,
+    /// The network state as seen by this command handlers
+    pub net: Arc<Network>,
     /// Details of the user associated with the connection
-    pub source: &'a CommandSource<'a>,
+    source: InternalCommandSource,
     /// The command being executed
     pub command: String,
     /// Arguments supplied
     pub args: Vec<String>,
 }
+
+// Safety: this isn't automatically Send/Sync because of the raw pointer inside `InternalCommandSource`.
+// It's safe, though, because that pointer points into an Arc<> held by the same `ClientCommand`.
+unsafe impl Send for ClientCommand<'_> { }
+unsafe impl Sync for ClientCommand<'_> { }
 
 use std::slice::Iter;
 use std::iter::Peekable;
@@ -151,20 +166,75 @@ impl CommandAction
     }
 }
 
-impl ClientCommand<'_>
+impl<'server> ClientCommand<'server>
 {
+    /// Construct a `ClientCommand`
+    fn new(server: &'server ClientServer,
+           connection: Arc<ClientConnection>,
+           message: ClientMessage,
+        ) -> Result<Self, CommandError>
+    {
+        let net = server.network();
+        let source = Self::translate_message_source(&*net, &*connection)?;
+
+        Ok(Self {
+            server,
+            connection,
+            net,
+            source,
+            command: message.command,
+            args: message.args,
+        })
+    }
+
+    fn translate_message_source(net: &Network, source: &ClientConnection) -> Result<InternalCommandSource, CommandError>
+    {
+        if let Some(user_id) = source.user_id()
+        {
+            let user_state = net.user(user_id)?.raw();
+            Ok(InternalCommandSource::User(user_state))
+        }
+        else if let Some(pre_client) = source.pre_client()
+        {
+            Ok(InternalCommandSource::PreClient(pre_client))
+        }
+        else
+        {
+            Err(CommandError::unknown("Got message from neither preclient nor client"))
+        }
+    }
+
     /// Send a numeric response to the connection that invoked the command
     pub fn response(&self, n: &impl messages::Numeric) -> CommandResult
     {
-        self.connection.send(&n.format_for(self.server, self.source));
+        self.connection.send(&n.format_for(self.server, &self.source()));
         Ok(())
+    }
+
+    /// Return a `CommandSource` describing the originating user or connection
+    pub fn source<'a>(&'a self) -> CommandSource<'a>
+    {
+        match &self.source
+        {
+            InternalCommandSource::PreClient(pc) => CommandSource::PreClient(Arc::clone(pc)),
+            InternalCommandSource::User(user_pointer) =>
+            {
+                // Safety: user_pointer points to data inside the object managed by `self.net`,
+                // so will always survive at least as long as `self`.
+                let user: &'a state::User = unsafe { &**user_pointer };
+                let wrapper = <wrapper::User as wrapper::ObjectWrapper>::wrap(&*self.net, user);
+                CommandSource::User(wrapper)
+            }
+        }
     }
 }
 
-impl<'a> CommandProcessor<'a>
+impl<'server> CommandProcessor<'server>
 {
     /// Construct a `CommandProcessor`
-    pub fn new (server: &'a ClientServer, command_dispatcher: &'a CommandDispatcher) -> Self
+    pub fn new (server: &'server ClientServer,
+                command_dispatcher: &'server CommandDispatcher,
+            ) -> Self
     {
         Self {
             server,
@@ -181,27 +251,27 @@ impl<'a> CommandProcessor<'a>
     ///   executed
     /// - Invoke the handler
     /// - Process any numeric error response, if appropriate
-    #[tracing::instrument(skip(self))]
-    pub fn process_message(&self, message: ClientMessage)
+    #[tracing::instrument(skip_all)]
+    pub fn process_message<'handlers>(&self,
+                                      message: ClientMessage,
+                                      async_handlers: &server::AsyncHandlerCollection<'handlers>)
+        where 'server: 'handlers
     {
         if let Some(conn) = self.server.find_connection(message.source)
         {
-            let net = self.server.network();
+            let cmd = Arc::new(ClientCommand::new(self.server, Arc::clone(&conn), message).expect("Got message from unknown source"));
 
-            let source = Self::translate_message_source(&*net, &*conn).expect("Got message from unknown source");
-            let command = message.command.clone();
-
-            if let Err(err) = self.do_process_message(&*conn, &source, message)
+            if let Err(err) = self.do_process_message(Arc::clone(&cmd), async_handlers)
             {
                 match err {
                     CommandError::UnderlyingError(err) => {
-                        panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), err);
+                        panic!("Error occurred handling command {} from {:?}: {}", cmd.command, conn.id(), err);
                     },
                     CommandError::UnknownError(desc) => {
-                        panic!("Error occurred handling command {} from {:?}: {}", command, conn.id(), desc);
+                        panic!("Error occurred handling command {} from {:?}: {}", cmd.command, conn.id(), desc);
                     },
                     CommandError::Numeric(num) => {
-                        let targeted = num.as_ref().format_for(self.server, &source);
+                        let targeted = num.as_ref().format_for(self.server, &cmd.source());
                         conn.send(&targeted);
                     },
                     CommandError::CustomError => {
@@ -213,44 +283,28 @@ impl<'a> CommandProcessor<'a>
         }
     }
 
-    fn do_process_message(&self,
-                          connection: &ClientConnection,
-                          source: &CommandSource,
-                          message: ClientMessage
+    fn do_process_message<'handlers>(&self,
+                          cmd: Arc<ClientCommand<'handlers>>,
+                          async_handlers: &server::AsyncHandlerCollection<'handlers>,
                         ) -> Result<(), CommandError>
+        where 'server: 'handlers
     {
-        if let Some(factory) = self.command_dispatcher.resolve_command(&message.command) {
+        if let Some(factory) = self.command_dispatcher.resolve_command(&cmd.command) {
             let mut handler = factory(self.server);
-            let cmd = ClientCommand {
-                 server: self.server,
-                 connection,
-                 source,
-                 command: message.command,
-                 args: message.args
-            };
+
 
             handler.validate(&cmd)?;
-            handler.handle(&cmd)?;
+            if let Some(future) = handler.handle_async(Arc::clone(&cmd))
+            {
+                async_handlers.add(server::AsyncHandlerWrapper::new(future, cmd));
+            }
+            else
+            {
+                handler.handle(&cmd)?;
+            }
             Ok(())
         } else {
-            numeric_error!(UnknownCommand, &message.command)
-        }
-    }
-
-    fn translate_message_source<'b>(net: &'b Network, source: &ClientConnection) -> Result<CommandSource<'b>, CommandError>
-        where 'a: 'b
-    {
-        if let Some(user_id) = source.user_id()
-        {
-            Ok(net.user(user_id).map(CommandSource::User)?)
-        }
-        else if let Some(pre_client) = source.pre_client()
-        {
-            Ok(CommandSource::PreClient(pre_client))
-        }
-        else
-        {
-            Err(CommandError::unknown("Got message from neither preclient nor client"))
+            numeric_error!(UnknownCommand, &cmd.command)
         }
     }
 }

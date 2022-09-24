@@ -7,7 +7,10 @@ use sable_network::prelude::*;
 use messages::*;
 use client::*;
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::Arc,
+};
 
 use command_processor::*;
 
@@ -58,12 +61,32 @@ pub(crate) trait CommandHandler
     /// depending on the status of the source connection.
     fn handle(&mut self, cmd: &ClientCommand) -> CommandResult
     {
-        match &cmd.source {
+        match cmd.source() {
             CommandSource::PreClient(pc) => {
-                self.handle_preclient(pc, cmd)
+                self.handle_preclient(&*pc, cmd)
             },
             CommandSource::User(u) => {
-                self.handle_user(u, cmd)
+                self.handle_user(&u, cmd)
+            }
+        }
+    }
+
+    /// Handle the command asynchronously, from any source.
+    ///
+    /// The default implementation delegates to either `handle_preclient_async` or `handle_user_async`
+    /// depending on the status of the source connection.
+    ///
+    /// If this method returns a future, that future will be polled by the server run loop and executed
+    /// as the command handler. If it returns `None` (as the default implementation does), then the
+    /// command will be handled synchronously (by calling
+    fn handle_async<'a>(&mut self, cmd: Arc<ClientCommand<'a>>) -> Option<server::AsyncHandler<'a>>
+    {
+        match cmd.source() {
+            CommandSource::PreClient(pc) => {
+                self.handle_preclient_async(pc, cmd)
+            },
+            CommandSource::User(u) => {
+                self.handle_user_async(u.id(), cmd)
             }
         }
     }
@@ -77,6 +100,16 @@ pub(crate) trait CommandHandler
         numeric_error!(NotRegistered)
     }
 
+    /// Handle the command asynchronously, when it originates from a client connection that has not
+    /// completed registration. Implementations should return a boxed Future which will be driven by
+    /// the server run loop.
+    ///
+    /// The default returns `None`, indicating that the command should be handled synchronously
+    fn handle_preclient_async<'a>(&mut self, _source: Arc<PreClient>, _cmd: Arc<ClientCommand<'a>>) -> Option<server::AsyncHandler<'a>>
+    {
+        None
+    }
+
     /// Handle the command when it originates from a registered user connection.
     ///
     /// If not implemented, the default is to return a numeric error indicating that the user
@@ -84,6 +117,15 @@ pub(crate) trait CommandHandler
     fn handle_user<'a>(&mut self, _source: &'a wrapper::User, _cmd: &ClientCommand) -> CommandResult
     {
         numeric_error!(AlreadyRegistered)
+    }
+
+    /// Handle the command asynchronously, when it originates from a registered user connection.
+    /// Implementations should return a boxed Future which will be driven by the server run loop.
+    ///
+    /// The default returns `None`, indicating that the command should be handled synchronously
+    fn handle_user_async<'a>(&mut self, _source: UserId, _cmd: Arc<ClientCommand<'a>>) -> Option<server::AsyncHandler<'a>>
+    {
+        None
     }
 
     fn handle_oper<'a>(&mut self, source: &'a wrapper::User, cmd: &ClientCommand) -> CommandResult
@@ -139,14 +181,14 @@ impl CommandDispatcher {
 macro_rules! command_handler {
     ($cmd:literal => $typename:ident $body:tt) =>
     {
-        struct $typename<'a>
+        struct $typename<'server>
         {
-            server: &'a crate::server::ClientServer,
+            server: &'server crate::server::ClientServer,
         }
 
-        impl<'a> $typename<'a>
+        impl<'server> $typename<'server>
         {
-            pub fn new(server: &'a crate::server::ClientServer) -> Self
+            pub fn new(server: &'server crate::server::ClientServer) -> Self
             {
                 Self{ server }
             }
@@ -163,7 +205,7 @@ macro_rules! command_handler {
             }
         }
 
-        impl<'a> CommandHandler for $typename<'a>
+        impl<'server> CommandHandler for $typename<'server>
         $body
 
         mod registration
@@ -206,3 +248,4 @@ mod kline;
 mod oper;
 mod chathistory;
 mod session;
+mod async_wait;
