@@ -220,7 +220,8 @@ impl<'server> ClientCommand<'server>
             InternalCommandSource::User(user_pointer) =>
             {
                 // Safety: user_pointer points to data inside the object managed by `self.net`,
-                // so will always survive at least as long as `self`.
+                // so will always survive at least as long as `self`. The returned `CommandSource`
+                // creates a borrow of `self.net`, so it can't be removed while that exists.
                 let user: &'a state::User = unsafe { &**user_pointer };
                 let wrapper = <wrapper::User as wrapper::ObjectWrapper>::wrap(&*self.net, user);
                 CommandSource::User(wrapper)
