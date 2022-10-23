@@ -81,7 +81,7 @@ async fn sable_main(server_conf_path: &Path,
     let (shutdown_send, _shutdown_recv) = broadcast::channel(1);
     let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
 
-    let (event_log, client_listeners, mut server) = if let Some(upgrade_fd) = upgrade_fd {
+    let (event_log, client_listeners, server) = if let Some(upgrade_fd) = upgrade_fd {
         tracing::info!("Got upgrade FD {}", upgrade_fd);
 
         let state = upgrade::read_upgrade_state(upgrade_fd);

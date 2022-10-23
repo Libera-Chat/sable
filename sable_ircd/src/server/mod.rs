@@ -10,13 +10,16 @@ use auth_client::*;
 use client_listener::*;
 
 use tokio::{
-    sync::mpsc::{
-        Receiver,
-        UnboundedSender,
-        UnboundedReceiver,
-        unbounded_channel,
+    sync::{
+        mpsc::{
+            Receiver,
+            UnboundedSender,
+            UnboundedReceiver,
+            unbounded_channel,
+        },
+        oneshot,
+        Mutex,
     },
-    sync::oneshot,
     select,
 };
 
@@ -51,12 +54,11 @@ mod user_access;
 /// IRC client protocol.
 pub struct ClientServer
 {
-    // These are Options to allow `run()` to take ownership of them and then permit
-    // long-lived immutable references to `Self` to be stored in async handlers
-    action_receiver: Option<UnboundedReceiver<CommandAction>>,
-    connection_events: Option<UnboundedReceiver<ConnectionEvent>>,
-    auth_events: Option<UnboundedReceiver<AuthEvent>>,
-    history_receiver: Option<UnboundedReceiver<NetworkHistoryUpdate>>,
+    // These must be tokio Mutexes so that we can hold on to them across await points
+    action_receiver: Mutex<UnboundedReceiver<CommandAction>>,
+    connection_events: Mutex<UnboundedReceiver<ConnectionEvent>>,
+    auth_events: Mutex<UnboundedReceiver<AuthEvent>>,
+    history_receiver: Mutex<UnboundedReceiver<NetworkHistoryUpdate>>,
 
     action_submitter: UnboundedSender<CommandAction>,
     command_dispatcher: command::CommandDispatcher,
@@ -89,15 +91,16 @@ impl ClientServer
         let server = Arc::new(Server::new(id, epoch, name, net, event_log, rpc_receiver, history_sender, policy));
 
         Self {
-            action_receiver: Some(action_receiver),
-            connection_events: Some(connection_events),
-            history_receiver: Some(history_receiver),
+            action_receiver: Mutex::new(action_receiver),
+            connection_events: Mutex::new(connection_events),
+            history_receiver: Mutex::new(history_receiver),
+            auth_events: Mutex::new(auth_events),
+
             auth_client: AuthClient::new(auth_sender).unwrap(),
 
             action_submitter,
             command_dispatcher: CommandDispatcher::new(),
             connections: RwLock::new(ConnectionCollection::new()),
-            auth_events: Some(auth_events),
             isupport: Self::build_basic_isupport(),
             client_caps: CapabilityRepository::new(),
             server,
@@ -271,7 +274,7 @@ impl ClientServer
     /// - `management_channel`: receives management commands from the management service
     /// - `shutdown_channel`: used to signal the server to shut down
     #[tracing::instrument(skip_all)]
-    pub async fn run(&mut self, mut management_channel: Receiver<ServerManagementCommand>, shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
+    pub async fn run(&self, mut management_channel: Receiver<ServerManagementCommand>, shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {
         let (server_shutdown, server_shutdown_recv) = oneshot::channel();
         let mut server_shutdown = Some(server_shutdown);
@@ -282,10 +285,10 @@ impl ClientServer
 
         // Take ownership of these receivers here, so that we no longer need a mut borrow of `self` once the
         // run loop starts
-        let mut action_receiver = self.action_receiver.take().unwrap();
-        let mut history_receiver = self.history_receiver.take().unwrap();
-        let mut connection_events = self.connection_events.take().unwrap();
-        let mut auth_events = self.auth_events.take().unwrap();
+        let mut action_receiver = self.action_receiver.lock().await;
+        let mut history_receiver = self.history_receiver.lock().await;
+        let mut connection_events = self.connection_events.lock().await;
+        let mut auth_events = self.auth_events.lock().await;
 
         let mut async_handlers = AsyncHandlerCollection::new();
 
