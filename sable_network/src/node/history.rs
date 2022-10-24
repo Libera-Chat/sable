@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use super::*;
 
-impl<Policy: crate::policy::PolicyService> Server<Policy>
+impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
 {
     pub(super) fn notify_user(&self, user_id: UserId, entry_id: LogEntryId)
     {

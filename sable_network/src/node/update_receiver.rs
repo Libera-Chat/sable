@@ -21,7 +21,7 @@ pub enum HandlerError
 
 pub type HandleResult = Result<(), HandlerError>;
 
-impl<Policy: crate::policy::PolicyService> Server<Policy>
+impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
 {
     fn handle_nick_change(&self, entry: &HistoryLogEntry, detail: &update::UserNickChange) -> HandleResult
     {
@@ -234,7 +234,7 @@ impl<Policy: crate::policy::PolicyService> Server<Policy>
     }
 }
 
-impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for Server<Policy>
+impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode<Policy>
 {
     fn notify_update(&self, update: NetworkStateChange, source_event: &Event)
     {

@@ -49,8 +49,8 @@ mod user_access;
 
 /// A client server.
 ///
-/// This type uses the [`Server`](sable_network::server::Server) struct to link to the network
-/// and process state. It consumes the stream of history output by `Server`, and speaks
+/// This type uses the [`NetworkNode`](sable_network::node::NetworkNode) struct to link to the network
+/// and process state. It consumes the stream of history output by `NetworkNode`, and speaks
 /// IRC client protocol.
 pub struct ClientServer
 {
@@ -67,7 +67,7 @@ pub struct ClientServer
     isupport: ISupportBuilder,
     client_caps: CapabilityRepository,
 
-    server: Arc<Server>,
+    server: Arc<NetworkNode>,
 }
 
 impl ClientServer
@@ -88,7 +88,7 @@ impl ClientServer
 
         let policy = policy::StandardPolicyService::new();
 
-        let server = Arc::new(Server::new(id, epoch, name, net, event_log, rpc_receiver, history_sender, policy));
+        let server = Arc::new(NetworkNode::new(id, epoch, name, net, event_log, rpc_receiver, history_sender, policy));
 
         Self {
             action_receiver: Mutex::new(action_receiver),
@@ -119,8 +119,8 @@ impl ClientServer
         self.server.ids()
     }
 
-    /// The underlying network server
-    pub fn server(&self) -> &Server
+    /// The underlying network node
+    pub fn server(&self) -> &NetworkNode
     {
         &self.server
     }

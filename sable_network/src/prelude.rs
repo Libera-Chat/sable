@@ -16,7 +16,7 @@ pub use crate::{
     modes::*,
     policy,
     rpc,
-    server::Server,
+    node::NetworkNode,
     sync::*,
     types::*,
     history::*,

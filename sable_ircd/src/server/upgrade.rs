@@ -4,16 +4,16 @@ use auth_client::{
     AuthClient,
     AuthClientState
 };
-use sable_network::server::{
-    Server,
-    ServerState,
+use sable_network::node::{
+    NetworkNode,
+    NetworkNodeState,
 };
 
-/// Saved state of a [`Server`] for later resumption
+/// Saved state of a [`ClientServer`] for later resumption
 #[derive(serde::Serialize,serde::Deserialize)]
 pub struct ClientServerState
 {
-    server_state: ServerState,
+    node_state: NetworkNodeState,
     connections: ConnectionCollectionState,
     auth_state: AuthClientState,
     client_caps: CapabilityRepository,
@@ -25,7 +25,7 @@ impl ClientServer
     pub async fn save_state(self) -> std::io::Result<ClientServerState>
     {
         Ok(ClientServerState {
-            server_state: Arc::try_unwrap(self.server).map_err(|_| std::io::ErrorKind::Other)?.save_state(),
+            node_state: Arc::try_unwrap(self.server).map_err(|_| std::io::ErrorKind::Other)?.save_state(),
             connections: self.connections.into_inner().save_state(),
             auth_state: self.auth_client.save_state().await?,
             client_caps: self.client_caps,
@@ -49,7 +49,7 @@ impl ClientServer
         let (history_sender, history_receiver) = unbounded_channel();
 
         Ok(Self {
-            server: Arc::new(Server::restore_from(state.server_state, event_log, rpc_receiver, history_sender)?),
+            server: Arc::new(NetworkNode::restore_from(state.node_state, event_log, rpc_receiver, history_sender)?),
             action_receiver: Mutex::new(action_recv),
             action_submitter: action_send,
             connection_events: Mutex::new(connection_events),

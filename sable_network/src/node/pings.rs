@@ -2,7 +2,7 @@ use super::*;
 
 const PINGOUT_DURATION: i64 = 240;
 
-impl<Policy: crate::policy::PolicyService> Server<Policy>
+impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
 {
     pub(super) fn check_pings(&self)
     {

@@ -37,10 +37,10 @@ mod update_receiver;
 mod history;
 
 mod upgrade;
-pub use upgrade::ServerState;
+pub use upgrade::NetworkNodeState;
 
 /// A network server.
-pub struct Server<Policy = crate::policy::StandardPolicyService>
+pub struct NetworkNode<Policy = crate::policy::StandardPolicyService>
     where Policy: PolicyService
 {
     my_id: ServerId,
@@ -58,9 +58,9 @@ pub struct Server<Policy = crate::policy::StandardPolicyService>
 }
 
 
-impl<Policy: crate::policy::PolicyService> Server<Policy>
+impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
 {
-    /// Construct a server.
+    /// Construct a network node.
     ///
     /// Arguments:
     /// - `id`: This server's ID

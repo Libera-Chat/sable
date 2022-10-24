@@ -16,7 +16,7 @@ pub mod saveable;
 
 pub mod sync;
 
-pub mod server;
+pub mod node;
 
 pub mod types
 {
