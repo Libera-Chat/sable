@@ -1,4 +1,5 @@
 use crate::*;
+use crate::movable::Movable;
 use capability::*;
 use messages::*;
 
@@ -68,6 +69,7 @@ pub struct ClientServer
     client_caps: CapabilityRepository,
 
     server: Arc<NetworkNode>,
+    listeners: Movable<ListenerCollection>,
 }
 
 impl ClientServer
@@ -79,6 +81,7 @@ impl ClientServer
                net: Network,
                event_log: Arc<ReplicatedEventLog>,
                rpc_receiver: UnboundedReceiver<NetworkMessage>,
+               listeners: ListenerCollection,
                connection_events: UnboundedReceiver<ConnectionEvent>,
             ) -> Self
     {
@@ -104,6 +107,7 @@ impl ClientServer
             isupport: Self::build_basic_isupport(),
             client_caps: CapabilityRepository::new(),
             server,
+            listeners: Movable::new(listeners),
         }
     }
 
@@ -292,7 +296,7 @@ impl ClientServer
 
         let mut async_handlers = AsyncHandlerCollection::new();
 
-        loop
+        let shutdown_action = loop
         {
             // Before looking for an I/O event, do our internal bookkeeping.
             // First, take inbound client messages and process them
@@ -434,6 +438,8 @@ impl ClientServer
                     }
                 },
             }
-        }
+        };
+
+        shutdown_action
     }
 }

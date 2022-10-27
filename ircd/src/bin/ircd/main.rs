@@ -81,23 +81,19 @@ async fn sable_main(server_conf_path: &Path,
     let (shutdown_send, _shutdown_recv) = broadcast::channel(1);
     let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
 
-    let (event_log, client_listeners, server) = if let Some(upgrade_fd) = upgrade_fd {
+    let (event_log, server) = if let Some(upgrade_fd) = upgrade_fd {
         tracing::info!("Got upgrade FD {}", upgrade_fd);
 
         let state = upgrade::read_upgrade_state(upgrade_fd);
 
         let event_log = Arc::new(ReplicatedEventLog::restore(state.sync_state, server_send, sync_config, server_config.node_config));
 
-        let client_listeners = ListenerCollection::resume(state.listener_state, client_send)?;
-
         let server = ClientServer::restore_from(state.server_state,
                                           Arc::clone(&event_log),
-                                          &client_listeners,
-                                          client_recv,
                                           server_recv
                                     )?;
 
-        (event_log, client_listeners, server)
+        (event_log, server)
     }
     else
     {
@@ -118,15 +114,6 @@ async fn sable_main(server_conf_path: &Path,
             *event_log.sync_to_network().await
         };
 
-        let server = ClientServer::new(server_config.server_id,
-                                 epoch,
-                                 server_config.server_name,
-                                 network,
-                                 Arc::clone(&event_log),
-                                 server_recv,
-                                 client_recv,
-                            );
-
         client_listeners.load_tls_certificates(tls_data.key.clone(), tls_data.cert_chain.clone())?;
 
         for listener in server_config.listeners
@@ -135,7 +122,17 @@ async fn sable_main(server_conf_path: &Path,
             client_listeners.add_listener(listener.address.parse().unwrap(), conn_type)?;
         }
 
-        (event_log, client_listeners, server)
+        let server = ClientServer::new(server_config.server_id,
+                                 epoch,
+                                 server_config.server_name,
+                                 network,
+                                 Arc::clone(&event_log),
+                                 server_recv,
+                                 client_listeners,
+                                 client_recv,
+                            );
+
+        (event_log, server)
     };
 
     let (management_send, management_recv) = channel(128);
@@ -208,13 +205,10 @@ async fn sable_main(server_conf_path: &Path,
     {
         ShutdownAction::Shutdown =>
         {
-            client_listeners.shutdown().await;
             Ok(())
         }
         ShutdownAction::Restart =>
         {
-            client_listeners.shutdown().await;
-
             let err = Command::new(env::current_exe()?)
                         .args(env::args().skip(1).collect::<Vec<_>>())
                         .exec();
@@ -224,7 +218,6 @@ async fn sable_main(server_conf_path: &Path,
         ShutdownAction::Upgrade =>
         {
             let server_state = server.save_state().await?;
-            let listener_state = client_listeners.save().await?;
             // Now that the Server has been consumed to turn it into a saved state,
             // its reference to the event log is gone, and we can unwrap the Arc
             let sync_state = Arc::try_unwrap(event_log)
@@ -234,7 +227,6 @@ async fn sable_main(server_conf_path: &Path,
 
             upgrade::exec_upgrade(&exe_path, server_conf_path, sync_conf_path, upgrade::ApplicationState {
                 server_state,
-                listener_state,
                 sync_state
             });
         }
