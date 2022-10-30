@@ -11,7 +11,7 @@ pub struct Server
 {
     node: Arc<NetworkNode>,
     log: Arc<ReplicatedEventLog>,
-    server: ClientServer,
+    server: Arc<ClientServer>,
 }
 
 #[derive(Serialize,Deserialize)]
@@ -48,7 +48,7 @@ impl Server
 
         let node = Arc::new(NetworkNode::new(id, epoch, name, network, Arc::clone(&log), server_recv, history_send, policy));
 
-        let server = ClientServer::new(Arc::clone(&node), history_recv, listeners, connection_events);
+        let server = Arc::new(ClientServer::new(Arc::clone(&node), history_recv, listeners, connection_events));
 
         Self {
             node,
@@ -78,7 +78,9 @@ impl Server
         // Because ClientServer holds an Arc to the node, and the node holds an Arc to the log,
         // they have to be saved/deconstructed in this order to get rid of the extra refs so that the
         // next one can be unwrapped.
-        let server_state = self.server.save_state().await?;
+        let server_state = Arc::try_unwrap(self.server)
+                            .unwrap_or_else(|_| panic!("Couldn't unwrap server"))
+                            .save_state().await?;
         let node_state = Arc::try_unwrap(self.node)
                             .unwrap_or_else(|_| panic!("Couldn't unwrap node"))
                             .save_state();
@@ -106,7 +108,7 @@ impl Server
 
         let node = Arc::new(NetworkNode::restore_from(state.node_state, Arc::clone(&log), server_recv, history_send)?);
 
-        let server = ClientServer::restore_from(state.server_state, Arc::clone(&node), history_recv)?;
+        let server = Arc::new(ClientServer::restore_from(state.server_state, Arc::clone(&node), history_recv)?);
 
         Ok(Self {
             node,
@@ -117,6 +119,9 @@ impl Server
 
     pub async fn shutdown(self)
     {
-        self.server.shutdown().await;
+        let server = Arc::try_unwrap(self.server)
+                            .unwrap_or_else(|_| panic!("Couldn't unwrap server"));
+
+        server.shutdown().await;
     }
 }
