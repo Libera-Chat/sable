@@ -85,4 +85,9 @@ impl<'collection> AsyncHandlerCollection<'collection>
         // Poll as many as possible of the futures we're storing
         while let Some(_) = self.futures.next().await { }
     }
+
+    pub fn is_empty(&self) -> bool
+    {
+        self.futures.is_empty()
+    }
 }

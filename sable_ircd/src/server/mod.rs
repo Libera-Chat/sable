@@ -289,6 +289,7 @@ impl ClientServer
 
         let shutdown_action = loop
         {
+            tracing::trace!("ClientServer run loop");
             // Before looking for an I/O event, do our internal bookkeeping.
             // First, take inbound client messages and process them
             self.process_pending_client_messages(&async_handlers);
@@ -306,20 +307,23 @@ impl ClientServer
             select! {
                 _ = &mut timeout =>
                 {
+                    tracing::trace!("...from timeout");
                     // Make sure we don't block waiting for i/o for too long, in case there are
                     // queued client messages to be processed or other housekeeping
                     continue;
                 },
                 res = &mut server_task =>
                 {
+                    tracing::trace!("...from server_task");
                     match res
                     {
                         Ok(action) => break action,
                         Err(e) => panic!("Server task exited abnormally ({})", e)
                     };
                 },
-                _ = async_handlers.poll() =>
+                _ = async_handlers.poll(), if !async_handlers.is_empty() =>
                 {
+                    tracing::trace!("...from async_handlers");
                     // No need to do anything here; just polling the collection is enough to
                     // drive execution of any async handlers that are running
                 },
@@ -408,6 +412,8 @@ impl ClientServer
                 },
                 shutdown = &mut shutdown_channel =>
                 {
+                    tracing::trace!("...from shutdown_channel");
+
                     shutdown_channel = None.into();
                     match shutdown
                     {
