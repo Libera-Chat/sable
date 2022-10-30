@@ -40,19 +40,18 @@ impl ClientServer
     /// connection data; the other arguments are as for [`new`](Self::new).
     pub fn restore_from(
             state: ClientServerState,
-            event_log: Arc<ReplicatedEventLog>,
-            rpc_receiver: UnboundedReceiver<NetworkMessage>,
+            server: Arc<NetworkNode>,
+            history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
         ) -> std::io::Result<Self>
     {
         let (auth_send, auth_recv) = unbounded_channel();
         let (action_send, action_recv) = unbounded_channel();
-        let (history_sender, history_receiver) = unbounded_channel();
         let (client_send, client_recv) = unbounded_channel();
 
         let listeners = ListenerCollection::resume(state.listener_state, client_send)?;
 
         Ok(Self {
-            server: Arc::new(NetworkNode::restore_from(state.node_state, event_log, rpc_receiver, history_sender)?),
+            server,
             action_receiver: Mutex::new(action_recv),
             action_submitter: action_send,
             connection_events: Mutex::new(client_recv),

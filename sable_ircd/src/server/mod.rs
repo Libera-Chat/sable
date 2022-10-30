@@ -75,23 +75,14 @@ pub struct ClientServer
 impl ClientServer
 {
     /// Create a new `ClientServer`
-    pub fn new(id: ServerId,
-               epoch: EpochId,
-               name: ServerName,
-               net: Network,
-               event_log: Arc<ReplicatedEventLog>,
-               rpc_receiver: UnboundedReceiver<NetworkMessage>,
+    pub fn new(node: Arc<NetworkNode>,
+               history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
                listeners: ListenerCollection,
                connection_events: UnboundedReceiver<ConnectionEvent>,
             ) -> Self
     {
-        let (history_sender, history_receiver) = unbounded_channel();
         let (action_submitter, action_receiver) = unbounded_channel();
         let (auth_sender, auth_events) = unbounded_channel();
-
-        let policy = policy::StandardPolicyService::new();
-
-        let server = Arc::new(NetworkNode::new(id, epoch, name, net, event_log, rpc_receiver, history_sender, policy));
 
         Self {
             action_receiver: Mutex::new(action_receiver),
@@ -106,7 +97,7 @@ impl ClientServer
             connections: RwLock::new(ConnectionCollection::new()),
             isupport: Self::build_basic_isupport(),
             client_caps: CapabilityRepository::new(),
-            server,
+            server: node,
             listeners: Movable::new(listeners),
         }
     }
@@ -441,5 +432,13 @@ impl ClientServer
         };
 
         shutdown_action
+    }
+
+    pub async fn shutdown(mut self)
+    {
+        if let Some(listeners) = self.listeners.take()
+        {
+            listeners.shutdown().await;
+        }
     }
 }

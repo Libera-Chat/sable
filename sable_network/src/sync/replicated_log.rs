@@ -12,7 +12,7 @@ use tokio::{
         unbounded_channel,
     },
     sync::Mutex,
-    sync::broadcast,
+    sync::oneshot,
     select,
     task::JoinHandle,
     time::sleep,
@@ -34,7 +34,7 @@ pub enum EventLogSaveError
     #[error("{0}")]
     InternalError(&'static str),
     #[error("Unknown error: {0}")]
-    UnknownError(#[from] Box<dyn std::error::Error>)
+    UnknownError(#[from] Box<dyn std::error::Error + Send + Sync>)
 }
 
 /// Saved state for a [ReplicatedEventLog], used to save and restore across an upgrade
@@ -246,7 +246,7 @@ impl ReplicatedEventLog
         panic!("No peer available to sync");
     }
 
-    pub fn start_sync(&self, shutdown: broadcast::Receiver<ShutdownAction>) -> JoinHandle<Result<(), NetworkError>>
+    pub fn start_sync(&self, shutdown: oneshot::Receiver<ShutdownAction>) -> JoinHandle<Result<(), NetworkError>>
     {
         let task_state = Arc::clone(&self.task_state);
         tokio::spawn(async move {
@@ -290,7 +290,7 @@ impl TaskState
 {
     /// Run the main network synchronisation task.
     #[tracing::instrument(skip_all)]
-    async fn sync_task(&mut self, mut shutdown: broadcast::Receiver<ShutdownAction>) -> Result<(), NetworkError>
+    async fn sync_task(&mut self, mut shutdown: oneshot::Receiver<ShutdownAction>) -> Result<(), NetworkError>
     {
         let listen_task = self.net.spawn_listen_task().await?;
 
@@ -337,7 +337,7 @@ impl TaskState
                         None => break
                     }
                 },
-                _ = shutdown.recv() => {
+                _ = &mut shutdown => {
                     break
                 }
             }

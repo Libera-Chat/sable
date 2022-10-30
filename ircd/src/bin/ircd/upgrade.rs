@@ -1,5 +1,5 @@
 use ircd::*;
-use sable_ircd::server::*;
+use ircd::server::ServerState;
 
 use std::os::unix::{
     io::{
@@ -16,14 +16,7 @@ use std::{
 
 use memfd::*;
 
-#[derive(Serialize,Deserialize)]
-pub struct ApplicationState
-{
-    pub server_state: ClientServerState,
-    pub sync_state: ReplicatedEventLogState,
-}
-
-pub fn read_upgrade_state(fd: RawFd) -> ApplicationState
+pub fn read_upgrade_state(fd: RawFd) -> ServerState
 {
     let memfd = unsafe { Memfd::from_raw_fd(fd) };
     let file = memfd.as_file();
@@ -31,7 +24,7 @@ pub fn read_upgrade_state(fd: RawFd) -> ApplicationState
     serde_json::from_reader(file).expect("Failed to unpack upgrade state")
 }
 
-fn prepare_upgrade(state: ApplicationState) -> RawFd
+fn prepare_upgrade(state: ServerState) -> RawFd
 {
     let memfd = MemfdOptions::default().close_on_exec(false).create("upgrade_state").expect("Failed to create upgrade memfd");
     let mut file = memfd.as_file();
@@ -41,7 +34,7 @@ fn prepare_upgrade(state: ApplicationState) -> RawFd
     memfd.into_raw_fd()
 }
 
-pub(super) fn exec_upgrade(exe: &Path, server_conf: &Path, network_conf: &Path, state: ApplicationState) -> !
+pub(super) fn exec_upgrade(exe: &Path, server_conf: &Path, network_conf: &Path, state: ServerState) -> !
 {
     let fd = prepare_upgrade(state);
     let args = ["--server-conf",

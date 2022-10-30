@@ -1,5 +1,6 @@
 use ircd::*;
 use ircd::config::*;
+use ircd::server::*;
 use client_listener::*;
 
 use sable_network::rpc::ShutdownAction;
@@ -8,7 +9,6 @@ use std::{
     process::Command,
     env,
     os::unix::process::CommandExt,
-    sync::Arc,
 };
 
 use tokio::{
@@ -73,7 +73,6 @@ async fn sable_main(server_conf_path: &Path,
     ircd::tracing_config::build_subscriber(server_config.log)?.init();
 
     let (client_send, client_recv) = unbounded_channel();
-    let (server_send, server_recv) = unbounded_channel();
 
     // There are two shutdown channels, one for the Server task and one for everything else.
     // The Server needs to shut down first, because it'll panic if any of the others disappears
@@ -81,38 +80,23 @@ async fn sable_main(server_conf_path: &Path,
     let (shutdown_send, _shutdown_recv) = broadcast::channel(1);
     let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
 
-    let (event_log, server) = if let Some(upgrade_fd) = upgrade_fd {
+    let server = if let Some(upgrade_fd) = upgrade_fd {
         tracing::info!("Got upgrade FD {}", upgrade_fd);
 
         let state = upgrade::read_upgrade_state(upgrade_fd);
 
-        let event_log = Arc::new(ReplicatedEventLog::restore(state.sync_state, server_send, sync_config, server_config.node_config));
-
-        let server = ClientServer::restore_from(state.server_state,
-                                          Arc::clone(&event_log),
-                                          server_recv
+        let server = Server::restore_from(state,
+                                          sync_config,
+                                          server_config.node_config
                                     )?;
 
-        (event_log, server)
+        server
     }
     else
     {
         let epoch = EpochId::new(chrono::Utc::now().timestamp());
-        let event_log = Arc::new(ReplicatedEventLog::new(
-                                    server_config.server_id,
-                                    epoch,
-                                    server_send,
-                                    sync_config,
-                                    server_config.node_config
-                                ));
 
         let client_listeners = ListenerCollection::new(client_send)?;
-
-        let network = if let Some(net_conf) = bootstrap_network {
-            Network::new(net_conf)
-        } else {
-            *event_log.sync_to_network().await
-        };
 
         client_listeners.load_tls_certificates(tls_data.key.clone(), tls_data.cert_chain.clone())?;
 
@@ -122,17 +106,15 @@ async fn sable_main(server_conf_path: &Path,
             client_listeners.add_listener(listener.address.parse().unwrap(), conn_type)?;
         }
 
-        let server = ClientServer::new(server_config.server_id,
-                                 epoch,
-                                 server_config.server_name,
-                                 network,
-                                 Arc::clone(&event_log),
-                                 server_recv,
-                                 client_listeners,
-                                 client_recv,
-                            );
-
-        (event_log, server)
+        Server::new(server_config.server_id,
+                    epoch,
+                    server_config.server_name,
+                    sync_config,
+                    server_config.node_config,
+                    bootstrap_network,
+                    client_listeners,
+                    client_recv
+            ).await
     };
 
     let (management_send, management_recv) = channel(128);
@@ -185,8 +167,6 @@ async fn sable_main(server_conf_path: &Path,
         server
     }.instrument(tracing::info_span!("management event pump")));
 
-    let sync_task = event_log.start_sync(shutdown_send.subscribe());
-
     // Run the actual server - we don't use spawn() here because Server isn't Send/Sync
     let shutdown_action = server.run(management_recv, server_shutdown_recv).await;
 
@@ -195,20 +175,21 @@ async fn sable_main(server_conf_path: &Path,
     let management_server = management_task.await?;
 
     shutdown_send.send(shutdown_action.clone())?;
-    let (_,_) = tokio::join!(
-        sync_task,
-        management_server.wait()
-    );
+    management_server.wait().await?;
 
     // Now that we've closed down, deal with whatever the intended action was
     match shutdown_action
     {
         ShutdownAction::Shutdown =>
         {
+            server.shutdown().await;
+
             Ok(())
         }
         ShutdownAction::Restart =>
         {
+            server.shutdown().await;
+
             let err = Command::new(env::current_exe()?)
                         .args(env::args().skip(1).collect::<Vec<_>>())
                         .exec();
@@ -217,18 +198,9 @@ async fn sable_main(server_conf_path: &Path,
         }
         ShutdownAction::Upgrade =>
         {
-            let server_state = server.save_state().await?;
-            // Now that the Server has been consumed to turn it into a saved state,
-            // its reference to the event log is gone, and we can unwrap the Arc
-            let sync_state = Arc::try_unwrap(event_log)
-                                 .unwrap_or_else(|_| panic!("Failed to unwrap event log"))
-                                 .save_state()
-                                 .expect("Failed to save event log state");
+            let server_state = server.save().await?;
 
-            upgrade::exec_upgrade(&exe_path, server_conf_path, sync_conf_path, upgrade::ApplicationState {
-                server_state,
-                sync_state
-            });
+            upgrade::exec_upgrade(&exe_path, server_conf_path, sync_conf_path, server_state);
         }
     }
 }
