@@ -167,7 +167,7 @@ async fn sable_main(server_conf_path: &Path,
         server
     }.instrument(tracing::info_span!("management event pump")));
 
-    // Run the actual server - we don't use spawn() here because Server isn't Send/Sync
+    // Run the actual server
     let shutdown_action = server.run(management_recv, server_shutdown_recv).await;
 
     // ...and once it finishes, shut down the other tasks

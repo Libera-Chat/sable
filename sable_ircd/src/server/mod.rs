@@ -30,8 +30,6 @@ use std::{
 
 use parking_lot::RwLock;
 
-use futures::future::OptionFuture;
-
 use strum::IntoEnumIterator;
 
 mod management;
@@ -269,15 +267,8 @@ impl ClientServer
     /// - `management_channel`: receives management commands from the management service
     /// - `shutdown_channel`: used to signal the server to shut down
     #[tracing::instrument(skip_all)]
-    pub async fn run(&self, mut management_channel: Receiver<ServerManagementCommand>, shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
+    pub async fn run(&self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {
-        let (server_shutdown, server_shutdown_recv) = oneshot::channel();
-        let mut server_shutdown = Some(server_shutdown);
-
-        let mut server_task = tokio::spawn(Arc::clone(&self.server).run(server_shutdown_recv));
-
-        let mut shutdown_channel = OptionFuture::from(Some(shutdown_channel));
-
         // Take ownership of these receivers here, so that we no longer need a mut borrow of `self` once the
         // run loop starts
         let mut action_receiver = self.action_receiver.lock().await;
@@ -311,15 +302,6 @@ impl ClientServer
                     // Make sure we don't block waiting for i/o for too long, in case there are
                     // queued client messages to be processed or other housekeeping
                     continue;
-                },
-                res = &mut server_task =>
-                {
-                    tracing::trace!("...from server_task");
-                    match res
-                    {
-                        Ok(action) => break action,
-                        Err(e) => panic!("Server task exited abnormally ({})", e)
-                    };
                 },
                 _ = async_handlers.poll(), if !async_handlers.is_empty() =>
                 {
@@ -414,24 +396,17 @@ impl ClientServer
                 {
                     tracing::trace!("...from shutdown_channel");
 
-                    shutdown_channel = None.into();
                     match shutdown
                     {
-                        Some(Err(e)) =>
+                        Err(e) =>
                         {
                             tracing::error!("Got error ({}) from shutdown channel; exiting", e);
                             break ShutdownAction::Shutdown;
                         }
-                        Some(Ok(action)) =>
+                        Ok(action) =>
                         {
-                            // Signal the underlying network server to shut down, but keep going
-                            // until it does so that we can process any state changes it emits
-                            if let Some(server_shutdown) = server_shutdown.take()
-                            {
-                                server_shutdown.send(action).expect("Failed to signal server shutdown");
-                            }
+                            break action;
                         }
-                        None => ()
                     }
                 },
             }

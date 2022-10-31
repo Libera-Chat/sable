@@ -60,9 +60,29 @@ impl Server
     pub async fn run(&self, management: Receiver<ServerManagementCommand>, shutdown: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
     {
         let (log_shutdown_send, log_shutdown_recv) = oneshot::channel();
+        let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
+        let (node_shutdown_send, node_shutdown_recv) = oneshot::channel();
+
         let log_task = self.log.start_sync(log_shutdown_recv);
 
-        let action = self.server.run(management, shutdown).await;
+        let node = Arc::clone(&self.node);
+        let node_task = tokio::spawn(async move {
+            node.run(node_shutdown_recv).await;
+        });
+
+        let server = Arc::clone(&self.server);
+
+        let server_task = tokio::spawn(async move {
+            server.run(management, server_shutdown_recv).await
+        });
+
+        let action = shutdown.await.expect("Shutdown channel error");
+
+        node_shutdown_send.send(action.clone()).expect("Couldn't signal node to shutdown");
+        node_task.await.expect("Node task panicked");
+
+        server_shutdown_send.send(action.clone()).expect("Couldn't signal server to shutdown");
+        server_task.await.expect("Server task panicked");
 
         log_shutdown_send.send(action.clone()).expect("Couldn't signal log to shutdown");
         log_task.await.expect("Log task panicked?").expect("Log task returned error");
