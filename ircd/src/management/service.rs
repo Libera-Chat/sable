@@ -3,7 +3,7 @@ use sable_ircd::prelude::*;
 use server::ServerManagementCommand;
 use server::ServerManagementCommandType;
 use sable_network::rpc::ShutdownAction;
-use ircd::config::*;
+use crate::config::*;
 
 use std::{
     future::Future,
@@ -21,7 +21,6 @@ use tokio::{
             Receiver,
             channel,
         },
-        broadcast,
         oneshot
     },
     net::{
@@ -214,7 +213,7 @@ impl ManagementServer
 
     pub fn start(config: ManagementConfig,
                  tls_data: TlsData,
-                 mut shutdown: broadcast::Receiver<ShutdownAction>) -> Self
+                 mut shutdown: oneshot::Receiver<()>) -> Self
     {
         let (command_sender, command_receiver) = channel(128);
 
@@ -242,7 +241,7 @@ impl ManagementServer
                             }
                         }
                     }
-                    _ = shutdown.recv() =>
+                    _ = &mut shutdown =>
                     {
                         break;
                     }

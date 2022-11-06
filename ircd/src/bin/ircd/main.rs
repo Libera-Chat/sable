@@ -18,13 +18,6 @@ use tokio::{
 use tracing::Instrument;
 use tracing_subscriber::util::SubscriberInitExt;
 
-mod management
-{
-    mod command;
-    pub use command::*;
-    mod service;
-    pub use service::*;
-}
 mod upgrade;
 
 #[derive(Debug,StructOpt)]
@@ -70,112 +63,45 @@ async fn sable_main(server_conf_path: &Path,
 
     println!("uid={}", nix::unistd::getuid());
 
-    ircd::tracing_config::build_subscriber(server_config.log)?.init();
+    ircd::tracing_config::build_subscriber(server_config.log.clone())?.init();
 
     let (client_send, client_recv) = unbounded_channel();
 
-    // There are two shutdown channels, one for the Server task and one for everything else.
-    // The Server needs to shut down first, because it'll panic if any of the others disappears
-    // from under it.
-    let (shutdown_send, _shutdown_recv) = broadcast::channel(1);
-    let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
-
-    let server = if let Some(upgrade_fd) = upgrade_fd {
+    let server = if let Some(upgrade_fd) = upgrade_fd
+    {
         tracing::info!("Got upgrade FD {}", upgrade_fd);
 
         let state = upgrade::read_upgrade_state(upgrade_fd);
 
         let server = Server::restore_from(state,
                                           sync_config,
-                                          server_config.node_config
+                                          server_config
                                     )?;
 
         server
     }
     else
     {
-        let epoch = EpochId::new(chrono::Utc::now().timestamp());
-
         let client_listeners = ListenerCollection::new(client_send)?;
 
         client_listeners.load_tls_certificates(tls_data.key.clone(), tls_data.cert_chain.clone())?;
 
-        for listener in server_config.listeners
+        for listener in server_config.listeners.iter()
         {
             let conn_type = if listener.tls {ConnectionType::Tls} else {ConnectionType::Clear};
             client_listeners.add_listener(listener.address.parse().unwrap(), conn_type)?;
         }
 
-        Server::new(server_config.server_id,
-                    epoch,
-                    server_config.server_name,
+        Server::new(server_config,
                     sync_config,
-                    server_config.node_config,
                     bootstrap_network,
                     client_listeners,
                     client_recv
             ).await
     };
 
-    let (management_send, management_recv) = channel(128);
-    let management_config = server_config.management.clone();
-
-    let management_shutdown = shutdown_send.subscribe();
-    let (mgmt_task_shutdown, mut mgmt_task_shutdown_recv) = oneshot::channel();
-
-    let management_task = tokio::spawn(async move {
-        let mut server = management::ManagementServer::start(management_config, tls_data, management_shutdown);
-
-        let mut server_shutdown_send = Some(server_shutdown_send);
-        loop
-        {
-            select!(
-                res = server.recv() =>
-                {
-                    if let Some(cmd) = res
-                    {
-                        match cmd
-                        {
-                            management::ManagementCommand::ServerCommand(scmd) =>
-                            {
-                                management_send.send(scmd).await.ok();
-                            }
-                            management::ManagementCommand::Shutdown(action) =>
-                            {
-                                if let Some(sender) = server_shutdown_send.take()
-                                {
-                                    sender.send(action.clone()).ok();
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        break;
-                    }
-                },
-                _ = &mut mgmt_task_shutdown_recv =>
-                {
-                    return server;
-                }
-            );
-        }
-        tracing::error!("Lost management server; shutting down");
-        if let Some(sender) = server_shutdown_send.take() {
-            sender.send(ShutdownAction::Shutdown).expect("Error signalling server shutdown");
-        }
-        server
-    }.instrument(tracing::info_span!("management event pump")));
-
     // Run the actual server
-    let shutdown_action = server.run(management_recv, server_shutdown_recv).await;
-
-    // ...and once it finishes, shut down the other tasks
-    mgmt_task_shutdown.send(()).expect("Couldn't signal shutdown");
-    let management_server = management_task.await?;
-
-    shutdown_send.send(shutdown_action.clone())?;
-    management_server.wait().await?;
+    let shutdown_action = server.run().await;
 
     // Now that we've closed down, deal with whatever the intended action was
     match shutdown_action
@@ -198,7 +124,7 @@ async fn sable_main(server_conf_path: &Path,
         }
         ShutdownAction::Upgrade =>
         {
-            let server_state = server.save().await?;
+            let server_state = server.save().await;
 
             upgrade::exec_upgrade(&exe_path, server_conf_path, sync_conf_path, server_state);
         }

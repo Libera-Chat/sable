@@ -1,7 +1,11 @@
 use client_listener::{ListenerCollection, ConnectionEvent};
 use sable_ircd::server::{ClientServerState, ServerManagementCommand};
 use sable_network::{node::NetworkNodeState, prelude::config::NetworkConfig, policy::StandardPolicyService, rpc::ShutdownAction};
-use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
+use tokio::{
+    sync::mpsc::{UnboundedReceiver, Sender},
+};
+
+use crate::config::{ManagementConfig, TlsData, ServerConfig};
 
 use super::*;
 
@@ -12,6 +16,8 @@ pub struct Server
     node: Arc<NetworkNode>,
     log: Arc<ReplicatedEventLog>,
     server: Arc<ClientServer>,
+    management_config: ManagementConfig,
+    tls_data: TlsData,
 }
 
 #[derive(Serialize,Deserialize)]
@@ -24,11 +30,8 @@ pub struct ServerState
 
 impl Server
 {
-    pub async fn new(id: ServerId,
-                     epoch: EpochId,
-                     name: ServerName,
+    pub async fn new(conf: ServerConfig,
                      net_config: SyncConfig,
-                     node_config: NodeConfig,
                      bootstrap_config: Option<NetworkConfig>,
                      listeners: ListenerCollection,
                      connection_events: UnboundedReceiver<ConnectionEvent>
@@ -38,15 +41,16 @@ impl Server
         let (history_send, history_recv) = unbounded_channel();
 
         let policy = StandardPolicyService::new();
+        let epoch = EpochId::new(chrono::Utc::now().timestamp());
 
-        let log = Arc::new(ReplicatedEventLog::new(id, epoch, server_send, net_config, node_config));
+        let log = Arc::new(ReplicatedEventLog::new(conf.server_id, epoch, server_send, net_config, conf.node_config));
 
         let network = match bootstrap_config {
             Some(conf) => Network::new(conf),
             None => *log.sync_to_network().await
         };
 
-        let node = Arc::new(NetworkNode::new(id, epoch, name, network, Arc::clone(&log), server_recv, history_send, policy));
+        let node = Arc::new(NetworkNode::new(conf.server_id, epoch, conf.server_name, network, Arc::clone(&log), server_recv, history_send, policy));
 
         let server = Arc::new(ClientServer::new(Arc::clone(&node), history_recv, listeners, connection_events));
 
@@ -54,14 +58,18 @@ impl Server
             node,
             log,
             server,
+            management_config: conf.management,
+            tls_data: conf.tls_config.load_from_disk().expect("Couldn't load TLS files")
         }
     }
 
-    pub async fn run(&self, management: Receiver<ServerManagementCommand>, shutdown: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
+    pub async fn run(&self) -> ShutdownAction
     {
         let (log_shutdown_send, log_shutdown_recv) = oneshot::channel();
         let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
         let (node_shutdown_send, node_shutdown_recv) = oneshot::channel();
+
+        let (management_send, management_recv) = channel(16);
 
         let log_task = self.log.start_sync(log_shutdown_recv);
 
@@ -73,10 +81,14 @@ impl Server
         let server = Arc::clone(&self.server);
 
         let server_task = tokio::spawn(async move {
-            server.run(management, server_shutdown_recv).await
+            server.run(management_recv, server_shutdown_recv).await
         });
 
-        let action = shutdown.await.expect("Shutdown channel error");
+        let management_task = tokio::spawn(Self::run_management(self.management_config.clone(), self.tls_data.clone(), management_send));
+
+        // The management task will exit on receiving a shutdown command, so just wait for it to finish
+        // then propagate the shutdown action
+        let action = management_task.await.expect("Shutdown channel error");
 
         node_shutdown_send.send(action.clone()).expect("Couldn't signal node to shutdown");
         node_task.await.expect("Node task panicked");
@@ -90,7 +102,7 @@ impl Server
         action
     }
 
-    pub async fn save(self) -> std::io::Result<ServerState>
+    pub async fn save(self) -> ServerState
     {
         // Order matters here.
         //
@@ -100,31 +112,32 @@ impl Server
         // next one can be unwrapped.
         let server_state = Arc::try_unwrap(self.server)
                             .unwrap_or_else(|_| panic!("Couldn't unwrap server"))
-                            .save_state().await?;
+                            .save_state().await
+                            .expect("Couldn't save server state");
         let node_state = Arc::try_unwrap(self.node)
                             .unwrap_or_else(|_| panic!("Couldn't unwrap node"))
                             .save_state();
         let log_state = Arc::try_unwrap(self.log)
                             .unwrap_or_else(|_| panic!("Couldn't unwrap event log"))
                             .save_state()
-                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, Box::new(e)))?;
+                            .expect("Couldn't save log state");
 
-        Ok(ServerState {
+        ServerState {
             node_state,
             log_state,
             server_state,
-        })
+        }
     }
 
     pub fn restore_from(state: ServerState,
                         net_config: SyncConfig,
-                        node_config: NodeConfig,
+                        server_config: ServerConfig,
                     ) -> std::io::Result<Self>
     {
         let (server_send, server_recv) = unbounded_channel();
         let (history_send, history_recv) = unbounded_channel();
 
-        let log = Arc::new(ReplicatedEventLog::restore(state.log_state, server_send, net_config, node_config));
+        let log = Arc::new(ReplicatedEventLog::restore(state.log_state, server_send, net_config, server_config.node_config));
 
         let node = Arc::new(NetworkNode::restore_from(state.node_state, Arc::clone(&log), server_recv, history_send)?);
 
@@ -134,6 +147,8 @@ impl Server
             node,
             log,
             server,
+            management_config: server_config.management,
+            tls_data: server_config.tls_config.load_from_disk().expect("Couldn't load TLS data files")
         })
     }
 
@@ -143,5 +158,41 @@ impl Server
                             .unwrap_or_else(|_| panic!("Couldn't unwrap server"));
 
         server.shutdown().await;
+    }
+
+    async fn run_management(config: ManagementConfig, tls_data: TlsData, server_sender: Sender<ServerManagementCommand>) -> ShutdownAction
+    {
+        let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
+
+        let mut server = management::ManagementServer::start(config, tls_data, server_shutdown_recv);
+
+        let shutdown_action = loop
+        {
+            if let Some(cmd) = server.recv().await
+            {
+                match cmd
+                {
+                    management::ManagementCommand::ServerCommand(scmd) =>
+                    {
+                        server_sender.send(scmd).await.ok();
+                    }
+                    management::ManagementCommand::Shutdown(action) =>
+                    {
+                        break action;
+                    }
+                }
+            }
+            else
+            {
+                tracing::error!("Lost management server, shutting down");
+                break ShutdownAction::Shutdown;
+            }
+        };
+
+        server_shutdown_send.send(()).expect("Couldn't signal management service to shut down");
+        server.wait().await.expect("Management service error");
+
+        shutdown_action
+
     }
 }
