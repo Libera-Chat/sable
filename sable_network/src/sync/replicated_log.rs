@@ -12,7 +12,7 @@ use tokio::{
         unbounded_channel,
     },
     sync::Mutex,
-    sync::oneshot,
+    sync::broadcast,
     select,
     task::JoinHandle,
     time::sleep,
@@ -246,7 +246,7 @@ impl ReplicatedEventLog
         panic!("No peer available to sync");
     }
 
-    pub fn start_sync(&self, shutdown: oneshot::Receiver<ShutdownAction>) -> JoinHandle<Result<(), NetworkError>>
+    pub fn start_sync(&self, shutdown: broadcast::Receiver<ShutdownAction>) -> JoinHandle<Result<(), NetworkError>>
     {
         let task_state = Arc::clone(&self.task_state);
         tokio::spawn(async move {
@@ -290,7 +290,7 @@ impl TaskState
 {
     /// Run the main network synchronisation task.
     #[tracing::instrument(skip_all)]
-    async fn sync_task(&mut self, mut shutdown: oneshot::Receiver<ShutdownAction>) -> Result<(), NetworkError>
+    async fn sync_task(&mut self, mut shutdown: broadcast::Receiver<ShutdownAction>) -> Result<(), NetworkError>
     {
         let listen_task = self.net.spawn_listen_task().await?;
 
@@ -337,7 +337,7 @@ impl TaskState
                         None => break
                     }
                 },
-                _ = &mut shutdown => {
+                _ = shutdown.recv() => {
                     break
                 }
             }

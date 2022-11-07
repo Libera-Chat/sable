@@ -16,7 +16,7 @@ use tokio::{
             UnboundedSender,
             UnboundedReceiver,
         },
-        oneshot,
+        broadcast,
         Mutex,
     },
     time,
@@ -216,7 +216,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
 
     #[tracing::instrument(skip_all)]
     pub async fn run(self: Arc<Self>,
-                     mut shutdown_channel: oneshot::Receiver<ShutdownAction>
+                     mut shutdown_channel: broadcast::Receiver<ShutdownAction>
                 ) -> ShutdownAction
     {
         self.submit_event(self.my_id, details::NewServer {
@@ -269,7 +269,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
                     tracing::trace!("...from check_ping_timer");
                     self.check_pings();
                 },
-                shutdown = &mut shutdown_channel =>
+                shutdown = shutdown_channel.recv() =>
                 {
                     match shutdown
                     {

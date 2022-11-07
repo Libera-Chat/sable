@@ -18,7 +18,7 @@ use tokio::{
             UnboundedReceiver,
             unbounded_channel,
         },
-        oneshot,
+        broadcast,
         Mutex,
     },
     select,
@@ -267,7 +267,7 @@ impl ClientServer
     /// - `management_channel`: receives management commands from the management service
     /// - `shutdown_channel`: used to signal the server to shut down
     #[tracing::instrument(skip_all)]
-    pub async fn run(&self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: oneshot::Receiver<ShutdownAction>) -> ShutdownAction
+    pub async fn run(&self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: broadcast::Receiver<ShutdownAction>) -> ShutdownAction
     {
         // Take ownership of these receivers here, so that we no longer need a mut borrow of `self` once the
         // run loop starts
@@ -392,7 +392,7 @@ impl ClientServer
                         }
                     }
                 },
-                shutdown = &mut shutdown_channel =>
+                shutdown = shutdown_channel.recv() =>
                 {
                     tracing::trace!("...from shutdown_channel");
 

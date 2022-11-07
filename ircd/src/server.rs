@@ -2,7 +2,10 @@ use client_listener::{ListenerCollection, ConnectionEvent};
 use sable_ircd::server::{ClientServerState, ServerManagementCommand};
 use sable_network::{node::NetworkNodeState, prelude::config::NetworkConfig, policy::StandardPolicyService, rpc::ShutdownAction};
 use tokio::{
-    sync::mpsc::{UnboundedReceiver, Sender},
+    sync::{
+        mpsc::{UnboundedReceiver, Sender},
+        oneshot,
+    },
 };
 
 use crate::config::{ManagementConfig, TlsData, ServerConfig};
@@ -65,23 +68,22 @@ impl Server
 
     pub async fn run(&self) -> ShutdownAction
     {
-        let (log_shutdown_send, log_shutdown_recv) = oneshot::channel();
-        let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
-        let (node_shutdown_send, node_shutdown_recv) = oneshot::channel();
+        let (shutdown_send, shutdown_recv) = broadcast::channel(1);
 
         let (management_send, management_recv) = channel(16);
 
-        let log_task = self.log.start_sync(log_shutdown_recv);
+        let log_task = self.log.start_sync(shutdown_send.subscribe());
 
         let node = Arc::clone(&self.node);
         let node_task = tokio::spawn(async move {
-            node.run(node_shutdown_recv).await;
+            node.run(shutdown_recv).await;
         });
 
         let server = Arc::clone(&self.server);
 
+        let shutdown_recv = shutdown_send.subscribe();
         let server_task = tokio::spawn(async move {
-            server.run(management_recv, server_shutdown_recv).await
+            server.run(management_recv, shutdown_recv).await
         });
 
         let management_task = tokio::spawn(Self::run_management(self.management_config.clone(), self.tls_data.clone(), management_send));
@@ -90,13 +92,10 @@ impl Server
         // then propagate the shutdown action
         let action = management_task.await.expect("Shutdown channel error");
 
-        node_shutdown_send.send(action.clone()).expect("Couldn't signal node to shutdown");
+        shutdown_send.send(action.clone()).expect("Couldn't signal shutdown");
+
         node_task.await.expect("Node task panicked");
-
-        server_shutdown_send.send(action.clone()).expect("Couldn't signal server to shutdown");
         server_task.await.expect("Server task panicked");
-
-        log_shutdown_send.send(action.clone()).expect("Couldn't signal log to shutdown");
         log_task.await.expect("Log task panicked?").expect("Log task returned error");
 
         action

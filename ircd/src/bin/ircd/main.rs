@@ -11,11 +11,6 @@ use std::{
     os::unix::process::CommandExt,
 };
 
-use tokio::{
-    sync::broadcast,
-    select
-};
-use tracing::Instrument;
 use tracing_subscriber::util::SubscriberInitExt;
 
 mod upgrade;
