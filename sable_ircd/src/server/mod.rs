@@ -13,7 +13,6 @@ use client_listener::*;
 use tokio::{
     sync::{
         mpsc::{
-            Receiver,
             UnboundedSender,
             UnboundedReceiver,
             unbounded_channel,
@@ -267,7 +266,7 @@ impl ClientServer
     /// - `management_channel`: receives management commands from the management service
     /// - `shutdown_channel`: used to signal the server to shut down
     #[tracing::instrument(skip_all)]
-    pub async fn run(&self, mut management_channel: Receiver<ServerManagementCommand>, mut shutdown_channel: broadcast::Receiver<ShutdownAction>) -> ShutdownAction
+    pub async fn run(&self, mut shutdown_channel: broadcast::Receiver<ShutdownAction>) -> ShutdownAction
     {
         // Take ownership of these receivers here, so that we no longer need a mut borrow of `self` once the
         // run loop starts
@@ -375,20 +374,6 @@ impl ClientServer
                         None =>
                         {
                             panic!("Lost auth client task");
-                        }
-                    }
-                },
-                res = management_channel.recv() =>
-                {
-                    tracing::trace!("...from management_channel");
-                    match res {
-                        Some(cmd) =>
-                        {
-                            self.handle_management_command(cmd).await;
-                        }
-                        None =>
-                        {
-                            panic!("Lost management service");
                         }
                     }
                 },

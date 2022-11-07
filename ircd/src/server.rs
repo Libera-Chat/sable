@@ -1,9 +1,9 @@
 use client_listener::{ListenerCollection, ConnectionEvent};
-use sable_ircd::server::{ClientServerState, ServerManagementCommand};
+use sable_ircd::server::ClientServerState;
 use sable_network::{node::NetworkNodeState, prelude::config::NetworkConfig, policy::StandardPolicyService, rpc::ShutdownAction};
 use tokio::{
     sync::{
-        mpsc::{UnboundedReceiver, Sender},
+        mpsc::UnboundedReceiver,
         oneshot,
     },
 };
@@ -70,8 +70,6 @@ impl Server
     {
         let (shutdown_send, shutdown_recv) = broadcast::channel(1);
 
-        let (management_send, management_recv) = channel(16);
-
         let log_task = self.log.start_sync(shutdown_send.subscribe());
 
         let node = Arc::clone(&self.node);
@@ -83,14 +81,12 @@ impl Server
 
         let shutdown_recv = shutdown_send.subscribe();
         let server_task = tokio::spawn(async move {
-            server.run(management_recv, shutdown_recv).await
+            server.run(shutdown_recv).await
         });
-
-        let management_task = tokio::spawn(Self::run_management(self.management_config.clone(), self.tls_data.clone(), management_send));
 
         // The management task will exit on receiving a shutdown command, so just wait for it to finish
         // then propagate the shutdown action
-        let action = management_task.await.expect("Shutdown channel error");
+        let action = self.run_management().await;
 
         shutdown_send.send(action.clone()).expect("Couldn't signal shutdown");
 
@@ -159,11 +155,13 @@ impl Server
         server.shutdown().await;
     }
 
-    async fn run_management(config: ManagementConfig, tls_data: TlsData, server_sender: Sender<ServerManagementCommand>) -> ShutdownAction
+    async fn run_management(&self) -> ShutdownAction
     {
         let (server_shutdown_send, server_shutdown_recv) = oneshot::channel();
 
-        let mut server = management::ManagementServer::start(config, tls_data, server_shutdown_recv);
+        let mut server = management::ManagementServer::start(self.management_config.clone(),
+                                                             self.tls_data.clone(),
+                                                             server_shutdown_recv);
 
         let shutdown_action = loop
         {
@@ -173,7 +171,7 @@ impl Server
                 {
                     management::ManagementCommand::ServerCommand(scmd) =>
                     {
-                        server_sender.send(scmd).await.ok();
+                        self.server.handle_management_command(scmd).await;
                     }
                     management::ManagementCommand::Shutdown(action) =>
                     {
