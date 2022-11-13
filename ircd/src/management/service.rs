@@ -2,7 +2,10 @@ use super::*;
 use sable_ircd::prelude::*;
 use server::ServerManagementCommand;
 use server::ServerManagementCommandType;
-use sable_network::rpc::ShutdownAction;
+use sable_network::{
+    rpc::ShutdownAction,
+    config::TlsData,
+};
 use crate::config::*;
 
 use std::{

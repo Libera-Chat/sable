@@ -18,6 +18,8 @@ pub mod sync;
 
 pub mod node;
 
+pub mod config;
+
 pub mod types
 {
     mod pattern;

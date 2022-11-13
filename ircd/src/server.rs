@@ -1,14 +1,12 @@
-use client_listener::{ListenerCollection, ConnectionEvent};
 use sable_ircd::server::ClientServerState;
-use sable_network::{node::NetworkNodeState, prelude::config::NetworkConfig, policy::StandardPolicyService, rpc::ShutdownAction};
+use sable_network::{config::TlsData, node::NetworkNodeState, network::config::NetworkConfig, policy::StandardPolicyService, rpc::ShutdownAction};
 use tokio::{
     sync::{
-        mpsc::UnboundedReceiver,
         oneshot,
     },
 };
 
-use crate::config::{ManagementConfig, TlsData, ServerConfig};
+use crate::config::{ManagementConfig, ServerConfig};
 
 use super::*;
 
@@ -34,10 +32,9 @@ pub struct ServerState
 impl Server
 {
     pub async fn new(conf: ServerConfig,
+                     tls_data: TlsData,
                      net_config: SyncConfig,
                      bootstrap_config: Option<NetworkConfig>,
-                     listeners: ListenerCollection,
-                     connection_events: UnboundedReceiver<ConnectionEvent>
             ) -> Self
     {
         let (server_send, server_recv) = unbounded_channel();
@@ -55,7 +52,7 @@ impl Server
 
         let node = Arc::new(NetworkNode::new(conf.server_id, epoch, conf.server_name, network, Arc::clone(&log), server_recv, history_send, policy));
 
-        let server = Arc::new(ClientServer::new(Arc::clone(&node), history_recv, listeners, connection_events));
+        let server = Arc::new(ClientServer::new(conf.server, &tls_data, Arc::clone(&node), history_recv));
 
         Self {
             node,

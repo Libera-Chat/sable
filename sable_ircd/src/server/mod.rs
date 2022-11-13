@@ -3,7 +3,7 @@ use crate::movable::Movable;
 use capability::*;
 use messages::*;
 
-use sable_network::prelude::*;
+use sable_network::{prelude::*, config::TlsData};
 use event::*;
 use rpc::*;
 
@@ -41,6 +41,8 @@ pub use async_handler_collection::*;
 mod upgrade;
 pub use upgrade::ClientServerState;
 
+pub mod config;
+
 mod command_action;
 mod update_handler;
 mod user_access;
@@ -72,18 +74,29 @@ pub struct ClientServer
 impl ClientServer
 {
     /// Create a new `ClientServer`
-    pub fn new(node: Arc<NetworkNode>,
+    pub fn new(config: config::ClientServerConfig,
+               tls_data: &TlsData,
+               node: Arc<NetworkNode>,
                history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
-               listeners: ListenerCollection,
-               connection_events: UnboundedReceiver<ConnectionEvent>,
             ) -> Self
     {
         let (action_submitter, action_receiver) = unbounded_channel();
         let (auth_sender, auth_events) = unbounded_channel();
+        let (client_send, client_recv) = unbounded_channel();
+
+        let client_listeners = ListenerCollection::new(client_send).unwrap();
+
+        client_listeners.load_tls_certificates(tls_data.key.clone(), tls_data.cert_chain.clone()).unwrap();
+
+        for listener in config.listeners.iter()
+        {
+            let conn_type = if listener.tls {ConnectionType::Tls} else {ConnectionType::Clear};
+            client_listeners.add_listener(listener.address.parse().unwrap(), conn_type).unwrap();
+        }
 
         Self {
             action_receiver: Mutex::new(action_receiver),
-            connection_events: Mutex::new(connection_events),
+            connection_events: Mutex::new(client_recv),
             history_receiver: Mutex::new(history_receiver),
             auth_events: Mutex::new(auth_events),
 
@@ -95,7 +108,7 @@ impl ClientServer
             isupport: Self::build_basic_isupport(),
             client_caps: CapabilityRepository::new(),
             server: node,
-            listeners: Movable::new(listeners),
+            listeners: Movable::new(client_listeners),
         }
     }
 

@@ -1,7 +1,6 @@
 use ircd::*;
 use ircd::config::*;
 use ircd::server::*;
-use client_listener::*;
 
 use sable_network::rpc::ShutdownAction;
 
@@ -49,7 +48,7 @@ async fn sable_main(server_conf_path: &Path,
                     server_config: ServerConfig,
                     sync_conf_path: &Path,
                     sync_config: SyncConfig,
-                    tls_data: TlsData,
+                    tls_data: sable_network::config::TlsData,
                     upgrade_fd: Option<i32>,
                     bootstrap_network: Option<sable_network::network::config::NetworkConfig>,
                 ) -> Result<(), Box<dyn std::error::Error>>
@@ -59,8 +58,6 @@ async fn sable_main(server_conf_path: &Path,
     println!("uid={}", nix::unistd::getuid());
 
     ircd::tracing_config::build_subscriber(server_config.log.clone())?.init();
-
-    let (client_send, client_recv) = unbounded_channel();
 
     let server = if let Some(upgrade_fd) = upgrade_fd
     {
@@ -77,21 +74,10 @@ async fn sable_main(server_conf_path: &Path,
     }
     else
     {
-        let client_listeners = ListenerCollection::new(client_send)?;
-
-        client_listeners.load_tls_certificates(tls_data.key.clone(), tls_data.cert_chain.clone())?;
-
-        for listener in server_config.listeners.iter()
-        {
-            let conn_type = if listener.tls {ConnectionType::Tls} else {ConnectionType::Clear};
-            client_listeners.add_listener(listener.address.parse().unwrap(), conn_type)?;
-        }
-
         Server::new(server_config,
+                    tls_data,
                     sync_config,
                     bootstrap_network,
-                    client_listeners,
-                    client_recv
             ).await
     };
 
