@@ -23,7 +23,7 @@ pub(crate) struct CommandProcessor<'server>
 
 /// An action that can be triggered by a command handler.
 ///
-/// Command handlers have only an immutable reference to the [`Server`], and so
+/// Command handlers have only an immutable reference to the [`ClientServer`], and so
 /// cannot directly change state (with limited exceptions). If handling the command
 /// requires a change in state, either network or local, then this is achieved
 /// by emitting a `CommandAction` which the `Server` will apply on the next
@@ -90,7 +90,7 @@ enum InternalCommandSource
 /// A client command to be handled
 pub struct ClientCommand<'server>
 {
-    /// The [`Server`] instance
+    /// The [`ClientServer`] instance
     pub server: &'server ClientServer,
     /// The connection from which the command originated
     pub connection: Arc<ClientConnection>,

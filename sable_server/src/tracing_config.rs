@@ -56,6 +56,7 @@ fn build_target<S>(conf: LogEntry, dir: impl AsRef<Path>) -> Result<Box<dyn Laye
     Ok(layer.with_filter(filter).boxed())
 }
 
+/// Build a [`Subscriber`] from a logging configuration
 pub fn build_subscriber(conf: LoggingConfig) -> Result<impl Subscriber, IoError>
 {
     let mut layers = Vec::new();

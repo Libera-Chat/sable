@@ -75,9 +75,6 @@ impl sable_server::ServerType for ClientServer
     }
 
     /// Restore from a previously saved state.
-    ///
-    /// The `listener_collection` is only used during the resumption to restore
-    /// connection data; the other arguments are as for [`new`](Self::new).
     fn restore(
             state: ClientServerState,
             server: Arc<NetworkNode>,

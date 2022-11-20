@@ -21,6 +21,7 @@ use tokio::{
 
 use std::{sync::Arc, path::Path, fs::File};
 
+/// Configuration for a network server
 #[derive(Debug,Deserialize)]
 pub struct ServerConfig<ST>
     where ST: ServerType
@@ -42,6 +43,7 @@ impl<ST> ServerConfig<ST>
     where ST: ServerType,
           ST::Config: DeserializeOwned
 {
+    /// Load configuration from a file
     pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, Box<dyn std::error::Error>>
     {
         let file = File::open(filename)?;
@@ -50,6 +52,11 @@ impl<ST> ServerConfig<ST>
     }
 }
 
+/// A network server.
+///
+/// This type contains a [`ReplicatedEventLog`], a [`NetworkNode`], an application-specific
+/// server type `ST`, and a management service. It handles communications between them,
+/// and co-ordinates shutdown as needed.
 pub struct Server<ST>
 {
     node: Arc<NetworkNode>,
@@ -59,6 +66,7 @@ pub struct Server<ST>
     tls_data: TlsData,
 }
 
+/// Saved state of a network server
 #[derive(Serialize,Deserialize)]
 pub struct ServerState<ST>
     where ST: ServerType
@@ -71,6 +79,10 @@ pub struct ServerState<ST>
 impl<ST> Server<ST>
     where ST: ServerType
 {
+    /// Construct a server.
+    ///
+    /// If `bootstrap_config` is `None`, then this function will call out to one of the defined
+    /// network peers to retrieve the current network state.
     pub async fn new(conf: ServerConfig<ST>,
                      tls_data: TlsData,
                      net_config: SyncConfig,
@@ -103,6 +115,8 @@ impl<ST> Server<ST>
         }
     }
 
+    /// Run the server, including the log synchronisation, the network state tracking, management
+    /// service, and application-specific logic provided by `ST`.
     pub async fn run(&self) -> ShutdownAction
     {
         let (shutdown_send, shutdown_recv) = broadcast::channel(1);
@@ -134,6 +148,7 @@ impl<ST> Server<ST>
         action
     }
 
+    /// Shut down the server, if it is not going to be resumed.
     pub async fn shutdown(self)
     {
         let server = Arc::try_unwrap(self.server)
@@ -180,6 +195,7 @@ impl<ST> Server<ST>
 
     }
 
+    /// Save the state of the server, including all its component parts, for resumption after a code upgrade.
     pub async fn save(self) -> ServerState<ST>
     {
         // Order matters here.
@@ -206,6 +222,7 @@ impl<ST> Server<ST>
         }
     }
 
+    /// Restore from a previously-saved application state.
     pub fn restore_from(state: ServerState<ST>,
                         net_config: SyncConfig,
                         server_config: ServerConfig<ST>,

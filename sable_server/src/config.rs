@@ -12,6 +12,7 @@ use std::{
     io::BufReader,
 };
 
+/// A client certificate fingerprint which is authorised for the management interface
 #[derive(Clone,Debug,serde::Deserialize)]
 pub struct AuthorisedFingerprint
 {
@@ -19,6 +20,7 @@ pub struct AuthorisedFingerprint
     pub fingerprint: String,
 }
 
+/// One of the special built-in log targets
 #[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
 #[serde(rename_all="lowercase")]
 pub enum BuiltinLogTarget
@@ -27,6 +29,7 @@ pub enum BuiltinLogTarget
     Stderr,
 }
 
+/// A log target
 #[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
 #[serde(untagged)]
 pub enum LogTarget
@@ -35,6 +38,7 @@ pub enum LogTarget
     Builtin(BuiltinLogTarget),
 }
 
+/// Log levels. Equivalent to those defined in `tracing`
 #[derive(Clone,Copy,Debug,serde::Serialize,serde::Deserialize)]
 #[serde(rename_all ="lowercase")]
 pub enum LogLevel
@@ -47,21 +51,7 @@ pub enum LogLevel
     Off,
 }
 
-#[derive(Clone,Copy,Debug,serde::Serialize,serde::Deserialize)]
-pub enum LogFormat
-{
-    Full,
-    Compact,
-    Pretty
-}
-
-#[derive(Clone,Copy,Debug,serde::Serialize,serde::Deserialize)]
-#[serde(untagged)]
-pub enum LogCategory
-{
-    General,
-}
-
+/// A log configuration entry. Defines a log target along with the messages to be sent to it.
 #[derive(Clone,Debug,serde::Deserialize)]
 pub struct LogEntry
 {
@@ -73,25 +63,38 @@ pub struct LogEntry
     pub level: Option<LogLevel>,
 }
 
+/// Configuration of the logging system
 #[derive(Clone,Debug,serde::Deserialize)]
 #[serde(rename_all="kebab-case")]
 pub struct LoggingConfig
 {
+    /// Top level directory. All other paths are relative to this
     pub dir: PathBuf,
+    /// File to which stdout will be redirected, if daemonised
     pub stdout: Option<PathBuf>,
+    /// File to which stderr will be redirected, if daemonised
     pub stderr: Option<PathBuf>,
+    /// File in which to store the server PID, if daemonised
     pub pidfile: Option<PathBuf>,
+    /// Minimum level to be logged, if not overridden per target or per module
     pub default_level: Option<LogLevel>,
+    /// Per-module settings for minimum log level
     pub module_levels: HashMap<String, LogLevel>,
+    /// Log targets
     pub targets: Vec<LogEntry>,
+    /// Optional listener address for the tokio console
     pub console_address: Option<std::net::SocketAddr>,
 }
 
+/// Configuration of the management service
 #[derive(Clone,Debug,serde::Deserialize)]
 pub struct ManagementConfig
 {
+    /// Listener address
     pub address: SocketAddr,
+    /// Certificate authority used to authenticate clients
     pub client_ca: PathBuf,
+    /// List of client certificate fingerprints authorised to connect
     pub authorised_fingerprints: Vec<AuthorisedFingerprint>,
 }
 
@@ -107,6 +110,7 @@ impl LoggingConfig
 
 impl ManagementConfig
 {
+    /// Load the client CA from the path specified in this configuration
     pub fn load_client_ca(&self) -> std::io::Result<Vec<u8>>
     {
         let ca_file = File::open(&self.client_ca)?;
@@ -115,6 +119,7 @@ impl ManagementConfig
     }
 }
 
+/// Load a network state configuration for boostrapping
 pub fn load_network_config(filename: impl AsRef<Path>) -> Result<sable_network::network::config::NetworkConfig, sable_network::sync::ConfigError>
 {
     let file = File::open(filename)?;

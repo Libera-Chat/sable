@@ -20,7 +20,7 @@ use memfd::*;
 
 use crate::ServerState;
 
-pub fn read_upgrade_state<ST: ServerType>(fd: RawFd) -> ServerState<ST>
+fn read_upgrade_state<ST: ServerType>(fd: RawFd) -> ServerState<ST>
 {
     let memfd = unsafe { Memfd::from_raw_fd(fd) };
     let file = memfd.as_file();
@@ -38,7 +38,7 @@ fn prepare_upgrade<ST: ServerType>(state: ServerState<ST>) -> RawFd
     memfd.into_raw_fd()
 }
 
-pub(super) fn exec_upgrade<ST>(exe: impl AsRef<Path>,
+fn exec_upgrade<ST>(exe: impl AsRef<Path>,
                                server_conf: impl AsRef<Path>,
                                network_conf: impl AsRef<Path>,
                                state: ServerState<ST>
@@ -62,11 +62,9 @@ pub(super) fn exec_upgrade<ST>(exe: impl AsRef<Path>,
     panic!("exec() failed on upgrade: {}", err);
 }
 
-/// The async entry point for the application.
-///
-/// We can't use `[tokio::main]` because the tokio runtime can't survive daemonising,
-/// so this is called after daemonising and manually initialising the runtime.
-async fn sable_main<ST>(server_conf_path: impl AsRef<Path>,
+// The async entry point for the application. Because `run_server` can fork into the background
+// depending on options, it needs to initialise the tokio runtime after doing so
+async fn do_run_server<ST>(server_conf_path: impl AsRef<Path>,
                         server_config: ServerConfig<ST>,
                         sync_conf_path: impl AsRef<Path>,
                         sync_config: SyncConfig,
@@ -135,11 +133,30 @@ async fn sable_main<ST>(server_conf_path: impl AsRef<Path>,
     }
 }
 
-/// Main entry point.
+/// Run a network server.
 ///
-/// Because the tokio runtime can't survive forking, `main()` loads the application
-/// configs (in order to report as many errors as possible before daemonising), daemonises,
-/// initialises the tokio runtime, and begins the async entry point [`sable_main`].
+/// This function will load a `ServerConfig<ST>` from the provided `server_config_path`, a `SyncConfig`
+/// from `sync_config_path`, and optionally a bootstrapping network config from `bootstrap_config`.
+///
+/// If `bootstrap_config` is `Some`, then an empty network state will be created, with the network
+/// configuration from the provided file path. If it is `None`, then the new server will sync to an existing
+/// network according to the configuration at the provided `sync_config_path`.
+///
+/// If `upgrade_fd` is `Some`, then a saved server state will be read from it and used to resume
+/// processing after an in-place upgrade. In this case, `bootstrap_config` will not be used, but must still
+/// be readable if it is supplied.
+///
+/// If `foreground` is false and `upgrade_fd` is None, then this function will daemonise before initialising
+/// the tokio runtime. Standard output and error will be redirected to the files defined in the server config's
+/// logging section, if any. If `upgrade_fd` is Some, then it is assumed that the server's previous execution
+/// did any daemonisation that may have been required.
+///
+/// Note that this function will create a new tokio runtime. It should not be called if one is already active.
+///
+/// The `ST` generic parameter should be a type which implements [`ServerType`] and will be constructed to handle
+/// application-specific functionality. The `server` field of the provided server config must contain appropriate
+/// data to read an instance of `ST::Config`.
+///
 pub fn run_server<ST>(server_config_path: impl AsRef<Path>,
                       sync_config_path: impl AsRef<Path>,
                       foreground: bool,
@@ -148,6 +165,10 @@ pub fn run_server<ST>(server_config_path: impl AsRef<Path>,
             ) -> Result<(), Box<dyn std::error::Error>>
     where ST: ServerType
 {
+    // NB: Because the tokio runtime can't survive forking, `run_server()` loads the application
+    // configs (in order to report as many errors as possible before daemonising), daemonises,
+    // initialises the tokio runtime, and begins the async entry point [`sable_main`].
+
     let sync_config = SyncConfig::load_file(&sync_config_path)?;
     let server_config = ServerConfig::<ST>::load_file(&server_config_path)?;
 
@@ -186,7 +207,7 @@ pub fn run_server<ST>(server_config_path: impl AsRef<Path>,
 
     let runtime = tokio::runtime::Runtime::new()?;
 
-    runtime.block_on(sable_main(&server_config_path,
+    runtime.block_on(do_run_server(&server_config_path,
                                 server_config,
                                 &sync_config_path,
                                 sync_config,

@@ -3,32 +3,8 @@
 //! IRC client server logic.
 //!
 //! This crate primarily exists to support the [`ClientServer`] type, which
-//! extends the [`sable_network::server::Server`] logic to implement a client server.
-//!
-//! # Architecture
-//!
-//! The client server requires, apart from its own identity details:
-//!
-//!   * An event log
-//!   * The receiving half of the event log's RPC channel
-//!   * The receiving half of a [`ListenerCollection`](client_listener::ListenerCollection)'s
-//!     event channel
-//!
-//! The first two of those are passed through to the [`Server`](sable_network::server::Server);
-//! the latter is used to receive client connections.
-//!
-//! When the [`run`](ClientServer::run) function is called, it spawns the `Server`'s
-//! run task in turn, then begins processing events.
-//!
-//! Client connection events are mediated through the [`ClientConnection`]'s receive queue,
-//! which applies rate limiting to received messages before they are passed on to the
-//! server's event loop.
-//!
-//! Network state tracking is handled by the `Server`'s run task; the `ClientServer`
-//! receives a stream of [`NetworkHistoryUpdate`s](sable_network::rpc::NetworkHistoryUpdate)
-//! which describe changes to the network state as well as which users are to be notified
-//! of those changes. The `ClientServer` then translates them into the IRC client
-//! protocol.
+//! implements the [`ServerType`](sable_server::ServerType) trait to provide application
+//! logic to [`sable_server::Server`].
 //!
 //! # Command Handling
 //!
@@ -54,8 +30,8 @@
 //!
 //! # Update handling
 //!
-//! The `ClientServer` receives a stream of `NetworkHistoryUpdate`s from the `Server`
-//! task, which describe every event that needs to be handled by the `ClientServer` as
+//! The `ClientServer` receives a stream of `NetworkHistoryUpdate`s from the `Server`,
+//! which describe every event that needs to be handled by the `ClientServer` as
 //! well as the set of users who should be notified of the event.
 //!
 //! Each history update is also stored in the `Server`'s network history log, and can be
