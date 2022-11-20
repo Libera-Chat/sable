@@ -10,12 +10,13 @@ use tokio::sync::{
 };
 use std::sync::Arc;
 use async_trait::async_trait;
+use serde::{Serialize,de::DeserializeOwned};
 
 #[async_trait]
 pub trait ServerType : Send + Sync + 'static
 {
-    type Config;
-    type Saved;
+    type Config: DeserializeOwned;
+    type Saved: Serialize + DeserializeOwned;
 
     fn new(config: Self::Config, tls_data: &TlsData, node: Arc<NetworkNode>, history_receiver: UnboundedReceiver<NetworkHistoryUpdate>) -> Self;
 

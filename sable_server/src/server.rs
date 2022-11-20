@@ -12,7 +12,7 @@ use sable_network::{
     network::config::NetworkConfig,
     policy::StandardPolicyService,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize, de::DeserializeOwned};
 use tokio::{
     sync::{
         oneshot, mpsc::unbounded_channel, broadcast,
@@ -40,7 +40,7 @@ pub struct ServerConfig<ST>
 
 impl<ST> ServerConfig<ST>
     where ST: ServerType,
-          for<'a> ST::Config: Deserialize<'a>
+          ST::Config: DeserializeOwned
 {
     pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, Box<dyn std::error::Error>>
     {

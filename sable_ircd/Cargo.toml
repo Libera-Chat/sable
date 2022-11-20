@@ -37,3 +37,4 @@ concurrent-queue = "1.2.4"
 arc-swap = "1.5"
 parking_lot = { version = "0.12", features = [ "serde" ] }
 async-trait = "0.1.57"
+structopt = "0.3"

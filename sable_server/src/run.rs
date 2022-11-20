@@ -1,68 +1,92 @@
-use ircd::*;
-
-use sable_network::rpc::ShutdownAction;
-use sable_server::{Server, ServerConfig, config::load_network_config};
+use sable_network::{rpc::ShutdownAction, sync::SyncConfig};
+use crate::{Server, ServerConfig, ServerType, config::load_network_config};
 
 use std::{
     process::Command,
     env,
-    os::unix::process::CommandExt,
+    os::unix::{
+        process::CommandExt,
+        prelude::RawFd,
+        io::{IntoRawFd,FromRawFd},
+    },
+    path::Path,
+    fs::File,
+    io::Seek,
 };
 
 use tracing_subscriber::util::SubscriberInitExt;
 
-mod upgrade;
+use memfd::*;
 
-#[derive(Debug,StructOpt)]
-#[structopt(rename_all = "kebab")]
-struct Opts
+use crate::ServerState;
+
+pub fn read_upgrade_state<ST: ServerType>(fd: RawFd) -> ServerState<ST>
 {
-    /// Network-wide config file location
-    #[structopt(short,long)]
-    network_conf: PathBuf,
+    let memfd = unsafe { Memfd::from_raw_fd(fd) };
+    let file = memfd.as_file();
 
-    /// Server config file location
-    #[structopt(short,long)]
-    server_conf: PathBuf,
+    serde_json::from_reader(file).expect("Failed to unpack upgrade state")
+}
 
-    /// FD from which to read upgrade data
-    #[structopt(long)]
-    upgrade_state_fd: Option<i32>,
+fn prepare_upgrade<ST: ServerType>(state: ServerState<ST>) -> RawFd
+{
+    let memfd = MemfdOptions::default().close_on_exec(false).create("upgrade_state").expect("Failed to create upgrade memfd");
+    let mut file = memfd.as_file();
 
-    /// Start a new network; without this no clients will be accepted until the
-    /// server has synced to an existing net
-    #[structopt(long)]
-    bootstrap_network: Option<PathBuf>,
+    serde_json::to_writer(file, &state).expect("Failed to serialise server state");
+    file.rewind().expect("Failed to rewind memfd");
+    memfd.into_raw_fd()
+}
 
-    /// Run in foreground without daemonising
-    #[structopt(short,long)]
-    foreground: bool
+pub(super) fn exec_upgrade<ST>(exe: impl AsRef<Path>,
+                               server_conf: impl AsRef<Path>,
+                               network_conf: impl AsRef<Path>,
+                               state: ServerState<ST>
+                    ) -> !
+    where ST: ServerType
+{
+    let fd = prepare_upgrade(state);
+    let args = ["--server-conf",
+                server_conf.as_ref().to_str().unwrap(),
+                "--network-conf",
+                network_conf.as_ref().to_str().unwrap(),
+                "--upgrade-state-fd",
+                &fd.to_string()];
+
+    tracing::debug!("Executing upgrade: {:?} {:?}", exe.as_ref(), args);
+
+    let err = Command::new(exe.as_ref())
+                      .args(args)
+                      .exec();
+
+    panic!("exec() failed on upgrade: {}", err);
 }
 
 /// The async entry point for the application.
 ///
 /// We can't use `[tokio::main]` because the tokio runtime can't survive daemonising,
 /// so this is called after daemonising and manually initialising the runtime.
-async fn sable_main(server_conf_path: &Path,
-                    server_config: ServerConfig<ClientServer>,
-                    sync_conf_path: &Path,
-                    sync_config: SyncConfig,
-                    tls_data: sable_network::config::TlsData,
-                    upgrade_fd: Option<i32>,
-                    bootstrap_network: Option<sable_network::network::config::NetworkConfig>,
-                ) -> Result<(), Box<dyn std::error::Error>>
+async fn sable_main<ST>(server_conf_path: impl AsRef<Path>,
+                        server_config: ServerConfig<ST>,
+                        sync_conf_path: impl AsRef<Path>,
+                        sync_config: SyncConfig,
+                        tls_data: sable_network::config::TlsData,
+                        upgrade_fd: Option<i32>,
+                        bootstrap_network: Option<sable_network::network::config::NetworkConfig>,
+                    ) -> Result<(), Box<dyn std::error::Error>>
+    where ST: ServerType
 {
     let exe_path = std::env::current_exe()?;
 
     println!("uid={}", nix::unistd::getuid());
 
-    sable_server::build_subscriber(server_config.log.clone())?.init();
+    crate::tracing_config::build_subscriber(server_config.log.clone())?.init();
 
     let server = if let Some(upgrade_fd) = upgrade_fd
     {
         tracing::info!("Got upgrade FD {}", upgrade_fd);
 
-        let state = upgrade::read_upgrade_state(upgrade_fd);
+        let state = read_upgrade_state(upgrade_fd);
 
         let server = Server::restore_from(state,
                                           sync_config,
@@ -106,7 +130,7 @@ async fn sable_main(server_conf_path: &Path,
         {
             let server_state = server.save().await;
 
-            upgrade::exec_upgrade(&exe_path, server_conf_path, sync_conf_path, server_state);
+            exec_upgrade(&exe_path, server_conf_path, sync_conf_path, server_state);
         }
     }
 }
@@ -116,16 +140,20 @@ async fn sable_main(server_conf_path: &Path,
 /// Because the tokio runtime can't survive forking, `main()` loads the application
 /// configs (in order to report as many errors as possible before daemonising), daemonises,
 /// initialises the tokio runtime, and begins the async entry point [`sable_main`].
-pub fn main() -> Result<(), Box<dyn std::error::Error>>
+pub fn run_server<ST>(server_config_path: impl AsRef<Path>,
+                      sync_config_path: impl AsRef<Path>,
+                      foreground: bool,
+                      upgrade_fd: Option<RawFd>,
+                      bootstrap_config: Option<impl AsRef<Path>>,
+            ) -> Result<(), Box<dyn std::error::Error>>
+    where ST: ServerType
 {
-    let opts = Opts::from_args();
-
-    let sync_config = SyncConfig::load_file(opts.network_conf.clone())?;
-    let server_config = ServerConfig::load_file(opts.server_conf.clone())?;
+    let sync_config = SyncConfig::load_file(&sync_config_path)?;
+    let server_config = ServerConfig::<ST>::load_file(&server_config_path)?;
 
     let tls_data = server_config.tls_config.load_from_disk()?;
 
-    let bootstrap_conf = opts.bootstrap_network.map(load_network_config).transpose()?;
+    let bootstrap_conf = bootstrap_config.map(load_network_config).transpose()?;
 
     if !server_config.log.dir.is_dir()
     {
@@ -134,7 +162,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>>
 
     // Don't re-daemonise if we're upgrading; in that case if we're supposed to be daemonised then
     // we already are.
-    if !opts.foreground && opts.upgrade_state_fd.is_none()
+    if !foreground && upgrade_fd.is_none()
     {
         let mut daemon = daemonize::Daemonize::new()
                             .exit_action(|| println!("Running in background mode"))
@@ -158,12 +186,12 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>>
 
     let runtime = tokio::runtime::Runtime::new()?;
 
-    runtime.block_on(sable_main(&opts.server_conf,
+    runtime.block_on(sable_main(&server_config_path,
                                 server_config,
-                                &opts.network_conf,
+                                &sync_config_path,
                                 sync_config,
                                 tls_data,
-                                opts.upgrade_state_fd,
+                                upgrade_fd,
                                 bootstrap_conf,
                             ))
 
