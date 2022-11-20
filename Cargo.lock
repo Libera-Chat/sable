@@ -1131,6 +1131,7 @@ dependencies = [
  "sable_ircd",
  "sable_macros",
  "sable_network",
+ "sable_server",
  "serde",
  "serde_json",
  "sha1",
@@ -1801,6 +1802,7 @@ name = "sable_ircd"
 version = "0.1.0"
 dependencies = [
  "arc-swap",
+ "async-trait",
  "auth_client",
  "bitflags",
  "chrono",
@@ -1816,6 +1818,7 @@ dependencies = [
  "rustls",
  "sable_macros",
  "sable_network",
+ "sable_server",
  "serde",
  "serde_json",
  "serde_with 2.0.1",
@@ -1869,6 +1872,31 @@ dependencies = [
  "tracing",
  "wildmatch",
  "x509-parser",
+]
+
+[[package]]
+name = "sable_server"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "console-subscriber",
+ "hex",
+ "hyper",
+ "rustls",
+ "rustls-pemfile",
+ "sable_network",
+ "serde",
+ "serde_json",
+ "sha1",
+ "stringreader",
+ "thiserror",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+ "tracing-appender",
+ "tracing-core",
+ "tracing-subscriber",
 ]
 
 [[package]]

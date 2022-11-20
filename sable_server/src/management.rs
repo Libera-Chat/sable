@@ -1,12 +1,10 @@
-use super::*;
-use sable_ircd::prelude::*;
-use server::ServerManagementCommand;
-use server::ServerManagementCommandType;
-use sable_network::{
-    rpc::ShutdownAction,
-    config::TlsData,
+use crate::{
+    config::*,
 };
-use crate::config::*;
+use sable_network::{rpc::{
+    ShutdownAction,
+    ServerManagementCommand, ServerManagementCommandType
+}, config::TlsData};
 
 use std::{
     future::Future,
@@ -49,6 +47,12 @@ use sha1::{
     Digest,
 };
 use thiserror::Error;
+
+pub enum ManagementCommand
+{
+    ServerCommand(ServerManagementCommand),
+    Shutdown(ShutdownAction),
+}
 
 pub struct ManagementServer
 {

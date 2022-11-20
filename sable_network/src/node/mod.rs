@@ -39,6 +39,8 @@ mod history;
 mod upgrade;
 pub use upgrade::NetworkNodeState;
 
+mod management;
+
 /// A network server.
 pub struct NetworkNode<Policy = crate::policy::StandardPolicyService>
     where Policy: PolicyService

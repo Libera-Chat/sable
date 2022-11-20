@@ -1,26 +1,22 @@
-use crate::*;
-use crate::strip_comments::StripComments;
 use std::net::SocketAddr;
 use std::collections::HashMap;
 use tracing_core::{
     LevelFilter,
 };
-use sable_ircd::server::config::*;
-use sable_network::config::*;
+use std::{
+    path::{
+        Path,
+        PathBuf,
+    },
+    fs::File,
+    io::BufReader,
+};
 
 #[derive(Clone,Debug,serde::Deserialize)]
 pub struct AuthorisedFingerprint
 {
     pub name: String,
     pub fingerprint: String,
-}
-
-#[derive(Clone,Debug,serde::Deserialize)]
-pub struct ManagementConfig
-{
-    pub address: SocketAddr,
-    pub client_ca: PathBuf,
-    pub authorised_fingerprints: Vec<AuthorisedFingerprint>,
 }
 
 #[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
@@ -91,30 +87,12 @@ pub struct LoggingConfig
     pub console_address: Option<std::net::SocketAddr>,
 }
 
-#[derive(Debug,Deserialize)]
-pub struct ServerConfig
+#[derive(Clone,Debug,serde::Deserialize)]
+pub struct ManagementConfig
 {
-    pub server_id: ServerId,
-    pub server_name: ServerName,
-
-    pub server: ClientServerConfig,
-
-    pub management: ManagementConfig,
-
-    pub tls_config: TlsConfig,
-    pub node_config: NodeConfig,
-
-    pub log: LoggingConfig,
-}
-
-impl ServerConfig
-{
-    pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, ConfigError>
-    {
-        let file = File::open(filename)?;
-        let reader = StripComments::new(file);
-        Ok(serde_json::from_reader(reader)?)
-    }
+    pub address: SocketAddr,
+    pub client_ca: PathBuf,
+    pub authorised_fingerprints: Vec<AuthorisedFingerprint>,
 }
 
 impl LoggingConfig

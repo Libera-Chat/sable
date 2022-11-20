@@ -11,6 +11,7 @@ debug = []
 [dependencies]
 sable_macros = { path = "../sable_macros" }
 sable_network = { path = "../sable_network" }
+sable_server = { path = "../sable_server" }
 client_listener = { path = "../client_listener" }
 auth_client = { path = "../auth_client" }
 
@@ -35,3 +36,4 @@ once_cell = "1.13"
 concurrent-queue = "1.2.4"
 arc-swap = "1.5"
 parking_lot = { version = "0.12", features = [ "serde" ] }
+async-trait = "0.1.57"

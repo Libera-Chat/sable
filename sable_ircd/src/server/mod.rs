@@ -31,21 +31,19 @@ use parking_lot::RwLock;
 
 use strum::IntoEnumIterator;
 
-mod management;
-pub use management::ServerManagementCommand;
-pub use management::ServerManagementCommandType;
-
 mod async_handler_collection;
 pub use async_handler_collection::*;
 
 mod upgrade;
-pub use upgrade::ClientServerState;
+
+use self::config::ClientServerConfig;
 
 pub mod config;
 
 mod command_action;
 mod update_handler;
 mod user_access;
+mod server_type;
 
 /// A client server.
 ///
@@ -73,45 +71,6 @@ pub struct ClientServer
 
 impl ClientServer
 {
-    /// Create a new `ClientServer`
-    pub fn new(config: config::ClientServerConfig,
-               tls_data: &TlsData,
-               node: Arc<NetworkNode>,
-               history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
-            ) -> Self
-    {
-        let (action_submitter, action_receiver) = unbounded_channel();
-        let (auth_sender, auth_events) = unbounded_channel();
-        let (client_send, client_recv) = unbounded_channel();
-
-        let client_listeners = ListenerCollection::new(client_send).unwrap();
-
-        client_listeners.load_tls_certificates(tls_data.key.clone(), tls_data.cert_chain.clone()).unwrap();
-
-        for listener in config.listeners.iter()
-        {
-            let conn_type = if listener.tls {ConnectionType::Tls} else {ConnectionType::Clear};
-            client_listeners.add_listener(listener.address.parse().unwrap(), conn_type).unwrap();
-        }
-
-        Self {
-            action_receiver: Mutex::new(action_receiver),
-            connection_events: Mutex::new(client_recv),
-            history_receiver: Mutex::new(history_receiver),
-            auth_events: Mutex::new(auth_events),
-
-            auth_client: AuthClient::new(auth_sender).unwrap(),
-
-            action_submitter,
-            command_dispatcher: CommandDispatcher::new(),
-            connections: RwLock::new(ConnectionCollection::new()),
-            isupport: Self::build_basic_isupport(),
-            client_caps: CapabilityRepository::new(),
-            server: node,
-            listeners: Movable::new(client_listeners),
-        }
-    }
-
     /// Access the network state
     pub fn network(&self) -> Arc<Network>
     {
@@ -279,7 +238,7 @@ impl ClientServer
     /// - `management_channel`: receives management commands from the management service
     /// - `shutdown_channel`: used to signal the server to shut down
     #[tracing::instrument(skip_all)]
-    pub async fn run(&self, mut shutdown_channel: broadcast::Receiver<ShutdownAction>) -> ShutdownAction
+    async fn do_run(&self, mut shutdown_channel: broadcast::Receiver<ShutdownAction>) -> ShutdownAction
     {
         // Take ownership of these receivers here, so that we no longer need a mut borrow of `self` once the
         // run loop starts
@@ -411,13 +370,5 @@ impl ClientServer
         };
 
         shutdown_action
-    }
-
-    pub async fn shutdown(mut self)
-    {
-        if let Some(listeners) = self.listeners.take()
-        {
-            listeners.shutdown().await;
-        }
     }
 }

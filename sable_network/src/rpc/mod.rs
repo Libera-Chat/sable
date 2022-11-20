@@ -10,3 +10,6 @@ pub use shutdown_action::*;
 
 mod history_log;
 pub use history_log::*;
+
+mod management_command;
+pub use management_command::*;

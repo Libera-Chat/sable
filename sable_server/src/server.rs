@@ -1,37 +1,77 @@
-use sable_ircd::server::ClientServerState;
-use sable_network::{config::TlsData, node::NetworkNodeState, network::config::NetworkConfig, policy::StandardPolicyService, rpc::ShutdownAction};
+use crate::{
+    *,
+    config::*,
+    strip_comments::StripComments
+};
+
+use sable_network::{
+    prelude::*,
+    rpc::ShutdownAction,
+    config::*,
+    node::NetworkNodeState,
+    network::config::NetworkConfig,
+    policy::StandardPolicyService,
+};
+use serde::{Serialize, Deserialize};
 use tokio::{
     sync::{
-        oneshot,
+        oneshot, mpsc::unbounded_channel, broadcast,
     },
 };
 
-use crate::config::{ManagementConfig, ServerConfig};
+use std::{sync::Arc, path::Path, fs::File};
 
-use super::*;
+#[derive(Debug,Deserialize)]
+pub struct ServerConfig<ST>
+    where ST: ServerType
+{
+    pub server_id: ServerId,
+    pub server_name: ServerName,
 
-use std::sync::Arc;
+    pub server: ST::Config,
 
-pub struct Server
+    pub management: ManagementConfig,
+
+    pub tls_config: TlsConfig,
+    pub node_config: NodeConfig,
+
+    pub log: LoggingConfig,
+}
+
+impl<ST> ServerConfig<ST>
+    where ST: ServerType,
+          for<'a> ST::Config: Deserialize<'a>
+{
+    pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, Box<dyn std::error::Error>>
+    {
+        let file = File::open(filename)?;
+        let reader = StripComments::new(file);
+        Ok(serde_json::from_reader(reader)?)
+    }
+}
+
+pub struct Server<ST>
 {
     node: Arc<NetworkNode>,
     log: Arc<ReplicatedEventLog>,
-    server: Arc<ClientServer>,
+    server: Arc<ST>,
     management_config: ManagementConfig,
     tls_data: TlsData,
 }
 
 #[derive(Serialize,Deserialize)]
-pub struct ServerState
+pub struct ServerState<ST>
+    where ST: ServerType
 {
     node_state: NetworkNodeState,
     log_state: ReplicatedEventLogState,
-    server_state: ClientServerState,
+    server_state: ST::Saved,
 }
 
-impl Server
+impl<ST> Server<ST>
+    where ST: ServerType
 {
-    pub async fn new(conf: ServerConfig,
+    pub async fn new(conf: ServerConfig<ST>,
                      tls_data: TlsData,
                      net_config: SyncConfig,
                      bootstrap_config: Option<NetworkConfig>,
@@ -52,7 +92,7 @@ impl Server
 
         let node = Arc::new(NetworkNode::new(conf.server_id, epoch, conf.server_name, network, Arc::clone(&log), server_recv, history_send, policy));
 
-        let server = Arc::new(ClientServer::new(conf.server, &tls_data, Arc::clone(&node), history_recv));
+        let server = Arc::new(ST::new(conf.server, &tls_data, Arc::clone(&node), history_recv));
 
         Self {
             node,
@@ -94,56 +134,6 @@ impl Server
         action
     }
 
-    pub async fn save(self) -> ServerState
-    {
-        // Order matters here.
-        //
-        // Arc::try_unwrap will fail if there are any other Arcs still referencing the same object.
-        // Because ClientServer holds an Arc to the node, and the node holds an Arc to the log,
-        // they have to be saved/deconstructed in this order to get rid of the extra refs so that the
-        // next one can be unwrapped.
-        let server_state = Arc::try_unwrap(self.server)
-                            .unwrap_or_else(|_| panic!("Couldn't unwrap server"))
-                            .save_state().await
-                            .expect("Couldn't save server state");
-        let node_state = Arc::try_unwrap(self.node)
-                            .unwrap_or_else(|_| panic!("Couldn't unwrap node"))
-                            .save_state();
-        let log_state = Arc::try_unwrap(self.log)
-                            .unwrap_or_else(|_| panic!("Couldn't unwrap event log"))
-                            .save_state()
-                            .expect("Couldn't save log state");
-
-        ServerState {
-            node_state,
-            log_state,
-            server_state,
-        }
-    }
-
-    pub fn restore_from(state: ServerState,
-                        net_config: SyncConfig,
-                        server_config: ServerConfig,
-                    ) -> std::io::Result<Self>
-    {
-        let (server_send, server_recv) = unbounded_channel();
-        let (history_send, history_recv) = unbounded_channel();
-
-        let log = Arc::new(ReplicatedEventLog::restore(state.log_state, server_send, net_config, server_config.node_config));
-
-        let node = Arc::new(NetworkNode::restore_from(state.node_state, Arc::clone(&log), server_recv, history_send)?);
-
-        let server = Arc::new(ClientServer::restore_from(state.server_state, Arc::clone(&node), history_recv)?);
-
-        Ok(Self {
-            node,
-            log,
-            server,
-            management_config: server_config.management,
-            tls_data: server_config.tls_config.load_from_disk().expect("Couldn't load TLS data files")
-        })
-    }
-
     pub async fn shutdown(self)
     {
         let server = Arc::try_unwrap(self.server)
@@ -168,7 +158,7 @@ impl Server
                 {
                     management::ManagementCommand::ServerCommand(scmd) =>
                     {
-                        self.server.handle_management_command(scmd).await;
+                        self.node.handle_management_command(scmd).await;
                     }
                     management::ManagementCommand::Shutdown(action) =>
                     {
@@ -189,4 +179,54 @@ impl Server
         shutdown_action
 
     }
+
+    pub async fn save(self) -> ServerState<ST>
+    {
+        // Order matters here.
+        //
+        // Arc::try_unwrap will fail if there are any other Arcs still referencing the same object.
+        // Because ClientServer holds an Arc to the node, and the node holds an Arc to the log,
+        // they have to be saved/deconstructed in this order to get rid of the extra refs so that the
+        // next one can be unwrapped.
+        let server_state = Arc::try_unwrap(self.server)
+                            .unwrap_or_else(|_| panic!("Couldn't unwrap server"))
+                            .save().await;
+        let node_state = Arc::try_unwrap(self.node)
+                            .unwrap_or_else(|_| panic!("Couldn't unwrap node"))
+                            .save_state();
+        let log_state = Arc::try_unwrap(self.log)
+                            .unwrap_or_else(|_| panic!("Couldn't unwrap event log"))
+                            .save_state()
+                            .expect("Couldn't save log state");
+
+        ServerState {
+            node_state,
+            log_state,
+            server_state,
+        }
+    }
+
+    pub fn restore_from(state: ServerState<ST>,
+                        net_config: SyncConfig,
+                        server_config: ServerConfig<ST>,
+                    ) -> std::io::Result<Self>
+    {
+        let (server_send, server_recv) = unbounded_channel();
+        let (history_send, history_recv) = unbounded_channel();
+
+        let log = Arc::new(ReplicatedEventLog::restore(state.log_state, server_send, net_config, server_config.node_config));
+
+        let node = Arc::new(NetworkNode::restore_from(state.node_state, Arc::clone(&log), server_recv, history_send)?);
+
+        let server = Arc::new(ST::restore(state.server_state, Arc::clone(&node), history_recv));
+
+        Ok(Self {
+            node,
+            log,
+            server,
+            management_config: server_config.management,
+            tls_data: server_config.tls_config.load_from_disk().expect("Couldn't load TLS data files")
+        })
+    }
+
 }

@@ -8,8 +8,6 @@ pub struct ListenerConfig
     pub tls: bool,
 }
 
-
-
 #[derive(Debug,Deserialize)]
 pub struct ClientServerConfig
 {

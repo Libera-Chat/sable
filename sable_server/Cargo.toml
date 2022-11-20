@@ -1,0 +1,33 @@
+[package]
+name = "sable_server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dev-dependencies]
+stringreader = "0.1"
+
+[dependencies]
+sable_network = { path = "../sable_network" }
+tracing = "0.1"
+tracing-core = "0.1"
+tracing-subscriber = "0.3"
+tracing-appender = "0.2"
+console-subscriber = "0.1"
+
+tokio = { version = "1.14", features = [ "full" ] }
+hyper = { version = "0.14", features = [ "server", "tcp", "http1" ] }
+rustls = "0.20"
+
+serde = "1"
+serde_json = "1"
+
+thiserror = "1"
+rustls-pemfile = "0.2"
+tokio-rustls = "0.23"
+sha1 = "0.10"
+chrono = "0.4"
+async-trait = "0.1.57"
+hex = "0.4"
+

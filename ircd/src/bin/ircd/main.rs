@@ -1,8 +1,7 @@
 use ircd::*;
-use ircd::config::*;
-use ircd::server::*;
 
 use sable_network::rpc::ShutdownAction;
+use sable_server::{Server, ServerConfig, config::load_network_config};
 
 use std::{
     process::Command,
@@ -45,7 +44,7 @@ struct Opts
 /// We can't use `[tokio::main]` because the tokio runtime can't survive daemonising,
 /// so this is called after daemonising and manually initialising the runtime.
 async fn sable_main(server_conf_path: &Path,
-                    server_config: ServerConfig,
+                    server_config: ServerConfig<ClientServer>,
                     sync_conf_path: &Path,
                     sync_config: SyncConfig,
                     tls_data: sable_network::config::TlsData,
@@ -57,7 +56,7 @@ async fn sable_main(server_conf_path: &Path,
 
     println!("uid={}", nix::unistd::getuid());
 
-    ircd::tracing_config::build_subscriber(server_config.log.clone())?.init();
+    sable_server::build_subscriber(server_config.log.clone())?.init();
 
     let server = if let Some(upgrade_fd) = upgrade_fd
     {

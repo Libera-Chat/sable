@@ -1,3 +1,4 @@
+use crate::config::*;
 use tracing_subscriber::{
     prelude::*,
     filter::filter_fn,
@@ -6,7 +7,6 @@ use tracing_subscriber::{
 };
 use tracing_core::LevelFilter;
 use tracing::Subscriber;
-use crate::config::*;
 use std::convert::Into;
 
 use std::{
