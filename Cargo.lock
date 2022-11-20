@@ -368,7 +368,6 @@ dependencies = [
 name = "client_listener"
 version = "0.1.0"
 dependencies = [
- "console-subscriber",
  "libc",
  "memfd",
  "nix 0.24.2",
@@ -517,16 +516,6 @@ checksum = "cdffe87e1d521a10f9696f833fe502293ea446d7f256c06128293a4119bdf4cb"
 dependencies = [
  "quote",
  "syn",
-]
-
-[[package]]
-name = "ctrlc"
-version = "3.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d91974fbbe88ec1df0c24a4f00f99583667a7e2e6272b2b92d294d81e462173"
-dependencies = [
- "nix 0.25.0",
- "winapi",
 ]
 
 [[package]]
@@ -1120,10 +1109,8 @@ dependencies = [
  "chrono",
  "client_listener",
  "console-subscriber",
- "ctrlc",
  "daemonize",
  "hex",
- "hyper",
  "memfd",
  "nix 0.24.2",
  "rustls",
@@ -1135,7 +1122,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1",
- "stringreader",
  "structopt",
  "thiserror",
  "tokio",
@@ -1368,18 +1354,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "memoffset",
-]
-
-[[package]]
-name = "nix"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e322c04a9e3440c327fca7b6c8a63e6890a32fa2ad689db972425f07e0d22abb"
-dependencies = [
- "autocfg",
- "bitflags",
- "cfg-if",
- "libc",
 ]
 
 [[package]]
@@ -1850,7 +1824,6 @@ dependencies = [
  "built",
  "chrono",
  "concurrent_log",
- "convert_case",
  "futures",
  "hashers",
  "hex",

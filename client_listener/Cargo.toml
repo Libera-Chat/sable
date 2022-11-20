@@ -17,7 +17,6 @@ rustls = "0.20"
 tokio = { version = "1.14", features = [ "full" ] }
 libc = "0.2"
 nix = "0.24"
-console-subscriber = "0.1"
 
 [dev-dependencies]
 tracing-subscriber = "0.3"

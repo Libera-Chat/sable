@@ -36,7 +36,6 @@ arrayvec = { version = "0.7", features = [ "serde" ] }
 hashers = "1"
 serde_with = "1.11"
 parking_lot = { version = "0.12", features = [ "serde" ] }
-convert_case = "0.4"
 wildmatch = "2.1"
 concurrent_log = { version = "0.2.4", features = [ "serde" ] }
 
