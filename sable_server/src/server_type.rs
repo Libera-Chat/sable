@@ -38,5 +38,5 @@ pub trait ServerType : Send + Sync + 'static
     async fn save(self) -> Self::Saved;
 
     /// Restore from saved state
-    fn restore(stats: Self::Saved, node: Arc<NetworkNode>, history_receiver: UnboundedReceiver<NetworkHistoryUpdate>) -> Self;
+    fn restore(state: Self::Saved, node: Arc<NetworkNode>, history_receiver: UnboundedReceiver<NetworkHistoryUpdate>) -> Self;
 }
