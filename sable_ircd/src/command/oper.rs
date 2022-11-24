@@ -46,7 +46,7 @@ command_handler!("OPER" => OperHandler {
     }
 });
 
-impl OperHandler<'_>
+impl OperHandler
 {
     fn find_oper_block<'a>(&'a self, net: &'a Network, _user: &wrapper::User, oper_name: &str) -> Option<&'a config::OperConfig>
     {

@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// Utility type to invoke a command handler
 pub(crate) struct CommandProcessor<'server>
 {
-    server: &'server ClientServer,
+    server: Arc<ClientServer>,
     command_dispatcher: &'server CommandDispatcher,
 }
 
@@ -88,10 +88,10 @@ enum InternalCommandSource
 }
 
 /// A client command to be handled
-pub struct ClientCommand<'server>
+pub struct ClientCommand
 {
     /// The [`ClientServer`] instance
-    pub server: &'server ClientServer,
+    pub server: Arc<ClientServer>,
     /// The connection from which the command originated
     pub connection: Arc<ClientConnection>,
     /// The network state as seen by this command handlers
@@ -106,8 +106,8 @@ pub struct ClientCommand<'server>
 
 // Safety: this isn't automatically Send/Sync because of the raw pointer inside `InternalCommandSource`.
 // It's safe, though, because that pointer points into an Arc<> held by the same `ClientCommand`.
-unsafe impl Send for ClientCommand<'_> { }
-unsafe impl Sync for ClientCommand<'_> { }
+unsafe impl Send for ClientCommand { }
+unsafe impl Sync for ClientCommand { }
 
 use std::slice::Iter;
 use std::iter::Peekable;
@@ -115,13 +115,13 @@ use std::ops::Deref;
 
 pub struct ArgList<'a>
 {
-    cmd: &'a ClientCommand<'a>,
+    cmd: &'a ClientCommand,
     iter: Peekable<Iter<'a, String>>,
 }
 
 impl<'a> ArgList<'a>
 {
-    pub fn new(cmd: &'a ClientCommand<'a>) -> Self
+    pub fn new(cmd: &'a ClientCommand) -> Self
     {
         Self {
             iter: cmd.args.iter().peekable(),
@@ -166,10 +166,10 @@ impl CommandAction
     }
 }
 
-impl<'server> ClientCommand<'server>
+impl ClientCommand
 {
     /// Construct a `ClientCommand`
-    fn new(server: &'server ClientServer,
+    fn new(server: Arc<ClientServer>,
            connection: Arc<ClientConnection>,
            message: ClientMessage,
         ) -> Result<Self, CommandError>
@@ -207,7 +207,7 @@ impl<'server> ClientCommand<'server>
     /// Send a numeric response to the connection that invoked the command
     pub fn response(&self, n: &impl messages::Numeric) -> CommandResult
     {
-        self.connection.send(&n.format_for(self.server, &self.source()));
+        self.connection.send(&n.format_for(&self.server, &self.source()));
         Ok(())
     }
 
@@ -233,7 +233,7 @@ impl<'server> ClientCommand<'server>
 impl<'server> CommandProcessor<'server>
 {
     /// Construct a `CommandProcessor`
-    pub fn new (server: &'server ClientServer,
+    pub fn new (server: Arc<ClientServer>,
                 command_dispatcher: &'server CommandDispatcher,
             ) -> Self
     {
@@ -260,7 +260,10 @@ impl<'server> CommandProcessor<'server>
     {
         if let Some(conn) = self.server.find_connection(message.source)
         {
-            let cmd = Arc::new(ClientCommand::new(self.server, Arc::clone(&conn), message).expect("Got message from unknown source"));
+            let cmd = Arc::new(ClientCommand::new(Arc::clone(&self.server),
+                                                  Arc::clone(&conn),
+                                                  message
+                                            ).expect("Got message from unknown source"));
 
             if let Err(err) = self.do_process_message(Arc::clone(&cmd), async_handlers)
             {
@@ -272,7 +275,7 @@ impl<'server> CommandProcessor<'server>
                         panic!("Error occurred handling command {} from {:?}: {}", cmd.command, conn.id(), desc);
                     },
                     CommandError::Numeric(num) => {
-                        let targeted = num.as_ref().format_for(self.server, &cmd.source());
+                        let targeted = num.as_ref().format_for(&self.server, &cmd.source());
                         conn.send(&targeted);
                     },
                     CommandError::CustomError => {
@@ -285,13 +288,13 @@ impl<'server> CommandProcessor<'server>
     }
 
     fn do_process_message<'handlers>(&self,
-                          cmd: Arc<ClientCommand<'handlers>>,
+                          cmd: Arc<ClientCommand>,
                           async_handlers: &server::AsyncHandlerCollection<'handlers>,
                         ) -> Result<(), CommandError>
         where 'server: 'handlers
     {
         if let Some(factory) = self.command_dispatcher.resolve_command(&cmd.command) {
-            let mut handler = factory(self.server);
+            let mut handler = factory(Arc::clone(&self.server));
 
 
             handler.validate(&cmd)?;

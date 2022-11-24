@@ -39,6 +39,7 @@ impl<Policy: PolicyService + Saveable> NetworkNode<Policy>
             event_log: Arc<ReplicatedEventLog>,
             rpc_receiver: UnboundedReceiver<NetworkMessage>,
             subscriber: UnboundedSender<NetworkHistoryUpdate>,
+            remote_server_commands: Option<UnboundedSender<RemoteServerRequest>>,
         ) -> std::io::Result<Self>
     {
         Ok(Self {
@@ -53,6 +54,7 @@ impl<Policy: PolicyService + Saveable> NetworkNode<Policy>
             history_log: RwLock::new(state.history_log),
             subscriber,
             policy_service: Policy::restore(state.policy_state),
+            remote_server_commands,
         })
     }
 }

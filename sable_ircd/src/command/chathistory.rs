@@ -172,7 +172,7 @@ command_handler!("CHATHISTORY" => ChatHistoryHandler {
     }
 });
 
-impl ChatHistoryHandler<'_>
+impl ChatHistoryHandler
 {
     // Helper to extract the target name for chathistory purposes from a given event.
     // This might be the source or target of the actual event, or might be None if it's

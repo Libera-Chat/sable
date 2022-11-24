@@ -9,11 +9,11 @@ command_handler!("WHOIS" => WhoisHandler {
         let net = self.server.network();
         let target = net.user_by_nick(&target_nick)?;
 
-        cmd.connection.send(&make_numeric!(WhoisUser, &target).format_for(self.server, source));
+        cmd.connection.send(&make_numeric!(WhoisUser, &target).format_for(&self.server, source));
         cmd.connection.send(&make_numeric!(WhoisServer, &target, &target.server()?)
-                                .format_for(self.server, source));
+                                .format_for(&self.server, source));
         cmd.connection.send(&make_numeric!(EndOfWhois, &target)
-                                .format_for(self.server, source));
+                                .format_for(&self.server, source));
         Ok(())
     }
 });

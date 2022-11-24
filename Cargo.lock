@@ -1830,6 +1830,7 @@ dependencies = [
  "hyper",
  "memfd",
  "nix 0.24.2",
+ "parking_lot 0.12.1",
  "rustls",
  "rustls-pemfile",
  "sable_network",

@@ -69,6 +69,15 @@ impl MessageSource for update::HistoricUser
     }
 }
 
+impl <T: MessageSource> MessageSource for std::sync::Arc<T>
+{
+    fn format(&self) -> String
+    {
+        use std::ops::Deref;
+        self.deref().format()
+    }
+}
+
 impl MessageTarget for wrapper::User<'_>
 {
     fn format(&self) -> String { self.nick().to_string() }

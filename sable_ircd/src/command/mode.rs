@@ -75,7 +75,7 @@ command_handler!("MODE" => ModeHandler {
     }
 });
 
-impl ModeHandler<'_>
+impl ModeHandler
 {
     fn handle_channel_mode(&mut self, source: &wrapper::User, cmd: &ClientCommand, cname: ChannelName, args: &mut ArgList) -> CommandResult
     {

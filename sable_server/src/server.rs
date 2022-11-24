@@ -6,7 +6,7 @@ use crate::{
 
 use sable_network::{
     prelude::*,
-    rpc::ShutdownAction,
+    rpc::{ShutdownAction, RemoteServerRequest},
     config::*,
     node::NetworkNodeState,
     network::config::NetworkConfig,
@@ -15,9 +15,10 @@ use sable_network::{
 use serde::{Serialize, Deserialize, de::DeserializeOwned};
 use tokio::{
     sync::{
-        oneshot, mpsc::unbounded_channel, broadcast,
+        oneshot, mpsc::{unbounded_channel, UnboundedReceiver}, broadcast,
     },
 };
+use parking_lot::Mutex;
 
 use std::{sync::Arc, path::Path, fs::File};
 
@@ -64,6 +65,7 @@ pub struct Server<ST>
     server: Arc<ST>,
     management_config: ManagementConfig,
     tls_data: TlsData,
+    remote_command_recv: Mutex<Option<UnboundedReceiver<RemoteServerRequest>>>,
 }
 
 /// Saved state of a network server
@@ -91,6 +93,7 @@ impl<ST> Server<ST>
     {
         let (server_send, server_recv) = unbounded_channel();
         let (history_send, history_recv) = unbounded_channel();
+        let (remote_send, remote_recv) = unbounded_channel();
 
         let policy = StandardPolicyService::new();
         let epoch = EpochId::new(chrono::Utc::now().timestamp());
@@ -102,7 +105,7 @@ impl<ST> Server<ST>
             None => *log.sync_to_network().await
         };
 
-        let node = Arc::new(NetworkNode::new(conf.server_id, epoch, conf.server_name, network, Arc::clone(&log), server_recv, history_send, policy));
+        let node = Arc::new(NetworkNode::new(conf.server_id, epoch, conf.server_name, network, Arc::clone(&log), server_recv, history_send, Some(remote_send), policy));
 
         let server = Arc::new(ST::new(conf.server, &tls_data, Arc::clone(&node), history_recv));
 
@@ -111,7 +114,8 @@ impl<ST> Server<ST>
             log,
             server,
             management_config: conf.management,
-            tls_data: conf.tls_config.load_from_disk().expect("Couldn't load TLS files")
+            tls_data: conf.tls_config.load_from_disk().expect("Couldn't load TLS files"),
+            remote_command_recv: Mutex::new(Some(remote_recv)),
         }
     }
 
@@ -135,12 +139,20 @@ impl<ST> Server<ST>
             server.run(shutdown_recv).await
         });
 
+        let shutdown_recv = shutdown_send.subscribe();
+        let remote_command_recv = self.remote_command_recv.lock().take().expect("Remote command channel already taken?");
+        let server = Arc::clone(&self.server);
+        let event_pump_task = tokio::spawn(async move {
+            Self::run_event_pump(shutdown_recv, remote_command_recv, server).await
+        });
+
         // The management task will exit on receiving a shutdown command, so just wait for it to finish
         // then propagate the shutdown action
         let action = self.run_management().await;
 
         shutdown_send.send(action.clone()).expect("Couldn't signal shutdown");
 
+        event_pump_task.await.expect("Event pump panicked");
         node_task.await.expect("Node task panicked");
         server_task.await.expect("Server task panicked");
         log_task.await.expect("Log task panicked?").expect("Log task returned error");
@@ -155,6 +167,37 @@ impl<ST> Server<ST>
                             .unwrap_or_else(|_| panic!("Couldn't unwrap server"));
 
         server.shutdown().await;
+    }
+
+    async fn run_event_pump(mut shutdown: broadcast::Receiver<ShutdownAction>,
+                            mut remote_commands: UnboundedReceiver<RemoteServerRequest>,
+                            server: Arc<ST>,
+                        )
+    {
+        loop {
+            tokio::select!
+            {
+                _ = shutdown.recv() =>
+                {
+                    break;
+                }
+                request = remote_commands.recv() =>
+                {
+                    if let Some(request) = request
+                    {
+                        let response = server.handle_remote_command(request.req);
+                        if let Err(e) = request.response.send(response)
+                        {
+                            tracing::error!(?e, "Couldn't send response to remote command");
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     async fn run_management(&self) -> ShutdownAction
@@ -230,10 +273,11 @@ impl<ST> Server<ST>
     {
         let (server_send, server_recv) = unbounded_channel();
         let (history_send, history_recv) = unbounded_channel();
+        let (remote_send, remote_recv) = unbounded_channel();
 
         let log = Arc::new(ReplicatedEventLog::restore(state.log_state, server_send, net_config, server_config.node_config));
 
-        let node = Arc::new(NetworkNode::restore_from(state.node_state, Arc::clone(&log), server_recv, history_send)?);
+        let node = Arc::new(NetworkNode::restore_from(state.node_state, Arc::clone(&log), server_recv, history_send, Some(remote_send))?);
 
         let server = Arc::new(ST::restore(state.server_state, Arc::clone(&node), history_recv));
 
@@ -242,7 +286,8 @@ impl<ST> Server<ST>
             log,
             server,
             management_config: server_config.management,
-            tls_data: server_config.tls_config.load_from_disk().expect("Couldn't load TLS data files")
+            tls_data: server_config.tls_config.load_from_disk().expect("Couldn't load TLS data files"),
+            remote_command_recv: Mutex::new(Some(remote_recv)),
         })
     }
 

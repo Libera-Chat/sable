@@ -1,7 +1,7 @@
 use sable_network::{
     config::TlsData,
     node::*,
-    rpc::{NetworkHistoryUpdate, ShutdownAction},
+    rpc::*,
 };
 
 use tokio::sync::{
@@ -29,7 +29,7 @@ pub trait ServerType : Send + Sync + 'static
 
     /// Run the application logic. `shutdown_channel` will be signalled with an `ShutdownAction` when
     /// the server should be stopped.
-    async fn run(&self, shutdown_channel: broadcast::Receiver<ShutdownAction>);
+    async fn run(self: Arc<Self>, shutdown_channel: broadcast::Receiver<ShutdownAction>);
 
     /// Perform any actions required to shut down the server, if it will not be resumed
     async fn shutdown(self);
@@ -39,4 +39,7 @@ pub trait ServerType : Send + Sync + 'static
 
     /// Restore from saved state
     fn restore(state: Self::Saved, node: Arc<NetworkNode>, history_receiver: UnboundedReceiver<NetworkHistoryUpdate>) -> Self;
+
+    /// Handle a request originating from a remote server
+    fn handle_remote_command(&self, request: RemoteServerRequestType) -> RemoteServerResponse;
 }

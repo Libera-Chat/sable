@@ -15,7 +15,7 @@ command_handler!("KLINE" => KlineHandler {
         let duration = if let Ok(i) = cmd.args[0].parse::<i64>() {
             i
         } else {
-            cmd.connection.send(&message::Notice::new(self.server, source, "Invalid duration"));
+            cmd.connection.send(&message::Notice::new(&self.server, source, "Invalid duration"));
             return Ok(());
         };
 
@@ -54,7 +54,7 @@ command_handler!("KLINE" => KlineHandler {
         }
         else
         {
-            cmd.connection.send(&message::Notice::new(self.server, source, "Invalid mask"));
+            cmd.connection.send(&message::Notice::new(&self.server, source, "Invalid mask"));
         }
 
         Ok(())

@@ -56,6 +56,7 @@ pub struct NetworkNode<Policy = crate::policy::StandardPolicyService>
     rpc_receiver: tokio::sync::Mutex<UnboundedReceiver<NetworkMessage>>,
     history_log: RwLock<NetworkHistoryLog>,
     subscriber: UnboundedSender<NetworkHistoryUpdate>,
+    remote_server_commands: Option<UnboundedSender<RemoteServerRequest>>,
     policy_service: Policy,
 }
 
@@ -85,6 +86,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
                event_log: Arc<ReplicatedEventLog>,
                rpc_receiver: UnboundedReceiver<NetworkMessage>,
                subscriber: UnboundedSender<NetworkHistoryUpdate>,
+               remote_server_commands: Option<UnboundedSender<RemoteServerRequest>>,
                policy_service: Policy,
             ) -> Self
     {
@@ -104,6 +106,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
             rpc_receiver: Mutex::new(rpc_receiver),
             history_log: RwLock::new(NetworkHistoryLog::new()),
             subscriber,
+            remote_server_commands,
             policy_service,
         }
     }
@@ -261,6 +264,16 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
                             };
                             channel.send(Box::new(copied_net)).await.or_log("Error sending network state for export");
                         },
+                        Some(NetworkMessage::RemoteServerRequest(request)) =>
+                        {
+                            if let Some(remote_server_commands) = self.remote_server_commands.as_ref()
+                            {
+                                if let Err(_e) = remote_server_commands.send(request)
+                                {
+                                    tracing::error!("Couldn't send remote server command to handler");
+                                }
+                            }
+                        }
                         None => {
                             panic!("what to do here?");
                         }

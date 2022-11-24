@@ -104,7 +104,7 @@ impl sable_server::ServerType for ClientServer
         }
     }
 
-    async fn run(&self, shutdown: broadcast::Receiver<ShutdownAction>)
+    async fn run(self: Arc<Self>, shutdown: broadcast::Receiver<ShutdownAction>)
     {
         self.do_run(shutdown).await;
     }
@@ -114,6 +114,14 @@ impl sable_server::ServerType for ClientServer
         if let Some(listeners) = self.listeners.take()
         {
             listeners.shutdown().await;
+        }
+    }
+
+    fn handle_remote_command(&self, cmd: RemoteServerRequestType) -> RemoteServerResponse
+    {
+        match cmd
+        {
+            RemoteServerRequestType::Ping => RemoteServerResponse::Success
         }
     }
 }

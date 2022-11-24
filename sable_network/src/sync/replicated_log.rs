@@ -4,15 +4,18 @@ use crate::prelude::*;
 use crate::rpc::*;
 
 use tokio::{
-    sync::mpsc::{
-        Sender,
-        UnboundedSender,
-        UnboundedReceiver,
-        channel,
-        unbounded_channel,
+    sync::{
+        mpsc::{
+            Sender,
+            UnboundedSender,
+            UnboundedReceiver,
+            channel,
+            unbounded_channel,
+        },
+        Mutex,
+        broadcast,
+        oneshot,
     },
-    sync::Mutex,
-    sync::broadcast,
     select,
     task::JoinHandle,
     time::sleep,
@@ -25,6 +28,9 @@ use std::{
 };
 
 use thiserror::Error;
+
+use super::message::TargetedMessage;
+use super::network::NetworkResult;
 
 #[derive(Debug,Error)]
 pub enum EventLogSaveError
@@ -55,7 +61,7 @@ pub struct ReplicatedEventLog
 {
     shared_state: Arc<SharedState>,
     task_state: Arc<Mutex<TaskState>>,
-    new_event_send: UnboundedSender<(ObjectId, EventDetails)>,
+    new_event_send: UnboundedSender<EventLogMessage>,
     net: Arc<GossipNetwork>,
 }
 
@@ -69,11 +75,18 @@ struct SharedState
 struct TaskState
 {
     net: Arc<GossipNetwork>,
-    new_event_recv: UnboundedReceiver<(ObjectId, EventDetails)>,
+    new_event_recv: UnboundedReceiver<EventLogMessage>,
     network_recv: UnboundedReceiver<Request>,
     log_recv: UnboundedReceiver<Event>,
     server_send: UnboundedSender<NetworkMessage>,
     shared_state: Arc<SharedState>,
+}
+
+#[derive(Debug)]
+enum EventLogMessage
+{
+    NewEvent(ObjectId, EventDetails),
+    TargetedMessage(TargetedMessage, oneshot::Sender<RemoteServerResponse>),
 }
 
 impl ReplicatedEventLog
@@ -174,7 +187,8 @@ impl ReplicatedEventLog
     /// Arguments are the target object ID, and the event detail.
     pub fn create_event(&self, target: ObjectId, detail: EventDetails)
     {
-        self.new_event_send.send((target, detail)).expect("Failed to submit new event for creation");
+        self.new_event_send.send(EventLogMessage::NewEvent(target, detail))
+                           .expect("Failed to submit new event for creation");
     }
 
     /// Disable a given server for sync purposes. This should be called when
@@ -194,6 +208,23 @@ impl ReplicatedEventLog
     {
         self.shared_state.server_tombstones.write().unwrap().remove(&id);
         self.net.enable_peer(name.as_ref());
+    }
+
+    /// Send a request to another server in the network, and wait for the response
+    pub async fn send_remote_request(&self, target: ServerName, request: RemoteServerRequestType) -> Result<RemoteServerResponse, NetworkError>
+    {
+        let (sender, receiver) = oneshot::channel();
+
+        let targeted_message = TargetedMessage {
+            source: self.net.me().name.clone(),
+            target: target.to_string(),
+            via: Vec::new(),
+            content: request,
+        };
+        self.new_event_send.send(EventLogMessage::TargetedMessage(targeted_message, sender))
+                           .expect("Couldn't send to event log task");
+
+        receiver.await.map_err(|_| NetworkError::InternalError("channel receive error".to_string()))
     }
 
     /// Run and wait for the initial synchronisation to the network.
@@ -219,7 +250,7 @@ impl ReplicatedEventLog
                     _ => { continue; }
                 }
             }
-            handle.await.expect("Error syncing to network");
+            handle.await.expect("Error syncing to network").expect("Error syncing to network");
         };
 
         for server in net.servers()
@@ -231,7 +262,7 @@ impl ReplicatedEventLog
         net
     }
 
-    async fn start_sync_to_network(&self, sender: UnboundedSender<Request>) -> JoinHandle<()>
+    async fn start_sync_to_network(&self, sender: UnboundedSender<Request>) -> JoinHandle<NetworkResult>
     {
         while let Some(peer) = self.net.choose_any_peer()
         {
@@ -314,7 +345,7 @@ impl TaskState
                 update = self.new_event_recv.recv() => {
                     tracing::trace!("...from update_recv");
                     match update {
-                        Some((id, detail)) =>
+                        Some(EventLogMessage::NewEvent(id, detail)) =>
                         {
                             let event = {
                                 let mut log = self.shared_state.log.write().unwrap();
@@ -325,6 +356,23 @@ impl TaskState
                             };
                             self.net.propagate(&self.message(MessageDetail::NewEvent(event))).await
                         },
+                        Some(EventLogMessage::TargetedMessage(message, sender)) =>
+                        {
+                            match self.send_targeted_message(message).await
+                            {
+                                Ok(response) =>
+                                {
+                                    // If the receiver hung up, the response isn't relevant so don't do anything
+                                    let _ = sender.send(response);
+                                }
+                                Err(e) =>
+                                {
+                                    tracing::error!("Error sending out remote server message: {}", e);
+                                    // As above
+                                    let _ = sender.send(RemoteServerResponse::Error("Network error".to_string()));
+                                }
+                            }
+                        }
                         None => break
                     }
                 },
@@ -413,6 +461,63 @@ impl TaskState
             }
         }
         None
+    }
+
+    async fn send_targeted_message(&self, mut detail: TargetedMessage) -> Result<RemoteServerResponse, NetworkError>
+    {
+        let (sender, mut receiver) = unbounded_channel();
+
+        // First, try to send directly to the target
+        if let Some(target) = self.net.find_peer(detail.target.as_ref())
+        {
+            // If this succeeds, then we could connect successfully to the target server, so any error that occurs
+            // later in the process won't be solved by re-routing
+            if self.net.send_and_process(target,
+                                      self.message(MessageDetail::TargetedMessage(detail.clone())),
+                                      sender.clone()
+                                    ).await.is_ok()
+            {
+                while let Some(response) = receiver.recv().await
+                {
+                    if let MessageDetail::TargetedMessageResponse(resp) = response.message.content
+                    {
+                        return Ok(resp);
+                    }
+                }
+                // The other end sent back something that's not the response we were expecting. Raise it as an internal error
+                return Err(NetworkError::InternalError("Unexpected response type from targeted message".to_string()));
+            }
+        }
+
+        // If the above didn't work, then pick another server (that hasn't already seen it)
+        // to try to send it along
+
+        // Make sure it doesn't come back to us
+        detail.via.push(self.net.me().name.clone());
+
+        // Keep going until we succeed in sending it somewhere
+        while let Some(peer) = self.net.choose_peer_except(&detail.via)
+        {
+            // If this succeeds, then we could connect successfully to the target server, so any error that occurs
+            // later in the process won't be solved by re-routing
+            if self.net.send_and_process(peer,
+                                      self.message(MessageDetail::TargetedMessage(detail.clone())),
+                                      sender.clone()
+                                    ).await.is_ok()
+            {
+                while let Some(response) = receiver.recv().await
+                {
+                    if let MessageDetail::TargetedMessageResponse(resp) = response.message.content
+                    {
+                        return Ok(resp);
+                    }
+                }
+                // The other end sent back something that's not the response we were expecting. Raise it as an internal error
+                return Err(NetworkError::InternalError("Unexpected response type from targeted message".to_string()));
+            }
+        }
+
+        Err(NetworkError::InternalError("Ran out of potential peers to route targeted message".to_string()))
     }
 
     #[tracing::instrument(skip(self))]
@@ -529,15 +634,52 @@ impl TaskState
                     tracing::error!("Error sending response to network message: {}", e);
                 }
             },
+            MessageDetail::TargetedMessage(detail) =>
+            {
+                let response = if detail.target == self.net.me().name
+                {
+                    // We're the target. Handle it
+                    let (sender, receiver) = oneshot::channel();
+                    let request = RemoteServerRequest { req: detail.content, response: sender };
+
+                    if let Err(e) = self.server_send.send(NetworkMessage::RemoteServerRequest(request))
+                    {
+                        tracing::error!("Error sending request to server task: {}", e);
+                        Ok(RemoteServerResponse::Error("Couldn't send request to server task".to_string()))
+                    }
+                    else
+                    {
+                        receiver.await.map_err(|_| NetworkError::InternalError("Couldn't send to server task".to_string()))
+                    }
+                }
+                else
+                {
+                    // We're not the target. Pass it along
+                    self.send_targeted_message(detail).await
+                };
+
+                match response
+                {
+                    Ok(response) =>
+                    {
+                        // This will only fail if the receiver hung up, in which case the response isn't relevant any more anyway
+                        let _ = req.response.send(self.message(MessageDetail::TargetedMessageResponse(response))).await;
+                    },
+                    Err(e) =>
+                    {
+                        tracing::error!("Error handling targeted message: {}", e);
+                    }
+                }
+            },
             MessageDetail::MessageRejected =>
             {
                 // If the target server rejected one of our sync messages, then they'll continue
                 // to reject them until we restart. Stop sending to that server
                 tracing::warn!("peer {} rejected our message; disabling", &req.received_from);
                 self.net.disable_peer(&req.received_from);
-            }
-            MessageDetail::Done => {
-
+            },
+            MessageDetail::Done | MessageDetail::TargetedMessageResponse(_) => {
+                // These are only used in responses, so nothing to do here
             }
         }
     }

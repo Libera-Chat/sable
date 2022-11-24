@@ -24,10 +24,29 @@ pub enum MessageDetail
     GetNetworkState,
     /// Response containing the current network state
     NetworkState(Box<Network>),
+    /// A message targeted to a specific server
+    TargetedMessage(TargetedMessage),
+    /// A response to a targeted message
+    TargetedMessageResponse(rpc::RemoteServerResponse),
     /// Message was rejected because the source server has quit
     MessageRejected,
     /// Finished processing; close the connection
     Done
+}
+
+/// Details of a request/response message targeted to a particular server in the network
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct TargetedMessage
+{
+    /// The server from which the message originated
+    pub source: String,
+    /// The server to which the message is targeted
+    pub target: String,
+    /// Servers that have already attempted to deliver this message, and shouldn't
+    /// be used as intermediaries again
+    pub via: Vec<String>,
+    /// The content of the message
+    pub content: rpc::RemoteServerRequestType,
 }
 
 /// A single protocol message

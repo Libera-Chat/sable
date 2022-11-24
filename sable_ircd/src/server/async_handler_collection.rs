@@ -22,12 +22,12 @@ pub type AsyncHandler<'a> = BoxFuture<'a, CommandResult>;
 pub struct AsyncHandlerWrapper<'a>
 {
     handler: AsyncHandler<'a>,
-    command: Arc<ClientCommand<'a>>,
+    command: Arc<ClientCommand>,
 }
 
 impl<'a> AsyncHandlerWrapper<'a>
 {
-    pub fn new(handler: AsyncHandler<'a>, command: Arc<ClientCommand<'a>>) -> Self
+    pub fn new(handler: AsyncHandler<'a>, command: Arc<ClientCommand>) -> Self
     {
         Self { handler, command }
     }
@@ -50,7 +50,7 @@ impl<'a> Future for AsyncHandlerWrapper<'a>
                     panic!("Error occurred handling command {} from {:?}: {}", self.command.command, self.command.connection.id(), desc);
                 },
                 CommandError::Numeric(num) => {
-                    let targeted = num.as_ref().format_for(self.command.server, &self.command.source());
+                    let targeted = num.as_ref().format_for(&self.command.server, &self.command.source());
                     self.command.connection.send(&targeted);
                 },
                 CommandError::CustomError => {

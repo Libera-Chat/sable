@@ -195,7 +195,7 @@ impl ClientServer
         }
     }
 
-    fn process_pending_client_messages<'a, 'b>(&'b self, async_handlers: &AsyncHandlerCollection<'a>)
+    fn process_pending_client_messages<'a, 'b>(self: &'b Arc<Self>, async_handlers: &AsyncHandlerCollection<'a>)
         where Self: 'a, 'b: 'a
     {
         let connections = self.connections.read();
@@ -203,7 +203,7 @@ impl ClientServer
         {
             if let Some(parsed) = ClientMessage::parse(conn_id, &message)
             {
-                let processor = CommandProcessor::new(self, &self.command_dispatcher);
+                let processor = CommandProcessor::new(Arc::clone(&self), &self.command_dispatcher);
                 processor.process_message(parsed, async_handlers);
             }
             else
@@ -238,7 +238,7 @@ impl ClientServer
     /// - `management_channel`: receives management commands from the management service
     /// - `shutdown_channel`: used to signal the server to shut down
     #[tracing::instrument(skip_all)]
-    async fn do_run(&self, mut shutdown_channel: broadcast::Receiver<ShutdownAction>) -> ShutdownAction
+    async fn do_run(self: Arc<Self>, mut shutdown_channel: broadcast::Receiver<ShutdownAction>) -> ShutdownAction
     {
         // Take ownership of these receivers here, so that we no longer need a mut borrow of `self` once the
         // run loop starts
@@ -321,12 +321,12 @@ impl ClientServer
                                                                                 );
                                 if let Some(pc) = conn.pre_client() {
                                     if let Some(hostname) = msg.hostname {
-                                        conn.send(&message::Notice::new(self, &UnknownTarget,
+                                        conn.send(&message::Notice::new(&self, &UnknownTarget,
                                                         &format!("*** Found your hostname: {}", hostname)));
 
                                         pc.hostname.set(hostname).ok();
                                     } else {
-                                        conn.send(&message::Notice::new(self, &UnknownTarget,
+                                        conn.send(&message::Notice::new(&self, &UnknownTarget,
                                                         "*** Couldn't look up your hostname"));
                                         let no_hostname = Hostname::convert(conn.remote_addr());
                                         match no_hostname {

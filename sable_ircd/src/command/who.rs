@@ -22,7 +22,7 @@ command_handler!("WHO" => WhoHandler {
     }
 });
 
-impl WhoHandler<'_>
+impl WhoHandler
 {
     fn make_who_reply(&self, target: &wrapper::User, channel: Option<&wrapper::Channel>,
                       membership: Option<&wrapper::Membership>, server: &wrapper::Server) -> numeric::WhoReply
@@ -42,11 +42,11 @@ impl WhoHandler<'_>
             }
 
             let reply = self.make_who_reply(&member.user()?, Some(&chan), Some(&member), &member.user()?.server()?);
-            cmd.connection.send(&reply.format_for(self.server, source));
+            cmd.connection.send(&reply.format_for(&self.server, source));
         }
 
         let endofwho = make_numeric!(EndOfWho, chan.name().value());
-        cmd.connection.send(&endofwho.format_for(self.server, source));
+        cmd.connection.send(&endofwho.format_for(&self.server, source));
 
         Ok(())
     }

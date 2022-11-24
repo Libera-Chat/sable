@@ -79,7 +79,7 @@ pub(crate) trait CommandHandler
     /// If this method returns a future, that future will be polled by the server run loop and executed
     /// as the command handler. If it returns `None` (as the default implementation does), then the
     /// command will be handled synchronously (by calling
-    fn handle_async<'a>(&mut self, cmd: Arc<ClientCommand<'a>>) -> Option<server::AsyncHandler<'a>>
+    fn handle_async<'a>(&mut self, cmd: Arc<ClientCommand>) -> Option<server::AsyncHandler<'a>>
     {
         match cmd.source() {
             CommandSource::PreClient(pc) => {
@@ -105,7 +105,7 @@ pub(crate) trait CommandHandler
     /// the server run loop.
     ///
     /// The default returns `None`, indicating that the command should be handled synchronously
-    fn handle_preclient_async<'a>(&mut self, _source: Arc<PreClient>, _cmd: Arc<ClientCommand<'a>>) -> Option<server::AsyncHandler<'a>>
+    fn handle_preclient_async<'a>(&mut self, _source: Arc<PreClient>, _cmd: Arc<ClientCommand>) -> Option<server::AsyncHandler<'a>>
     {
         None
     }
@@ -123,7 +123,7 @@ pub(crate) trait CommandHandler
     /// Implementations should return a boxed Future which will be driven by the server run loop.
     ///
     /// The default returns `None`, indicating that the command should be handled synchronously
-    fn handle_user_async<'a>(&mut self, _source: UserId, _cmd: Arc<ClientCommand<'a>>) -> Option<server::AsyncHandler<'a>>
+    fn handle_user_async<'a>(&mut self, _source: UserId, _cmd: Arc<ClientCommand>) -> Option<server::AsyncHandler<'a>>
     {
         None
     }
@@ -134,7 +134,7 @@ pub(crate) trait CommandHandler
     }
 }
 
-type CommandHandlerFactory = fn(&ClientServer) -> Box<dyn CommandHandler + '_>;
+type CommandHandlerFactory = fn(Arc<ClientServer>) -> Box<dyn CommandHandler>;
 
 /// A command handler registration. Constructed by the `command_handler` macro.
 pub(crate) struct CommandRegistration
@@ -181,14 +181,14 @@ impl CommandDispatcher {
 macro_rules! command_handler {
     ($cmd:literal => $typename:ident $body:tt) =>
     {
-        struct $typename<'server>
+        struct $typename
         {
-            server: &'server crate::server::ClientServer,
+            server: Arc<crate::server::ClientServer>,
         }
 
-        impl<'server> $typename<'server>
+        impl $typename
         {
-            pub fn new(server: &'server crate::server::ClientServer) -> Self
+            pub fn new(server: Arc<crate::server::ClientServer>) -> Self
             {
                 Self{ server }
             }
@@ -205,7 +205,7 @@ macro_rules! command_handler {
             }
         }
 
-        impl<'server> CommandHandler for $typename<'server>
+        impl CommandHandler for $typename
         $body
 
         mod registration
@@ -214,7 +214,7 @@ macro_rules! command_handler {
             #[allow(non_snake_case)]
             mod $typename
             {
-                fn factory_function(server: &crate::server::ClientServer) -> Box<dyn crate::command::CommandHandler + '_>
+                fn factory_function(server: std::sync::Arc<crate::server::ClientServer>) -> Box<dyn crate::command::CommandHandler>
                 {
                     Box::new(super::super::$typename::new(server))
                 }
@@ -249,3 +249,4 @@ mod oper;
 mod chathistory;
 mod session;
 mod async_wait;
+mod sping;

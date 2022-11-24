@@ -66,6 +66,7 @@ pub struct GossipNetwork
     tls_client_config: Arc<ClientConfig>,
     shutdown_send: Mutex<Option<oneshot::Sender<()>>>,
     task_state: Arc<NetworkTaskState>,
+    me: PeerConfig,
 }
 
 /// State that's shared between the listener task and client code
@@ -109,6 +110,7 @@ pub enum NetworkError
     #[error("Authorisation failure: {0}")]
     AuthzError(String),
 }
+pub type NetworkResult = Result<(), NetworkError>;
 
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for NetworkError
 {
@@ -142,12 +144,14 @@ impl GossipNetwork
                             .expect("Bad TLS server config");
 
         let mut peers = net_config.peers;
-        peers.retain(|p| p.address != node_config.listen_addr);
+        let my_index = peers.iter().position(|p| p.address == node_config.listen_addr).expect("Couldn't find myself in the network config");
+        let me = peers.remove(my_index);
 
         Self {
             fanout: net_config.fanout,
             tls_client_config: Arc::new(client_config),
             shutdown_send: Mutex::new(None),
+            me,
             task_state: Arc::new(NetworkTaskState {
                 listen_addr: node_config.listen_addr,
                 peers: peers.into_iter().map(|c| Peer { conf: c, enabled: AtomicBool::new(false) }).collect(),
@@ -188,6 +192,11 @@ impl GossipNetwork
                 sender.send(()).ok();
             }
         }
+    }
+
+    pub fn me(&self) -> &PeerConfig
+    {
+        &self.me
     }
 
     pub fn enable_peer(&self, name: &str)
@@ -244,6 +253,36 @@ impl GossipNetwork
         ret
     }
 
+    /// Choose a peer at random that isn't in the provided list
+    pub fn choose_peer_except(&self, except: &Vec<String>) -> Option<&PeerConfig>
+    {
+        let ret = self.task_state.peers.iter()
+                             .filter(|p| p.enabled.load(Ordering::SeqCst) && !except.contains(&p.conf.name))
+                             .choose(&mut rand::thread_rng())
+                             .map(|p| &p.conf);
+
+        if ret.is_none()
+        {
+            tracing::info!("No active peer available to choose");
+        }
+        ret
+    }
+
+    /// Find a peer config with the given server name
+    pub fn find_peer(&self, name: &str) -> Option<&PeerConfig>
+    {
+        let ret = self.task_state.peers.iter()
+                            .filter(|p| p.enabled.load(Ordering::Relaxed))
+                            .find(|p| p.conf.name == name)
+                            .map(|p| &p.conf);
+
+        if ret.is_none()
+        {
+            tracing::info!("No peer named {} available", name);
+        }
+        ret
+    }
+
     pub async fn propagate(&self, msg: &Message)
     {
         let mut tasks = Vec::new();
@@ -265,17 +304,21 @@ impl GossipNetwork
         future::join_all(tasks).await;
     }
 
-    pub async fn send_to(&self, peer: &PeerConfig, msg: Message)
+    pub async fn send_to(&self, peer: &PeerConfig, msg: Message) -> Result<JoinHandle<NetworkResult>, NetworkError>
     {
         tracing::trace!("Sending to {:?}: {:?}", peer.address, msg);
-        if let Err(e) = self.do_send_to(peer, msg, self.task_state.message_sender.clone()).await
+        let result = self.do_send_to(peer, msg, self.task_state.message_sender.clone()).await;
+
+        if let Err(e) = &result
         {
             tracing::error!("Error sending network event: {}", e);
         }
+
+        result
     }
 
     pub async fn send_and_process(&self, peer: &PeerConfig, msg: Message, response_sender: UnboundedSender<Request>)
-                 -> Result<JoinHandle<()>, NetworkError>
+                 -> Result<JoinHandle<NetworkResult>, NetworkError>
     {
         tracing::trace!("Sending to {:?}: {:?}", peer.address, msg);
         self.do_send_to(peer, msg, response_sender).await
@@ -291,7 +334,7 @@ impl GossipNetwork
 
     #[instrument(skip(self,response_sender))]
     async fn do_send_to(&self, peer: &PeerConfig, msg: Message, response_sender: UnboundedSender<Request>)
-                -> Result<JoinHandle<()>, NetworkError>
+                -> Result<JoinHandle<NetworkResult>, NetworkError>
     {
         let mut local_addr = self.task_state.listen_addr;
         local_addr.set_port(0);
@@ -304,10 +347,14 @@ impl GossipNetwork
 
         let task_state = Arc::clone(&self.task_state);
         Ok(tokio::spawn(async move {
-            if let Err(e) = task_state.send_and_handle_response(stream.into(), msg, response_sender).await
+            let result = task_state.send_and_handle_response(stream.into(), msg, response_sender).await;
+
+            if let Err(e) = &result
             {
                 tracing::error!("Error in outbound network sync connection: {}", e);
             }
+
+            result
         }))
     }
 

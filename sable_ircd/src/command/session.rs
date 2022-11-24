@@ -24,7 +24,7 @@ command_handler!("SESSION" => SessionHandler {
                 let key_input = format!("{:?}{}", source.id(), rand::random::<u64>());
                 let key_hash = sha256::digest(key_input);
 
-                cmd.connection.send(&message::Notice::new(self.server, source,
+                cmd.connection.send(&message::Notice::new(&self.server, source,
                     &format!("Your session resumption token is {}", key_hash)));
 
                 self.action(CommandAction::StateChange(source.id().into(),

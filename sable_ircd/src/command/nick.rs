@@ -9,7 +9,7 @@ command_handler!("NICK" => NickHandler {
         let nick = Nickname::from_str(&cmd.args[0])?;
         if self.server.network().nick_binding(&nick).is_ok()
         {
-            cmd.connection.send(&numeric::NicknameInUse::new_for(self.server, &UnknownTarget, &nick));
+            cmd.connection.send(&numeric::NicknameInUse::new_for(&self.server, &UnknownTarget, &nick));
         }
         else
         {
