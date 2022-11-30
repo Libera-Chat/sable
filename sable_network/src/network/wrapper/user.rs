@@ -93,6 +93,12 @@ impl User<'_> {
     {
         self.data.session_key.as_ref()
     }
+
+    /// Return the user's account, if any
+    pub fn account(&self) -> LookupResult<Option<super::Account>>
+    {
+        self.data.account.map(|id| self.network.account(id)).transpose()
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for User<'a> {

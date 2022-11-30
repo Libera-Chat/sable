@@ -61,6 +61,7 @@ impl NetworkBuilder
                 realname: "user".to_string(),
                 visible_hostname: Hostname::from_str("host.name").unwrap(),
                 server: ServerId::new(1),
+                account: None,
             });
     }
 

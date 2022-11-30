@@ -185,4 +185,29 @@ impl Network {
     {
         self.audit_log.get(&id).ok_or(NoSuchAuditLogEntry(id))
     }
+
+    /// Retrieve an account
+    pub fn account(&self, id: AccountId) -> LookupResult<wrapper::Account>
+    {
+        self.accounts.get(&id).ok_or(NoSuchAccount(id)).wrap(self)
+    }
+
+    /// Retrieve a nickname registration
+    pub fn nick_registration(&self, id: NickRegistrationId) -> LookupResult<wrapper::NickRegistration>
+    {
+        self.nick_registrations.get(&id).ok_or(NoSuchNickRegistration(id)).wrap(self)
+    }
+
+    /// Retrieve a channel registration
+    pub fn channel_registration(&self, id: ChannelRegistrationId) -> LookupResult<wrapper::ChannelRegistration>
+    {
+        self.channel_registrations.get(&id).ok_or(NoSuchChannelRegistration(id)).wrap(self)
+    }
+
+    /// Retrieve a channel access entry
+    pub fn channel_access(&self, id: ChannelAccessId) -> LookupResult<wrapper::ChannelAccess>
+    {
+        self.channel_accesses.get(&id).ok_or(NoSuchChannelAccess(id)).wrap(self)
+    }
+
 }

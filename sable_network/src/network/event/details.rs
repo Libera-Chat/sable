@@ -21,6 +21,7 @@ EventDetails => {
         pub realname: String,
         pub mode: state::UserMode,
         pub server: ServerId,
+        pub account: Option<AccountId>,
     }
 
     #[target_type(UserId)]
@@ -153,5 +154,27 @@ EventDetails => {
     #[target_type(UserId)]
     struct EnablePersistentSession {
         pub key_hash: String
+    }
+
+    #[target_type(AccountId)]
+    struct AccountUpdate {
+        pub data: Option<state::Account>,
+    }
+
+    #[target_type(NickRegistrationId)]
+    struct NickRegistrationUpdate {
+        pub data: Option<state::NickRegistration>,
+    }
+
+    #[target_type(ChannelRegistrationId)]
+    struct ChannelRegistrationUpdate
+    {
+        pub data: Option<state::ChannelRegistration>,
+    }
+
+    #[target_type(ChannelAccessId)]
+    struct ChannelAccessUpdate
+    {
+        pub data: Option<state::ChannelAccess>,
     }
 });

@@ -97,10 +97,22 @@ pub struct Network
     #[serde_as(as = "Vec<(_,_)>")]
     klines: HashMap<NetworkBanId, state::KLine>,
 
-    config: config::NetworkConfig,
-
     #[serde_as(as = "Vec<(_,_)>")]
     audit_log: HashMap<AuditLogEntryId, state::AuditLogEntry>,
+
+    #[serde_as(as = "Vec<(_,_)>")]
+    accounts: HashMap<AccountId, state::Account>,
+
+    #[serde_as(as = "Vec<(_,_)>")]
+    nick_registrations: HashMap<NickRegistrationId, state::NickRegistration>,
+
+    #[serde_as(as = "Vec<(_,_)>")]
+    channel_registrations: HashMap<ChannelRegistrationId, state::ChannelRegistration>,
+
+    #[serde_as(as = "Vec<(_,_)>")]
+    channel_accesses: HashMap<ChannelAccessId, state::ChannelAccess>,
+
+    config: config::NetworkConfig,
 
     clock: EventClock,
 }
@@ -123,9 +135,14 @@ impl Network {
             servers: HashMap::new(),
             klines: HashMap::new(),
 
-            config,
-
             audit_log: HashMap::new(),
+
+            accounts: HashMap::new(),
+            nick_registrations: HashMap::new(),
+            channel_registrations: HashMap::new(),
+            channel_accesses: HashMap::new(),
+
+            config,
 
             clock: EventClock::new(),
         }
@@ -188,6 +205,10 @@ impl Network {
             LoadConfig => self.load_config,
             NewAuditLogEntry => self.new_audit_log,
             EnablePersistentSession => self.enable_persistent_session,
+            AccountUpdate => self.update_account,
+            NickRegistrationUpdate => self.update_nick_registration,
+            ChannelRegistrationUpdate => self.update_channel_registration,
+            ChannelAccessUpdate => self.update_channel_access,
         })?;
 
         self.clock.update_with_id(event.id);
@@ -266,3 +287,4 @@ mod ban_state;
 mod config_state;
 mod oper_state;
 mod audit_log;
+mod account_state;

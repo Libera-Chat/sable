@@ -39,6 +39,14 @@ pub enum LookupError
     NoSuchConnectionId,
     #[error("No such audit log entry {0:?}")]
     NoSuchAuditLogEntry(AuditLogEntryId),
+    #[error("No such account {0:?}")]
+    NoSuchAccount(AccountId),
+    #[error("No such nick registration {0:?}")]
+    NoSuchNickRegistration(NickRegistrationId),
+    #[error("No such channel registration {0:?}")]
+    NoSuchChannelRegistration(ChannelRegistrationId),
+    #[error("No such channel access {0:?}")]
+    NoSuchChannelAccess(ChannelAccessId),
 }
 
 /// Convenience definition of a Result type used to look up network objects.

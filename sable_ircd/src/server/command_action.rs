@@ -39,6 +39,7 @@ impl ClientServer
                             realname: pre_client.realname.get().unwrap().clone(),
                             mode: state::UserMode::new(umodes),
                             server: self.server.id(),
+                            account: None,
                         };
                         self.server.submit_event(new_user_id, details);
 

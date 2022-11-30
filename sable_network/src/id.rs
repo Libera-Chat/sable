@@ -32,6 +32,12 @@ object_ids!(ObjectId (ObjectIdGenerator) {
 
     Config: (LocalId,);
     AuditLogEntry: sequential;
+
+    Account: sequential;
+    NickRegistration: sequential;
+    ChannelRegistration: sequential;
+
+    ChannelAccess: (AccountId, ChannelRegistrationId);
 });
 
 

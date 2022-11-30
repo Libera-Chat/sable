@@ -36,6 +36,8 @@ pub struct User {
     pub mode: UserMode,
     pub oper_privileges: Option<UserPrivileges>,
 
+    pub account: Option<AccountId>,
+
     pub session_key: Option<UserSessionKey>,
 }
 
@@ -74,7 +76,8 @@ impl NickBinding
 impl User {
     pub fn new(id: UserId, server: ServerId,
                user: Username, visible_host: Hostname,
-               realname: String, mode: UserMode) -> Self
+               realname: String, mode: UserMode,
+               account: Option<AccountId>) -> Self
     {
         Self {
             id,
@@ -84,6 +87,7 @@ impl User {
             realname,
             mode,
             oper_privileges: None,
+            account,
             session_key: None,
         }
     }

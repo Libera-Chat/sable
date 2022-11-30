@@ -162,6 +162,7 @@ impl Network {
                                     detail.visible_hostname,
                                     detail.realname.clone(),
                                     detail.mode.clone(),
+                                    detail.account.clone(),
                                 );
 
         // First insert the user (with no nickname yet) so that the nick binding can see
