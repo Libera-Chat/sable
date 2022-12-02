@@ -2,7 +2,6 @@ use super::*;
 
 use sable_network::network::{
     wrapper::ObjectWrapper,
-    event::*,
 };
 
 impl<DB> ServicesServer<DB>

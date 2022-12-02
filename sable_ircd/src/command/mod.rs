@@ -6,6 +6,7 @@ use super::*;
 use sable_network::prelude::*;
 use messages::*;
 use client::*;
+use crate::utils::ClientCommandExt;
 
 use std::{
     collections::HashMap,
@@ -251,6 +252,9 @@ mod register;
 
 // Interim solutions that need refinement
 mod session;
+
+// Services compatibility command layer
+mod ns;
 
 // Dev/test tools
 #[cfg(debug)]

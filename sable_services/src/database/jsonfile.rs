@@ -98,6 +98,7 @@ impl DatabaseConnection for JsonDatabase
     fn new_account(&self, data: state::Account, mut auth: AccountAuth) -> Result<state::Account>
     {
         let mut state_guard = self.state.write();
+        // Get the raw mut reference out of the guard so we can mutably borrow multiple fields
         let state = state_guard.deref_mut();
         let account_entry = state.accounts.entry(data.id);
         let auth_entry = state.account_auth.entry(data.id);
