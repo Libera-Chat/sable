@@ -38,6 +38,7 @@ impl SendHistoryItem for HistoryLogEntry
             NetworkStateChange::NewServer(detail) => detail.send_to(conn, self),
             NetworkStateChange::ServerQuit(detail) => detail.send_to(conn, self),
             NetworkStateChange::NewAuditLogEntry(detail) => detail.send_to(conn, self),
+            NetworkStateChange::UserLoginChange(detail) => detail.send_to(conn, self),
         }
     }
 }
@@ -278,6 +279,14 @@ impl SendHistoryItem for update::ServerQuit
 }
 
 impl SendHistoryItem for update::NewAuditLogEntry
+{
+    fn send_to(&self, _conn: &impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult
+    {
+        todo!();
+    }
+}
+
+impl SendHistoryItem for update::UserLoginChange
 {
     fn send_to(&self, _conn: &impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult
     {

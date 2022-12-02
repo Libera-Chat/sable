@@ -12,6 +12,12 @@ command_handler!("WHOIS" => WhoisHandler {
         cmd.connection.send(&make_numeric!(WhoisUser, &target).format_for(&self.server, source));
         cmd.connection.send(&make_numeric!(WhoisServer, &target, &target.server()?)
                                 .format_for(&self.server, source));
+
+        if let Ok(Some(account)) = target.account()
+        {
+            cmd.connection.send(&make_numeric!(WhoisAccount, &target, &account.name()).format_for(&self.server, source));
+        }
+
         cmd.connection.send(&make_numeric!(EndOfWhois, &target)
                                 .format_for(&self.server, source));
         Ok(())

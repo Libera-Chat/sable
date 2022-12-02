@@ -182,6 +182,13 @@ NetworkStateChange => {
     struct NewAuditLogEntry {
         pub entry: state::AuditLogEntry,
     }
+
+    /// A user has logged into or out of an account
+    struct UserLoginChange {
+        pub user: HistoricUser,
+        pub old_account: Option<state::Account>,
+        pub new_account: Option<state::Account>,
+    }
 });
 
 /// Trait to be implemented by an object which wants to be notified of network state updates

@@ -5,6 +5,11 @@ use crate::network::update::*;
 
 impl Network
 {
+    pub(super) fn introduce_services(&mut self, target: ServerId, _event: &Event, _update: &IntroduceServices, _updates: &dyn NetworkUpdateReceiver)
+    {
+        self.current_services = Some(target);
+    }
+
     pub(super) fn update_account(&mut self, target: AccountId, _event: &Event, update: &AccountUpdate, _updates: &dyn NetworkUpdateReceiver)
     {
         if let Some(data) = &update.data
@@ -56,4 +61,28 @@ impl Network
             self.channel_accesses.remove(&target);
         }
     }
+
+    pub(super) fn user_login(&mut self, target: UserId, event: &Event, update: &UserLogin, updates: &dyn NetworkUpdateReceiver)
+    {
+        let accounts = &self.accounts;
+
+        if let Some(user) = self.users.get_mut(&target)
+        {
+            let old_account = user.account.and_then(|id| accounts.get(&id)).cloned();
+            let new_account = update.account.and_then(|id| accounts.get(&id)).cloned();
+
+            user.account = update.account;
+
+            let user = user.clone();
+
+            let update = update::UserLoginChange {
+                user: self.translate_historic_user(user),
+                old_account,
+                new_account,
+            };
+
+            updates.notify(update, event);
+        }
+    }
+
 }

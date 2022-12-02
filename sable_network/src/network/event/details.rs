@@ -156,6 +156,10 @@ EventDetails => {
         pub key_hash: String
     }
 
+    #[target_type(ServerId)]
+    struct IntroduceServices {
+    }
+
     #[target_type(AccountId)]
     struct AccountUpdate {
         pub data: Option<state::Account>,
@@ -176,5 +180,12 @@ EventDetails => {
     struct ChannelAccessUpdate
     {
         pub data: Option<state::ChannelAccess>,
+    }
+
+    #[target_type(UserId)]
+    struct UserLogin
+    {
+        /// None means logout
+        pub account: Option<AccountId>
     }
 });

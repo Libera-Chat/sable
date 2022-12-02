@@ -5,6 +5,14 @@ pub struct NickRegistration<'a> {
     data: &'a state::NickRegistration,
 }
 
+impl NickRegistration<'_>
+{
+    pub fn id(&self) -> NickRegistrationId
+    {
+        self.data.id
+    }
+}
+
 impl<'a> super::ObjectWrapper<'a> for NickRegistration<'a> {
     type Underlying = state::NickRegistration;
 

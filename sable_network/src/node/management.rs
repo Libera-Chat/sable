@@ -19,6 +19,7 @@ impl NetworkNode
             DumpNetwork => self.dump_network_state(),
             DumpEvents => self.dump_events(),
         };
+        tracing::debug!(?cmd.cmd, ?resp, "Handled management command");
         let _ = cmd.response.send(resp);
     }
 

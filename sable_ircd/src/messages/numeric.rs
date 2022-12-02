@@ -26,6 +26,10 @@ define_messages! {
 
     324(ChannelModeIs)          => { (chan: &Channel.name(), modes: &ChannelMode.format())
                                                                 => "{chan} {modes}" },
+
+    330(WhoisAccount)           => { (nick: &User.nick(), account: &Nickname)
+                                                                => "{nick} {account} :is logged in as" },
+
     331(NoTopic)                => { (chan: &Channel.name())    => "{chan} :No topic is set"},
     332(TopicIs)                => { (chan: &Channel.name(), text: &str)
                                                                 => "{chan} :{text}" },

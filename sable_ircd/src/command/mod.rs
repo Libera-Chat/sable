@@ -247,6 +247,13 @@ mod kill;
 mod kline;
 mod oper;
 mod chathistory;
+mod register;
+
+// Interim solutions that need refinement
 mod session;
+
+// Dev/test tools
+#[cfg(debug)]
 mod async_wait;
+#[cfg(debug)]
 mod sping;

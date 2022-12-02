@@ -7,6 +7,7 @@ members = [
     "auth_client",
     "sable_ipc",
     "sable_server",
+    "sable_services",
 ]
 
 # Incremental builds break inventory

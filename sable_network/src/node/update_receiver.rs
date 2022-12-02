@@ -232,6 +232,13 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
     {
         Ok(())
     }
+
+    fn handle_user_login(&self, _entry: &HistoryLogEntry, _detail: &update::UserLoginChange) -> HandleResult
+    {
+        // TODO: notify user(s)
+
+        Ok(())
+    }
 }
 
 impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode<Policy>
@@ -271,6 +278,7 @@ impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode
             NewServer(details) => self.handle_new_server(entry, details),
             ServerQuit(details) => self.handle_server_quit(entry, details),
             NewAuditLogEntry(details) => self.report_audit_entry(entry, details),
+            UserLoginChange(details) => self.handle_user_login(entry, details),
         };
         if let Err(e) = res
         {

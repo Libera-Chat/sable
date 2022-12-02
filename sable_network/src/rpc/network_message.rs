@@ -1,5 +1,11 @@
-use crate::network::event::*;
-use crate::network::Network;
+use crate::{
+    network::{
+        event::*,
+        Network,
+    },
+    id::*,
+    validated::*,
+};
 use tokio::sync::{
     mpsc::Sender,
     oneshot,
@@ -41,6 +47,12 @@ pub enum RemoteServerRequestType
 {
     /// Simple ping for communication tests
     Ping,
+    /// User attempting registration
+    /// Parameters: account name being registered, password provided
+    RegisterUser(Nickname, String),
+    /// User attempting login
+    /// Parameters: account id, password
+    UserLogin(AccountId, String)
 }
 
 /// Remote server response type
@@ -49,6 +61,14 @@ pub enum RemoteServerResponse
 {
     /// Operation succeeded, no output
     Success,
+    /// Operation not supported by this server
+    NotSupported,
+    /// Operation succeeded, user should be logged in to account
+    LogUserIn(AccountId),
+    /// Operation failed due to invalid credentials
+    InvalidCredentials,
+    /// Registration failed because the account exists
+    AccountAlreadyExists,
     /// Operation failed, with error message
     Error(String),
 }

@@ -112,6 +112,7 @@ pub struct Network
     #[serde_as(as = "Vec<(_,_)>")]
     channel_accesses: HashMap<ChannelAccessId, state::ChannelAccess>,
 
+    current_services: Option<ServerId>,
     config: config::NetworkConfig,
 
     clock: EventClock,
@@ -142,6 +143,7 @@ impl Network {
             channel_registrations: HashMap::new(),
             channel_accesses: HashMap::new(),
 
+            current_services: None,
             config,
 
             clock: EventClock::new(),
@@ -205,10 +207,12 @@ impl Network {
             LoadConfig => self.load_config,
             NewAuditLogEntry => self.new_audit_log,
             EnablePersistentSession => self.enable_persistent_session,
+            IntroduceServices => self.introduce_services,
             AccountUpdate => self.update_account,
             NickRegistrationUpdate => self.update_nick_registration,
             ChannelRegistrationUpdate => self.update_channel_registration,
             ChannelAccessUpdate => self.update_channel_access,
+            UserLogin => self.user_login,
         })?;
 
         self.clock.update_with_id(event.id);

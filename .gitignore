@@ -2,3 +2,4 @@
 ircd_macros/target
 .vscode
 /log
+test_database.json

@@ -41,10 +41,16 @@ pub enum LookupError
     NoSuchAuditLogEntry(AuditLogEntryId),
     #[error("No such account {0:?}")]
     NoSuchAccount(AccountId),
+    #[error("No such account named {0:?}")]
+    NoSuchAccountNamed(Nickname),
     #[error("No such nick registration {0:?}")]
     NoSuchNickRegistration(NickRegistrationId),
+    #[error("No registration for nick {0:?}")]
+    NickNotRegistered(Nickname),
     #[error("No such channel registration {0:?}")]
     NoSuchChannelRegistration(ChannelRegistrationId),
+    #[error("No registration for channel {0:?}")]
+    ChannelNotRegistered(ChannelName),
     #[error("No such channel access {0:?}")]
     NoSuchChannelAccess(ChannelAccessId),
 }

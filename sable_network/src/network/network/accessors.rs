@@ -174,6 +174,13 @@ impl Network {
         self.klines.values().wrap(self)
     }
 
+    /// Retrieve the server name of the current active services
+    pub fn current_services(&self) -> Option<ServerName>
+    {
+        self.current_services.and_then(|id| self.servers.get(&id))
+                             .map(|s| s.name.clone())
+    }
+
     /// Retrieve the current network configuration
     pub fn config(&self) -> &config::NetworkConfig
     {
@@ -192,10 +199,30 @@ impl Network {
         self.accounts.get(&id).ok_or(NoSuchAccount(id)).wrap(self)
     }
 
+    /// Retrieve an account by name
+    pub fn account_by_name(&self, name: Nickname) -> LookupResult<wrapper::Account>
+    {
+        self.accounts.values().find(|a| a.name == name)
+                              .ok_or(LookupError::NoSuchAccountNamed(name))
+                              .wrap(self)
+    }
+
+    /// Iterate over accounts
+    pub fn accounts(&self) -> impl Iterator<Item=wrapper::Account>
+    {
+        self.accounts.values().wrap(self)
+    }
+
     /// Retrieve a nickname registration
     pub fn nick_registration(&self, id: NickRegistrationId) -> LookupResult<wrapper::NickRegistration>
     {
         self.nick_registrations.get(&id).ok_or(NoSuchNickRegistration(id)).wrap(self)
+    }
+
+    /// Iterate over nick registrations
+    pub fn nick_registrations(&self) -> impl Iterator<Item=wrapper::NickRegistration>
+    {
+        self.nick_registrations.values().wrap(self)
     }
 
     /// Retrieve a channel registration
@@ -204,10 +231,23 @@ impl Network {
         self.channel_registrations.get(&id).ok_or(NoSuchChannelRegistration(id)).wrap(self)
     }
 
+    /// Iterate over channel registrations
+    pub fn channel_registrations(&self) -> impl Iterator<Item=wrapper::ChannelRegistration>
+    {
+        self.channel_registrations.values().wrap(self)
+    }
+
     /// Retrieve a channel access entry
     pub fn channel_access(&self, id: ChannelAccessId) -> LookupResult<wrapper::ChannelAccess>
     {
         self.channel_accesses.get(&id).ok_or(NoSuchChannelAccess(id)).wrap(self)
     }
+
+    /// Iterate over channel access entries
+    pub fn channel_accesses(&self) -> impl Iterator<Item=wrapper::ChannelAccess>
+    {
+        self.channel_accesses.values().wrap(self)
+    }
+
 
 }

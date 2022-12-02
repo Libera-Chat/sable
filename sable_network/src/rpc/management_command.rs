@@ -7,6 +7,7 @@ pub struct ServerManagementCommand
     pub response: Sender<String>
 }
 
+#[derive(Debug)]
 pub enum ServerManagementCommandType
 {
     /// Collect server statistics

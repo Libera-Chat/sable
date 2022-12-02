@@ -59,8 +59,10 @@ define_capabilities! (
         MessageTags:            0x01 => "message-tags",
         ServerTime:             0x02 => "server-time",
         EchoMessage:            0x04 => "echo-message",
-        ChatHistory:            0x08 => "draft/chathistory",
-        PersistentSession:      0x10 => "sable/persistent-session"
+
+        ChatHistory:            0x101 => "draft/chathistory",
+        PersistentSession:      0x102 => "sable/persistent-session",
+        AccountRegistration:    0x104 => "sable/account-registration"
     }
 );
 

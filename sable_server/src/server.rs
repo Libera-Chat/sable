@@ -212,10 +212,13 @@ impl<ST> Server<ST>
         {
             if let Some(cmd) = server.recv().await
             {
+                tracing::debug!("Received from management server");
                 match cmd
                 {
                     management::ManagementCommand::ServerCommand(scmd) =>
                     {
+                        let command = &scmd.cmd;
+                        tracing::debug!(?command, "Management server command");
                         self.node.handle_management_command(scmd).await;
                     }
                     management::ManagementCommand::Shutdown(action) =>

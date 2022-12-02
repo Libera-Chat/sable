@@ -5,6 +5,14 @@ pub struct ChannelAccess<'a> {
     data: &'a state::ChannelAccess,
 }
 
+impl ChannelAccess<'_>
+{
+    pub fn id(&self) -> ChannelAccessId
+    {
+        self.data.id
+    }
+}
+
 
 impl<'a> super::ObjectWrapper<'a> for ChannelAccess<'a> {
     type Underlying = state::ChannelAccess;

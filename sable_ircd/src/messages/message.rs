@@ -33,5 +33,6 @@ define_messages! {
                                 => "NOTE {command} {code} {context} :{description}" },
 
     // Extension messages
-    ChatHistoryTarget => { (target_name: &str, timestamp: &str) => "CHATHISTORY TARGETS {target_name} {timestamp}" }
+    ChatHistoryTarget => { (target_name: &str, timestamp: &str) => "CHATHISTORY TARGETS {target_name} {timestamp}" },
+    Register => { (status: &str, account: Nickname, message: &str) => "REGISTER {status} {account} {message}" }
 }

@@ -5,6 +5,14 @@ pub struct ChannelRegistration<'a> {
     data: &'a state::ChannelRegistration,
 }
 
+impl ChannelRegistration<'_>
+{
+    pub fn id(&self) -> ChannelRegistrationId
+    {
+        self.data.id
+    }
+}
+
 impl<'a> super::ObjectWrapper<'a> for ChannelRegistration<'a> {
     type Underlying = state::ChannelRegistration;
 

@@ -121,7 +121,8 @@ impl sable_server::ServerType for ClientServer
     {
         match cmd
         {
-            RemoteServerRequestType::Ping => RemoteServerResponse::Success
+            RemoteServerRequestType::Ping => RemoteServerResponse::Success,
+            _ => RemoteServerResponse::NotSupported,
         }
     }
 }
