@@ -109,6 +109,8 @@ pub enum NetworkError
     InternalError(String),
     #[error("Authorisation failure: {0}")]
     AuthzError(String),
+    #[error("Operation timed out")]
+    Timeout,
 }
 pub type NetworkResult = Result<(), NetworkError>;
 

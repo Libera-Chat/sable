@@ -224,6 +224,8 @@ impl ReplicatedEventLog
         self.new_event_send.send(EventLogMessage::TargetedMessage(targeted_message, sender))
                            .expect("Couldn't send to event log task");
 
+        // If this fails, it's because the Sender dropped, almost certainly because the sync task
+        // gave up on waiting for a response
         receiver.await.map_err(|_| NetworkError::InternalError("channel receive error".to_string()))
     }
 
@@ -358,18 +360,26 @@ impl TaskState
                         },
                         Some(EventLogMessage::TargetedMessage(message, sender)) =>
                         {
-                            match self.send_targeted_message(message).await
+                            let timeout = tokio::time::timeout(Duration::from_secs(5),
+                                                               self.send_targeted_message(message));
+
+                            match timeout.await
                             {
-                                Ok(response) =>
+                                Ok(Ok(response)) =>
                                 {
                                     // If the receiver hung up, the response isn't relevant so don't do anything
                                     let _ = sender.send(response);
                                 }
-                                Err(e) =>
+                                Ok(Err(e)) =>
                                 {
                                     tracing::error!("Error sending out remote server message: {}", e);
                                     // As above
                                     let _ = sender.send(RemoteServerResponse::Error("Network error".to_string()));
+                                }
+                                Err(_) =>
+                                {
+                                    // If we get into this branch it's because the timeout timed out
+                                    let _ = sender.send(RemoteServerResponse::Error("Response timeout".to_string()));
                                 }
                             }
                         }
@@ -470,15 +480,22 @@ impl TaskState
         // First, try to send directly to the target
         if let Some(target) = self.net.find_peer(detail.target.as_ref())
         {
+            tracing::debug!(?target, ?detail, "Found target peer, sending message");
+
             // If this succeeds, then we could connect successfully to the target server, so any error that occurs
             // later in the process won't be solved by re-routing
-            if self.net.send_and_process(target,
+            let send_result = self.net.send_and_process(target,
                                       self.message(MessageDetail::TargetedMessage(detail.clone())),
                                       sender.clone()
-                                    ).await.is_ok()
+                                    ).await;
+
+            tracing::debug!(?send_result, "Got send result");
+
+            if send_result.is_ok()
             {
                 while let Some(response) = receiver.recv().await
                 {
+                    tracing::debug!(?response, "Got targeted message response");
                     if let MessageDetail::TargetedMessageResponse(resp) = response.message.content
                     {
                         return Ok(resp);
