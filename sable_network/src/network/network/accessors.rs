@@ -231,6 +231,15 @@ impl Network {
         self.channel_registrations.get(&id).ok_or(NoSuchChannelRegistration(id)).wrap(self)
     }
 
+    /// Retrieve a channel registration by name
+    pub fn channel_registration_by_name(&self, name: ChannelName) -> LookupResult<wrapper::ChannelRegistration>
+    {
+        self.channel_registrations.values()
+                                  .find(|c| c.channelname == name)
+                                  .ok_or(ChannelNotRegistered(name))
+                                  .wrap(self)
+    }
+
     /// Iterate over channel registrations
     pub fn channel_registrations(&self) -> impl Iterator<Item=wrapper::ChannelRegistration>
     {

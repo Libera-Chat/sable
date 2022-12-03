@@ -255,6 +255,7 @@ mod session;
 
 // Services compatibility command layer
 mod ns;
+mod cs;
 
 // Dev/test tools
 #[cfg(debug)]

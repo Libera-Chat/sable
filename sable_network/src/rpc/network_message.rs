@@ -52,7 +52,9 @@ pub enum RemoteServerRequestType
     RegisterUser(Nickname, String),
     /// User attempting login
     /// Parameters: account id, password
-    UserLogin(AccountId, String)
+    UserLogin(AccountId, String),
+    /// Register a channel
+    RegisterChannel(AccountId, ChannelId)
 }
 
 /// Remote server response type
@@ -68,7 +70,7 @@ pub enum RemoteServerResponse
     /// Operation failed due to invalid credentials
     InvalidCredentials,
     /// Registration failed because the account exists
-    AccountAlreadyExists,
+    AlreadyExists,
     /// Operation failed, with error message
     Error(String),
 }

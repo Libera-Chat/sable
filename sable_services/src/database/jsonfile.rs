@@ -64,9 +64,12 @@ impl JsonDatabase
 {
     fn save(&self) -> super::Result<()>
     {
+        let state = self.state.read();
+
         let file = File::create(&self.filename).map_err(DatabaseError::from_inner)?;
 
-        serde_json::to_writer(file, self.state.read().deref()).map_err(DatabaseError::from_inner)
+        serde_json::to_writer(file, state.deref()).unwrap();
+        Ok(())
     }
 }
 
@@ -189,15 +192,31 @@ impl DatabaseConnection for JsonDatabase
         Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.nick_registrations.values()))
     }
 
-    fn new_channel_registration(&self, data: state::ChannelRegistration) -> Result<state::ChannelRegistration>
+    fn new_channel_registration(&self, data: state::ChannelRegistration, initial_access: state::ChannelAccess) -> Result<(state::ChannelRegistration, state::ChannelAccess)>
     {
-        let ret = match self.state.write().channel_registrations.entry(data.id)
+        if initial_access.id.channel() != data.id
+        {
+            return Err(DatabaseError::InvalidData);
+        }
+
+        let mut state = self.state.write();
+        let registration_entry = state.channel_registrations.entry(data.id);
+
+        match registration_entry
         {
             Entry::Occupied(_) => Err(DatabaseError::DuplicateId),
-            Entry::Vacant(entry) => Ok(entry.insert(data).clone())
-        };
-        self.save()?;
-        ret
+            Entry::Vacant(entry) => {
+                let ret = entry.insert(data).clone();
+
+                // We know the access entry won't already exist because the channel registration didn't
+                state.channel_accesses.insert(initial_access.id, initial_access.clone());
+
+                drop(state);
+
+                self.save()?;
+                Ok((ret, initial_access))
+            }
+        }
     }
 
     fn channel_registration(&self, id: ChannelRegistrationId) -> Result<state::ChannelRegistration>

@@ -16,6 +16,10 @@ pub enum ChannelPermissionError
     InviteOnlyChannel,
     /// User hasn't provided the right channel key
     BadChannelKey,
+    /// Channel isn't registered (and needs to be)
+    NotRegistered,
+    /// User doesn't have access to the registered channel
+    NoAccess,
 }
 
 /// A user-related permission error
@@ -26,6 +30,8 @@ pub enum UserPermissionError
     NotOper,
     /// That user mode can't be set directly
     ReadOnlyUmode,
+    /// User isn't logged in (and needs to be)
+    NotLoggedIn,
 }
 
 #[derive(Debug)]

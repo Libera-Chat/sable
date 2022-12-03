@@ -355,7 +355,7 @@ impl From<policy::PermissionError> for CommandError
             match e
         {
             User(NotOper) => numeric::NotOper::new().into(),
-            User(ReadOnlyUmode) => Self::CustomError, // Setting or unsetting these umodes silently fails
+            User(ReadOnlyUmode | NotLoggedIn) => Self::CustomError, // Setting or unsetting these umodes silently fails
             Channel(channel_name, channel_err) => {
                 match channel_err
                 {
@@ -364,7 +364,8 @@ impl From<policy::PermissionError> for CommandError
                     UserIsBanned => numeric::BannedOnChannel::new(&channel_name).into(),
                     CannotSendToChannel => numeric::CannotSendToChannel::new(&channel_name).into(),
                     InviteOnlyChannel => numeric::InviteOnlyChannel::new(&channel_name).into(),
-                    BadChannelKey => numeric::BadChannelKey::new(&channel_name).into()
+                    BadChannelKey => numeric::BadChannelKey::new(&channel_name).into(),
+                    NotRegistered | NoAccess => Self::CustomError,
                 }
             },
             InternalError(e) => Self::UnderlyingError(e)

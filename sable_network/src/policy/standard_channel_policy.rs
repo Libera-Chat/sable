@@ -1,6 +1,7 @@
 use super::*;
 
 use ChannelPermissionError::*;
+use UserPermissionError::*;
 
 /// Standard implementation of [`ChannelPolicyService`]
 pub struct StandardChannelPolicy
@@ -30,6 +31,24 @@ fn is_channel_operator(user: &User, channel: &Channel) -> PermissionResult
     else
     {
         Err(PermissionError::Channel(*channel.name(), UserNotOnChannel))
+    }
+}
+
+fn has_access(user: &User, channel: &Channel, flag: ChannelAccessFlag) -> PermissionResult
+{
+    let Ok(Some(account)) = user.account() else {
+        return Err(PermissionError::User(NotLoggedIn));
+    };
+    let Some(channel_reg) = channel.is_registered() else {
+        return Err(PermissionError::Channel(*channel.name(), NotRegistered))
+    };
+    let Some(access) = account.has_access_in(channel_reg.id()) else {
+        return Err(PermissionError::Channel(*channel.name(), NoAccess))
+    };
+    if access.flags().is_set(flag) {
+        Ok(())
+    } else {
+        Err(PermissionError::Channel(*channel.name(), NoAccess))
     }
 }
 
@@ -106,14 +125,14 @@ impl ChannelPolicyService for StandardChannelPolicy
 
     fn can_change_mode(&self, user: &User, channel: &Channel, _mode: ChannelModeFlag) -> PermissionResult
     {
-        is_channel_operator(user, channel)
+        has_access(user, channel, ChannelAccessFlag::Op).or(is_channel_operator(user, channel))
     }
 
     fn can_set_topic(&self, user: &User, channel: &Channel, _topic: &str) -> PermissionResult
     {
         if channel.mode().has_mode(ChannelModeFlag::TopicLock)
         {
-            is_channel_operator(user, channel)
+            has_access(user, channel, ChannelAccessFlag::Op).or(is_channel_operator(user, channel))
         }
         else
         {
@@ -123,12 +142,12 @@ impl ChannelPolicyService for StandardChannelPolicy
 
     fn can_grant_permission(&self, user: &User, channel: &Channel, _target: &User, _flag: MembershipFlagFlag) -> PermissionResult
     {
-        is_channel_operator(user, channel)
+        has_access(user, channel, ChannelAccessFlag::Op).or(is_channel_operator(user, channel))
     }
 
     fn can_remove_permission(&self, user: &User, channel: &Channel, _target: &User, _flag: MembershipFlagFlag) -> PermissionResult
     {
-        is_channel_operator(user, channel)
+        has_access(user, channel, ChannelAccessFlag::Op).or(is_channel_operator(user, channel))
     }
 
     fn validate_ban_mask(&self, _mask: &str, _mode_type: ListModeType, _channel: &Channel) -> PermissionResult
@@ -136,22 +155,23 @@ impl ChannelPolicyService for StandardChannelPolicy
         Ok(())
     }
 
-    fn can_set_ban(&self, user: &User, chan: &Channel, _mode_type: ListModeType, _mask: &str) -> PermissionResult
+    fn can_set_ban(&self, user: &User, channel: &Channel, _mode_type: ListModeType, _mask: &str) -> PermissionResult
     {
-        is_channel_operator(user, chan)
+        has_access(user, channel, ChannelAccessFlag::Op).or(is_channel_operator(user, channel))
     }
 
-    fn can_unset_ban(&self, user: &User, chan: &Channel, _mode_type: ListModeType, _mask: &str) -> PermissionResult
+    fn can_unset_ban(&self, user: &User, channel: &Channel, _mode_type: ListModeType, _mask: &str) -> PermissionResult
     {
-        is_channel_operator(user, chan)
+        has_access(user, channel, ChannelAccessFlag::Op).or(is_channel_operator(user, channel))
     }
 
-    fn can_query_list(&self, user: &User, chan: &Channel, mode_type: ListModeType) -> PermissionResult
+    fn can_query_list(&self, user: &User, channel: &Channel, mode_type: ListModeType) -> PermissionResult
     {
         match mode_type
         {
             ListModeType::Ban | ListModeType::Quiet => Ok(()),
-            ListModeType::Except | ListModeType::Invex => is_channel_operator(user, chan)
+            ListModeType::Except | ListModeType::Invex =>
+                has_access(user, channel, ChannelAccessFlag::Op).or(is_channel_operator(user, channel))
         }
     }
 
@@ -164,13 +184,13 @@ impl ChannelPolicyService for StandardChannelPolicy
         }
     }
 
-    fn can_set_key(&self, user: &User, chan: &Channel, _new_key: Option<&ChannelKey>) -> PermissionResult
+    fn can_set_key(&self, user: &User, channel: &Channel, _new_key: Option<&ChannelKey>) -> PermissionResult
     {
-        is_channel_operator(user, chan)
+        has_access(user, channel, ChannelAccessFlag::Op).or(is_channel_operator(user, channel))
     }
 
-    fn can_invite(&self, user: &User, chan: &Channel, _target: &User) -> PermissionResult
+    fn can_invite(&self, user: &User, channel: &Channel, _target: &User) -> PermissionResult
     {
-        is_channel_operator(user, chan)
+        has_access(user, channel, ChannelAccessFlag::Op).or(is_channel_operator(user, channel))
     }
 }

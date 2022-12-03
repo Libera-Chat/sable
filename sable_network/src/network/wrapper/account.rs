@@ -23,6 +23,18 @@ impl Account<'_>
         let my_id = self.data.id;
         self.network.raw_users().filter(move |u| u.account == Some(my_id)).wrap(self.network)
     }
+
+    pub fn channel_accesses(&self) -> impl Iterator<Item=wrapper::ChannelAccess>
+    {
+        let my_id = self.data.id;
+        self.network.channel_accesses().filter(move |a| a.id().account() == my_id)
+    }
+
+    pub fn has_access_in(&self, channel: ChannelRegistrationId) -> Option<wrapper::ChannelAccess>
+    {
+        let access_id = ChannelAccessId::new(self.data.id, channel);
+        self.network.channel_access(access_id).ok()
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for Account<'a> {

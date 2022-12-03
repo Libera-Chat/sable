@@ -47,6 +47,12 @@ impl Channel<'_> {
     {
         self.network.topic_for_channel(self.data.id).ok()
     }
+
+    /// Retrieve the corresponding registration, if any
+    pub fn is_registered(&self) -> Option<ChannelRegistration>
+    {
+        self.network.channel_registration_by_name(self.data.name).ok()
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for Channel<'a> {

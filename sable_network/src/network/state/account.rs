@@ -31,6 +31,5 @@ pub struct ChannelRegistration
 pub struct ChannelAccess
 {
     pub id: ChannelAccessId,
-    pub account: AccountId,
-    pub channel: ChannelRegistrationId,
+    pub flags: ChannelAccessSet,
 }

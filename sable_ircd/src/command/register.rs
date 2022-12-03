@@ -75,6 +75,13 @@ command_handler!("REGISTER" => RegisterHandler {
                     }));
                     cmd.connection.send(&message::Register::new("SUCCESS", requested_account, "You have successfully registered"));
                 }
+                Ok(rpc::RemoteServerResponse::AlreadyExists) =>
+                {
+                    cmd.connection.send(&message::Fail::new("REGISTER",
+                                                            "ACCOUNT_EXISTS",
+                                                            account_arg,
+                                                            "Account already exists"));
+                }
                 Ok(response) =>
                 {
                     tracing::error!(?response, "Unexpected response from services");

@@ -12,6 +12,8 @@ pub enum DatabaseError
     DuplicateName,
     #[error("No such object ID")]
     NoSuchId,
+    #[error("Invalid data")]
+    InvalidData,
     #[error("{0}")]
     DbError(#[from] Box<dyn std::error::Error + 'static>)
 }
@@ -27,6 +29,10 @@ impl DatabaseError
 pub type Result<T> = std::result::Result<T, DatabaseError>;
 
 /// Trait defining a database provider
+///
+/// Note that creation functions take their argument by value and return it; callers
+/// must use the returned value for any further use or propagation to the network as
+/// content, including IDs, may have been changed by the database.
 pub trait DatabaseConnection : Sized
 {
     /// Constructor. The format of `conn` is defined by the provider and taken from the
@@ -55,7 +61,7 @@ pub trait DatabaseConnection : Sized
     fn all_nick_registrations(&self) -> Result<impl Iterator<Item=state::NickRegistration> + '_>;
 
     /// Create a new channel registration, store it in the database, and return it
-    fn new_channel_registration(&self, data: state::ChannelRegistration) -> Result<state::ChannelRegistration>;
+    fn new_channel_registration(&self, data: state::ChannelRegistration, initial_access: state::ChannelAccess) -> Result<(state::ChannelRegistration, state::ChannelAccess)>;
     /// Retrieve a single channel registration
     fn channel_registration(&self, id: ChannelRegistrationId) -> Result<state::ChannelRegistration>;
     /// Update a channel registration

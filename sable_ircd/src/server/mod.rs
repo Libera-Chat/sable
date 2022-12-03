@@ -251,7 +251,7 @@ impl ClientServer
 
         let shutdown_action = loop
         {
-            tracing::trace!("ClientServer run loop");
+            // tracing::trace!("ClientServer run loop");
             // Before looking for an I/O event, do our internal bookkeeping.
             // First, take inbound client messages and process them
             self.process_pending_client_messages(&async_handlers);
@@ -269,7 +269,7 @@ impl ClientServer
             select! {
                 _ = &mut timeout =>
                 {
-                    tracing::trace!("...from timeout");
+                    // tracing::trace!("...from timeout");
                     // Make sure we don't block waiting for i/o for too long, in case there are
                     // queued client messages to be processed or other housekeeping
                     continue;

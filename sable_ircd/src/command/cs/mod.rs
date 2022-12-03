@@ -1,6 +1,6 @@
 use super::*;
 
-command_handler!("NS" => NSHandler {
+command_handler!("CS" => CSHandler {
     fn min_parameters(&self) -> usize { 1 }
 
     fn handle_user_async<'a>(&mut self, source: UserId, cmd: Arc<ClientCommand>) -> Option<server::AsyncHandler<'a>>
@@ -10,10 +10,10 @@ command_handler!("NS" => NSHandler {
 
             match subcommand.as_str()
             {
-                "ID"|"IDENTIFY"|"LOGIN" => login::handle_login(source, cmd).await,
+                "REGISTER" => register::handle_register(source, cmd).await,
                 _ =>
                 {
-                    cmd.notice(format_args!("Unrecognised NS command {}", subcommand));
+                    cmd.notice(format_args!("Unrecognised CS command {}", subcommand));
                     Ok(())
                 }
             }
@@ -21,4 +21,4 @@ command_handler!("NS" => NSHandler {
     }
 });
 
-mod login;
+mod register;

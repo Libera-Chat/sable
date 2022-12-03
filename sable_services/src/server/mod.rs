@@ -9,6 +9,8 @@ use sable_network::{
         event::*,
         update::NetworkStateChange,
     },
+    id::*,
+    modes::*,
 };
 
 use std::sync::Arc;
@@ -103,6 +105,8 @@ impl<DB> ServerType for ServicesServer<DB>
 
     fn handle_remote_command(&self, req: RemoteServerRequestType) -> RemoteServerResponse
     {
+        tracing::debug!(?req, "Got remote request");
+
         match req
         {
             RemoteServerRequestType::RegisterUser(account_name, password) =>
@@ -138,7 +142,7 @@ impl<DB> ServerType for ServicesServer<DB>
                     Err(DatabaseError::DuplicateId | DatabaseError::DuplicateName) =>
                     {
                         tracing::debug!(?account_name, "Duplicate account name/id");
-                        RemoteServerResponse::AccountAlreadyExists
+                        RemoteServerResponse::AlreadyExists
                     }
                     Err(error) =>
                     {
@@ -169,7 +173,51 @@ impl<DB> ServerType for ServicesServer<DB>
                     Err(_) => RemoteServerResponse::Error("Couldn't verify password".to_string())
                 }
             }
-            _ => RemoteServerResponse::NotSupported
+            RemoteServerRequestType::RegisterChannel(account_id, channel_id) =>
+            {
+                tracing::debug!(?account_id, ?channel_id, "Got channel register request");
+
+                let net = self.node.network();
+
+                let Ok(channel) = net.channel(channel_id) else {
+                    return RemoteServerResponse::Error("Channel doesn't exist".to_string());
+                };
+
+                let new_channel_registration = state::ChannelRegistration {
+                    id: self.node.ids().next_channel_registration(),
+                    channelname: channel.name().clone()
+                };
+
+                let new_channel_access = state::ChannelAccess {
+                    id: ChannelAccessId::new(account_id, new_channel_registration.id),
+                    flags: ChannelAccessFlag::Founder | ChannelAccessFlag::Access | ChannelAccessFlag::Op
+                };
+
+                match self.db.new_channel_registration(new_channel_registration, new_channel_access)
+                {
+                    Ok((channel_registration, channel_access)) =>
+                    {
+                        self.node.submit_event(channel_registration.id, ChannelRegistrationUpdate { data: Some(channel_registration) });
+                        self.node.submit_event(channel_access.id, ChannelAccessUpdate { data: Some(channel_access) });
+                        RemoteServerResponse::Success
+                    }
+                    Err(DatabaseError::DuplicateName) =>
+                    {
+                        RemoteServerResponse::AlreadyExists
+                    }
+                    Err(error) =>
+                    {
+                        let channel_name = channel.name();
+                        tracing::error!(?error, ?channel_name, "Unexpected error registering channel");
+                        RemoteServerResponse::Error("Unexpected error".to_string())
+                    }
+                }
+            }
+            _ =>
+            {
+                tracing::warn!(?req, "Got unsupported request");
+                RemoteServerResponse::NotSupported
+            }
         }
     }
 }

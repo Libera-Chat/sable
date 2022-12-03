@@ -65,3 +65,8 @@ impl MembershipId {
     pub fn user(&self) -> UserId { self.0 }
     pub fn channel(&self) -> ChannelId { self.1 }
 }
+
+impl ChannelAccessId {
+    pub fn account(&self) -> AccountId { self.0 }
+    pub fn channel(&self) -> ChannelRegistrationId { self.1 }
+}
