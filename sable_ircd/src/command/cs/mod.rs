@@ -11,6 +11,7 @@ command_handler!("CS" => CSHandler {
             match subcommand.as_str()
             {
                 "REGISTER" => register::handle_register(source, cmd).await,
+                "ACCESS" => access::handle_access(source, cmd).await,
                 _ =>
                 {
                     cmd.notice(format_args!("Unrecognised CS command {}", subcommand));
@@ -22,3 +23,4 @@ command_handler!("CS" => CSHandler {
 });
 
 mod register;
+mod access;

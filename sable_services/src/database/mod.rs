@@ -70,13 +70,17 @@ pub trait DatabaseConnection : Sized
     fn all_channel_registrations(&self) -> Result<impl Iterator<Item=state::ChannelRegistration> + '_>;
 
     /// Create a new channel access, store it in the database, and return it
-    fn new_channel_access(&self, data: state::ChannelAccess) -> Result<state::ChannelAccess>;
+    /// Unlike other creation functions, this one doesn't return the state object because
+    /// the ID is keyed to other objects and can't be changed by the DB layer
+    fn new_channel_access(&self, data: &state::ChannelAccess) -> Result<()>;
     /// Retrieve a single channel access
     fn channel_access(&self, id: ChannelAccessId) -> Result<state::ChannelAccess>;
     /// Update a channel access
     fn update_channel_access(&self, new_data: &state::ChannelAccess) -> Result<()>;
     /// Retrieve all channel accesses in the database
     fn all_channel_accesses(&self) -> Result<impl Iterator<Item=state::ChannelAccess> + '_>;
+    /// Remove a channel access
+    fn remove_channel_access(&self, id: ChannelAccessId) -> Result<()>;
 }
 
 pub mod jsonfile;

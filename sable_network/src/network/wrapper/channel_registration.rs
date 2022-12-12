@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 pub struct ChannelRegistration<'a> {
-    _network: &'a Network,
+    network: &'a Network,
     data: &'a state::ChannelRegistration,
 }
 
@@ -11,14 +11,20 @@ impl ChannelRegistration<'_>
     {
         self.data.id
     }
+
+    pub fn access_entries(&self) -> impl Iterator<Item=wrapper::ChannelAccess>
+    {
+        let my_id = self.data.id;
+        self.network.channel_accesses().filter(move |a| a.id().channel() == my_id)
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for ChannelRegistration<'a> {
     type Underlying = state::ChannelRegistration;
 
-    fn wrap(net: &'a Network, data: &'a Self::Underlying) -> Self
+    fn wrap(network: &'a Network, data: &'a Self::Underlying) -> Self
     {
-        Self{ _network: net, data }
+        Self{ network, data }
     }
 
     fn raw(&self) -> &'a Self::Underlying { self.data }

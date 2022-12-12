@@ -193,6 +193,12 @@ pub fn mode_flags(input: TokenStream) -> TokenStream
             fn bitor(self, rhs: #name_one) -> Self { Self(self.0 | rhs as u64 ) }
         }
 
+        impl std::ops::BitOr for #name_set
+        {
+            type Output = Self;
+            fn bitor(self, rhs: #name_set) -> Self { Self(self.0 | rhs.0) }
+        }
+
         impl std::ops::BitOrAssign for #name_set
         {
             fn bitor_assign(&mut self, rhs: Self) { self.0 |= rhs.0; }

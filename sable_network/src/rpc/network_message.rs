@@ -4,7 +4,7 @@ use crate::{
         Network,
     },
     id::*,
-    validated::*,
+    validated::*, modes::ChannelAccessSet,
 };
 use tokio::sync::{
     mpsc::Sender,
@@ -54,7 +54,9 @@ pub enum RemoteServerRequestType
     /// Parameters: account id, password
     UserLogin(AccountId, String),
     /// Register a channel
-    RegisterChannel(AccountId, ChannelId)
+    RegisterChannel(AccountId, ChannelId),
+    /// Add, modify or remove a channel access (None to delete)
+    ModifyAccess{ source: AccountId, id: ChannelAccessId, flags: Option<ChannelAccessSet> },
 }
 
 /// Remote server response type
@@ -71,6 +73,12 @@ pub enum RemoteServerResponse
     InvalidCredentials,
     /// Registration failed because the account exists
     AlreadyExists,
+    /// Operation failed because of insufficient privileges
+    AccessDenied,
+    /// User isn't registered or account doesn't exist
+    NoAccount,
+    /// Channel isn't registered
+    ChannelNotRegistered,
     /// Operation failed, with error message
     Error(String),
 }

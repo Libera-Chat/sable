@@ -243,12 +243,15 @@ impl DatabaseConnection for JsonDatabase
         Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.channel_registrations.values()))
     }
 
-    fn new_channel_access(&self, data: state::ChannelAccess) -> Result<state::ChannelAccess>
+    fn new_channel_access(&self, data: &state::ChannelAccess) -> Result<()>
     {
         let ret = match self.state.write().channel_accesses.entry(data.id)
         {
             Entry::Occupied(_) => Err(DatabaseError::DuplicateId),
-            Entry::Vacant(entry) => Ok(entry.insert(data).clone())
+            Entry::Vacant(entry) => {
+                entry.insert(data.clone());
+                Ok(())
+            }
         };
         self.save()?;
         ret
@@ -276,5 +279,12 @@ impl DatabaseConnection for JsonDatabase
     fn all_channel_accesses(&self) -> Result<impl Iterator<Item=state::ChannelAccess> + '_>
     {
         Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.channel_accesses.values()))
+    }
+
+    fn remove_channel_access(&self, id: ChannelAccessId) -> Result<()>
+    {
+        self.state.write().channel_accesses.remove(&id);
+        self.save()?;
+        Ok(())
     }
 }
