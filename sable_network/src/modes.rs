@@ -29,14 +29,6 @@ mode_flags!(
     }
 );
 
-mode_flags!(
-    ChannelAccess {
-        Founder         (0x01, 'F'),
-        Access          (0x02, 'a'),
-        Op              (0x04, 'o'),
-    }
-);
-
 macro_rules! define_mode_type {
     (
         $typename:ident

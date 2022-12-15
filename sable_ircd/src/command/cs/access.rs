@@ -1,17 +1,21 @@
 use sable_network::{
-    rpc::{RemoteServerResponse, RemoteServerRequestType}
+    rpc::{RemoteServerResponse, RemoteServerRequestType},
+    network::state::ChannelAccessFlag,
 };
 
 use super::*;
 
 pub(super) async fn handle_access(source: UserId, cmd: Arc<ClientCommand>) -> CommandResult
 {
-    match cmd.args.len()
+    let subcommand = cmd.args.get(2).map(|s| s.to_ascii_uppercase());
+
+    match (cmd.args.len(), subcommand.as_ref().map(AsRef::as_ref))
     {
-        2 => access_list(source, cmd).await,
-        4.. => access_modify(source, cmd).await,
+        (2, _) => access_list(source, cmd).await,
+        (4, Some("DELETE")) => access_delete(source, cmd).await,
+        (5, Some("SET")) => access_modify(source, cmd).await,
         _ => {
-            cmd.notice("Syntax: CS ACCESS <#channel> [account] [flags]");
+            cmd.notice("Syntax: CS ACCESS <#channel> [SET <account> <role>|DELETE <account>]");
             Ok(())
         }
     }
@@ -36,41 +40,10 @@ async fn access_list(_source: UserId, cmd: Arc<ClientCommand>) -> CommandResult
 
     for access in registration.access_entries()
     {
-        cmd.notice(format_args!("{} +{}", access.user()?.name(), access.flags().to_chars()))
+        cmd.notice(format_args!("{} {}", access.user()?.name(), access.role()?.name()))
     }
 
     Ok(())
-}
-
-fn parse_access_change(existing: Option<ChannelAccessSet>, change_string: &str) -> Result<Option<ChannelAccessSet>, ()>
-{
-    let mut chars = change_string.chars();
-    let first = chars.next();
-
-    let mut change = ChannelAccessSet::new();
-    for char in chars
-    {
-        if let Some(flag) = ChannelAccessSet::flag_for(char)
-        {
-            change |= flag;
-        }
-        else
-        {
-            return Err(());
-        }
-    }
-
-    let existing = existing.unwrap_or(ChannelAccessSet::new());
-
-    let new = match first
-    {
-        Some('+') => existing | change,
-        Some('-') => existing & !change,
-        Some('=') => change,
-        _ => { return Err(()); }
-    };
-
-    Ok(if new.is_empty() { None } else { Some(new) })
 }
 
 async fn access_modify(source: UserId, cmd: Arc<ClientCommand>) -> CommandResult
@@ -99,7 +72,112 @@ async fn access_modify(source: UserId, cmd: Arc<ClientCommand>) -> CommandResult
         return Ok(())
     };
 
-    if ! source_access.flags().is_set(ChannelAccessFlag::Access)
+    if ! source_access.role()?.flags().is_set(ChannelAccessFlag::AccessEdit)
+    {
+        cmd.notice("Access denied");
+        return Ok(())
+    }
+
+    let Ok(target_accountname) = Nickname::from_str(&cmd.args[3]) else {
+        cmd.notice(format_args!("Invalid account name {}", &cmd.args[3]));
+        return Ok(())
+    };
+
+    let Ok(target_account) = net.account_by_name(target_accountname) else {
+        cmd.notice(format_args!("{} is not registered", target_accountname));
+        return Ok(())
+    };
+
+    let target_access_id = ChannelAccessId::new(target_account.id(), registration.id());
+
+    if let Some(current_flags) = net.channel_access(target_access_id)
+                                    .ok()
+                                    .and_then(|access| access.role().ok().map(|r| r.flags()))
+    {
+        if ! source_access.role()?.flags().dominates(&current_flags)
+        {
+            cmd.notice("Access denied");
+            return Ok(())
+        }
+    }
+
+    let Ok(new_role_name) = cmd.args[4].parse() else {
+        cmd.notice(format_args!("Invalid role name {}", cmd.args[4]));
+        return Ok(())
+    };
+
+    let Some(new_role) = registration.role_named(&new_role_name) else {
+        cmd.notice(format_args!("Role {} does not exist", new_role_name));
+        return Ok(())
+    };
+
+    if ! source_access.role()?.flags().dominates(&new_role.flags())
+    {
+        cmd.notice("Access denied");
+        return Ok(())
+    }
+
+    let Some(services_target) = net.current_services() else {
+        cmd.notice("Services are currently unavailable");
+        return Ok(())
+    };
+
+    let request = RemoteServerRequestType::ModifyAccess { source: account.id(), id: target_access_id, role: Some(new_role.id()) };
+    let registration_response = cmd.server.server().sync_log().send_remote_request(services_target, request).await;
+
+    tracing::debug!(?registration_response, "Got registration response");
+    match registration_response
+    {
+        Ok(RemoteServerResponse::Success) =>
+        {
+            cmd.notice("Access successfully updated");
+        }
+        Ok(RemoteServerResponse::AccessDenied) =>
+        {
+            cmd.notice("Access denied");
+        }
+        Ok(response) =>
+        {
+            tracing::error!(?response, ?channel_name, "Unexpected response updating channel access");
+            cmd.notice("Error updating access");
+        }
+        Err(error) =>
+        {
+            tracing::error!(?error, ?channel_name, "Error updating channel access");
+            cmd.notice("Error updating access");
+        }
+    }
+
+    Ok(())
+}
+
+async fn access_delete(source: UserId, cmd: Arc<ClientCommand>) -> CommandResult
+{
+    let net = cmd.server.network();
+
+    let user = net.user(source)?;
+
+    let Ok(Some(account)) = user.account() else {
+        cmd.notice("You are not logged in");
+        return Ok(())
+    };
+
+    let Ok(channel_name) = ChannelName::from_str(&cmd.args[1]) else {
+        cmd.notice(format_args!("Invalid channel name {}", &cmd.args[1]));
+        return Ok(())
+    };
+
+    let Ok(registration) = net.channel_registration_by_name(channel_name) else {
+        cmd.notice(format_args!("{} is not registered", &channel_name));
+        return Ok(())
+    };
+
+    let Some(source_access) = account.has_access_in(registration.id()) else {
+        cmd.notice("Access denied");
+        return Ok(())
+    };
+
+    if ! source_access.role()?.flags().is_set(ChannelAccessFlag::AccessEdit)
     {
         cmd.notice("Access denied");
         return Ok(())
@@ -117,19 +195,23 @@ async fn access_modify(source: UserId, cmd: Arc<ClientCommand>) -> CommandResult
 
     let target_access_id = ChannelAccessId::new(target_account.id(), registration.id());
 
-    let current_flags = net.channel_access(target_access_id).ok().map(|access| access.flags());
-
-    let Ok(new_flags) = parse_access_change(current_flags, &cmd.args[3]) else {
-        cmd.notice(format_args!("Invalid flag string {}", cmd.args[3]));
-        return Ok(())
-    };
+    if let Some(current_flags) = net.channel_access(target_access_id)
+                                    .ok()
+                                    .and_then(|access| access.role().ok().map(|r| r.flags()))
+    {
+        if ! source_access.role()?.flags().dominates(&current_flags)
+        {
+            cmd.notice("Access denied");
+            return Ok(())
+        }
+    }
 
     let Some(services_target) = net.current_services() else {
         cmd.notice("Services are currently unavailable");
         return Ok(())
     };
 
-    let request = RemoteServerRequestType::ModifyAccess { source: account.id(), id: target_access_id, flags: new_flags };
+    let request = RemoteServerRequestType::ModifyAccess { source: account.id(), id: target_access_id, role: None };
     let registration_response = cmd.server.server().sync_log().send_remote_request(services_target, request).await;
 
     tracing::debug!(?registration_response, "Got registration response");

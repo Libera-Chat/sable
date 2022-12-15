@@ -112,6 +112,9 @@ pub struct Network
     #[serde_as(as = "Vec<(_,_)>")]
     channel_accesses: HashMap<ChannelAccessId, state::ChannelAccess>,
 
+    #[serde_as(as = "Vec<(_,_)>")]
+    channel_roles: HashMap<ChannelRoleId, state::ChannelRole>,
+
     current_services: Option<ServerId>,
     config: config::NetworkConfig,
 
@@ -142,6 +145,7 @@ impl Network {
             nick_registrations: HashMap::new(),
             channel_registrations: HashMap::new(),
             channel_accesses: HashMap::new(),
+            channel_roles: HashMap::new(),
 
             current_services: None,
             config,
@@ -212,6 +216,7 @@ impl Network {
             NickRegistrationUpdate => self.update_nick_registration,
             ChannelRegistrationUpdate => self.update_channel_registration,
             ChannelAccessUpdate => self.update_channel_access,
+            ChannelRoleUpdate => self.update_channel_role,
             UserLogin => self.user_login,
         })?;
 

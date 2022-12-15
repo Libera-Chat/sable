@@ -258,5 +258,15 @@ impl Network {
         self.channel_accesses.values().wrap(self)
     }
 
+    /// Retrieve a channel role
+    pub fn channel_role(&self, id: ChannelRoleId) -> LookupResult<wrapper::ChannelRole>
+    {
+        self.channel_roles.get(&id).ok_or(NoSuchChannelRole(id)).wrap(self)
+    }
 
+    /// Iterate over all channel roles
+    pub fn channel_roles(&self) -> impl Iterator<Item=wrapper::ChannelRole>
+    {
+        self.channel_roles.values().wrap(self)
+    }
 }

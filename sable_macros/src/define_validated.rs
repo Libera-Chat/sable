@@ -202,6 +202,31 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                     self.0.as_ref()
                 }
             }
+
+            impl std::borrow::Borrow<str> for #name
+            {
+                fn borrow(&self) -> &str
+                {
+                    self.0.as_ref()
+                }
+            }
+
+            impl std::str::FromStr for #name
+            {
+                type Err = <Self as Validated>::Error;
+
+                fn from_str(s: &str) -> Result<Self, Self::Err>
+                {
+                    if let Ok(val) = <Self as Validated>::Underlying::try_from(s)
+                    {
+                        Self::new(val)
+                    }
+                    else
+                    {
+                        Err(#error(s.to_string()))
+                    }
+                }
+            }
         ));
 
         if def.casefolded.is_some()

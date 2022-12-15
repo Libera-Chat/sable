@@ -1,19 +1,26 @@
 use crate::{database::{DatabaseConnection, DatabaseError}, model::AccountAuth};
+use command::CommandError;
+
 use sable_server::ServerType;
 use sable_network::{
     config::TlsData,
     rpc::*,
     node::NetworkNode,
     network::{
-        state,
         event::*,
+        state,
+        state::ChannelAccessFlag,
+        state::ChannelRoleName,
         update::NetworkStateChange,
     },
     id::*,
-    modes::*,
+    prelude::{LookupError},
 };
 
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    collections::HashMap,
+};
 
 use serde::Deserialize;
 use async_trait::async_trait;
@@ -26,11 +33,13 @@ use tokio::sync::{
 
 mod sync;
 mod command;
+mod roles;
 
 #[derive(Deserialize)]
 pub struct ServicesConfig
 {
     pub database: String,
+    pub default_roles: HashMap<ChannelRoleName, Vec<ChannelAccessFlag>>,
 }
 
 pub struct ServicesServer<DB>
@@ -38,6 +47,7 @@ pub struct ServicesServer<DB>
     db: DB,
     node: Arc<NetworkNode>,
     history_receiver: Mutex<UnboundedReceiver<sable_network::rpc::NetworkHistoryUpdate>>,
+    config: ServicesConfig,
 }
 
 #[async_trait]
@@ -49,10 +59,19 @@ impl<DB> ServerType for ServicesServer<DB>
 
     fn new(config: Self::Config, _tls_data: &TlsData, node: Arc<NetworkNode>, history_receiver: UnboundedReceiver<sable_network::rpc::NetworkHistoryUpdate>) -> Self
     {
+        if ! config.default_roles.contains_key(&ChannelRoleName::BuiltinOp)
+            || ! config.default_roles.contains_key(&ChannelRoleName::BuiltinVoice)
+            || ! config.default_roles.contains_key(&ChannelRoleName::BuiltinFounder)
+        {
+            tracing::error!("Services configuration doesn't define builtin op/voice or founder roles; aborting");
+            panic!("Builtin roles not defined");
+        }
+
         Self {
-            db: DatabaseConnection::connect(config.database).unwrap(),
+            db: DatabaseConnection::connect(&config.database).unwrap(),
             node,
             history_receiver: Mutex::new(history_receiver),
+            config,
         }
     }
 
@@ -108,7 +127,7 @@ impl<DB> ServerType for ServicesServer<DB>
     {
         tracing::debug!(?req, "Got remote request");
 
-        match req
+        let result = match req
         {
             RemoteServerRequestType::RegisterUser(account_name, password) =>
             {
@@ -128,17 +147,24 @@ impl<DB> ServerType for ServicesServer<DB>
 
                 self.register_channel(account_id, channel_id)
             }
-            RemoteServerRequestType::ModifyAccess { source, id, flags } =>
+            RemoteServerRequestType::ModifyAccess { source, id, role } =>
             {
-                tracing::debug!(?source, ?id, ?flags, "Got channel access update");
+                tracing::debug!(?source, ?id, ?role, "Got channel access update");
 
-                self.modify_channel_access(source, id, flags)
+                self.modify_channel_access(source, id, role)
             }
             _ =>
             {
                 tracing::warn!(?req, "Got unsupported request");
-                RemoteServerResponse::NotSupported
+                Ok(RemoteServerResponse::NotSupported)
             }
+        };
+
+        match result {
+            Ok(response) => response,
+            Err(CommandError::LookupError(LookupError::NoSuchAccount(_) | LookupError::NoSuchAccountNamed(_))) => RemoteServerResponse::NoAccount,
+            Err(CommandError::LookupError(LookupError::NoSuchChannelRegistration(_) | LookupError::ChannelNotRegistered(_))) => RemoteServerResponse::ChannelNotRegistered,
+            Err(e) => RemoteServerResponse::Error(e.to_string())
         }
     }
 }

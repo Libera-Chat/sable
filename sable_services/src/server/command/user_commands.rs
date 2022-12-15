@@ -1,16 +1,15 @@
 use super::*;
-use sable_network::prelude::*;
 
 impl<DB: DatabaseConnection> ServicesServer<DB>
 {
-    pub(crate) fn register_user(&self, account_name: Nickname, password: String) -> RemoteServerResponse
+    pub(crate) fn register_user(&self, account_name: Nickname, password: String) -> CommandResult
     {
         let new_account_id = self.node.ids().next_account();
 
         let Ok(password_hash) = bcrypt::hash(password, bcrypt::DEFAULT_COST) else {
             tracing::error!(?account_name, "Failed to hash password for new account");
 
-            return RemoteServerResponse::Error("Failed to hash password".to_string());
+            return Err("Failed to hash password".into());
         };
 
         let account_data = state::Account {
@@ -29,39 +28,39 @@ impl<DB: DatabaseConnection> ServicesServer<DB>
                 tracing::debug!(?new_account, "Successfully created account");
                 let id = new_account.id;
                 self.node.submit_event(id, AccountUpdate { data: Some(new_account) });
-                RemoteServerResponse::LogUserIn(id)
+                Ok(RemoteServerResponse::LogUserIn(id))
             }
             Err(DatabaseError::DuplicateId | DatabaseError::DuplicateName) =>
             {
                 tracing::debug!(?account_name, "Duplicate account name/id");
-                RemoteServerResponse::AlreadyExists
+                Ok(RemoteServerResponse::AlreadyExists)
             }
             Err(error) =>
             {
                 tracing::error!(?error, "Error creating account");
-                RemoteServerResponse::Error("Unknown error".to_string())
+                Err("Unknown error".into())
             }
         }
     }
 
-    pub(crate) fn user_login(&self, account_id: AccountId, password: String) -> RemoteServerResponse
+    pub(crate) fn user_login(&self, account_id: AccountId, password: String) -> CommandResult
     {
         let Ok(auth) = self.db.auth_for_account(account_id) else {
             tracing::error!(?account_id, "Error looking up account");
-            return RemoteServerResponse::Error("Couldn't look up account".to_string());
+            return Err("Couldn't look up account".into());
         };
 
         match bcrypt::verify(password, &auth.password_hash)
         {
             Ok(true) => {
                 tracing::debug!("login successful");
-                RemoteServerResponse::LogUserIn(account_id)
+                Ok(RemoteServerResponse::LogUserIn(account_id))
             }
             Ok(false) => {
                 tracing::debug!("wrong password");
-                RemoteServerResponse::InvalidCredentials
+                Ok(RemoteServerResponse::InvalidCredentials)
             }
-            Err(_) => RemoteServerResponse::Error("Couldn't verify password".to_string())
+            Err(_) => Err("Couldn't verify password".into())
         }
     }
 }

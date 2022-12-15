@@ -31,5 +31,63 @@ pub struct ChannelRegistration
 pub struct ChannelAccess
 {
     pub id: ChannelAccessId,
-    pub flags: ChannelAccessSet,
+    pub role: ChannelRoleId,
+}
+
+#[derive(PartialEq,Eq,Hash,Debug,Clone)]
+#[derive(serde_with::SerializeDisplay,serde_with::DeserializeFromStr)]
+pub enum ChannelRoleName
+{
+    BuiltinFounder,
+    BuiltinOp,
+    BuiltinVoice,
+    Custom(CustomRoleName),
+}
+
+#[derive(PartialEq,Debug,Clone,Serialize,Deserialize)]
+pub struct ChannelRole
+{
+    pub id: ChannelRoleId,
+    pub channel: ChannelRegistrationId,
+    pub name: ChannelRoleName,
+    pub flags: super::ChannelAccessSet,
+}
+
+impl std::str::FromStr for ChannelRoleName
+{
+    type Err = <CustomRoleName as Validated>::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err>
+    {
+        Ok(match s
+        {
+            "builtin:founder" => Self::BuiltinFounder,
+            "builtin:op" => Self::BuiltinOp,
+            "builtin:voice" => Self::BuiltinVoice,
+            _ => Self::Custom(s.parse()?)
+        })
+    }
+}
+
+impl std::borrow::Borrow<str> for ChannelRoleName
+{
+    fn borrow(&self) -> &str
+    {
+        match self
+        {
+            Self::BuiltinFounder => "builtin:founder",
+            Self::BuiltinOp => "builtin:op",
+            Self::BuiltinVoice => "builtin:voice",
+            Self::Custom(s) => s.borrow(),
+        }
+    }
+}
+
+impl std::fmt::Display for ChannelRoleName
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    {
+        use std::borrow::Borrow;
+        f.write_str(self.borrow())
+    }
 }

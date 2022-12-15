@@ -104,6 +104,11 @@ define_validated! {
         }
         Ok(())
     }
+
+    CustomRoleName(ArrayString<32>) {
+        check_allowed_chars(value, &[UPPER, LOWER, DIGIT, "-_"])?;
+        Ok(())
+    }
 }
 
 impl Nickname

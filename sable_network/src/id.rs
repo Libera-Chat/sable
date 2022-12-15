@@ -38,6 +38,7 @@ object_ids!(ObjectId (ObjectIdGenerator) {
     ChannelRegistration: sequential;
 
     ChannelAccess: (AccountId, ChannelRegistrationId);
+    ChannelRole: sequential;
 });
 
 

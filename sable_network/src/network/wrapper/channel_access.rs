@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, network::state::ChannelAccessFlag};
 
 pub struct ChannelAccess<'a> {
     network: &'a Network,
@@ -22,9 +22,15 @@ impl ChannelAccess<'_>
         self.network.channel_registration(self.data.id.channel())
     }
 
-    pub fn flags(&self) -> ChannelAccessSet
+    pub fn role(&self) -> LookupResult<wrapper::ChannelRole>
     {
-        self.data.flags
+        self.network.channel_role(self.data.role)
+    }
+
+    pub fn has(&self, flag: ChannelAccessFlag) -> bool
+    {
+        let Ok(role) = self.role() else { return false; };
+        role.flags().is_set(flag)
     }
 }
 

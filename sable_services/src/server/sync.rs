@@ -78,6 +78,22 @@ impl<DB> ServicesServer<DB>
                                       })
                                       .map(|obj| obj.id());
 
+        let roles_to_sync = self.db.all_channel_roles()
+                                      .unwrap()
+                                      .filter(|mine| {
+                                        if let Ok(existing) = net.channel_role(mine.id) {
+                                            existing.raw() != mine
+                                        } else {
+                                            true
+                                        }
+                                      });
+
+        let roles_to_delete = net.channel_roles()
+                                      .filter(|existing| {
+                                          matches!(self.db.channel_role(existing.id()), Err(DatabaseError::NoSuchId))
+                                      })
+                                      .map(|obj| obj.id());
+
         for account in accounts_to_sync
         {
             self.node.submit_event(account.id, AccountUpdate { data: Some(account) })
@@ -116,6 +132,16 @@ impl<DB> ServicesServer<DB>
         for access in accesses_to_delete
         {
             self.node.submit_event(access, ChannelAccessUpdate { data: None })
+        }
+
+        for role in roles_to_sync
+        {
+            self.node.submit_event(role.id, ChannelRoleUpdate { data: Some(role) })
+        }
+
+        for role in roles_to_delete
+        {
+            self.node.submit_event(role, ChannelRoleUpdate { data: None })
         }
 
         // Finally, set ourselves as the active services node

@@ -4,7 +4,7 @@ use crate::{
         Network,
     },
     id::*,
-    validated::*, modes::ChannelAccessSet,
+    validated::*,
 };
 use tokio::sync::{
     mpsc::Sender,
@@ -56,7 +56,7 @@ pub enum RemoteServerRequestType
     /// Register a channel
     RegisterChannel(AccountId, ChannelId),
     /// Add, modify or remove a channel access (None to delete)
-    ModifyAccess{ source: AccountId, id: ChannelAccessId, flags: Option<ChannelAccessSet> },
+    ModifyAccess{ source: AccountId, id: ChannelAccessId, role: Option<ChannelRoleId> },
 }
 
 /// Remote server response type

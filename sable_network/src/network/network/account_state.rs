@@ -62,6 +62,19 @@ impl Network
         }
     }
 
+    pub(super) fn update_channel_role(&mut self, target: ChannelRoleId, _event: &Event, update: &ChannelRoleUpdate, _updates: &dyn NetworkUpdateReceiver)
+    {
+        if let Some(data) = &update.data
+        {
+            self.channel_roles.insert(target, data.clone());
+        }
+        else
+        {
+            // None here means deletion
+            self.channel_roles.remove(&target);
+        }
+    }
+
     pub(super) fn user_login(&mut self, target: UserId, event: &Event, update: &UserLogin, updates: &dyn NetworkUpdateReceiver)
     {
         let accounts = &self.accounts;

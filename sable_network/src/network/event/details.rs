@@ -182,6 +182,12 @@ EventDetails => {
         pub data: Option<state::ChannelAccess>,
     }
 
+    #[target_type(ChannelRoleId)]
+    struct ChannelRoleUpdate
+    {
+        pub data: Option<state::ChannelRole>,
+    }
+
     #[target_type(UserId)]
     struct UserLogin
     {

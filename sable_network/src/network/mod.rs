@@ -10,6 +10,7 @@ pub mod state {
     mod bans;
     mod audit_log;
     mod account;
+    mod access_flag;
 
     pub use user::*;
     pub use channel::*;
@@ -18,6 +19,7 @@ pub mod state {
     pub use bans::*;
     pub use audit_log::*;
     pub use account::*;
+    pub use access_flag::*;
 }
 
 /// Defines wrapper objects which provide accessor methods and basic
@@ -42,6 +44,7 @@ pub mod wrapper {
     mod nick_registration;
     mod channel_registration;
     mod channel_access;
+    mod channel_role;
 
     pub use wrapper::ObjectWrapper;
     pub use wrapper::WrappedObjectIterator;
@@ -67,6 +70,7 @@ pub mod wrapper {
     pub use nick_registration::*;
     pub use channel_registration::*;
     pub use channel_access::*;
+    pub use channel_role::*;
 }
 
 pub mod config;

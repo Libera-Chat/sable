@@ -37,6 +37,9 @@ struct JsonDatabaseState
     channel_registrations: HashMap<ChannelRegistrationId, state::ChannelRegistration>,
 
     #[serde_as(as = "Vec<(_,_)>")]
+    channel_roles: HashMap<ChannelRoleId, state::ChannelRole>,
+
+    #[serde_as(as = "Vec<(_,_)>")]
     channel_accesses: HashMap<ChannelAccessId, state::ChannelAccess>,
 }
 
@@ -75,9 +78,9 @@ impl JsonDatabase
 
 impl DatabaseConnection for JsonDatabase
 {
-    fn connect(conn: String) -> Result<Self>
+    fn connect(conn: impl AsRef<str>) -> Result<Self>
     {
-        let filename = conn.into();
+        let filename = conn.as_ref().to_owned().into();
 
         if let Ok(file) = File::open(&filename)
         {
@@ -192,13 +195,8 @@ impl DatabaseConnection for JsonDatabase
         Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.nick_registrations.values()))
     }
 
-    fn new_channel_registration(&self, data: state::ChannelRegistration, initial_access: state::ChannelAccess) -> Result<(state::ChannelRegistration, state::ChannelAccess)>
+    fn new_channel_registration(&self, data: state::ChannelRegistration) -> Result<state::ChannelRegistration>
     {
-        if initial_access.id.channel() != data.id
-        {
-            return Err(DatabaseError::InvalidData);
-        }
-
         let mut state = self.state.write();
         let registration_entry = state.channel_registrations.entry(data.id);
 
@@ -208,13 +206,10 @@ impl DatabaseConnection for JsonDatabase
             Entry::Vacant(entry) => {
                 let ret = entry.insert(data).clone();
 
-                // We know the access entry won't already exist because the channel registration didn't
-                state.channel_accesses.insert(initial_access.id, initial_access.clone());
-
                 drop(state);
 
                 self.save()?;
-                Ok((ret, initial_access))
+                Ok(ret)
             }
         }
     }
@@ -243,34 +238,23 @@ impl DatabaseConnection for JsonDatabase
         Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.channel_registrations.values()))
     }
 
-    fn new_channel_access(&self, data: &state::ChannelAccess) -> Result<()>
-    {
-        let ret = match self.state.write().channel_accesses.entry(data.id)
-        {
-            Entry::Occupied(_) => Err(DatabaseError::DuplicateId),
-            Entry::Vacant(entry) => {
-                entry.insert(data.clone());
-                Ok(())
-            }
-        };
-        self.save()?;
-        ret
-    }
-
     fn channel_access(&self, id: ChannelAccessId) -> Result<state::ChannelAccess>
     {
         self.state.read().channel_accesses.get(&id).ok_or(DatabaseError::NoSuchId).cloned()
     }
 
-    fn update_channel_access(&self, new_data: &state::ChannelAccess) -> Result<()>
+    fn update_channel_access(&self, data: &state::ChannelAccess) -> Result<()>
     {
-        let ret = match self.state.write().channel_accesses.entry(new_data.id)
+        let ret = match self.state.write().channel_accesses.entry(data.id)
         {
             Entry::Occupied(mut entry) => {
-                entry.insert(new_data.clone());
+                entry.insert(data.clone());
                 Ok(())
             }
-            Entry::Vacant(_) => Err(DatabaseError::NoSuchId)
+            Entry::Vacant(entry) => {
+                entry.insert(data.clone());
+                Ok(())
+            }
         };
         self.save()?;
         ret
@@ -286,5 +270,42 @@ impl DatabaseConnection for JsonDatabase
         self.state.write().channel_accesses.remove(&id);
         self.save()?;
         Ok(())
+    }
+
+    fn new_channel_role(&self, data: state::ChannelRole) -> Result<state::ChannelRole>
+    {
+        let ret = match self.state.write().channel_roles.entry(data.id)
+        {
+            Entry::Occupied(_) => Err(DatabaseError::DuplicateId),
+            Entry::Vacant(entry) => Ok(entry.insert(data).clone())
+        };
+
+        self.save()?;
+        ret
+    }
+
+    fn channel_role(&self, id: ChannelRoleId) -> Result<state::ChannelRole>
+    {
+        self.state.read().channel_roles.get(&id).ok_or(DatabaseError::NoSuchId).cloned()
+    }
+
+    fn update_channel_role(&self, data: &state::ChannelRole) -> Result<()>
+    {
+        let ret = match self.state.write().channel_roles.entry(data.id)
+        {
+            Entry::Occupied(mut entry) => {
+                entry.insert(data.clone());
+                Ok(())
+            }
+            Entry::Vacant(_) => Err(DatabaseError::NoSuchId)
+        };
+
+        self.save()?;
+        ret
+    }
+
+    fn all_channel_roles(&self) -> Result<impl Iterator<Item=state::ChannelRole> + '_>
+    {
+        Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.channel_roles.values()))
     }
 }

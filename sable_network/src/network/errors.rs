@@ -53,6 +53,8 @@ pub enum LookupError
     ChannelNotRegistered(ChannelName),
     #[error("No such channel access {0:?}")]
     NoSuchChannelAccess(ChannelAccessId),
+    #[error("No such channel role {0:?}")]
+    NoSuchChannelRole(ChannelRoleId),
 }
 
 /// Convenience definition of a Result type used to look up network objects.
