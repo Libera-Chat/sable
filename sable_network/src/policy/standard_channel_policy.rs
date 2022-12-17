@@ -2,7 +2,10 @@ use super::*;
 
 use ChannelPermissionError::*;
 use UserPermissionError::*;
-use state::ChannelAccessFlag;
+use state::{
+    ChannelAccessFlag,
+    ChannelRoleName,
+};
 
 /// Standard implementation of [`ChannelPolicyService`]
 pub struct StandardChannelPolicy
@@ -19,37 +22,39 @@ impl StandardChannelPolicy {
     }
 }
 
-fn is_channel_operator(user: &User, channel: &Channel) -> PermissionResult
+fn has_assigned_access(user: &User, channel: &Channel) -> Option<state::ChannelAccessSet>
 {
-    if let Some(membership) = user.is_in_channel(channel.id())
-    {
-        if membership.permissions().is_set(MembershipFlagFlag::Op) {
-            Ok(())
-        } else {
-            Err(PermissionError::Channel(*channel.name(), UserNotOp))
-        }
-    }
-    else
-    {
-        Err(PermissionError::Channel(*channel.name(), UserNotOnChannel))
+    let account = user.account().ok()??;
+    let channel_reg = channel.is_registered()?;
+
+    account.has_access_in(channel_reg.id()).and_then(|a| a.role().ok().map(|r| r.flags()))
+}
+
+fn has_ephemeral_access(user: &User, channel: &Channel) -> Option<state::ChannelAccessSet>
+{
+    // If they're not in the channel, they can't have +o or +v
+    let member = user.is_in_channel(channel.id())?;
+
+    if member.permissions().is_set(MembershipFlagFlag::Op) {
+        channel.has_role_named(&ChannelRoleName::BuiltinOp).map(|r| r.flags())
+    } else if member.permissions().is_set(MembershipFlagFlag::Voice) {
+        channel.has_role_named(&ChannelRoleName::BuiltinVoice).map(|r| r.flags())
+    } else {
+        channel.has_role_named(&ChannelRoleName::BuiltinAll).map(|r| r.flags())
     }
 }
 
 fn has_access(user: &User, channel: &Channel, flag: ChannelAccessFlag) -> PermissionResult
 {
-    let Ok(Some(account)) = user.account() else {
-        return Err(PermissionError::User(NotLoggedIn));
-    };
-    let Some(channel_reg) = channel.is_registered() else {
-        return Err(PermissionError::Channel(*channel.name(), NotRegistered))
-    };
-    let Some(access) = account.has_access_in(channel_reg.id()) else {
-        return Err(PermissionError::Channel(*channel.name(), NoAccess))
-    };
-    if access.role()?.flags().is_set(flag) {
+    let assigned = has_assigned_access(user, channel);
+    let ephemeral = has_ephemeral_access(user, channel);
+
+    if assigned.map(|f| f.is_set(flag)) == Some(true) {
+        Ok(())
+    } else if ephemeral.map(|f| f.is_set(flag)) == Some(true) {
         Ok(())
     } else {
-        Err(PermissionError::Channel(*channel.name(), NoAccess))
+        Err(PermissionError::Channel(*channel.name(), UserNotOp))
     }
 }
 
@@ -86,19 +91,17 @@ impl ChannelPolicyService for StandardChannelPolicy
 
     fn can_send(&self, user: &User, channel: &Channel, _msg: &str) -> PermissionResult
     {
-        if let Some(membership) = user.is_in_channel(channel.id())
-        {
-            // Being in the channel and opped or voiced overrides everything
-            if membership.permissions().is_set(MembershipFlagFlag::Op)
-                || membership.permissions().is_set(MembershipFlagFlag::Voice)
-            {
-                return Ok(());
-            }
-        }
-        else if channel.mode().has_mode(ChannelModeFlag::NoExternal)
+        if channel.mode().has_mode(ChannelModeFlag::NoExternal) && user.is_in_channel(channel.id()).is_none()
         {
             // If it's +n and they're not in it, no point testing anything else
             return Err(PermissionError::Channel(*channel.name(), CannotSendToChannel));
+        }
+
+        // AlwaysSend check replaces conventional op/voice, as this flag is normally assigned
+        // to those roles
+        if has_access(user, channel, ChannelAccessFlag::AlwaysSend).is_ok()
+        {
+            return Ok(());
         }
 
         if (self.ban_resolver.user_matches_list(user, &channel.list(ListModeType::Ban)).is_some()
@@ -131,14 +134,14 @@ impl ChannelPolicyService for StandardChannelPolicy
 
     fn can_change_mode(&self, user: &User, channel: &Channel, _mode: ChannelModeFlag) -> PermissionResult
     {
-        has_access(user, channel, ChannelAccessFlag::SetSimpleMode).or(is_channel_operator(user, channel))
+        has_access(user, channel, ChannelAccessFlag::SetSimpleMode)
     }
 
     fn can_set_topic(&self, user: &User, channel: &Channel, _topic: &str) -> PermissionResult
     {
         if channel.mode().has_mode(ChannelModeFlag::TopicLock)
         {
-            has_access(user, channel, ChannelAccessFlag::Topic).or(is_channel_operator(user, channel))
+            has_access(user, channel, ChannelAccessFlag::Topic)
         }
         else
         {
@@ -155,7 +158,7 @@ impl ChannelPolicyService for StandardChannelPolicy
             (MembershipFlagFlag::Voice, true) => ChannelAccessFlag::VoiceSelf,
             (MembershipFlagFlag::Voice, false) => ChannelAccessFlag::VoiceGrant,
         };
-        has_access(user, channel, required_permission).or(is_channel_operator(user, channel))
+        has_access(user, channel, required_permission)
     }
 
     fn can_remove_permission(&self, user: &User, channel: &Channel, target: &User, flag: MembershipFlagFlag) -> PermissionResult
@@ -167,7 +170,7 @@ impl ChannelPolicyService for StandardChannelPolicy
             (MembershipFlagFlag::Voice, true) => ChannelAccessFlag::VoiceSelf,
             (MembershipFlagFlag::Voice, false) => ChannelAccessFlag::VoiceGrant,
         };
-        has_access(user, channel, required_permission).or(is_channel_operator(user, channel))
+        has_access(user, channel, required_permission)
     }
 
     fn validate_ban_mask(&self, _mask: &str, _mode_type: ListModeType, _channel: &Channel) -> PermissionResult
@@ -183,7 +186,7 @@ impl ChannelPolicyService for StandardChannelPolicy
             ListModeType::Except => ChannelAccessFlag::ExemptAdd,
             ListModeType::Invex => ChannelAccessFlag::InvexAdd,
         };
-        has_access(user, channel, required_permission).or(is_channel_operator(user, channel))
+        has_access(user, channel, required_permission)
     }
 
     fn can_unset_ban(&self, user: &User, channel: &Channel, mode_type: ListModeType, _mask: &str) -> PermissionResult
@@ -194,7 +197,7 @@ impl ChannelPolicyService for StandardChannelPolicy
             ListModeType::Except => ChannelAccessFlag::ExemptRemoveAny,
             ListModeType::Invex => ChannelAccessFlag::InvexRemoveAny,
         };
-        has_access(user, channel, required_permission).or(is_channel_operator(user, channel))
+        has_access(user, channel, required_permission)
     }
 
     fn can_query_list(&self, user: &User, channel: &Channel, mode_type: ListModeType) -> PermissionResult
@@ -205,7 +208,7 @@ impl ChannelPolicyService for StandardChannelPolicy
             ListModeType::Except => ChannelAccessFlag::ExemptView,
             ListModeType::Invex => ChannelAccessFlag::InvexView,
         };
-        has_access(user, channel, required_permission).or(is_channel_operator(user, channel))
+        has_access(user, channel, required_permission)
     }
 
     fn should_see_list_change(&self, member: &Membership, mode_type: ListModeType) -> bool
@@ -226,11 +229,11 @@ impl ChannelPolicyService for StandardChannelPolicy
 
     fn can_set_key(&self, user: &User, channel: &Channel, _new_key: Option<&ChannelKey>) -> PermissionResult
     {
-        has_access(user, channel, ChannelAccessFlag::SetKey).or(is_channel_operator(user, channel))
+        has_access(user, channel, ChannelAccessFlag::SetKey)
     }
 
     fn can_invite(&self, user: &User, channel: &Channel, _target: &User) -> PermissionResult
     {
-        has_access(user, channel, ChannelAccessFlag::InviteOther).or(is_channel_operator(user, channel))
+        has_access(user, channel, ChannelAccessFlag::InviteOther)
     }
 }

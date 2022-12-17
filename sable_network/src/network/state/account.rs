@@ -41,6 +41,7 @@ pub enum ChannelRoleName
     BuiltinFounder,
     BuiltinOp,
     BuiltinVoice,
+    BuiltinAll,
     Custom(CustomRoleName),
 }
 
@@ -48,7 +49,7 @@ pub enum ChannelRoleName
 pub struct ChannelRole
 {
     pub id: ChannelRoleId,
-    pub channel: ChannelRegistrationId,
+    pub channel: Option<ChannelRegistrationId>,
     pub name: ChannelRoleName,
     pub flags: super::ChannelAccessSet,
 }
@@ -64,6 +65,7 @@ impl std::str::FromStr for ChannelRoleName
             "builtin:founder" => Self::BuiltinFounder,
             "builtin:op" => Self::BuiltinOp,
             "builtin:voice" => Self::BuiltinVoice,
+            "builtin:all" => Self::BuiltinAll,
             _ => Self::Custom(s.parse()?)
         })
     }
@@ -78,6 +80,7 @@ impl std::borrow::Borrow<str> for ChannelRoleName
             Self::BuiltinFounder => "builtin:founder",
             Self::BuiltinOp => "builtin:op",
             Self::BuiltinVoice => "builtin:voice",
+            Self::BuiltinAll => "builtin:all",
             Self::Custom(s) => s.borrow(),
         }
     }

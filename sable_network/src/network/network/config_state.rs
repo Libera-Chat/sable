@@ -17,5 +17,7 @@ impl Network
         {
             self.config = details.config.clone();
         }
+
+        self.rebuild_default_role_cache();
     }
 }

@@ -128,7 +128,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 
             impl #id_typename
             {
-                pub fn new(#( #arg_list ),*) -> Self { Self(#( #arg_names ), *) }
+                pub const fn new(#( #arg_list ),*) -> Self { Self(#( #arg_names ), *) }
             }
 
             impl From<#id_typename> for #enum_name

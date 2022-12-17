@@ -53,6 +53,22 @@ impl Channel<'_> {
     {
         self.network.channel_registration_by_name(self.data.name).ok()
     }
+
+    /// Search for a role with the given name applicable to this channel
+    pub fn has_role_named(&self, name: &state::ChannelRoleName) -> Option<ChannelRole>
+    {
+        match self.is_registered()
+        {
+            Some(registration) => {
+                // We'd like to just do `registration.role_named(name)` here, but can't
+                // because the borrow checker isn't smart enough to realise that the only
+                // thing borrowed from registration is the same network that's borrowed
+                // in self.
+                self.network.channel_roles().find(|role| role.channel().map(|c| c.id()) == Some(registration.id()) && role.name() == name)
+            },
+            None => self.network.find_default_role(name)
+        }
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for Channel<'a> {

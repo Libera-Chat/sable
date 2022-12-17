@@ -18,6 +18,8 @@ use serde_with::{
 use std::collections::HashMap;
 use std::convert::TryInto;
 
+use once_cell::sync::OnceCell;
+
 /// Error enumeration defining possible problems to be returned from
 /// the [Network::validate] method.
 #[derive(Error,Debug)]
@@ -119,13 +121,17 @@ pub struct Network
     config: config::NetworkConfig,
 
     clock: EventClock,
+
+    // Cached or constructed data that doesn't need to be serialised
+    #[serde(skip)]
+    cache_default_channel_roles: OnceCell<HashMap<state::ChannelRoleName, state::ChannelRole>>,
 }
 
 impl Network {
     /// Create an empty network state.
     pub fn new(config: config::NetworkConfig) -> Network
     {
-        Network {
+        let net = Network {
             nick_bindings: HashMap::new(),
             users: HashMap::new(),
 
@@ -151,7 +157,12 @@ impl Network {
             config,
 
             clock: EventClock::new(),
-        }
+
+            cache_default_channel_roles: OnceCell::new(),
+        };
+
+        net.build_default_role_cache();
+        net
     }
 
     /// Apply an [Event] to the network state.
@@ -287,6 +298,7 @@ impl Network {
 }
 
 mod accessors;
+mod default_roles;
 
 mod user_state;
 mod channel_state;

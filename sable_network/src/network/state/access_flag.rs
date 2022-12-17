@@ -1,10 +1,10 @@
 use std::ops::{BitOr, BitOrAssign, Not, BitAnd};
 
 use serde::{Deserialize, Serialize};
-use strum::EnumString;
+use strum::{ EnumString, EnumIter, IntoEnumIterator };
 
 #[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
-#[derive(EnumString)]
+#[derive(EnumString,EnumIter)]
 #[strum(serialize_all="snake_case")]
 #[serde(rename_all="snake_case")]
 #[repr(u64)]
@@ -64,6 +64,10 @@ pub struct ChannelAccessSet(u64);
 
 #[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub struct ChannelAccessMask(u64);
+
+/// Conversion type used to de/serialise a ChannelAccessSet in a human-readable context
+#[derive(Debug,Clone)]
+pub struct HumanReadableChannelAccessSet(ChannelAccessSet);
 
 impl ChannelAccessSet
 {
@@ -201,5 +205,90 @@ impl BitAnd<ChannelAccessMask> for ChannelAccessSet
     fn bitand(self, rhs: ChannelAccessMask) -> Self::Output
     {
         Self(self.0 & rhs.0)
+    }
+}
+
+impl From<Vec<ChannelAccessFlag>> for ChannelAccessSet
+{
+    fn from(value: Vec<ChannelAccessFlag>) -> Self
+    {
+        let mut ret = Self(0);
+        for flag in value
+        {
+            ret |= flag;
+        }
+        ret
+    }
+}
+
+impl From<ChannelAccessSet> for Vec<ChannelAccessFlag>
+{
+    fn from(value: ChannelAccessSet) -> Self
+    {
+        let mut ret = Self::new();
+
+        for flag in ChannelAccessFlag::iter()
+        {
+            if value.is_set(flag)
+            {
+                ret.push(flag);
+            }
+        }
+
+        ret
+    }
+}
+
+impl From<HumanReadableChannelAccessSet> for ChannelAccessSet
+{
+    fn from(value: HumanReadableChannelAccessSet) -> Self {
+        value.0
+    }
+}
+
+impl From<ChannelAccessSet> for HumanReadableChannelAccessSet
+{
+    fn from(value: ChannelAccessSet) -> Self {
+        Self(value)
+    }
+}
+
+impl serde_with::SerializeAs<ChannelAccessSet> for HumanReadableChannelAccessSet
+{
+    fn serialize_as<S>(source: &ChannelAccessSet, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        let vec: Vec<ChannelAccessFlag> = source.clone().into();
+        vec.serialize(serializer)
+    }
+}
+
+impl<'de> serde_with::DeserializeAs<'de, ChannelAccessSet> for HumanReadableChannelAccessSet
+{
+    fn deserialize_as<D>(deserializer: D) -> Result<ChannelAccessSet, D::Error>
+        where D: serde::Deserializer<'de>
+    {
+        let vec = <Vec<ChannelAccessFlag> as Deserialize>::deserialize(deserializer)?;
+        Ok(vec.into())
+    }
+}
+
+impl serde::Serialize for HumanReadableChannelAccessSet
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        let vec: Vec<ChannelAccessFlag> = self.0.clone().into();
+        vec.serialize(serializer)
+    }
+}
+
+impl<'de> serde::de::Deserialize<'de> for HumanReadableChannelAccessSet
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: serde::Deserializer<'de>
+    {
+        let vec = <Vec<ChannelAccessFlag> as Deserialize>::deserialize(deserializer)?;
+        Ok(Self(vec.into()))
     }
 }

@@ -23,7 +23,7 @@ impl ChannelRegistration<'_>
     pub fn roles(&self) -> impl Iterator<Item=ChannelRole>
     {
         let my_id = self.data.id;
-        self.network.channel_roles().filter(move |r| r.raw().channel == my_id)
+        self.network.channel_roles().filter(move |r| r.raw().channel == Some(my_id))
     }
 
     /// Look up a role by name

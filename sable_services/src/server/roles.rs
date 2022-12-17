@@ -19,7 +19,7 @@ impl<DB> ServicesServer<DB>
 
             ret.push(state::ChannelRole {
                 id: self.node.ids().next_channel_role(),
-                channel: for_channel,
+                channel: Some(for_channel),
                 name: name.clone(),
                 flags: flag_set
             });

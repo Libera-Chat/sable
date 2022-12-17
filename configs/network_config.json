@@ -6,5 +6,27 @@
         }
     ],
 
+    "default_roles": {
+        "builtin:op": [
+            "always_send",
+            "op_self", "op_grant",
+            "receive_op", "receive_voice", "receive_opmod",
+            "topic", "kick", "set_simple_mode", "set_key",
+            "ban_view", "ban_add", "ban_remove_any",
+            "quiet_view", "quiet_add", "quiet_remove_any",
+            "exempt_view", "exempt_add", "exempt_remove_any",
+            "invex_view", "invex_add", "invex_remove_any"
+        ],
+        "builtin:voice": [
+            "always_send",
+            "voice_self",
+            "receive_voice",
+            "ban_view", "quiet_view"
+        ],
+        "builtin:all": [
+            "ban_view", "quiet_view"
+        ]
+    },
+
     "debug_mode": true
 }
