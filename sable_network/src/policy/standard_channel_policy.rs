@@ -1,7 +1,5 @@
 use super::*;
-
 use ChannelPermissionError::*;
-use UserPermissionError::*;
 use state::{
     ChannelAccessFlag,
     ChannelRoleName,
@@ -40,18 +38,26 @@ fn has_ephemeral_access(user: &User, channel: &Channel) -> Option<state::Channel
     } else if member.permissions().is_set(MembershipFlagFlag::Voice) {
         channel.has_role_named(&ChannelRoleName::BuiltinVoice).map(|r| r.flags())
     } else {
-        channel.has_role_named(&ChannelRoleName::BuiltinAll).map(|r| r.flags())
+        None
     }
+}
+
+fn has_default_access(channel: &Channel) -> Option<state::ChannelAccessSet>
+{
+    channel.has_role_named(&ChannelRoleName::BuiltinAll).map(|r| r.flags())
 }
 
 fn has_access(user: &User, channel: &Channel, flag: ChannelAccessFlag) -> PermissionResult
 {
     let assigned = has_assigned_access(user, channel);
     let ephemeral = has_ephemeral_access(user, channel);
+    let default = has_default_access(channel);
 
     if assigned.map(|f| f.is_set(flag)) == Some(true) {
         Ok(())
     } else if ephemeral.map(|f| f.is_set(flag)) == Some(true) {
+        Ok(())
+    } else if default.map(|f| f.is_set(flag)) == Some(true) {
         Ok(())
     } else {
         Err(PermissionError::Channel(*channel.name(), UserNotOp))
