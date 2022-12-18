@@ -308,4 +308,10 @@ impl DatabaseConnection for JsonDatabase
     {
         Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.channel_roles.values()))
     }
+
+    fn remove_channel_role(&self, id: ChannelRoleId) -> Result<()>
+    {
+        self.state.write().channel_roles.remove(&id);
+        self.save()
+    }
 }

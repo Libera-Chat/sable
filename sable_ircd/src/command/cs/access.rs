@@ -21,9 +21,16 @@ pub(super) async fn handle_access(source: UserId, cmd: Arc<ClientCommand>) -> Co
     }
 }
 
-async fn access_list(_source: UserId, cmd: Arc<ClientCommand>) -> CommandResult
+async fn access_list(source: UserId, cmd: Arc<ClientCommand>) -> CommandResult
 {
     let net = cmd.server.network();
+
+    let user = net.user(source)?;
+
+    let Ok(Some(account)) = user.account() else {
+        cmd.notice("You are not logged in");
+        return Ok(())
+    };
 
     let Ok(channel_name) = ChannelName::from_str(&cmd.args[1]) else {
         cmd.notice(format_args!("Invalid channel name {}", &cmd.args[1]));
@@ -34,6 +41,17 @@ async fn access_list(_source: UserId, cmd: Arc<ClientCommand>) -> CommandResult
         cmd.notice(format_args!("{} is not registered", &channel_name));
         return Ok(())
     };
+
+    let Some(source_access) = account.has_access_in(registration.id()) else {
+        cmd.notice("Access denied");
+        return Ok(())
+    };
+
+    if ! source_access.role()?.flags().is_set(ChannelAccessFlag::AccessView)
+    {
+        cmd.notice("Access denied");
+        return Ok(())
+    }
 
     cmd.notice(format_args!("Access list for {}", channel_name));
     cmd.notice(" ");

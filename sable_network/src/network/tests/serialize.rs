@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use super::fixtures::*;
+use std::str::FromStr;
 
 #[test]
 fn empty_network_can_be_serialized()

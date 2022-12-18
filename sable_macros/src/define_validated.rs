@@ -123,18 +123,6 @@ pub fn define_validated(input: TokenStream) -> TokenStream
                     &self.0
                 }
 
-                fn from_str(arg: &str) -> Self::Result
-                {
-                    if let Ok(val) = <Self as Validated>::Underlying::try_from(arg)
-                    {
-                        Self::new(val)
-                    }
-                    else
-                    {
-                        Err(#error(arg.to_string()))
-                    }
-                }
-
                 fn convert(arg: impl std::string::ToString) -> Self::Result
                 {
                     <Self as std::convert::TryFrom<String>>::try_from(arg.to_string())

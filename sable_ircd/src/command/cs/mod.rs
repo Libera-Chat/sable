@@ -12,6 +12,7 @@ command_handler!("CS" => CSHandler {
             {
                 "REGISTER" => register::handle_register(source, cmd).await,
                 "ACCESS" => access::handle_access(source, cmd).await,
+                "ROLE" => role::handle_role(source, cmd).await,
                 _ =>
                 {
                     cmd.notice(format_args!("Unrecognised CS command {}", subcommand));
@@ -24,3 +25,4 @@ command_handler!("CS" => CSHandler {
 
 mod register;
 mod access;
+mod role;

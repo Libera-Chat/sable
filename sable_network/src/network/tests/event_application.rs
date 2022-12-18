@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use super::fixtures::*;
+use std::str::FromStr;
 
 #[test]
 fn add_and_remove_user()

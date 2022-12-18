@@ -1,3 +1,5 @@
+use sable_network::prelude::state::ChannelAccessSet;
+
 use super::*;
 
 impl<DB: DatabaseConnection> ServicesServer<DB>
@@ -105,5 +107,80 @@ impl<DB: DatabaseConnection> ServicesServer<DB>
                 Ok(RemoteServerResponse::Success)
             }
         }
+    }
+
+    pub(crate) fn create_role(&self, source: AccountId, channel: ChannelRegistrationId, name: CustomRoleName, flags: ChannelAccessSet) -> CommandResult
+    {
+        let net = self.node.network();
+
+        let source = net.account(source)?;
+        let channel = net.channel_registration(channel)?;
+
+        match source.has_access_in(channel.id())
+        {
+            None => { return Err(RemoteServerResponse::AccessDenied.into()); }
+            Some(access) =>
+            {
+                if ! access.role()?.flags().is_set(ChannelAccessFlag::RoleEdit)
+                {
+                    return Err(RemoteServerResponse::AccessDenied.into());
+                }
+            }
+        };
+
+        let new_role = state::ChannelRole {
+            id: self.node.ids().next_channel_role(),
+            channel: Some(channel.id()),
+            name: ChannelRoleName::Custom(name),
+            flags
+        };
+
+        let new_role = self.db.new_channel_role(new_role)?;
+
+        self.node.submit_event(new_role.id, ChannelRoleUpdate { data: Some(new_role) });
+
+        Ok(RemoteServerResponse::Success)
+    }
+
+    pub(crate) fn modify_role(&self, source: AccountId, id: ChannelRoleId, flags: Option<ChannelAccessSet>) -> CommandResult
+    {
+        let net = self.node.network();
+
+        let source = net.account(source)?;
+        let existing = net.channel_role(id)?;
+        let Some(channel) = existing.channel() else
+        {
+            return Err("Can't modify a builtin role".into());
+        };
+
+        match source.has_access_in(channel.id())
+        {
+            None => { return Err(RemoteServerResponse::AccessDenied.into()); }
+            Some(access) =>
+            {
+                if ! access.role()?.flags().is_set(ChannelAccessFlag::RoleEdit)
+                {
+                    return Err(RemoteServerResponse::AccessDenied.into());
+                }
+            }
+        };
+
+        if let Some(flags) = flags
+        {
+            let mut role = self.db.channel_role(id)?;
+
+            role.flags = flags;
+
+            self.db.update_channel_role(&role)?;
+
+            self.node.submit_event(role.id, ChannelRoleUpdate { data: Some(role) });
+        }
+        else
+        {
+            self.db.remove_channel_role(id)?;
+            self.node.submit_event(id, ChannelRoleUpdate { data: None });
+        }
+
+        Ok(RemoteServerResponse::Success)
     }
 }

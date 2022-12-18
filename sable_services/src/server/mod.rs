@@ -127,31 +127,45 @@ impl<DB> ServerType for ServicesServer<DB>
     {
         tracing::debug!(?req, "Got remote request");
 
+        use RemoteServerRequestType::*;
+
         let result = match req
         {
-            RemoteServerRequestType::RegisterUser(account_name, password) =>
+            RegisterUser(account_name, password) =>
             {
                 tracing::debug!(?account_name, "Got register request");
 
                 self.register_user(account_name, password)
             }
-            RemoteServerRequestType::UserLogin(account_id, password) =>
+            UserLogin(account_id, password) =>
             {
                 tracing::debug!(?account_id, "Got login request");
 
                 self.user_login(account_id, password)
             }
-            RemoteServerRequestType::RegisterChannel(account_id, channel_id) =>
+            RegisterChannel(account_id, channel_id) =>
             {
                 tracing::debug!(?account_id, ?channel_id, "Got channel register request");
 
                 self.register_channel(account_id, channel_id)
             }
-            RemoteServerRequestType::ModifyAccess { source, id, role } =>
+            ModifyAccess { source, id, role } =>
             {
                 tracing::debug!(?source, ?id, ?role, "Got channel access update");
 
                 self.modify_channel_access(source, id, role)
+            }
+            CreateRole { source, channel, name, flags } =>
+            {
+                tracing::debug!(?source, ?channel, ?name, ?flags, "Got role creation");
+
+                self.create_role(source, channel, name, flags)
+            }
+            ModifyRole { source, id, flags } =>
+            {
+                tracing::debug!(?source, ?id, ?flags, "Got modify role");
+
+                self.modify_role(source, id, flags)
             }
             _ =>
             {

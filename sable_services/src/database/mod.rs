@@ -77,6 +77,8 @@ pub trait DatabaseConnection : Sized
     fn update_channel_role(&self, data: &state::ChannelRole) -> Result<()>;
     /// Retrieve all channel roles in the database
     fn all_channel_roles(&self) -> Result<impl Iterator<Item=state::ChannelRole> + '_>;
+    /// Remove a channel role
+    fn remove_channel_role(&self, id: ChannelRoleId) -> Result<()>;
 
     /// Create or update a channel access
     /// Unlike other creation functions, this one doesn't return the state object because

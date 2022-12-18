@@ -3,10 +3,13 @@
 use sable_macros::define_validated;
 use thiserror::Error;
 use arrayvec::ArrayString;
-use std::convert::{TryFrom,Into};
+use std::{
+    convert::{TryFrom,Into},
+    str::FromStr,
+};
 
 /// Base trait for validated string types.
-pub trait Validated : TryFrom<Self::Underlying> + Into<Self::Underlying> + Sized
+pub trait Validated : TryFrom<Self::Underlying> + Into<Self::Underlying> + FromStr + Sized
 {
     type Underlying;
     type Error;
@@ -22,10 +25,6 @@ pub trait Validated : TryFrom<Self::Underlying> + Into<Self::Underlying> + Sized
 
     /// Access the raw stored value
     fn value(&self) -> &Self::Underlying;
-
-    /// Attempt to convert from [&str] to the underlying type, then validate
-    /// the resulting value, and construct a new `Self` if it succeeds.
-    fn from_str(value: &str) -> Self::Result;
 
     /// Attempt to convert from anything that can be converted to a string.
     fn convert(arg: impl std::string::ToString) -> Self::Result;

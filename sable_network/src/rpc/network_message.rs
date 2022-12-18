@@ -2,6 +2,7 @@ use crate::{
     network::{
         event::*,
         Network,
+        state::ChannelAccessSet,
     },
     id::*,
     validated::*,
@@ -57,6 +58,10 @@ pub enum RemoteServerRequestType
     RegisterChannel(AccountId, ChannelId),
     /// Add, modify or remove a channel access (None to delete)
     ModifyAccess{ source: AccountId, id: ChannelAccessId, role: Option<ChannelRoleId> },
+    /// Create a channel role
+    CreateRole{ source: AccountId, channel: ChannelRegistrationId, name: CustomRoleName, flags: ChannelAccessSet },
+    /// Modify or delete a channel role
+    ModifyRole{ source: AccountId, id: ChannelRoleId, flags: Option<ChannelAccessSet> },
 }
 
 /// Remote server response type

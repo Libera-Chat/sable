@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use event::*;
+use std::str::FromStr;
 
 pub struct NetworkBuilder
 {

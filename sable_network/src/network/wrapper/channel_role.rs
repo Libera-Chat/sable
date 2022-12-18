@@ -31,6 +31,12 @@ impl ChannelRole<'_>
     {
         self.data.flags.dominates(&other.data.flags)
     }
+
+    pub fn is_builtin(&self) -> bool
+    {
+        // Builtin roles have builtin names
+        ! matches!(self.data.name, state::ChannelRoleName::Custom(_))
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for ChannelRole<'a> {

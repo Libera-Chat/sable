@@ -11,6 +11,7 @@ use crate::utils::ClientCommandExt;
 use std::{
     collections::HashMap,
     sync::Arc,
+    str::FromStr,
 };
 
 use command_processor::*;

@@ -1,10 +1,10 @@
-use std::ops::{BitOr, BitOrAssign, Not, BitAnd};
+use std::ops::{BitOr, BitOrAssign, Not, BitAnd, BitAndAssign};
 
 use serde::{Deserialize, Serialize};
 use strum::{ EnumString, EnumIter, IntoEnumIterator };
 
 #[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
-#[derive(EnumString,EnumIter)]
+#[derive(EnumString,EnumIter, strum::Display)]
 #[strum(serialize_all="snake_case")]
 #[serde(rename_all="snake_case")]
 #[repr(u64)]
@@ -208,6 +208,14 @@ impl BitAnd<ChannelAccessMask> for ChannelAccessSet
     }
 }
 
+impl BitAndAssign<ChannelAccessMask> for ChannelAccessSet
+{
+    fn bitand_assign(&mut self, rhs: ChannelAccessMask)
+    {
+        self.0 &= rhs.0
+    }
+}
+
 impl From<Vec<ChannelAccessFlag>> for ChannelAccessSet
 {
     fn from(value: Vec<ChannelAccessFlag>) -> Self
@@ -250,6 +258,17 @@ impl From<ChannelAccessSet> for HumanReadableChannelAccessSet
 {
     fn from(value: ChannelAccessSet) -> Self {
         Self(value)
+    }
+}
+
+impl std::fmt::Display for HumanReadableChannelAccessSet
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    {
+        let vec: Vec<_> = self.0.clone().into();
+        let names: Vec<_> = vec.iter().map(ToString::to_string).collect();
+
+        f.write_str(&names.join(","))
     }
 }
 
