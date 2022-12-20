@@ -1,4 +1,8 @@
 #![allow(rustdoc::private_intra_doc_links)]
+#![allow(incomplete_features)]
+#![feature(return_position_impl_trait_in_trait)]
+#![feature(async_fn_in_trait)]
+#![feature(type_alias_impl_trait)]
 
 //! IRC client server logic.
 //!
@@ -59,9 +63,6 @@ use client::*;
 
 mod client_message;
 pub use client_message::*;
-
-mod command_processor;
-use command_processor::*;
 
 mod connection_collection;
 use connection_collection::ConnectionCollection;

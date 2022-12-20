@@ -1,5 +1,5 @@
 //! IRC-style glob matching.
-//! 
+//!
 //! Permitted wildcards are * (match zero or more characters) and ? (match exactly one character)
 
 use std::ops::Deref;
@@ -35,6 +35,13 @@ impl PartialEq<String> for Pattern
     }
 }
 
+impl PartialEq<str> for Pattern
+{
+    fn eq(&self, other: &str) -> bool
+    {
+        &self.0 == other
+    }
+}
 
 impl Pattern
 {

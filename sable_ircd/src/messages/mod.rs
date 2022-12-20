@@ -1,5 +1,5 @@
 use sable_network::prelude::*;
-use crate::command_processor::*;
+use crate::command::*;
 
 /// Trait describing an object that can be the source of a client protocol message
 pub trait MessageSource

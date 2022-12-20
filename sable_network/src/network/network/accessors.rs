@@ -91,13 +91,13 @@ impl Network {
     /// Look up a raw channel by name.
     pub(crate) fn raw_channel_by_name(&self, name: &ChannelName) -> LookupResult<&state::Channel>
     {
-        self.channels.values().find(|x| &x.name == name).ok_or_else(|| NoSuchChannelName(name.to_string()))
+        self.channels.values().find(|x| &x.name == name).ok_or_else(|| NoSuchChannelName(*name))
     }
 
     /// Look up a channel by name.
     pub fn channel_by_name(&self, name: &ChannelName) -> LookupResult<wrapper::Channel>
     {
-        self.channels.values().find(|x| &x.name == name).ok_or_else(|| NoSuchChannelName(name.to_string())).wrap(self)
+        self.channels.values().find(|x| &x.name == name).ok_or_else(|| NoSuchChannelName(*name)).wrap(self)
     }
 
     /// Look up a ban-type list by ID

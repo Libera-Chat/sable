@@ -1,4 +1,5 @@
 use crate::*;
+use crate::command::*;
 use crate::movable::Movable;
 use capability::*;
 use messages::*;
@@ -195,16 +196,23 @@ impl ClientServer
         }
     }
 
-    fn process_pending_client_messages<'a, 'b>(self: &'b Arc<Self>, async_handlers: &AsyncHandlerCollection<'a>)
-        where Self: 'a, 'b: 'a
+    fn process_pending_client_messages(self: &Arc<Self>, async_handlers: &AsyncHandlerCollection)
     {
         let connections = self.connections.read();
         for (conn_id, message) in connections.poll_messages().collect::<Vec<_>>()
         {
             if let Some(parsed) = ClientMessage::parse(conn_id, &message)
             {
-                let processor = CommandProcessor::new(Arc::clone(&self), &self.command_dispatcher);
-                processor.process_message(parsed, async_handlers);
+                if let Ok(connection) = connections.get(conn_id)
+                {
+                    if let Ok(command) = ClientCommand::new(Arc::clone(&self), connection, parsed)
+                    {
+                        if let Some(async_handler) = self.command_dispatcher.dispatch_command(command)
+                        {
+                            async_handlers.add(async_handler);
+                        }
+                    }
+                }
             }
             else
             {

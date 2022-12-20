@@ -64,3 +64,11 @@ pub fn mode_flags(input: TokenStream) -> TokenStream
 {
     modeflags::mode_flags(input)
 }
+
+mod command_handler;
+
+#[proc_macro_attribute]
+pub fn command_handler(attr: TokenStream, item: TokenStream) -> TokenStream
+{
+    command_handler::command_handler(attr, item)
+}

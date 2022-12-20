@@ -26,7 +26,7 @@ impl Network
             new_cache.insert(name.clone(), cache_role);
         }
 
-        self.cache_default_channel_roles.set(new_cache);
+        let _ = self.cache_default_channel_roles.set(new_cache);
         // We just initialised it, so unwrap won't fail
         self.cache_default_channel_roles.get().unwrap()
     }

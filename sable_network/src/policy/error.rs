@@ -39,7 +39,7 @@ pub enum PermissionError
 {
     Channel(ChannelName, ChannelPermissionError),
     User(UserPermissionError),
-    InternalError(Box<dyn std::error::Error>),
+    InternalError(Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl From<LookupError> for PermissionError
