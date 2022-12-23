@@ -1,5 +1,4 @@
 use crate::*;
-use crate::command::*;
 use crate::movable::Movable;
 use capability::*;
 use messages::*;

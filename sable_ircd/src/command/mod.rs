@@ -36,7 +36,7 @@ pub use plumbing::CommandContext;
 /// A convenience definition for the result type returned from command handlers
 pub type CommandResult = Result<(), CommandError>;
 
-pub type AsyncHandler = std::pin::Pin<Box<dyn std::future::Future<Output=()> + Send>>;
+pub type AsyncHandler = BoxFuture<'static, ()>;
 
 mod handlers
 {

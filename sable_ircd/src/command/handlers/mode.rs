@@ -2,12 +2,12 @@ use super::*;
 
 
 #[command_handler("MODE")]
-fn handle_user(server: &ClientServer, net: &Network, source: UserSource, cmd: &ClientCommand,
-               target: TargetParameter, mode_str: Option<&str>, mut args: ArgList) -> CommandResult
+fn handle_user(server: &ClientServer, source: UserSource, cmd: &ClientCommand,
+               target: TargetParameter, mode_str: Option<&str>, args: ArgList) -> CommandResult
 {
     match target
     {
-        TargetParameter::Channel(chan) => handle_channel_mode(server, net, &source, cmd, chan, mode_str, args),
+        TargetParameter::Channel(chan) => handle_channel_mode(server, &source, cmd, chan, mode_str, args),
         TargetParameter::User(user) =>
         {
             if source.id() != user.id()
@@ -69,7 +69,7 @@ fn handle_user(server: &ClientServer, net: &Network, source: UserSource, cmd: &C
     }
 }
 
-fn handle_channel_mode(server: &ClientServer, net: &Network, source: &wrapper::User, cmd: &ClientCommand,
+fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, cmd: &ClientCommand,
         chan: wrapper::Channel, mode_str: Option<&str>, mut args: ArgList) -> CommandResult
 {
     let mode = chan.mode();

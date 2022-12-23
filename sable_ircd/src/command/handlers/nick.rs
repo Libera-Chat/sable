@@ -2,18 +2,18 @@ use super::*;
 use event::*;
 
 #[command_handler("NICK")]
-fn handle_nick(server: &ClientServer, cmd: &ClientCommand, source: CommandSource, new_nick: Nickname) -> CommandResult
+fn handle_nick(server: &ClientServer, net: &Network, cmd: &ClientCommand, source: CommandSource, new_nick: Nickname) -> CommandResult
 {
     match source
     {
-        CommandSource::User(user) => handle_user(server, cmd, user, new_nick),
-        CommandSource::PreClient(pc) => handle_preclient(server, cmd, &pc, new_nick)
+        CommandSource::User(user) => handle_user(server, net, user, new_nick),
+        CommandSource::PreClient(pc) => handle_preclient(server, net, cmd, &pc, new_nick)
     }
 }
 
-fn handle_preclient(server: &ClientServer, cmd: &ClientCommand, source: &PreClient, nick: Nickname) -> CommandResult
+fn handle_preclient(server: &ClientServer, net: &Network, cmd: &ClientCommand, source: &PreClient, nick: Nickname) -> CommandResult
 {
-    if server.network().nick_binding(&nick).is_ok()
+    if net.nick_binding(&nick).is_ok()
     {
         numeric_error!(NicknameInUse, &nick)
     }
@@ -30,11 +30,11 @@ fn handle_preclient(server: &ClientServer, cmd: &ClientCommand, source: &PreClie
     }
 }
 
-fn handle_user(server: &ClientServer, cmd: &ClientCommand, source: wrapper::User, nick: Nickname) -> CommandResult
+fn handle_user(server: &ClientServer, net: &Network, source: wrapper::User, nick: Nickname) -> CommandResult
 {
     let detail = details::BindNickname{ user: source.id() };
 
-    if server.network().nick_binding(&nick).is_ok()
+    if net.nick_binding(&nick).is_ok()
     {
         numeric_error!(NicknameInUse, &nick)
     }

@@ -1,7 +1,6 @@
 use super::{*, plumbing::CommandContext};
-use futures::future::BoxFuture;
 
-/// A command handler wrapper function. This is the type emitted by the #[command_handler]
+/// A command handler wrapper function. This is the type emitted by the `command_handler`
 /// attribute macro
 pub type CommandHandlerWrapper = fn(ClientCommand) -> Option<AsyncHandler>;
 
@@ -36,11 +35,6 @@ impl CommandDispatcher {
         Self {
             handlers: map
         }
-    }
-
-    fn blah(fut: impl std::future::Future<Output=()> + 'static)
-    {
-        todo!()
     }
 
     /// Look up and execute the handler function for to a given command.

@@ -6,7 +6,6 @@ use crate::{
 use std::{
     sync::Arc,
     future::Future,
-    iter::Peekable,
 };
 
 use super::{CommandSource, CommandResult, ClientCommand, ArgumentList, ArgumentListIter};

@@ -6,7 +6,7 @@ use crate::errors::HandlerError;
 /// An error that may occur during command processing
 ///
 /// Note that, at present, returning the `UnderlyingError` or `UnknownError` variants
-/// from a handler will cause the [`CommandProcessor`] to panic; in future this may
+/// from a handler will cause the default dispatcher to panic; in future this may
 /// change (for example, to terminate the connection), but in either case should only
 /// be used for exceptional, unhandleable, errors.
 #[derive(Debug)]

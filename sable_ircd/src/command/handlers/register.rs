@@ -1,25 +1,7 @@
 use super::*;
 
-//#[command_handler("REGISTER")]
-
-mod reg_handle_register {
-    use super::CommandContext;
-
-    fn call_proxy(ctx: crate::ClientCommand) -> Option<crate::command::AsyncHandler>
-    {
-        Some(Box::pin(async move {
-            let ctx = ctx;
-            crate::command::plumbing::call_handler_async(&ctx, &super::handle_register, &ctx.args).await;
-        }))
-    }
-    inventory::submit!(crate::command::CommandRegistration {
-        command: "REGISTER",
-        handler: call_proxy
-    });
-}
-
-
-pub async fn handle_register(server: &ClientServer, network: &Network, source: CommandSource<'_>, cmd: &ClientCommand,
+#[command_handler("REGISTER")]
+pub async fn handle_register(network: &Network, source: CommandSource<'_>, cmd: &ClientCommand,
                          account: &str, email: &str, password: &str) -> CommandResult
 {
     match source
@@ -32,15 +14,15 @@ pub async fn handle_register(server: &ClientServer, network: &Network, source: C
                                              "Finish connecting before registering"));
             Ok(())
         }
-        CommandSource::User(user) => do_register_user(server, network, user, cmd, account, email, password).await
+        CommandSource::User(user) => do_register_user(network, user, cmd, account, email, password).await
     }
 }
 
-async fn do_register_user(server: &ClientServer, network: &Network, source: wrapper::User<'_>, cmd: &ClientCommand,
+async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &ClientCommand,
                     account: &str, _email: &str, password: &str) -> CommandResult
 {
     let Some(services_name) = network.current_services() else {
-        cmd.connection.send(&message::Fail::new("REGISTER",
+        cmd.response(&message::Fail::new("REGISTER",
                                                 "TEMPORARILY_UNAVAILABLE",
                                                 "*",
                                                 "Services are temporarily unavailable"));

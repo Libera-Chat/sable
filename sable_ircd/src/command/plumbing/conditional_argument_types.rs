@@ -101,13 +101,13 @@ impl<'a> ArgList<'a>
         self.index += 1;
         T::parse_str(context, s)
     }
-
+/*
     /// Iterate over the remaining items
     pub fn iter(&self) -> impl Iterator<Item=&'a str> + '_
     {
         self.values[self.index..].iter().copied()
     }
-
+*/
     /// Return true if there are no arguments left un-taken
     pub fn is_empty(&self) -> bool
     {

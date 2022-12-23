@@ -1,7 +1,7 @@
 use super::*;
 
 #[command_handler("PRIVMSG")]
-fn handle_privmsg(server: &ClientServer, net: &Network, source: UserSource, cmd: &ClientCommand,
+fn handle_privmsg(server: &ClientServer, source: UserSource,
     target: TargetParameter, msg: &str) -> CommandResult
 {
     if let Some(channel) = target.channel()

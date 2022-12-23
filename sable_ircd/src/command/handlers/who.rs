@@ -2,7 +2,7 @@ use super::*;
 use crate::utils::make_numeric;
 
 #[command_handler("WHO")]
-fn handle_user(server: &ClientServer, net: &Network, cmd: &ClientCommand, source: UserSource,
+fn handle_user(server: &ClientServer, cmd: &ClientCommand, source: UserSource,
                channel: wrapper::Channel) -> CommandResult
 {
     for member in channel.members()

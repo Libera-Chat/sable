@@ -77,10 +77,9 @@ impl ClientCommand
         }
     }
 
-    pub fn response(&self, m: &impl messages::MessageTypeFormat) -> CommandResult
+    pub fn response(&self, m: &impl messages::MessageTypeFormat)
     {
         self.connection.send(m);
-        Ok(())
     }
 }
 
