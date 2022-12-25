@@ -8,7 +8,7 @@ use std::{
     future::Future,
 };
 
-use super::{CommandSource, CommandResult, ClientCommand, ArgumentList, ArgumentListIter};
+use super::{CommandSource, CommandResult, ClientCommand};
 
 pub trait CommandContext : Send + Sync
 {
@@ -27,6 +27,19 @@ pub trait CommandContext : Send + Sync
     fn notify_error(&self, err: CommandError);
 }
 
+/// Type-erased reference to an implementation of [`CommandContext`]
+#[derive(Clone)]
+struct ContextWrapper<'a>(&'a dyn CommandContext);
+
+impl<'a> CommandContext for ContextWrapper<'a>
+{
+    fn source(&self) -> CommandSource<'_> { self.0.source() }
+    fn command(&self) -> &ClientCommand { self.0.command() }
+    fn server(&self) -> &Arc<ClientServer> { self.0.server() }
+    fn network(&self) -> &Arc<Network> { self.0.network() }
+    fn notify_error(&self, err: CommandError) { self.0.notify_error(err) }
+}
+
 pub(crate) fn call_handler<'a, Amb, Pos>(ctx: &'a impl CommandContext, handler: &impl HandlerFn<'a, Amb, Pos>, args: &'a ArgumentList) -> CommandResult
 {
     handler.call(ctx, args.iter())
@@ -40,6 +53,9 @@ pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(ctx: &'ctx impl Comma
 {
     handler.call(ctx, args.iter())
 }
+
+mod argument_list;
+pub use argument_list::*;
 
 mod argument_type;
 pub use argument_type::*;

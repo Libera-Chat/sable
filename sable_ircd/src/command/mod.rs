@@ -15,9 +15,6 @@ use std::{
     str::FromStr,
 };
 
-mod argument_list;
-pub use argument_list::*;
-
 mod client_command;
 pub use client_command::*;
 
@@ -31,7 +28,11 @@ mod dispatcher;
 pub use dispatcher::*;
 
 mod plumbing;
-pub use plumbing::CommandContext;
+pub use plumbing::{
+    CommandContext,
+    ArgumentList,
+    ArgumentListIter,
+};
 
 /// A convenience definition for the result type returned from command handlers
 pub type CommandResult = Result<(), CommandError>;
