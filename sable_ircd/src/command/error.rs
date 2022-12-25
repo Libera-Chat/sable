@@ -30,6 +30,14 @@ pub enum CommandError
     InvalidNick(String),
     /// A channel name parameter wasn't a valid channel name
     InvalidChannelName(String),
+    /// A services command was executed, but services aren't currently running
+    ServicesNotAvailable,
+    /// The source user wasn't logged in and needs to be
+    NotLoggedIn,
+    /// The target channel isn't registered
+    ChannelNotRegistered(ChannelName),
+    /// A given parameter (.0) wasn't valid for the expected type (.1)
+    InvalidArgument(String, String),
 
     /// The command couldn't be processed successfully; the provided
     /// [`Numeric`](messages::Numeric) will be sent to the client to notify them

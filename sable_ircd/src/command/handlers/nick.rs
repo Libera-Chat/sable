@@ -2,7 +2,7 @@ use super::*;
 use event::*;
 
 #[command_handler("NICK")]
-fn handle_nick(server: &ClientServer, net: &Network, cmd: &ClientCommand, source: CommandSource, new_nick: Nickname) -> CommandResult
+fn handle_nick(server: &ClientServer, net: &Network, cmd: &dyn Command, source: CommandSource, new_nick: Nickname) -> CommandResult
 {
     match source
     {
@@ -11,7 +11,7 @@ fn handle_nick(server: &ClientServer, net: &Network, cmd: &ClientCommand, source
     }
 }
 
-fn handle_preclient(server: &ClientServer, net: &Network, cmd: &ClientCommand, source: &PreClient, nick: Nickname) -> CommandResult
+fn handle_preclient(server: &ClientServer, net: &Network, cmd: &dyn Command, source: &PreClient, nick: Nickname) -> CommandResult
 {
     if net.nick_binding(&nick).is_ok()
     {
@@ -23,7 +23,7 @@ fn handle_preclient(server: &ClientServer, net: &Network, cmd: &ClientCommand, s
                                     // a new one
         if source.can_register()
         {
-            server.add_action(CommandAction::RegisterClient(cmd.connection.id()));
+            server.add_action(CommandAction::RegisterClient(cmd.connection()));
         }
 
         Ok(())

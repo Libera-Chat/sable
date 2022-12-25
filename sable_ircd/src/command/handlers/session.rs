@@ -2,7 +2,7 @@ use super::*;
 //use crate::capability::*;
 
 #[command_handler("SESSION")]
-fn handle_session(server: &ClientServer, cmd: &ClientCommand, source: CommandSource,
+fn handle_session(server: &ClientServer, cmd: &dyn Command, source: CommandSource,
                   subcommand: &str, key: Conditional<&str>) -> CommandResult
 {
     match (source, subcommand.to_ascii_uppercase().as_str())
@@ -29,7 +29,7 @@ fn handle_session(server: &ClientServer, cmd: &ClientCommand, source: CommandSou
             if let Some(target_user) = server.network().raw_users()
                                             .find(|u| matches!(&u.session_key, Some(sk) if &sk.key_hash == key))
             {
-                server.add_action(CommandAction::AttachToUser(cmd.connection.id(), target_user.id));
+                server.add_action(CommandAction::AttachToUser(cmd.connection(), target_user.id));
             }
 
             Ok(())

@@ -13,6 +13,11 @@ impl ChannelRegistration<'_>
         self.data.id
     }
 
+    pub fn name(&self) -> &ChannelName
+    {
+        &self.data.channelname
+    }
+
     pub fn access_entries(&self) -> impl Iterator<Item=ChannelAccess>
     {
         let my_id = self.data.id;

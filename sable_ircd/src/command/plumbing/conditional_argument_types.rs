@@ -18,7 +18,7 @@ impl<T> Into<Option<T>> for IfParses<T>
 
 impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for IfParses<T>
 {
-    fn parse<'b>(ctx: &'a impl CommandContext, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(ctx: &'a dyn Command, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
         where 'a: 'b
     {
         let Some(value) = arg.peek() else { return Ok(Self(None)); };
@@ -35,13 +35,13 @@ impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for IfParses<T>
         }
     }
 
-    fn parse_str(_ctx: &'a impl CommandContext, _value: &'a str) -> Result<Self, CommandError>
+    fn parse_str(_ctx: &'a dyn Command, _value: &'a str) -> Result<Self, CommandError>
     {
         unreachable!();
     }
 }
 
-/// An optional argument in final position, which may or may not be required depending upon
+/// An optional argument, which may or may not be required depending upon
 /// the values of other arguments. Will be parsed as usual, but reporting of any error will
 /// be deferred until the handler indicates that it is required
 ///
@@ -56,15 +56,22 @@ impl<T> Conditional<T>
 
 impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for Conditional<T>
 {
-    fn parse<'b>(ctx: &'a impl CommandContext, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(ctx: &'a dyn Command, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
         where 'a: 'b
     {
         Ok(Self(T::parse(ctx, arg)))
     }
 
-    fn parse_str(_ctx: &'a impl CommandContext, _value: &'a str) -> Result<Self, CommandError>
+    fn parse_str(_ctx: &'a dyn Command, _value: &'a str) -> Result<Self, CommandError>
     {
         unreachable!();
     }
 }
 
+impl<'a, T: AmbientArgument<'a>> AmbientArgument<'a> for Conditional<T>
+{
+    fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError>
+    {
+        Ok(Self(T::load_from(ctx)))
+    }
+}

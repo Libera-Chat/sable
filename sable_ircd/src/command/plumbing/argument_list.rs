@@ -18,7 +18,7 @@ impl ArgumentList
     {
         ArgumentListIter { list: self, index: 0 }
     }
-
+/*
     pub fn get(&self, index: usize) -> Option<&str>
     {
         self.0.get(index).map(AsRef::as_ref)
@@ -28,6 +28,7 @@ impl ArgumentList
     {
         self.0.len()
     }
+*/
 }
 
 impl<I> std::ops::Index<I> for ArgumentList
@@ -59,7 +60,7 @@ impl<'a> ArgumentListIter<'a>
 /// be required depending on the processing of previous ones.
 pub struct ArgList<'a>
 {
-    context: ContextWrapper<'a>,
+    context: &'a dyn Command,
     iter: ArgumentListIter<'a>,
 }
 
@@ -73,8 +74,7 @@ impl<'a> ArgList<'a>
               'a: 'ret
     {
         let s: &'ret str = self.iter.next().ok_or(CommandError::NotEnoughParameters)?;
-        let pc: *const ContextWrapper = &self.context;
-        let context: &'ret ContextWrapper = unsafe { &*pc };
+        let context: &'ret dyn Command = self.context;
         T::parse_str(context, s)
     }
 
@@ -89,17 +89,29 @@ impl<'a> ArgList<'a>
     {
         self.iter.peek().is_none()
     }
+
+    /// Return the number of remaining arguments
+    pub fn len(&self) -> usize
+    {
+        self.iter.list.0.len() - self.iter.index
+    }
+
+    /// Return the (wrapped) command context
+    pub fn context(&self) -> &'a dyn Command
+    {
+        self.context
+    }
 }
 
 impl<'a> PositionalArgument<'a> for ArgList<'a>
 {
-    fn parse<'b>(ctx: &'a impl CommandContext, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(context: &'a dyn Command, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
             where 'a: 'b
     {
-        Ok(Self { context: ContextWrapper(ctx), iter: arg.clone() })
+        Ok(Self { context, iter: arg.clone() })
     }
 
-    fn parse_str(_ctx: &'a impl CommandContext, _value: &'a str) -> Result<Self, CommandError>
+    fn parse_str(_ctx: &'a dyn Command, _value: &'a str) -> Result<Self, CommandError>
     {
         unreachable!()
     }

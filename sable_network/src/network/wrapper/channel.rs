@@ -7,7 +7,7 @@ pub struct Channel<'a> {
     data: &'a state::Channel,
 }
 
-impl Channel<'_> {
+impl<'a> Channel<'a> {
     /// Return this object's ID
     pub fn id(&self) -> ChannelId {
         self.data.id
@@ -49,7 +49,7 @@ impl Channel<'_> {
     }
 
     /// Retrieve the corresponding registration, if any
-    pub fn is_registered(&self) -> Option<ChannelRegistration>
+    pub fn is_registered(&self) -> Option<ChannelRegistration<'a>>
     {
         self.network.channel_registration_by_name(self.data.name).ok()
     }

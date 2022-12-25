@@ -7,7 +7,7 @@ pub struct User<'a> {
     data: &'a state::User,
 }
 
-impl User<'_> {
+impl<'a> User<'a> {
     /// Return this object's ID
     pub fn id(&self) -> UserId {
         self.data.id
@@ -95,7 +95,7 @@ impl User<'_> {
     }
 
     /// Return the user's account, if any
-    pub fn account(&self) -> LookupResult<Option<super::Account>>
+    pub fn account(&self) -> LookupResult<Option<super::Account<'a>>>
     {
         self.data.account.map(|id| self.network.account(id)).transpose()
     }

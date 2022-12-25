@@ -37,7 +37,7 @@ impl TargetParameter<'_>
 
 impl<'a> PositionalArgument<'a> for TargetParameter<'a>
 {
-    fn parse_str(ctx: &'a impl CommandContext, value: &'a str) -> Result<Self, CommandError>
+    fn parse_str(ctx: &'a dyn Command, value: &'a str) -> Result<Self, CommandError>
     {
         if let Ok(chname) = ChannelName::from_str(value)
         {
@@ -51,6 +51,28 @@ impl<'a> PositionalArgument<'a> for TargetParameter<'a>
         else
         {
             numeric_error!(NoSuchTarget, value)
+        }
+    }
+}
+
+pub struct RegisteredChannel<'a>
+{
+    pub channel: wrapper::Channel<'a>,
+    pub registration: wrapper::ChannelRegistration<'a>
+}
+
+impl<'a> PositionalArgument<'a> for RegisteredChannel<'a>
+{
+    fn parse_str(ctx: &'a dyn Command, value: &'a str) -> Result<Self, CommandError>
+    {
+        let chan = wrapper::Channel::parse_str(ctx, value)?;
+        if let Some(reg) = chan.is_registered()
+        {
+            Ok(Self { channel: chan, registration: reg })
+        }
+        else
+        {
+            Err(CommandError::ChannelNotRegistered(chan.name().clone()))
         }
     }
 }

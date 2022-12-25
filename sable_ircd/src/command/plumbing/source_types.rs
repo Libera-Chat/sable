@@ -4,10 +4,15 @@ use super::*;
 
 pub struct UserSource<'a>(pub wrapper::User<'a>);
 pub struct PreClientSource(pub Arc<PreClient>);
+pub struct LoggedInUserSource<'a>
+{
+    pub user: wrapper::User<'a>,
+    pub account: wrapper::Account<'a>
+}
 
 impl<'a> AmbientArgument<'a> for CommandSource<'a>
 {
-    fn load_from(ctx: &'a impl CommandContext) -> Result<Self, CommandError>
+    fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError>
     {
         Ok(ctx.source())
     }
@@ -15,7 +20,7 @@ impl<'a> AmbientArgument<'a> for CommandSource<'a>
 
 impl<'a> AmbientArgument<'a> for UserSource<'a>
 {
-    fn load_from(ctx: &'a impl CommandContext) -> Result<Self, CommandError>
+    fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError>
     {
         match ctx.source()
         {
@@ -27,12 +32,34 @@ impl<'a> AmbientArgument<'a> for UserSource<'a>
 
 impl<'a> AmbientArgument<'a> for PreClientSource
 {
-    fn load_from(ctx: &'a impl CommandContext) -> Result<Self, CommandError>
+    fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError>
     {
         match ctx.source()
         {
             CommandSource::PreClient(pc) => Ok(Self(pc.clone())),
             _ => numeric_error!(AlreadyRegistered)
+        }
+    }
+}
+
+impl<'a> AmbientArgument<'a> for LoggedInUserSource<'a>
+{
+    fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError>
+    {
+        match ctx.source()
+        {
+            CommandSource::User(user) =>
+            {
+                if let Some(account) = user.account()?
+                {
+                    Ok(Self { user, account })
+                }
+                else
+                {
+                    Err(CommandError::NotLoggedIn)
+                }
+            }
+            CommandSource::PreClient(_) => numeric_error!(NotRegistered)
         }
     }
 }

@@ -1,7 +1,7 @@
 use super::*;
 
 #[command_handler("USER")]
-fn handle_user(server: &ClientServer, source: PreClientSource, cmd: &ClientCommand,
+fn handle_user(server: &ClientServer, source: PreClientSource, cmd: &dyn Command,
                username: &str, _unused1: &str, _unused2: &str, realname: &str) -> CommandResult
 {
     // Ignore these results; they'll only fail if USER was already successfully processed
@@ -11,7 +11,7 @@ fn handle_user(server: &ClientServer, source: PreClientSource, cmd: &ClientComma
 
     if source.can_register()
     {
-        server.add_action(CommandAction::RegisterClient(cmd.connection.id()));
+        server.add_action(CommandAction::RegisterClient(cmd.connection()));
     }
     Ok(())
 }

@@ -2,12 +2,12 @@ use super::*;
 
 pub trait HandlerFn<'ctx, Ambient, Positional>
 {
-    fn call(&self, ctx: &'ctx impl CommandContext, args: ArgumentListIter<'ctx>) -> CommandResult;
+    fn call(&self, ctx: &'ctx dyn Command, args: ArgumentListIter<'ctx>) -> CommandResult;
 }
 
 pub trait AsyncHandlerFn<'ctx, Ambient, Positional> : Send + Sync
 {
-    fn call(&'ctx self, ctx: &'ctx impl CommandContext, args: ArgumentListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx;
+    fn call(&'ctx self, ctx: &'ctx dyn Command, args: ArgumentListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx;
 }
 
 macro_rules! define_handler_fn
@@ -21,7 +21,7 @@ macro_rules! define_handler_fn
         {
             // When this gets expanded with () as one of the argument lists these warnings will fire
             #[allow(unused_variables,unused_mut)]
-            fn call(&self, ctx: &'ctx impl CommandContext, mut args: ArgumentListIter<'ctx>) -> CommandResult
+            fn call(&self, ctx: &'ctx dyn Command, mut args: ArgumentListIter<'ctx>) -> CommandResult
             {
                 self(
                     $(
@@ -44,7 +44,7 @@ macro_rules! define_handler_fn
         {
             // When this gets expanded with () as one of the argument lists these warnings will fire
             #[allow(unused_variables,unused_mut)]
-            fn call(&'ctx self, ctx: &'ctx impl CommandContext, mut args: ArgumentListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx
+            fn call(&'ctx self, ctx: &'ctx dyn Command, mut args: ArgumentListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx
             {
                 async move {
                     self(
@@ -88,4 +88,4 @@ macro_rules! define_handlers2 {
     }
 }
 
-define_handlers!((A1, A2, A3, A4), (P1, P2, P3, P4, P5));
+define_handlers!((A1, A2, A3, A4, A5, A6), (P1, P2, P3, P4, P5, P6));

@@ -1,8 +1,8 @@
 use sable_network::prelude::*;
 
 use crate::{
-    command::CommandContext,
-    messages::{Numeric, message, MessageSink},
+    command::Command,
+    messages::{Numeric, message},
 };
 
 pub trait ClientCommandExt
@@ -12,17 +12,17 @@ pub trait ClientCommandExt
     fn new_event(&self, target: impl Into<ObjectId>, detail: impl Into<EventDetails>);
 }
 
-impl<T: CommandContext> ClientCommandExt for T
+impl<T: Command + ?Sized> ClientCommandExt for T
 {
     fn notice(&self, text: impl ToString)
     {
         let n = message::Notice::new(self.server(), &self.source(), &text.to_string());
-        self.command().connection.send(&n);
+        self.response(&n);
     }
 
     fn numeric(&self, numeric: impl Numeric)
     {
-        self.command().connection.send(&numeric.format_for(self.server(), &self.source()));
+        self.response(&numeric.format_for(self.server(), &self.source()));
     }
 
     fn new_event(&self, target: impl Into<ObjectId>, detail: impl Into<EventDetails>)

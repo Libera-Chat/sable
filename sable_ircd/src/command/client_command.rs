@@ -1,4 +1,4 @@
-use super::{*, plumbing::CommandContext};
+use super::{*, plumbing::Command};
 use sable_network::network::wrapper::ObjectWrapper;
 
 /// Describes the possible types of connection that can invoke a command handler
@@ -76,14 +76,9 @@ impl ClientCommand
             Err(CommandError::unknown("Got message from neither preclient nor client"))
         }
     }
-
-    pub fn response(&self, m: &impl messages::MessageTypeFormat)
-    {
-        self.connection.send(m);
-    }
 }
 
-impl CommandContext for ClientCommand
+impl Command for ClientCommand
 {
     fn source(&self) -> CommandSource<'_>
     {
@@ -102,9 +97,14 @@ impl CommandContext for ClientCommand
         }
     }
 
-    fn command(&self) -> &ClientCommand
+    fn command(&self) -> &str
     {
-        self
+        &self.command
+    }
+
+    fn args(&self) -> ArgumentListIter
+    {
+        self.args.iter()
     }
 
     fn server(&self) -> &Arc<ClientServer>
@@ -123,6 +123,16 @@ impl CommandContext for ClientCommand
         {
             let _ = self.response(&n.format_for(self.server(), &self.source()));
         }
+    }
+
+    fn response(&self, m: &dyn messages::MessageTypeFormat)
+    {
+        self.connection.send(m);
+    }
+
+    fn connection(&self) -> client_listener::ConnectionId
+    {
+        self.connection.id()
     }
 }
 
@@ -160,6 +170,21 @@ impl ClientCommand
             }
             CommandError::InvalidChannelName(name) => {
                 Some(Box::new(make_numeric!(InvalidChannelName, &name)))
+            }
+            CommandError::ServicesNotAvailable => {
+                Some(Box::new(make_numeric!(ServicesNotAvailable)))
+            }
+            CommandError::NotLoggedIn => {
+                self.notice("You are not logged in");
+                None
+            }
+            CommandError::ChannelNotRegistered(c) => {
+                self.notice(format_args!("Channel {} is not registered", c));
+                None
+            }
+            CommandError::InvalidArgument(arg, ty) => {
+                self.notice(format_args!("{} is not a valid {}", arg, ty));
+                None
             }
             CommandError::Numeric(n) => Some(n)
         }

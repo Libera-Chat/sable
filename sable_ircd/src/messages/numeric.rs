@@ -86,4 +86,6 @@ define_messages! {
 
     481(NotOper)            => { ()     => ":You're not an IRC operator" },
     491(NoOperConf)         => { ()     => ":No oper configuration found" },
+
+    440(ServicesNotAvailable) => { () => ":Services are not available"}
 }

@@ -4,7 +4,7 @@ use crate::capability::*;
 use std::sync::atomic::Ordering;
 
 #[command_handler("CAP")]
-fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &ClientCommand,
+fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Command,
               subcommand: &str, cap_list: Option<&str>) -> CommandResult
 {
     match subcommand.to_ascii_uppercase().as_str()
@@ -13,10 +13,10 @@ fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &ClientCo
         {
             pre_client.cap_in_progress.store(true, Ordering::Relaxed);
 
-            cmd.connection.send(&message::Cap::new(&server,
-                                                    &UnknownTarget,
-                                                    "LS",
-                                                    server.client_capabilities().supported_caps()));
+            cmd.response(&message::Cap::new(&server,
+                                            &UnknownTarget,
+                                            "LS",
+                                            server.client_capabilities().supported_caps()));
 
             Ok(())
         }
@@ -33,19 +33,19 @@ fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &ClientCo
                 {
                     new_caps.set(cap);
                 }
-                server.add_action(CommandAction::UpdateConnectionCaps(cmd.connection.id(), new_caps));
+                server.add_action(CommandAction::UpdateConnectionCaps(cmd.connection(), new_caps));
 
-                cmd.connection.send(&message::Cap::new(&server,
-                    &UnknownTarget,
-                    "ACK",
-                    requested_arg));
+                cmd.response(&message::Cap::new(&server,
+                                                &UnknownTarget,
+                                                "ACK",
+                                                requested_arg));
             }
             else
             {
-                cmd.connection.send(&message::Cap::new(server,
-                    &UnknownTarget,
-                    "NAK",
-                    requested_arg));
+                cmd.response(&message::Cap::new(server,
+                                                &UnknownTarget,
+                                                "NAK",
+                                                requested_arg));
             }
 
 
@@ -56,7 +56,7 @@ fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &ClientCo
             pre_client.cap_in_progress.store(false, Ordering::Relaxed);
             if pre_client.can_register()
             {
-                server.add_action(CommandAction::RegisterClient(cmd.connection.id()));
+                server.add_action(CommandAction::RegisterClient(cmd.connection()));
             }
             Ok(())
         }

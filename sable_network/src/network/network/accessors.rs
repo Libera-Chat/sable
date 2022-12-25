@@ -200,10 +200,10 @@ impl Network {
     }
 
     /// Retrieve an account by name
-    pub fn account_by_name(&self, name: Nickname) -> LookupResult<wrapper::Account>
+    pub fn account_by_name(&self, name: &Nickname) -> LookupResult<wrapper::Account>
     {
-        self.accounts.values().find(|a| a.name == name)
-                              .ok_or(LookupError::NoSuchAccountNamed(name))
+        self.accounts.values().find(|a| &a.name == name)
+                              .ok_or_else(|| LookupError::NoSuchAccountNamed(name.clone()))
                               .wrap(self)
     }
 

@@ -1,7 +1,7 @@
 use super::*;
 
 #[command_handler("REGISTER")]
-pub async fn handle_register(network: &Network, source: CommandSource<'_>, cmd: &ClientCommand,
+pub async fn handle_register(network: &Network, source: CommandSource<'_>, cmd: &dyn Command,
                          account: &str, email: &str, password: &str) -> CommandResult
 {
     match source
@@ -18,7 +18,7 @@ pub async fn handle_register(network: &Network, source: CommandSource<'_>, cmd: 
     }
 }
 
-async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &ClientCommand,
+async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &dyn Command,
                     account: &str, _email: &str, password: &str) -> CommandResult
 {
     let Some(services_name) = network.current_services() else {
@@ -41,9 +41,9 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &Cl
         return Ok(())
     }
 
-    if network.account_by_name(requested_account).is_ok()
+    if network.account_by_name(&requested_account).is_ok()
     {
-        cmd.connection.send(&message::Fail::new("REGISTER",
+        cmd.response(&message::Fail::new("REGISTER",
                                                 "ACCOUNT_EXISTS",
                                                 requested_account.value().as_str(),
                                                 "Account already exists"));
@@ -52,18 +52,18 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &Cl
 
     let message = rpc::RemoteServerRequestType::RegisterUser(requested_account, password.to_owned());
 
-    match cmd.server.server().sync_log().send_remote_request(services_name, message).await
+    match cmd.server().server().sync_log().send_remote_request(services_name, message).await
     {
         Ok(rpc::RemoteServerResponse::LogUserIn(account)) =>
         {
-            cmd.server.add_action(CommandAction::state_change(source.id(), event::UserLogin {
+            cmd.server().add_action(CommandAction::state_change(source.id(), event::UserLogin {
                 account: Some(account)
             }));
-            cmd.connection.send(&message::Register::new("SUCCESS", requested_account, "You have successfully registered"));
+            cmd.response(&message::Register::new("SUCCESS", requested_account, "You have successfully registered"));
         }
         Ok(rpc::RemoteServerResponse::AlreadyExists) =>
         {
-            cmd.connection.send(&message::Fail::new("REGISTER",
+            cmd.response(&message::Fail::new("REGISTER",
                                                     "ACCOUNT_EXISTS",
                                                     account,
                                                     "Account already exists"));
@@ -71,7 +71,7 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &Cl
         Ok(response) =>
         {
             tracing::error!(?response, "Unexpected response from services");
-            cmd.connection.send(&message::Fail::new("REGISTER",
+            cmd.response(&message::Fail::new("REGISTER",
                                                     "TEMPORARILY_UNAVAILABLE",
                                                     account,
                                                     "Services are temporarily unavailable"));
@@ -79,7 +79,7 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &Cl
         Err(e) =>
         {
             tracing::error!(?e, "Error sending register request");
-            cmd.connection.send(&message::Fail::new("REGISTER",
+            cmd.response(&message::Fail::new("REGISTER",
                                                     "TEMPORARILY_UNAVAILABLE",
                                                     account,
                                                     "Services are temporarily unavailable"));

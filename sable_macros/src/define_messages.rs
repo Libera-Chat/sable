@@ -266,6 +266,11 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
                                                                             body=self.0
                                                                         ))
                     }
+
+                    fn message(&self) -> &str
+                    {
+                        &self.0
+                    }
                 }
 
                 impl #typename

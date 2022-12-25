@@ -8,7 +8,7 @@ use state::{
 const DEFAULT_KLINE_DURATION: u32 = 1440;
 
 #[command_handler("KLINE")]
-fn handle_kline(server: &ClientServer, cmd: &ClientCommand, source: UserSource,
+fn handle_kline(server: &ClientServer, cmd: &dyn Command, source: UserSource,
                 duration: IfParses<u32>, mask: &str, message: &str) -> CommandResult
 {
     server.policy().require_oper(&source)?;
@@ -47,7 +47,7 @@ fn handle_kline(server: &ClientServer, cmd: &ClientCommand, source: UserSource,
     }
     else
     {
-        cmd.notice( "Invalid kline mask");
+        cmd.notice("Invalid kline mask");
     }
 
     Ok(())

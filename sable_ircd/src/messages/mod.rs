@@ -197,6 +197,7 @@ impl MessageType for TargetedNumeric { }
 pub trait Numeric : std::fmt::Debug
 {
     fn format_for(&self, source: &dyn MessageSource, target: &dyn MessageTarget) -> TargetedNumeric;
+    fn message(&self) -> &str;
 }
 
 pub mod message;

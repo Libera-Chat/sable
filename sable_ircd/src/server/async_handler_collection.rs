@@ -7,19 +7,19 @@ use futures::{
     },
 };
 
-pub struct AsyncHandlerCollection
+pub struct AsyncHandlerCollection<'a>
 {
-    futures: FuturesUnordered<AsyncHandler>,
+    futures: FuturesUnordered<AsyncHandler<'a>>,
 }
 
-impl AsyncHandlerCollection
+impl<'a> AsyncHandlerCollection<'a>
 {
     pub fn new() -> Self
     {
         Self { futures: FuturesUnordered::new() }
     }
 
-    pub fn add(&self, handler: AsyncHandler)
+    pub fn add(&self, handler: AsyncHandler<'a>)
     {
         self.futures.push(handler);
     }

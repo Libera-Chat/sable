@@ -2,7 +2,7 @@ use super::*;
 
 
 #[command_handler("MODE")]
-fn handle_user(server: &ClientServer, source: UserSource, cmd: &ClientCommand,
+fn handle_user(server: &ClientServer, source: UserSource, cmd: &dyn Command,
                target: TargetParameter, mode_str: Option<&str>, args: ArgList) -> CommandResult
 {
     match target
@@ -69,7 +69,7 @@ fn handle_user(server: &ClientServer, source: UserSource, cmd: &ClientCommand,
     }
 }
 
-fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, cmd: &ClientCommand,
+fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, cmd: &dyn Command,
         chan: wrapper::Channel, mode_str: Option<&str>, mut args: ArgList) -> CommandResult
 {
     let mode = chan.mode();
@@ -211,7 +211,7 @@ fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, cmd: &Clie
     Ok(())
 }
 
-fn send_channel_banlike_list(cmd: &ClientCommand, chan: &wrapper::Channel, list: &wrapper::ListMode) -> CommandResult
+fn send_channel_banlike_list(cmd: &dyn Command, chan: &wrapper::Channel, list: &wrapper::ListMode) -> CommandResult
 {
     for entry in list.entries()
     {
@@ -223,7 +223,7 @@ fn send_channel_banlike_list(cmd: &ClientCommand, chan: &wrapper::Channel, list:
     Ok(())
 }
 
-fn send_banlike_list_entry(cmd: &ClientCommand, chan: &wrapper::Channel, list_type: ListModeType, entry: &wrapper::ListModeEntry) -> CommandResult
+fn send_banlike_list_entry(cmd: &dyn Command, chan: &wrapper::Channel, list_type: ListModeType, entry: &wrapper::ListModeEntry) -> CommandResult
 {
     match list_type {
         ListModeType::Ban => cmd.numeric(make_numeric!(BanList, chan, entry)),
@@ -234,7 +234,7 @@ fn send_banlike_list_entry(cmd: &ClientCommand, chan: &wrapper::Channel, list_ty
     Ok(())
 }
 
-fn send_banlike_end_numeric(cmd: &ClientCommand, chan: &wrapper::Channel, list_type: ListModeType) -> CommandResult
+fn send_banlike_end_numeric(cmd: &dyn Command, chan: &wrapper::Channel, list_type: ListModeType) -> CommandResult
 {
     match list_type {
         ListModeType::Ban => cmd.numeric(make_numeric!(EndOfBanList, chan)),

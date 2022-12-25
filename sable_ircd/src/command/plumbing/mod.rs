@@ -1,22 +1,26 @@
+use client_listener::ConnectionId;
 use sable_network::prelude::*;
 use crate::{
     server::ClientServer,
-    command::CommandError,
+    command::CommandError, messages,
 };
 use std::{
     sync::Arc,
     future::Future,
 };
 
-use super::{CommandSource, CommandResult, ClientCommand};
+use super::{CommandSource, CommandResult};
 
-pub trait CommandContext : Send + Sync
+pub trait Command : Send + Sync
 {
     /// Return a `CommandSource` describing the originating user or connection
     fn source(&self) -> CommandSource<'_>;
 
     /// The command that was issued
-    fn command(&self) -> &ClientCommand;
+    fn command(&self) -> &str;
+
+    /// The arguments supplied to the command
+    fn args(&self) -> ArgumentListIter;
 
     /// Access the [`ClientServer`]
     fn server(&self) -> &Arc<ClientServer>;
@@ -25,33 +29,42 @@ pub trait CommandContext : Send + Sync
 
     /// Notify the user of an error
     fn notify_error(&self, err: CommandError);
+
+    /// Send a message in response to this command, to the user that originated it
+    fn response(&self, message: &dyn messages::MessageTypeFormat);
+
+    /// Retrieve the underlying connection ID
+    fn connection(&self) -> ConnectionId;
 }
 
-/// Type-erased reference to an implementation of [`CommandContext`]
-#[derive(Clone)]
-struct ContextWrapper<'a>(&'a dyn CommandContext);
-
-impl<'a> CommandContext for ContextWrapper<'a>
+impl<T: Command + ?Sized> messages::MessageSink for T
 {
-    fn source(&self) -> CommandSource<'_> { self.0.source() }
-    fn command(&self) -> &ClientCommand { self.0.command() }
-    fn server(&self) -> &Arc<ClientServer> { self.0.server() }
-    fn network(&self) -> &Arc<Network> { self.0.network() }
-    fn notify_error(&self, err: CommandError) { self.0.notify_error(err) }
+    fn send(&self, msg: &dyn messages::MessageTypeFormat)
+    {
+        self.response(msg)
+    }
+
+    fn user_id(&self) -> Option<UserId> {
+        match self.source()
+        {
+            CommandSource::User(u) => Some(u.id()),
+            CommandSource::PreClient(_) => None
+        }
+    }
 }
 
-pub(crate) fn call_handler<'a, Amb, Pos>(ctx: &'a impl CommandContext, handler: &impl HandlerFn<'a, Amb, Pos>, args: &'a ArgumentList) -> CommandResult
+pub(crate) fn call_handler<'a, Amb, Pos>(ctx: &'a dyn Command, handler: &impl HandlerFn<'a, Amb, Pos>, args: ArgumentListIter<'a>) -> CommandResult
 {
-    handler.call(ctx, args.iter())
+    handler.call(ctx, args)
 }
 
-pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(ctx: &'ctx impl CommandContext,
+pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(ctx: &'ctx dyn Command,
                                                        handler: &'handler impl AsyncHandlerFn<'ctx, Amb, Pos>,
-                                                       args: &'ctx ArgumentList
+                                                       args: ArgumentListIter<'ctx>
                                             ) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx
     where 'handler: 'ctx
 {
-    handler.call(ctx, args.iter())
+    handler.call(ctx, args)
 }
 
 mod argument_list;
@@ -62,6 +75,9 @@ pub use argument_type::*;
 
 mod conditional_argument_types;
 pub use conditional_argument_types::*;
+
+mod argument_wrappers;
+pub use argument_wrappers::*;
 
 mod source_types;
 pub use source_types::*;

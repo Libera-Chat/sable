@@ -3,7 +3,6 @@
 use crate::capability::ClientCapabilitySet;
 
 use super::*;
-use futures::future::BoxFuture;
 use sable_network::prelude::*;
 use messages::*;
 use client::*;
@@ -29,7 +28,7 @@ pub use dispatcher::*;
 
 mod plumbing;
 pub use plumbing::{
-    CommandContext,
+    Command,
     ArgumentList,
     ArgumentListIter,
 };
@@ -37,7 +36,7 @@ pub use plumbing::{
 /// A convenience definition for the result type returned from command handlers
 pub type CommandResult = Result<(), CommandError>;
 
-pub type AsyncHandler = BoxFuture<'static, ()>;
+pub type AsyncHandler<'cmd> = std::pin::Pin<Box<dyn std::future::Future<Output=()> + Send + Sync + 'cmd>>;
 
 mod handlers
 {
@@ -74,8 +73,7 @@ mod handlers
     mod session;
 
     // Services compatibility command layer
-    mod ns;
-    mod cs;
+    mod services;
 
     // Dev/test tools
     #[cfg(debug)]
