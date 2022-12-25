@@ -1,66 +1,58 @@
 use super::*;
 
-pub trait HandlerFn<'ctx, Args>
+pub trait HandlerFn<'ctx, Ambient, Positional>
 {
     fn call(&self, ctx: &'ctx impl CommandContext, args: ArgumentListIter<'ctx>) -> CommandResult;
 }
 
-pub trait AsyncHandlerFn<'ctx, Args> : Send + Sync
+pub trait AsyncHandlerFn<'ctx, Ambient, Positional> : Send + Sync
 {
     fn call(&'ctx self, ctx: &'ctx impl CommandContext, args: ArgumentListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx;
 }
 
-impl<'ctx, T> HandlerFn<'ctx, ()> for T
-    where T: Fn() -> CommandResult
-{
-    fn call(&self, _ctx: &'ctx impl CommandContext, _args: ArgumentListIter<'ctx>) -> CommandResult
-    {
-        self()
-    }
-}
-
-impl<'ctx, 'arg, T, F> AsyncHandlerFn<'ctx, ()> for T
-    where T: Fn() -> F,
-          T: Send + Sync,
-          F: Future<Output=CommandResult> + Send + Sync + 'ctx
-{
-    fn call(&'ctx self, _ctx: &'ctx impl CommandContext, _args: ArgumentListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx
-    {
-        self()
-    }
-}
-
 macro_rules! define_handler_fn
 {
-    ( $($arg:ident),* ) =>
+    ( ($($ambient:ident),*), ($($pos:ident),*) ) =>
     {
-        impl<'ctx, T, $($arg),*> HandlerFn<'ctx, ( $($arg),*, )> for T
-            where T: Fn($($arg),*) -> CommandResult,
-                  $( $arg: ArgumentType<'ctx> ),*
+        impl<'ctx, T, $($ambient,)* $($pos),*> HandlerFn<'ctx, ($($ambient,)*), ($($pos,)*)> for T
+            where T: Fn($($ambient,)* $($pos),*) -> CommandResult,
+                  $( $ambient: AmbientArgument<'ctx>, )*
+                  $( $pos: PositionalArgument<'ctx> ),*
         {
+            // When this gets expanded with () as one of the argument lists these warnings will fire
+            #[allow(unused_variables,unused_mut)]
             fn call(&self, ctx: &'ctx impl CommandContext, mut args: ArgumentListIter<'ctx>) -> CommandResult
             {
                 self(
                     $(
-                        $arg::parse(ctx, &mut args)?
+                        $ambient::load_from(ctx)?,
+                    )*
+                    $(
+                        $pos::parse(ctx, &mut args)?
                     ),*
                 )
 
             }
         }
 
-        impl<'ctx, T, F, $($arg),*> AsyncHandlerFn<'ctx, ( $($arg),*, )> for T
-            where T: Fn($($arg),*) -> F,
+        impl<'ctx, T, F, $($ambient,)* $($pos),*> AsyncHandlerFn<'ctx, ($($ambient,)*), ($($pos,)*)> for T
+            where T: Fn($($ambient,)* $($pos),*) -> F,
                   T: Send + Sync,
                   F: Future<Output=CommandResult> + Send + Sync,
-                  $( $arg: ArgumentType<'ctx> + Send + Sync + 'ctx ),*
+                  $( $ambient: AmbientArgument<'ctx> + Send + Sync, )*
+                  $( $pos: PositionalArgument<'ctx> + Send + Sync ),*
         {
+            // When this gets expanded with () as one of the argument lists these warnings will fire
+            #[allow(unused_variables,unused_mut)]
             fn call(&'ctx self, ctx: &'ctx impl CommandContext, mut args: ArgumentListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx
             {
                 async move {
                     self(
                         $(
-                            $arg::parse(ctx, &mut args)?
+                            $ambient::load_from(ctx)?,
+                        )*
+                        $(
+                            $pos::parse(ctx, &mut args)?
                         ),*
                     ).await
                 }
@@ -69,13 +61,31 @@ macro_rules! define_handler_fn
     }
 }
 
-define_handler_fn!(A1);
-define_handler_fn!(A1, A2);
-define_handler_fn!(A1, A2, A3);
-define_handler_fn!(A1, A2, A3, A4);
-define_handler_fn!(A1, A2, A3, A4, A5);
-define_handler_fn!(A1, A2, A3, A4, A5, A6);
-define_handler_fn!(A1, A2, A3, A4, A5, A6, A7);
-define_handler_fn!(A1, A2, A3, A4, A5, A6, A7, A8);
-define_handler_fn!(A1, A2, A3, A4, A5, A6, A7, A8, A9);
-define_handler_fn!(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10);
+macro_rules! define_handlers {
+    ( ($a1:ident $(, $arest:ident)*), ( $($pos:ident),* ) ) =>
+    {
+        define_handlers2!( ($a1 $(, $arest)*), ($( $pos ),*) );
+        define_handlers!( ($($arest),*), ($( $pos ),*) );
+    };
+    ( (), ( $($pos:ident),* ) ) =>
+    {
+        define_handlers2!((), ($( $pos ),*) );
+    };
+}
+
+macro_rules! define_handlers2 {
+    ( ($( $amb:ident ),*), ($p1:ident $(, $prest:ident)* ) ) =>
+    {
+        define_handler_fn!(( $( $amb ),* ), ( $p1 $(, $prest)* ));
+        define_handlers2!(( $( $amb ),* ), ( $($prest),* ));
+    };
+    ( ($( $amb:ident ),*), () ) =>
+    {
+        define_handler_fn!(( $( $amb),* ), ());
+    };
+    ((), ()) =>
+    {
+    }
+}
+
+define_handlers!((A1, A2, A3, A4), (P1, P2, P3, P4, P5));

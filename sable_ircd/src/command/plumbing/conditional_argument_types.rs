@@ -16,10 +16,10 @@ impl<T> Into<Option<T>> for IfParses<T>
     fn into(self) -> Option<T> { self.0 }
 }
 
-impl<'a, T: ArgumentType<'a, Category=PositionalArgumentType<T>>> ArgumentType<'a> for IfParses<T>
+impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for IfParses<T>
 {
-    type Category = CustomArgumentType<Self>;
-    fn parse_custom(ctx: &'a impl CommandContext, arg: &mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(ctx: &'a impl CommandContext, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+        where 'a: 'b
     {
         let Some(value) = arg.peek() else { return Ok(Self(None)); };
 
@@ -33,6 +33,11 @@ impl<'a, T: ArgumentType<'a, Category=PositionalArgumentType<T>>> ArgumentType<'
         {
             Ok(Self(None))
         }
+    }
+
+    fn parse_str(_ctx: &'a impl CommandContext, _value: &'a str) -> Result<Self, CommandError>
+    {
+        unreachable!();
     }
 }
 
@@ -49,12 +54,17 @@ impl<T> Conditional<T>
     pub fn require(self) -> Result<T, CommandError> { self.0 }
 }
 
-impl<'a, T: ArgumentType<'a>> ArgumentType<'a> for Conditional<T>
+impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for Conditional<T>
 {
-    type Category = CustomArgumentType<Self>;
-    fn parse_custom(ctx: &'a impl CommandContext, arg: &mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(ctx: &'a impl CommandContext, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+        where 'a: 'b
     {
         Ok(Self(T::parse(ctx, arg)))
+    }
+
+    fn parse_str(_ctx: &'a impl CommandContext, _value: &'a str) -> Result<Self, CommandError>
+    {
+        unreachable!();
     }
 }
 
@@ -83,7 +93,7 @@ impl<'a> ArgList<'a>
     /// Return the next argument in the list, parsing it into the required type
     /// and returning an error if it is missing or incorrect for the type
     pub fn next<'ret, T>(&mut self) -> Result<T, CommandError>
-        where T: ArgumentType<'ret, Category=PositionalArgumentType<T>> + 'ret,
+        where T: PositionalArgument<'ret> + 'ret,
               Self: 'ret,
               'a: 'ret
     {
@@ -115,11 +125,10 @@ impl<'a> ArgList<'a>
     }
 }
 
-impl<'a> ArgumentType<'a> for ArgList<'a>
+impl<'a> PositionalArgument<'a> for ArgList<'a>
 {
-    type Category = CustomArgumentType<Self>;
-    fn parse_custom(ctx: &'a impl CommandContext, arg: &mut ArgumentListIter<'a>) -> Result<Self, CommandError>
-            where Self: ArgumentType<'a, Category = CustomArgumentType<Self>>
+    fn parse<'b>(ctx: &'a impl CommandContext, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+            where 'a: 'b
     {
         let mut vec = Vec::new();
         while let Some(a) = arg.next()
@@ -127,5 +136,10 @@ impl<'a> ArgumentType<'a> for ArgList<'a>
             vec.push(a);
         }
         Ok(Self { context: ContextWrapper(ctx), values: vec, index: 0 })
+    }
+
+    fn parse_str(_ctx: &'a impl CommandContext, _value: &'a str) -> Result<Self, CommandError>
+    {
+        unreachable!()
     }
 }

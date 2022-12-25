@@ -27,13 +27,13 @@ pub trait CommandContext : Send + Sync
     fn notify_error(&self, err: CommandError);
 }
 
-pub(crate) fn call_handler<'a, Args>(ctx: &'a impl CommandContext, handler: &impl HandlerFn<'a, Args>, args: &'a ArgumentList) -> CommandResult
+pub(crate) fn call_handler<'a, Amb, Pos>(ctx: &'a impl CommandContext, handler: &impl HandlerFn<'a, Amb, Pos>, args: &'a ArgumentList) -> CommandResult
 {
     handler.call(ctx, args.iter())
 }
 
-pub(crate) fn call_handler_async<'ctx, 'handler, Args>(ctx: &'ctx impl CommandContext,
-                                                       handler: &'handler impl AsyncHandlerFn<'ctx, Args>,
+pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(ctx: &'ctx impl CommandContext,
+                                                       handler: &'handler impl AsyncHandlerFn<'ctx, Amb, Pos>,
                                                        args: &'ctx ArgumentList
                                             ) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx
     where 'handler: 'ctx

@@ -5,19 +5,17 @@ use super::*;
 pub struct UserSource<'a>(pub wrapper::User<'a>);
 pub struct PreClientSource(pub Arc<PreClient>);
 
-impl<'a> ArgumentType<'a> for CommandSource<'a>
+impl<'a> AmbientArgument<'a> for CommandSource<'a>
 {
-    type Category = AmbientArgumentType<Self>;
-    fn parse_ambient(ctx: &'a impl CommandContext) -> Result<Self, CommandError>
+    fn load_from(ctx: &'a impl CommandContext) -> Result<Self, CommandError>
     {
         Ok(ctx.source())
     }
 }
 
-impl<'a> ArgumentType<'a> for UserSource<'a>
+impl<'a> AmbientArgument<'a> for UserSource<'a>
 {
-    type Category = AmbientArgumentType<Self>;
-    fn parse_ambient(ctx: &'a impl CommandContext) -> Result<Self, CommandError>
+    fn load_from(ctx: &'a impl CommandContext) -> Result<Self, CommandError>
     {
         match ctx.source()
         {
@@ -27,10 +25,9 @@ impl<'a> ArgumentType<'a> for UserSource<'a>
     }
 }
 
-impl<'a> ArgumentType<'a> for PreClientSource
+impl<'a> AmbientArgument<'a> for PreClientSource
 {
-    type Category = AmbientArgumentType<Self>;
-    fn parse_ambient(ctx: &'a impl CommandContext) -> Result<Self, CommandError>
+    fn load_from(ctx: &'a impl CommandContext) -> Result<Self, CommandError>
     {
         match ctx.source()
         {

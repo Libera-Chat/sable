@@ -35,9 +35,8 @@ impl TargetParameter<'_>
     }
 }
 
-impl<'a> ArgumentType<'a> for TargetParameter<'a>
+impl<'a> PositionalArgument<'a> for TargetParameter<'a>
 {
-    type Category = PositionalArgumentType<Self>;
     fn parse_str(ctx: &'a impl CommandContext, value: &'a str) -> Result<Self, CommandError>
     {
         if let Ok(chname) = ChannelName::from_str(value)
