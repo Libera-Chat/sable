@@ -35,7 +35,7 @@ impl CommandDispatcher {
 
     /// Construct a dispatcher for the given category.
     ///
-    /// This will dispatch to handlers registered with `#[command_handler("...", in = "<name>")]
+    /// This will dispatch to handlers registered with `#[command_handler("...", in = "&lt;name&gt;")]
     pub fn with_category(category_name: &str) -> Self
     {
         Self::construct(Some(category_name))
