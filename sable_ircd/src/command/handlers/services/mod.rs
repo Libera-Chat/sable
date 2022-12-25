@@ -8,12 +8,12 @@ pub struct ServicesCommand<'a>
 {
     outer: &'a dyn Command,
     command: &'a str,
-    args: ArgumentListIter<'a>,
+    args: ArgListIter<'a>,
 }
 
 impl<'a> ServicesCommand<'a>
 {
-    pub fn new(outer: &'a dyn Command, command: &'a str, args: ArgumentListIter<'a>) -> Self
+    pub fn new(outer: &'a dyn Command, command: &'a str, args: ArgListIter<'a>) -> Self
     {
         Self {
             outer,
@@ -36,7 +36,7 @@ impl<'a> Command for ServicesCommand<'a>
         self.command
     }
 
-    fn args(&self) -> ArgumentListIter
+    fn args(&self) -> ArgListIter
     {
         self.args.clone()
     }

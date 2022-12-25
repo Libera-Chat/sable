@@ -18,7 +18,7 @@ impl<T> Into<Option<T>> for IfParses<T>
 
 impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for IfParses<T>
 {
-    fn parse<'b>(ctx: &'a dyn Command, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(ctx: &'a dyn Command, arg: &'b mut ArgListIter<'a>) -> Result<Self, CommandError>
         where 'a: 'b
     {
         let Some(value) = arg.peek() else { return Ok(Self(None)); };
@@ -56,7 +56,7 @@ impl<T> Conditional<T>
 
 impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for Conditional<T>
 {
-    fn parse<'b>(ctx: &'a dyn Command, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(ctx: &'a dyn Command, arg: &'b mut ArgListIter<'a>) -> Result<Self, CommandError>
         where 'a: 'b
     {
         Ok(Self(T::parse(ctx, arg)))

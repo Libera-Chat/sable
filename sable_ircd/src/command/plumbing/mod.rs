@@ -20,7 +20,7 @@ pub trait Command : Send + Sync
     fn command(&self) -> &str;
 
     /// The arguments supplied to the command
-    fn args(&self) -> ArgumentListIter;
+    fn args(&self) -> ArgListIter;
 
     /// Access the [`ClientServer`]
     fn server(&self) -> &Arc<ClientServer>;
@@ -53,14 +53,14 @@ impl<T: Command + ?Sized> messages::MessageSink for T
     }
 }
 
-pub(crate) fn call_handler<'a, Amb, Pos>(ctx: &'a dyn Command, handler: &impl HandlerFn<'a, Amb, Pos>, args: ArgumentListIter<'a>) -> CommandResult
+pub(crate) fn call_handler<'a, Amb, Pos>(ctx: &'a dyn Command, handler: &impl HandlerFn<'a, Amb, Pos>, args: ArgListIter<'a>) -> CommandResult
 {
     handler.call(ctx, args)
 }
 
 pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(ctx: &'ctx dyn Command,
                                                        handler: &'handler impl AsyncHandlerFn<'ctx, Amb, Pos>,
-                                                       args: ArgumentListIter<'ctx>
+                                                       args: ArgListIter<'ctx>
                                             ) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx
     where 'handler: 'ctx
 {

@@ -31,7 +31,7 @@ pub struct ClientCommand
     /// The command being executed
     pub command: String,
     /// Arguments supplied
-    pub args: ArgumentList,
+    pub args: Vec<String>,
 }
 
 // Safety: this isn't automatically Send/Sync because of the raw pointer inside `InternalCommandSource`.
@@ -56,7 +56,7 @@ impl ClientCommand
             net,
             source,
             command: message.command,
-            args: message.args.into(),
+            args: message.args,
         })
     }
 
@@ -102,9 +102,9 @@ impl Command for ClientCommand
         &self.command
     }
 
-    fn args(&self) -> ArgumentListIter
+    fn args(&self) -> ArgListIter
     {
-        self.args.iter()
+        ArgListIter::new(&self.args)
     }
 
     fn server(&self) -> &Arc<ClientServer>

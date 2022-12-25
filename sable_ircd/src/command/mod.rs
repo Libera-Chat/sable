@@ -29,8 +29,7 @@ pub use dispatcher::*;
 mod plumbing;
 pub use plumbing::{
     Command,
-    ArgumentList,
-    ArgumentListIter,
+    ArgListIter,
 };
 
 /// A convenience definition for the result type returned from command handlers

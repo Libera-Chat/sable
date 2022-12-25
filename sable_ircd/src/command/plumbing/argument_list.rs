@@ -1,58 +1,29 @@
 use super::*;
 
-/// A type to hold owned argument values
-pub struct ArgumentList(Vec<String>);
-
 #[derive(Clone)]
-pub struct ArgumentListIter<'a>
+pub struct ArgListIter<'a>
 {
-    list: &'a ArgumentList,
+    list: &'a Vec<String>,
     index: usize,
 }
 
-impl From<Vec<String>> for ArgumentList { fn from(v: Vec<String>) -> Self { Self(v) } }
-
-impl ArgumentList
+impl<'a> ArgListIter<'a>
 {
-    pub fn iter(&self) -> ArgumentListIter
+    pub fn new(list: &'a Vec<String>) -> Self
     {
-        ArgumentListIter { list: self, index: 0 }
-    }
-/*
-    pub fn get(&self, index: usize) -> Option<&str>
-    {
-        self.0.get(index).map(AsRef::as_ref)
+        Self { list, index: 0 }
     }
 
-    pub fn len(&self) -> usize
-    {
-        self.0.len()
-    }
-*/
-}
-
-impl<I> std::ops::Index<I> for ArgumentList
-    where Vec<String>: std::ops::Index<I>
-{
-    type Output = <Vec<String> as std::ops::Index<I>>::Output;
-
-    fn index(&self, index: I) -> &Self::Output {
-        &self.0[index]
-    }
-}
-
-impl<'a> ArgumentListIter<'a>
-{
     pub fn peek(&self) -> Option<&'a str>
     {
-        self.list.0.get(self.index).map(AsRef::as_ref)
+        self.list.get(self.index).map(AsRef::as_ref)
     }
 
     pub fn next(&mut self) -> Option<&'a str>
     {
         let idx = self.index;
         self.index += 1;
-        self.list.0.get(idx).map(AsRef::as_ref)
+        self.list.get(idx).map(AsRef::as_ref)
     }
 }
 
@@ -61,7 +32,7 @@ impl<'a> ArgumentListIter<'a>
 pub struct ArgList<'a>
 {
     context: &'a dyn Command,
-    iter: ArgumentListIter<'a>,
+    iter: ArgListIter<'a>,
 }
 
 impl<'a> ArgList<'a>
@@ -79,7 +50,7 @@ impl<'a> ArgList<'a>
     }
 
     /// Iterate over the remaining items
-    pub fn iter(&self) -> ArgumentListIter<'a>
+    pub fn iter(&self) -> ArgListIter<'a>
     {
         self.iter.clone()
     }
@@ -93,7 +64,7 @@ impl<'a> ArgList<'a>
     /// Return the number of remaining arguments
     pub fn len(&self) -> usize
     {
-        self.iter.list.0.len() - self.iter.index
+        self.iter.list.len() - self.iter.index
     }
 
     /// Return the (wrapped) command context
@@ -105,7 +76,7 @@ impl<'a> ArgList<'a>
 
 impl<'a> PositionalArgument<'a> for ArgList<'a>
 {
-    fn parse<'b>(context: &'a dyn Command, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(context: &'a dyn Command, arg: &'b mut ArgListIter<'a>) -> Result<Self, CommandError>
             where 'a: 'b
     {
         Ok(Self { context, iter: arg.clone() })

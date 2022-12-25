@@ -26,7 +26,7 @@ pub trait PositionalArgument<'a> : Sized + Send + Sync
     ///
     /// Callers should check for an `Err` return and notify the originator of the command that an error
     /// was encountered.
-    fn parse<'b>(ctx: &'a dyn Command, arg_list: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(ctx: &'a dyn Command, arg_list: &'b mut ArgListIter<'a>) -> Result<Self, CommandError>
         where 'a: 'b
     {
         let s = arg_list.next().ok_or(CommandError::NotEnoughParameters)?;
@@ -145,7 +145,7 @@ impl<'a> PositionalArgument<'a> for u32
 
 impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for Option<T>
 {
-    fn parse<'b>(ctx: &'a dyn Command, arg: &'b mut ArgumentListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(ctx: &'a dyn Command, arg: &'b mut ArgListIter<'a>) -> Result<Self, CommandError>
         where 'a: 'b
     {
         Ok(T::parse(ctx, arg).ok())
