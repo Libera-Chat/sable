@@ -1,4 +1,3 @@
-use sable_network::node::NetworkNodeState;
 use client_listener::SavedListenerCollection;
 use crate::connection_collection::ConnectionCollectionState;
 use async_trait::async_trait;
@@ -8,7 +7,6 @@ use super::*;
 #[derive(serde::Serialize,serde::Deserialize)]
 pub struct ClientServerState
 {
-    node_state: NetworkNodeState,
     connections: ConnectionCollectionState,
     auth_state: AuthClientState,
     client_caps: CapabilityRepository,
@@ -64,9 +62,6 @@ impl sable_server::ServerType for ClientServer
     async fn save(mut self) -> ClientServerState
     {
         ClientServerState {
-            node_state: Arc::try_unwrap(self.server)
-                                .unwrap_or_else(|_| panic!("failed to unwrap node"))
-                                .save_state(),
             connections: self.connections.into_inner().save_state(),
             auth_state: self.auth_client.save_state().await.unwrap(),
             client_caps: self.client_caps,
