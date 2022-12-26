@@ -57,7 +57,11 @@ impl Network {
     /// otherwise a hashed nickname (as used in collision resolution) is returned
     pub fn infallible_nick_for_user(&self, user: UserId) -> Nickname
     {
-        if let Ok(binding) = self.nick_binding_for_user(user)
+        if let Some((nick, _)) = self.find_alias_user_with_id(user)
+        {
+            nick.clone()
+        }
+        else if let Ok(binding) = self.nick_binding_for_user(user)
         {
             binding.nick()
         }
@@ -70,7 +74,12 @@ impl Network {
     /// Look up the user currently using the given nickname
     pub fn user_by_nick(&self, nick: &Nickname) -> LookupResult<wrapper::User>
     {
-        self.user(self.nick_bindings.get(nick).ok_or_else(|| NoSuchNick(nick.to_string()))?.user)
+        self.get_alias_users().get(nick)
+                              .ok_or_else(|| NoSuchNick(nick.to_string()))
+                              .wrap(self)
+                              .or_else(|_| self.user(self.nick_bindings.get(nick)
+                                                    .ok_or_else(|| NoSuchNick(nick.to_string()))?
+                                                    .user))
     }
 
     /// Look up a channel by ID

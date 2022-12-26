@@ -99,6 +99,12 @@ impl Network {
 
     fn do_bind_nickname(&mut self, target: NicknameId, user: UserId, prev_nick: Nickname, event: &Event, updates: &dyn NetworkUpdateReceiver)
     {
+        // If an alias users exists with this nickname, collide the user attempting to bind it
+        if self.get_alias_users().contains_key(target.nick())
+        {
+            self.collide_user(user, prev_nick, event, updates);
+            return;
+        }
         if let Some(existing) = self.nick_bindings.remove(target.nick())
         {
             // Conflict. This can only happen if neither of the event that created the existing binding,

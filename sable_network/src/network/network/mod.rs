@@ -125,6 +125,9 @@ pub struct Network
     // Cached or constructed data that doesn't need to be serialised
     #[serde(skip)]
     cache_default_channel_roles: OnceCell<HashMap<state::ChannelRoleName, state::ChannelRole>>,
+
+    #[serde(skip)]
+    alias_users: OnceCell<HashMap<Nickname, state::User>>,
 }
 
 impl Network {
@@ -159,9 +162,11 @@ impl Network {
             clock: EventClock::new(),
 
             cache_default_channel_roles: OnceCell::new(),
+            alias_users: OnceCell::new(),
         };
 
         net.build_default_role_cache();
+        net.build_alias_users();
         net
     }
 
@@ -299,6 +304,7 @@ impl Network {
 
 mod accessors;
 mod default_roles;
+mod alias_users;
 
 mod user_state;
 mod channel_state;

@@ -41,13 +41,6 @@ object_ids!(ObjectId (ObjectIdGenerator) {
     ChannelRole: sequential;
 });
 
-
-impl EventId {
-    pub fn server(&self) -> ServerId { self.0 }
-    pub fn epoch(&self) -> EpochId { self.1 }
-    pub fn local(&self) -> LocalId { self.2 }
-}
-
 impl NicknameId {
     pub fn nick(&self) -> &Nickname { &self.0 }
 }

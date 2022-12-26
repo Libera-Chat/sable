@@ -134,6 +134,11 @@ impl Command for ClientCommand
     {
         self.connection.id()
     }
+
+    fn response_source(&self) -> &dyn messages::MessageSource
+    {
+        self.server()
+    }
 }
 
 impl ClientCommand

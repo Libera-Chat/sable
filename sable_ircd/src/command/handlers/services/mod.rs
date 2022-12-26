@@ -10,16 +10,18 @@ pub struct ServicesCommand<'a>
     outer: &'a dyn Command,
     command: &'a str,
     args: ArgListIter<'a>,
+    is_from_alias: Option<&'a wrapper::User<'a>>
 }
 
 impl<'a> ServicesCommand<'a>
 {
-    pub fn new(outer: &'a dyn Command, command: &'a str, args: ArgListIter<'a>) -> Self
+    pub fn new(outer: &'a dyn Command, command: &'a str, args: ArgListIter<'a>, is_from_alias: Option<&'a wrapper::User<'a>>) -> Self
     {
         Self {
             outer,
             command,
-            args
+            args,
+            is_from_alias
         }
     }
 }
@@ -31,6 +33,18 @@ impl<'a> Command for ServicesCommand<'a>
     fn network(&self) -> &Arc<Network> { self.outer.network() }
     fn response(&self, message: &dyn messages::MessageTypeFormat) { self.outer.response(message) }
     fn connection(&self) -> client_listener::ConnectionId { self.outer.connection() }
+
+    fn response_source(&self) -> &dyn messages::MessageSource
+    {
+        if let Some(alias) = self.is_from_alias
+        {
+            alias
+        }
+        else
+        {
+            self.server()
+        }
+    }
 
     fn command(&self) -> &str
     {
@@ -138,6 +152,8 @@ impl<'a> Command for ServicesCommand<'a>
     }
 }
 
+mod dispatch_alias;
+pub use dispatch_alias::*;
 
 mod ns;
 mod cs;

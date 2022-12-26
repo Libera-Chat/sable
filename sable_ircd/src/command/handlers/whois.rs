@@ -4,7 +4,11 @@ use super::*;
 fn whois_handler(cmd: &dyn Command, _source: UserSource, target: wrapper::User) -> CommandResult
 {
     cmd.numeric(make_numeric!(WhoisUser, &target));
-    cmd.numeric(make_numeric!(WhoisServer, &target, &target.server()?));
+
+    if let Ok(server) = target.server()
+    {
+        cmd.numeric(make_numeric!(WhoisServer, &target, &server));
+    }
 
     if let Ok(Some(account)) = target.account()
     {

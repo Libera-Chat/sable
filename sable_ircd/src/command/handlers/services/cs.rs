@@ -3,7 +3,7 @@ use super::*;
 #[command_handler("CS")]
 async fn handle_cs<'a>(_source: UserSource<'a>, subcommand: &'a str, args: ArgList<'a>) -> CommandResult
 {
-    let new_context = ServicesCommand::new(args.context(), subcommand, args.iter());
+    let new_context = ServicesCommand::new(args.context(), subcommand, args.iter(), None);
 
     let dispatcher = CommandDispatcher::with_category("CS");
 

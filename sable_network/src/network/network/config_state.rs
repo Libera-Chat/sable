@@ -19,5 +19,6 @@ impl Network
         }
 
         self.rebuild_default_role_cache();
+        self.rebuild_alias_users();
     }
 }

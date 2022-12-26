@@ -166,6 +166,11 @@ pub fn object_ids(input: TokenStream) -> TokenStream
             let maybe_comma = if arg_list.is_empty() { None } else { Some(token::Comma(Span::call_site())) };
 
             output.extend(quote!(
+                impl #id_typename
+                {
+                    pub fn local(&self) -> i64 { self. #counter_number }
+                }
+
                 #[derive(Debug)]
                 #[derive(serde::Serialize,serde::Deserialize)]
                 pub struct #generator_typename(#( #arg_types ),* #maybe_comma std::sync::atomic::AtomicI64);
@@ -200,6 +205,14 @@ pub fn object_ids(input: TokenStream) -> TokenStream
 
             if arg_types.len() == 2 && arg_types[0] == serverid_type && arg_types[1] == epochid_type
             {
+                output.extend(quote!(
+                    impl #id_typename
+                    {
+                        pub fn server(&self) -> ServerId { self.0 }
+                        pub fn epoch(&self) -> EpochId { self.1 }
+                    }
+                ));
+
                 let generator_method_name = Ident::new(&format!("next_{}", &typename).to_case(Case::Snake), Span::call_site());
                 let generator_field_name = Ident::new(&format!("{}_generator_field", &typename), Span::call_site());
 

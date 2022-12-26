@@ -99,6 +99,12 @@ impl<'a> User<'a> {
     {
         self.data.account.map(|id| self.network.account(id)).transpose()
     }
+
+    /// Determine whether this user refers to a compatibility alias
+    pub fn is_alias_user(&self) -> Option<&config::AliasUser>
+    {
+        self.network.user_is_alias(self.data.id)
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for User<'a> {

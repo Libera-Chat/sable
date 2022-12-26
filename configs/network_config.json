@@ -6,6 +6,23 @@
         }
     ],
 
+    "alias_users": [
+        {
+            "nick": "ChanServ",
+            "user": "ChanServ",
+            "host": "services.",
+            "realname": "Channel services compatibility layer",
+            "command_alias": "CS"
+        },
+        {
+            "nick": "NickServ",
+            "user": "NickServ",
+            "host": "services.",
+            "realname": "Account services compatibility layer",
+            "command_alias": "NS"
+        }
+    ],
+
     "default_roles": {
         "builtin:op": [
             "always_send",

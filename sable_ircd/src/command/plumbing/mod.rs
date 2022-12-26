@@ -35,6 +35,9 @@ pub trait Command : Send + Sync
 
     /// Retrieve the underlying connection ID
     fn connection(&self) -> ConnectionId;
+
+    /// The source from which responses to this command should be sent
+    fn response_source(&self) -> &dyn messages::MessageSource;
 }
 
 impl<T: Command + ?Sized> messages::MessageSink for T

@@ -16,13 +16,13 @@ impl<T: Command + ?Sized> ClientCommandExt for T
 {
     fn notice(&self, text: impl ToString)
     {
-        let n = message::Notice::new(self.server(), &self.source(), &text.to_string());
+        let n = message::Notice::new(self.response_source(), &self.source(), &text.to_string());
         self.response(&n);
     }
 
     fn numeric(&self, numeric: impl Numeric)
     {
-        self.response(&numeric.format_for(self.server(), &self.source()));
+        self.response(&numeric.format_for(self.response_source(), &self.source()));
     }
 
     fn new_event(&self, target: impl Into<ObjectId>, detail: impl Into<EventDetails>)

@@ -13,7 +13,7 @@ fn handle_nick(server: &ClientServer, net: &Network, cmd: &dyn Command, source: 
 
 fn handle_preclient(server: &ClientServer, net: &Network, cmd: &dyn Command, source: &PreClient, nick: Nickname) -> CommandResult
 {
-    if net.nick_binding(&nick).is_ok()
+    if net.user_by_nick(&nick).is_ok()
     {
         numeric_error!(NicknameInUse, &nick)
     }
@@ -34,7 +34,7 @@ fn handle_user(server: &ClientServer, net: &Network, source: wrapper::User, nick
 {
     let detail = details::BindNickname{ user: source.id() };
 
-    if net.nick_binding(&nick).is_ok()
+    if net.user_by_nick(&nick).is_ok()
     {
         numeric_error!(NicknameInUse, &nick)
     }
