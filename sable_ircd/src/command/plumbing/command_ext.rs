@@ -5,14 +5,14 @@ use crate::{
     messages::{Numeric, message},
 };
 
-pub trait ClientCommandExt
+pub trait CommandExt
 {
     fn notice(&self, text: impl ToString);
     fn numeric(&self, numeric: impl Numeric);
     fn new_event(&self, target: impl Into<ObjectId>, detail: impl Into<EventDetails>);
 }
 
-impl<T: Command + ?Sized> ClientCommandExt for T
+impl<T: Command + ?Sized> CommandExt for T
 {
     fn notice(&self, text: impl ToString)
     {

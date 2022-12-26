@@ -1,8 +1,6 @@
 use super::*;
 use sable_network::policy::*;
 
-use utils::ClientCommandExt;
-
 /// CommandContext wrapper which replaces the error notification code to send
 /// notices instead of numerics.
 pub struct ServicesCommand<'a>

@@ -70,6 +70,9 @@ pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(ctx: &'ctx dyn Comman
     handler.call(ctx, args)
 }
 
+mod command_ext;
+pub use command_ext::*;
+
 mod argument_list;
 pub use argument_list::*;
 

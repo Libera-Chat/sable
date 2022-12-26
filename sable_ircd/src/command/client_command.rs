@@ -1,4 +1,4 @@
-use super::{*, plumbing::Command};
+use super::{*, plumbing::{Command,CommandExt}};
 use sable_network::{network::wrapper::ObjectWrapper, policy::*};
 
 /// Describes the possible types of connection that can invoke a command handler

@@ -6,7 +6,6 @@ use super::*;
 use sable_network::prelude::*;
 use messages::*;
 use client::*;
-use crate::utils::ClientCommandExt;
 
 use std::{
     collections::HashMap,
