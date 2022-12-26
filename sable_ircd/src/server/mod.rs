@@ -184,7 +184,7 @@ impl ClientServer
                             self.apply_action(CommandAction::state_change(
                                 userid,
                                 details::UserQuit {
-                                    message: format!("I/O error: {}", e)
+                                    message: e.to_string()
                                 }
                             )).await;
                         }
