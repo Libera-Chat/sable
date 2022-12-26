@@ -34,12 +34,39 @@ pub enum UserPermissionError
     NotLoggedIn,
 }
 
+/// A permission error for a registration-related operation
+#[derive(Debug)]
+pub enum RegistrationPermissionError
+{
+    /// User isn't logged in
+    NotLoggedIn,
+    /// User doesn't have the required access
+    NoAccess,
+    /// Attempted to grant or edit a role with more access the user doesn't have
+    CantEditHigherRole,
+}
+
 #[derive(Debug)]
 pub enum PermissionError
 {
     Channel(ChannelName, ChannelPermissionError),
     User(UserPermissionError),
+    Registration(RegistrationPermissionError),
     InternalError(Box<dyn std::error::Error + Send + Sync>),
+}
+
+impl From<UserPermissionError> for PermissionError
+{
+    fn from(value: UserPermissionError) -> Self {
+        Self::User(value)
+    }
+}
+
+impl From<RegistrationPermissionError> for PermissionError
+{
+    fn from(value: RegistrationPermissionError) -> Self {
+        Self::Registration(value)
+    }
 }
 
 impl From<LookupError> for PermissionError

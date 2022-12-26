@@ -1,6 +1,6 @@
 use sable_network::{
     rpc::{RemoteServerResponse, RemoteServerRequestType},
-    network::state::ChannelAccessFlag,
+    network::state::ChannelAccessFlag, policy::RegistrationPolicyService,
 };
 
 use super::*;
@@ -33,16 +33,7 @@ async fn handle_role(source: LoggedInUserSource<'_>, cmd: &dyn Command, services
 async fn role_list(source: LoggedInUserSource<'_>, cmd: &dyn Command,
                    chan: wrapper::ChannelRegistration<'_>) -> CommandResult
 {
-    let Some(source_access) = source.account.has_access_in(chan.id()) else {
-        cmd.notice("Access denied");
-        return Ok(())
-    };
-
-    if ! source_access.role()?.flags().is_set(ChannelAccessFlag::RoleView)
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
+    cmd.server().server().policy().can_view_roles(&source.user, &chan)?;
 
     cmd.notice(format_args!("Role list for {}", chan.name()));
     cmd.notice(" ");
@@ -59,23 +50,12 @@ async fn role_edit(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_t
                    chan: wrapper::ChannelRegistration<'_>, target_role_name: state::ChannelRoleName, mut args: ArgList<'_>
                 ) -> CommandResult
 {
-    let Some(source_access) = source.account.has_access_in(chan.id()) else {
-        cmd.notice("Access denied");
-        return Ok(())
-    };
-
-    let source_flags = source_access.role()?.flags();
-
-    if ! source_flags.is_set(ChannelAccessFlag::RoleEdit)
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
-
     let Some(target_role) = chan.role_named(&target_role_name) else {
         cmd.notice(format_args!("No such role {}", target_role_name));
         return Ok(())
     };
+
+    cmd.server().server().policy().can_edit_role(&source.account, &chan, &target_role)?;
 
     let mut flags = target_role.flags();
 
@@ -93,12 +73,6 @@ async fn role_edit(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_t
             return Ok(());
         };
 
-        if ! source_flags.is_set(flag)
-        {
-            cmd.notice("Access denied");
-            return Ok(())
-        }
-
         if adding
         {
             flags |= flag;
@@ -108,6 +82,8 @@ async fn role_edit(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_t
             flags &= !flag;
         }
     }
+
+    cmd.server().server().policy().can_create_role(&source.account, &chan, &flags)?;
 
     let request = RemoteServerRequestType::ModifyRole { source: source.account.id(), id: target_role.id(), flags: Some(flags) };
     let registration_response = services_target.send_remote_request(request).await;
@@ -142,19 +118,6 @@ async fn role_add(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_ta
                   chan: wrapper::ChannelRegistration<'_>, target_role_name: CustomRoleName, mut args: ArgList<'_>
                 ) -> CommandResult
 {
-    let Some(source_access) = source.account.has_access_in(chan.id()) else {
-        cmd.notice("Access denied");
-        return Ok(())
-    };
-
-    let source_flags = source_access.role()?.flags();
-
-    if ! source_flags.is_set(ChannelAccessFlag::RoleEdit)
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
-
     let mut flags = state::ChannelAccessSet::new();
 
     while let Ok(flag_str) = args.next::<&str>()
@@ -164,14 +127,10 @@ async fn role_add(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_ta
             return Ok(());
         };
 
-        if ! source_flags.is_set(flag)
-        {
-            cmd.notice("Access denied");
-            return Ok(())
-        }
-
         flags |= flag;
     }
+
+    cmd.server().server().policy().can_create_role(&source.account, &chan, &flags)?;
 
     let request = RemoteServerRequestType::CreateRole { source: source.account.id(), channel: chan.id(), name: target_role_name, flags: flags };
     let registration_response = services_target.send_remote_request(request).await;
@@ -206,29 +165,12 @@ async fn role_delete(source: LoggedInUserSource<'_>, cmd: &dyn Command, services
                      chan: wrapper::ChannelRegistration<'_>, target_role_name: state::ChannelRoleName
                 ) -> CommandResult
 {
-    let Some(source_access) = source.account.has_access_in(chan.id()) else {
-        cmd.notice("Access denied");
-        return Ok(())
-    };
-
-    let source_flags = source_access.role()?.flags();
-
-    if ! source_flags.is_set(ChannelAccessFlag::RoleEdit)
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
-
     let Some(target_role) = chan.role_named(&target_role_name) else {
         cmd.notice(format_args!("No such role {}", target_role_name));
         return Ok(())
     };
 
-    if ! source_access.role()?.flags().dominates(&target_role.flags())
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
+    cmd.server().server().policy().can_edit_role(&source.account, &chan, &target_role)?;
 
     let request = RemoteServerRequestType::ModifyRole { source: source.account.id(), id: target_role.id(), flags: None };
     let registration_response = services_target.send_remote_request(request).await;

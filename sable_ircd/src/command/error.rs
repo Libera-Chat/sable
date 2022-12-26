@@ -39,6 +39,9 @@ pub enum CommandError
     /// A given parameter (.0) wasn't valid for the expected type (.1)
     InvalidArgument(String, String),
 
+    /// A permission error was encountered
+    Permission(policy::PermissionError),
+
     /// The command couldn't be processed successfully; the provided
     /// [`Numeric`](messages::Numeric) will be sent to the client to notify them
     Numeric(Box<dyn messages::Numeric + Send + Sync>)
@@ -81,16 +84,18 @@ impl From<policy::PermissionError> for CommandError
 {
     fn from(e: policy::PermissionError) -> Self
     {
+/*
         use policy::{
             PermissionError::*,
             UserPermissionError::*,
             ChannelPermissionError::*,
         };
 
-            match e
+        match e
         {
             User(NotOper) => numeric::NotOper::new().into(),
             User(ReadOnlyUmode | NotLoggedIn) => Self::CustomError, // Setting or unsetting these umodes silently fails
+            Registration(_) => Self::CustomError, //
             Channel(channel_name, channel_err) => {
                 match channel_err
                 {
@@ -105,6 +110,8 @@ impl From<policy::PermissionError> for CommandError
             },
             InternalError(e) => Self::UnderlyingError(e)
         }
+*/
+        Self::Permission(e)
     }
 }
 

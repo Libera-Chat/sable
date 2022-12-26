@@ -1,5 +1,5 @@
 use super::{*, plumbing::Command};
-use sable_network::network::wrapper::ObjectWrapper;
+use sable_network::{network::wrapper::ObjectWrapper, policy::*};
 
 /// Describes the possible types of connection that can invoke a command handler
 pub enum CommandSource<'a>
@@ -174,7 +174,10 @@ impl ClientCommand
             CommandError::ServicesNotAvailable => {
                 Some(Box::new(make_numeric!(ServicesNotAvailable)))
             }
-            CommandError::NotLoggedIn => {
+            CommandError::NotLoggedIn
+                    | CommandError::Permission(PermissionError::User(UserPermissionError::NotLoggedIn))
+                    | CommandError::Permission(PermissionError::Registration(RegistrationPermissionError::NotLoggedIn))
+             => {
                 self.notice("You are not logged in");
                 None
             }
@@ -185,6 +188,30 @@ impl ClientCommand
             CommandError::InvalidArgument(arg, ty) => {
                 self.notice(format_args!("{} is not a valid {}", arg, ty));
                 None
+            }
+            CommandError::Permission(pe) => {
+                match pe
+                {
+                    // These have no corresponding numerics
+                    PermissionError::User(_) => None,
+                    PermissionError::Registration(_) => None,
+                    // These ones we can translate
+                    PermissionError::Channel(channel_name, channel_err) => {
+                        use ChannelPermissionError::*;
+
+                        match channel_err
+                        {
+                            UserNotOnChannel => Some(Box::new(make_numeric!(NotOnChannel, &channel_name))),
+                            UserNotOp => Some(Box::new(make_numeric!(ChanOpPrivsNeeded, &channel_name))),
+                            UserIsBanned => Some(Box::new(make_numeric!(BannedOnChannel, &channel_name))),
+                            CannotSendToChannel => Some(Box::new(make_numeric!(CannotSendToChannel, &channel_name))),
+                            InviteOnlyChannel => Some(Box::new(make_numeric!(InviteOnlyChannel, &channel_name))),
+                            BadChannelKey => Some(Box::new(make_numeric!(BadChannelKey, &channel_name))),
+                            NotRegistered | NoAccess => None,
+                        }
+                    },
+                    PermissionError::InternalError(_) => None
+                }
             }
             CommandError::Numeric(n) => Some(n)
         }

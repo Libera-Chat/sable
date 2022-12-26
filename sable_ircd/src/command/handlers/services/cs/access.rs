@@ -1,6 +1,6 @@
 use sable_network::{
     rpc::{RemoteServerResponse, RemoteServerRequestType},
-    network::state::ChannelAccessFlag, prelude::state::ChannelRoleName,
+    network::state::ChannelRoleName, policy::RegistrationPolicyService,
 };
 
 use super::*;
@@ -31,16 +31,7 @@ async fn handle_access(source: LoggedInUserSource<'_>, cmd: &dyn Command, servic
 async fn access_list(source: LoggedInUserSource<'_>, cmd: &dyn Command,
                      chan: wrapper::ChannelRegistration<'_>) -> CommandResult
 {
-    let Some(source_access) = source.account.has_access_in(chan.id()) else {
-        cmd.notice("Access denied");
-        return Ok(())
-    };
-
-    if ! source_access.role()?.flags().is_set(ChannelAccessFlag::AccessView)
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
+    cmd.server().server().policy().can_view_access(&source.user, &chan)?;
 
     cmd.notice(format_args!("Access list for {}", chan.name()));
     cmd.notice(" ");
@@ -57,39 +48,15 @@ async fn access_modify(source: LoggedInUserSource<'_>, cmd: &dyn Command, servic
                        chan: wrapper::ChannelRegistration<'_>, target_account: wrapper::Account<'_>, new_role_name: ChannelRoleName
                     ) -> CommandResult
 {
-    let Some(source_access) = source.account.has_access_in(chan.id()) else {
-        cmd.notice("Access denied");
-        return Ok(())
-    };
-
-    if ! source_access.role()?.flags().is_set(ChannelAccessFlag::AccessEdit)
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
-
-    let target_access_id = ChannelAccessId::new(source.account.id(), chan.id());
-    let target_access = target_account.has_access_in(chan.id());
-
-    if let Some(current_flags) = target_access.and_then(|access| access.role().ok().map(|r| r.flags()))
-    {
-        if ! source_access.role()?.flags().dominates(&current_flags)
-        {
-            cmd.notice("Access denied");
-            return Ok(())
-        }
-    }
-
     let Some(new_role) = chan.role_named(&new_role_name) else {
         cmd.notice(format_args!("Role {} does not exist", new_role_name));
         return Ok(())
     };
 
-    if ! source_access.role()?.flags().dominates(&new_role.flags())
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
+    cmd.server().server().policy().can_change_access_for(&source.account, &chan, &target_account)?;
+    cmd.server().server().policy().can_grant_role(&source.account, &chan, &new_role)?;
+
+    let target_access_id = ChannelAccessId::new(source.account.id(), chan.id());
 
     let request = RemoteServerRequestType::ModifyAccess { source: source.account.id(), id: target_access_id, role: Some(new_role.id()) };
     let registration_response = cmd.server().server().sync_log().send_remote_request(services_target.into(), request).await;
@@ -124,29 +91,12 @@ async fn access_delete(source: LoggedInUserSource<'_>, cmd: &dyn Command, servic
                        chan: wrapper::ChannelRegistration<'_>, target_account: wrapper::Account<'_>
                     ) -> CommandResult
 {
-    let Some(source_access) = source.account.has_access_in(chan.id()) else {
-        cmd.notice("Access denied");
-        return Ok(())
-    };
-
-    if ! source_access.role()?.flags().is_set(ChannelAccessFlag::AccessEdit)
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
+    cmd.server().server().policy().can_change_access_for(&source.account, &chan, &target_account)?;
 
     let Some(target_access) = source.account.has_access_in(chan.id()) else {
         cmd.notice(format_args!("{} does not have access in {}", target_account.name(), chan.name()));
         return Ok(())
     };
-
-    let current_flags = target_access.role()?.flags();
-
-    if ! source_access.role()?.flags().dominates(&current_flags)
-    {
-        cmd.notice("Access denied");
-        return Ok(())
-    }
 
     let request = RemoteServerRequestType::ModifyAccess { source: source.account.id(), id: target_access.id(), role: None };
     let registration_response = services_target.send_remote_request(request).await;

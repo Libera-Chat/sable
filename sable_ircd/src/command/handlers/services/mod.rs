@@ -1,4 +1,5 @@
 use super::*;
+use sable_network::policy::*;
 
 use utils::ClientCommandExt;
 
@@ -97,6 +98,37 @@ impl<'a> Command for ServicesCommand<'a>
             }
             CommandError::InvalidArgument(arg, ty) => {
                 self.notice(format_args!("{} is not a valid {}", arg, ty));
+            }
+            CommandError::Permission(pe) => {
+                match pe {
+                    PermissionError::User(ue) =>
+                    {
+                        use UserPermissionError::*;
+                        match ue {
+                            NotLoggedIn => { self.notice("You are not logged in") }
+                            _ => {}
+                        }
+                    }
+                    PermissionError::Channel(chan, ce) =>
+                    {
+                        use ChannelPermissionError::*;
+                        match ce {
+                            NotRegistered => { self.notice(format_args!("{} is not registered", chan)) },
+                            NoAccess => { self.notice("Access denied") }
+                            _ => {}
+                        }
+                    }
+                    PermissionError::Registration(re) =>
+                    {
+                        match re
+                        {
+                            RegistrationPermissionError::NotLoggedIn => { self.notice("You are not logged in") }
+                            RegistrationPermissionError::NoAccess => { self.notice("Access denied") }
+                            RegistrationPermissionError::CantEditHigherRole => { self.notice("Access denied - you can't edit a role with permissions you don't have yourself") }
+                        }
+                    }
+                    PermissionError::InternalError(_) => todo!(),
+                }
             }
             CommandError::Numeric(n) => {
                 tracing::warn!("Translating unknown error numeric from services response: {:?}", n);

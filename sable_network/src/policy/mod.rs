@@ -24,6 +24,10 @@ pub use user_policy::*;
 mod oper_policy;
 pub use oper_policy::*;
 
+#[macro_use]
+mod registration_policy;
+pub use registration_policy::*;
+
 mod standard_channel_policy;
 pub use standard_channel_policy::*;
 
@@ -32,6 +36,9 @@ pub use standard_user_policy::*;
 
 mod standard_oper_policy;
 pub use standard_oper_policy::*;
+
+mod standard_registration_policy;
+pub use standard_registration_policy::*;
 
 mod error;
 pub use error::*;
@@ -44,7 +51,8 @@ pub trait PolicyService:
             ChannelPolicyService +
             UserPolicyService +
             OperAuthenticationService +
-            OperPolicyService
+            OperPolicyService +
+            RegistrationPolicyService
 {
 }
 
@@ -54,11 +62,13 @@ pub trait PolicyService:
 #[delegate(UserPolicyService, target="user_policy")]
 #[delegate(OperPolicyService, target="oper_policy")]
 #[delegate(OperAuthenticationService, target="oper_policy")]
+#[delegate(RegistrationPolicyService, target="registration_policy")]
 pub struct StandardPolicyService
 {
     channel_policy: StandardChannelPolicy,
     user_policy: StandardUserPolicy,
     oper_policy: StandardOperPolicy,
+    registration_policy: StandardRegistrationPolicy,
 }
 
 impl StandardPolicyService
@@ -68,6 +78,7 @@ impl StandardPolicyService
             channel_policy: StandardChannelPolicy::new(),
             user_policy: StandardUserPolicy::new(),
             oper_policy: StandardOperPolicy::new(),
+            registration_policy: StandardRegistrationPolicy::new(),
         }
     }
 }
