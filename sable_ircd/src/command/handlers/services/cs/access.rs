@@ -31,7 +31,7 @@ async fn handle_access(source: LoggedInUserSource<'_>, cmd: &dyn Command, servic
 async fn access_list(source: LoggedInUserSource<'_>, cmd: &dyn Command,
                      chan: wrapper::ChannelRegistration<'_>) -> CommandResult
 {
-    cmd.server().server().policy().can_view_access(&source.user, &chan)?;
+    cmd.server().node().policy().can_view_access(&source.user, &chan)?;
 
     cmd.notice(format_args!("Access list for {}", chan.name()));
     cmd.notice(" ");
@@ -53,13 +53,13 @@ async fn access_modify(source: LoggedInUserSource<'_>, cmd: &dyn Command, servic
         return Ok(())
     };
 
-    cmd.server().server().policy().can_change_access_for(&source.account, &chan, &target_account)?;
-    cmd.server().server().policy().can_grant_role(&source.account, &chan, &new_role)?;
+    cmd.server().node().policy().can_change_access_for(&source.account, &chan, &target_account)?;
+    cmd.server().node().policy().can_grant_role(&source.account, &chan, &new_role)?;
 
     let target_access_id = ChannelAccessId::new(source.account.id(), chan.id());
 
     let request = RemoteServerRequestType::ModifyAccess { source: source.account.id(), id: target_access_id, role: Some(new_role.id()) };
-    let registration_response = cmd.server().server().sync_log().send_remote_request(services_target.into(), request).await;
+    let registration_response = cmd.server().node().sync_log().send_remote_request(services_target.into(), request).await;
 
     tracing::debug!(?registration_response, "Got registration response");
     match registration_response
@@ -91,7 +91,7 @@ async fn access_delete(source: LoggedInUserSource<'_>, cmd: &dyn Command, servic
                        chan: wrapper::ChannelRegistration<'_>, target_account: wrapper::Account<'_>
                     ) -> CommandResult
 {
-    cmd.server().server().policy().can_change_access_for(&source.account, &chan, &target_account)?;
+    cmd.server().node().policy().can_change_access_for(&source.account, &chan, &target_account)?;
 
     let Some(target_access) = source.account.has_access_in(chan.id()) else {
         cmd.notice(format_args!("{} does not have access in {}", target_account.name(), chan.name()));

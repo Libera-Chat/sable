@@ -33,7 +33,7 @@ async fn handle_role(source: LoggedInUserSource<'_>, cmd: &dyn Command, services
 async fn role_list(source: LoggedInUserSource<'_>, cmd: &dyn Command,
                    chan: wrapper::ChannelRegistration<'_>) -> CommandResult
 {
-    cmd.server().server().policy().can_view_roles(&source.user, &chan)?;
+    cmd.server().node().policy().can_view_roles(&source.user, &chan)?;
 
     cmd.notice(format_args!("Role list for {}", chan.name()));
     cmd.notice(" ");
@@ -55,7 +55,7 @@ async fn role_edit(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_t
         return Ok(())
     };
 
-    cmd.server().server().policy().can_edit_role(&source.account, &chan, &target_role)?;
+    cmd.server().node().policy().can_edit_role(&source.account, &chan, &target_role)?;
 
     let mut flags = target_role.flags();
 
@@ -83,7 +83,7 @@ async fn role_edit(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_t
         }
     }
 
-    cmd.server().server().policy().can_create_role(&source.account, &chan, &flags)?;
+    cmd.server().node().policy().can_create_role(&source.account, &chan, &flags)?;
 
     let request = RemoteServerRequestType::ModifyRole { source: source.account.id(), id: target_role.id(), flags: Some(flags) };
     let registration_response = services_target.send_remote_request(request).await;
@@ -130,7 +130,7 @@ async fn role_add(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_ta
         flags |= flag;
     }
 
-    cmd.server().server().policy().can_create_role(&source.account, &chan, &flags)?;
+    cmd.server().node().policy().can_create_role(&source.account, &chan, &flags)?;
 
     let request = RemoteServerRequestType::CreateRole { source: source.account.id(), channel: chan.id(), name: target_role_name, flags: flags };
     let registration_response = services_target.send_remote_request(request).await;
@@ -170,7 +170,7 @@ async fn role_delete(source: LoggedInUserSource<'_>, cmd: &dyn Command, services
         return Ok(())
     };
 
-    cmd.server().server().policy().can_edit_role(&source.account, &chan, &target_role)?;
+    cmd.server().node().policy().can_edit_role(&source.account, &chan, &target_role)?;
 
     let request = RemoteServerRequestType::ModifyRole { source: source.account.id(), id: target_role.id(), flags: None };
     let registration_response = services_target.send_remote_request(request).await;

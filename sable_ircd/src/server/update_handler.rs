@@ -13,7 +13,7 @@ impl ClientServer
         {
             NetworkHistoryUpdate::NewEntry(entry_id) =>
             {
-                let history = self.server.history();
+                let history = self.node.history();
                 if let Some(entry) = history.get(entry_id)
                 {
                     match &entry.details
@@ -50,7 +50,7 @@ impl ClientServer
     {
         for conn in self.connections.read().get_user(user_id)
         {
-            let log = self.server.history();
+            let log = self.node.history();
 
             if let Some(entry) = log.get(entry_id)
             {
@@ -63,22 +63,22 @@ impl ClientServer
 
     fn handle_new_user(&self, detail: &update::NewUser) -> HandleResult
     {
-        let net = self.server.network();
+        let net = self.node.network();
         let user = net.user(detail.user.user.id)?;
         for connection in self.connections.read().get_user(user.id())
         {
             connection.set_user_id(user.id());
 
-            connection.send(&numeric::Numeric001::new_for(&self.server.name().to_string(), &user.nick(), "test", &user.nick()));
-            connection.send(&numeric::Numeric002::new_for(&self.server.name().to_string(), &user.nick(), self.server.name(), self.server.version()));
+            connection.send(&numeric::Numeric001::new_for(&self.node.name().to_string(), &user.nick(), "test", &user.nick()));
+            connection.send(&numeric::Numeric002::new_for(&self.node.name().to_string(), &user.nick(), self.node.name(), self.node.version()));
             for line in self.isupport.data().iter()
             {
-                connection.send(&numeric::ISupport::new_for(&self.server.name().to_string(), &user.nick(), line));
+                connection.send(&numeric::ISupport::new_for(&self.node.name().to_string(), &user.nick(), line));
             }
 
             connection.send(&message::Mode::new(&user, &user, &user.mode().format()));
 
-            connection.send(&message::Notice::new(&self.server.name().to_string(), &user,
+            connection.send(&message::Notice::new(&self.node.name().to_string(), &user,
                     "The network is currently running in debug mode. Do not send any sensitive information such as passwords."));
         }
         Ok(())

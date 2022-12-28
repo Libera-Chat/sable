@@ -38,10 +38,10 @@ impl ClientServer
                             visible_hostname: *pre_client.hostname.get().unwrap(),
                             realname: pre_client.realname.get().unwrap().clone(),
                             mode: state::UserMode::new(umodes),
-                            server: self.server.id(),
+                            server: self.node.id(),
                             account: None,
                         };
-                        self.server.submit_event(new_user_id, details);
+                        self.node.submit_event(new_user_id, details);
 
                         should_add_user = Some((new_user_id, id));
                     }
@@ -80,7 +80,7 @@ impl ClientServer
 
             CommandAction::StateChange(id, detail) =>
             {
-                self.server.submit_event(id, detail);
+                self.node.submit_event(id, detail);
             }
         }
     }

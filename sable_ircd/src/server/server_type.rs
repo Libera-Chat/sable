@@ -53,7 +53,7 @@ impl sable_server::ServerType for ClientServer
             connections: RwLock::new(ConnectionCollection::new()),
             isupport: Self::build_basic_isupport(),
             client_caps: CapabilityRepository::new(),
-            server: node,
+            node: node,
             listeners: Movable::new(client_listeners),
         }
     }
@@ -72,7 +72,7 @@ impl sable_server::ServerType for ClientServer
     /// Restore from a previously saved state.
     fn restore(
             state: ClientServerState,
-            server: Arc<NetworkNode>,
+            node: Arc<NetworkNode>,
             history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
         ) -> Self
     {
@@ -84,7 +84,7 @@ impl sable_server::ServerType for ClientServer
                             .expect("failed to restore listener collection");
 
         Self {
-            server,
+            node,
             action_receiver: Mutex::new(action_recv),
             action_submitter: action_send,
             connection_events: Mutex::new(client_recv),

@@ -30,6 +30,6 @@ impl<'a> ServicesTarget<'a>
 {
     pub async fn send_remote_request(&self, req: RemoteServerRequestType) -> Result<RemoteServerResponse, NetworkError>
     {
-        self.server.server().sync_log().send_remote_request(self.name, req).await
+        self.server.node().sync_log().send_remote_request(self.name, req).await
     }
 }

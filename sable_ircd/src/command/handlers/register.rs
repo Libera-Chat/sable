@@ -52,7 +52,7 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &dy
 
     let message = rpc::RemoteServerRequestType::RegisterUser(requested_account, password.to_owned());
 
-    match cmd.server().server().sync_log().send_remote_request(services_name, message).await
+    match cmd.server().node().sync_log().send_remote_request(services_name, message).await
     {
         Ok(rpc::RemoteServerResponse::LogUserIn(account)) =>
         {

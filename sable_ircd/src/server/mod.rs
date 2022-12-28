@@ -65,7 +65,7 @@ pub struct ClientServer
     isupport: ISupportBuilder,
     client_caps: CapabilityRepository,
 
-    server: Arc<NetworkNode>,
+    node: Arc<NetworkNode>,
     listeners: Movable<ListenerCollection>,
 }
 
@@ -74,25 +74,25 @@ impl ClientServer
     /// Access the network state
     pub fn network(&self) -> Arc<Network>
     {
-        self.server.network()
+        self.node.network()
     }
 
     /// The ID generator used to identify objects created by this server
     pub fn ids(&self) -> &ObjectIdGenerator
     {
-        self.server.ids()
+        self.node.ids()
     }
 
     /// The underlying network node
-    pub fn server(&self) -> &NetworkNode
+    pub fn node(&self) -> &NetworkNode
     {
-        &self.server
+        &self.node
     }
 
     /// This server's name
     pub fn name(&self) -> &ServerName
     {
-        self.server.name()
+        self.node.name()
     }
 
     /// Submit a command action to process in the next loop iteration.
@@ -105,7 +105,7 @@ impl ClientServer
     /// Access the currently used [`PolicyService`](sable_network::policy::PolicyService)
     pub(crate) fn policy(&self) -> &dyn sable_network::policy::PolicyService
     {
-        self.server.policy()
+        self.node.policy()
     }
 
     /// Find a client connection
@@ -224,7 +224,7 @@ impl ClientServer
         {
             if let Some(user_id) = flooded.user_id()
             {
-                if let Ok(user) = self.server.network().user(user_id)
+                if let Ok(user) = self.node.network().user(user_id)
                 {
                     if user.session_key().is_some()
                     {
@@ -232,7 +232,7 @@ impl ClientServer
                         continue;
                     }
 
-                    self.server.submit_event(user_id, event::details::UserQuit { message: "Excess Flood".to_string() });
+                    self.node.submit_event(user_id, event::details::UserQuit { message: "Excess Flood".to_string() });
                     flooded.error("Excess Flood");
                 }
             }

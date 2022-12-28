@@ -27,6 +27,6 @@ impl<T: Command + ?Sized> CommandExt for T
 
     fn new_event(&self, target: impl Into<ObjectId>, detail: impl Into<EventDetails>)
     {
-        self.server().server().submit_event(target, detail);
+        self.server().node().submit_event(target, detail);
     }
 }

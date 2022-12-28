@@ -19,12 +19,12 @@ pub struct UnknownTarget;
 
 impl MessageSource for &crate::ClientServer
 {
-    fn format(&self) -> String { self.server().name().to_string() }
+    fn format(&self) -> String { self.node().name().to_string() }
 }
 
 impl MessageSource for crate::ClientServer
 {
-    fn format(&self) -> String { self.server().name().to_string() }
+    fn format(&self) -> String { self.node().name().to_string() }
 }
 
 impl MessageSource for ServerName
