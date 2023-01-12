@@ -87,5 +87,9 @@ define_messages! {
     481(NotOper)            => { ()     => ":You're not an IRC operator" },
     491(NoOperConf)         => { ()     => ":No oper configuration found" },
 
-    440(ServicesNotAvailable) => { () => ":Services are not available"}
+    440(ServicesNotAvailable) => { () => ":Services are not available"},
+
+    903(SaslSuccess)        => { () => "SASL authentication successful" },
+    904(SaslFail)           => { () => "SASL authentication failed" },
+    906(SaslAborted)        => { () => "SASL authentication aborted" }
 }

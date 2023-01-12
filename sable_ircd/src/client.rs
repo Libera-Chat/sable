@@ -10,7 +10,7 @@ use crate::utils::WrapOption;
 use std::{
     net::IpAddr,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicU32, Ordering},
         Arc,
     },
 };
@@ -51,6 +51,15 @@ pub(super) struct ClientConnectionState
     capabilities: ClientCapabilitySet,
 }
 
+/// Operations that, while ongoing, will block a client from registering
+#[derive(Debug,Clone,Copy)]
+#[repr(u32)]
+pub enum ProgressFlag
+{
+    CapNegotiation,
+    SaslAuthentication,
+}
+
 /// Information received from a client connection that has not yet completed registration
 #[serde_as]
 #[derive(Debug,Serialize,Deserialize)]
@@ -64,7 +73,12 @@ pub struct PreClient
     pub realname: OnceCell<String>,
     #[serde_as (as = "WrapOption<Hostname>")]
     pub hostname: OnceCell<Hostname>,
-    pub cap_in_progress: AtomicBool,
+    #[serde_as (as = "WrapOption<SaslSessionId>")]
+    pub sasl_session: OnceCell<SaslSessionId>,
+    #[serde_as (as = "WrapOption<AccountId>")]
+    pub sasl_account: OnceCell<AccountId>,
+
+    progress_flags: AtomicU32,
 }
 
 impl ClientConnection
@@ -204,7 +218,9 @@ impl PreClient {
             nick: OnceCell::new(),
             realname: OnceCell::new(),
             hostname: OnceCell::new(),
-            cap_in_progress: AtomicBool::new(false),
+            sasl_session: OnceCell::new(),
+            sasl_account: OnceCell::new(),
+            progress_flags: AtomicU32::new(0),
         }
     }
 
@@ -214,9 +230,32 @@ impl PreClient {
         let result = self.user.get().is_some()
                     && self.nick.get().is_some()
                     && self.hostname.get().is_some()
-                    && !self.cap_in_progress.load(Ordering::Relaxed);
+                    && self.progress_flags.load(Ordering::Relaxed) == 0;
 
         tracing::trace!(?self, result, "PreClient::can_register");
+        result
+    }
+
+    /// Set a progress flag, indicating that the given operation is beginning
+    pub fn start_progress(&self, flag: ProgressFlag)
+    {
+        self.progress_flags.fetch_or(flag as u32, Ordering::Relaxed);
+    }
+
+    /// Unset a progress flag, indicating that the given operation has completed
+    ///
+    /// Return true if the client is ready to register, i.e. if `can_register`
+    /// would return true immediately after this call
+    pub fn complete_progress(&self, flag: ProgressFlag) -> bool
+    {
+        let prev_flags = self.progress_flags.fetch_and(!(flag as u32), Ordering::Relaxed);
+
+        let result = self.user.get().is_some()
+                    && self.nick.get().is_some()
+                    && self.hostname.get().is_some()
+                    && prev_flags == flag as u32;
+
+        tracing::trace!(?self, ?flag, result, "PreClient::complete_progress");
         result
     }
 }

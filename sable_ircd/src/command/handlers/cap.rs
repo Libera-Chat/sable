@@ -1,8 +1,6 @@
 use super::*;
 use crate::capability::*;
 
-use std::sync::atomic::Ordering;
-
 #[command_handler("CAP")]
 fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Command,
               subcommand: &str, cap_list: Option<&str>) -> CommandResult
@@ -11,18 +9,28 @@ fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Comm
     {
         "LS" =>
         {
-            pre_client.cap_in_progress.store(true, Ordering::Relaxed);
+            pre_client.start_progress(ProgressFlag::CapNegotiation);
 
-            cmd.response(&message::Cap::new(&server,
-                                            &UnknownTarget,
-                                            "LS",
-                                            server.client_capabilities().supported_caps()));
+            if matches!(cap_list, Some("302"))
+            {
+                cmd.response(&message::Cap::new(&server,
+                                                &UnknownTarget,
+                                                "LS",
+                                                server.client_capabilities().supported_caps_302().as_ref()));
+            }
+            else
+            {
+                cmd.response(&message::Cap::new(&server,
+                                                &UnknownTarget,
+                                                "LS",
+                                                server.client_capabilities().supported_caps_301().as_ref()));
+            }
 
             Ok(())
         }
         "REQ" =>
         {
-            pre_client.cap_in_progress.store(true, Ordering::Relaxed);
+            pre_client.start_progress(ProgressFlag::CapNegotiation);
 
             let requested_arg = cap_list.ok_or_else(|| make_numeric!(NotEnoughParameters, "CAP"))?;
 
@@ -53,8 +61,7 @@ fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Comm
         }
         "END" =>
         {
-            pre_client.cap_in_progress.store(false, Ordering::Relaxed);
-            if pre_client.can_register()
+            if pre_client.complete_progress(ProgressFlag::CapNegotiation)
             {
                 server.add_action(CommandAction::RegisterClient(cmd.connection()));
             }

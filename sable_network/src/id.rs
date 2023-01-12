@@ -39,6 +39,8 @@ object_ids!(ObjectId (ObjectIdGenerator) {
 
     ChannelAccess: (AccountId, ChannelRegistrationId);
     ChannelRole: sequential;
+
+    SaslSession: sequential;
 });
 
 impl NicknameId {

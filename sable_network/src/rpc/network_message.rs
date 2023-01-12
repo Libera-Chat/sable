@@ -54,6 +54,12 @@ pub enum RemoteServerRequestType
     /// User attempting login
     /// Parameters: account id, password
     UserLogin(AccountId, String),
+    /// Begin SASL auth
+    BeginAuthenticate(SaslSessionId, String),
+    /// SASL traffic
+    Authenticate(SaslSessionId, Vec<u8>),
+    /// Abort a SASL session
+    AbortAuthenticate(SaslSessionId),
     /// Register a channel
     RegisterChannel(AccountId, ChannelId),
     /// Add, modify or remove a channel access (None to delete)
@@ -62,6 +68,20 @@ pub enum RemoteServerRequestType
     CreateRole{ source: AccountId, channel: ChannelRegistrationId, name: CustomRoleName, flags: ChannelAccessSet },
     /// Modify or delete a channel role
     ModifyRole{ source: AccountId, id: ChannelRoleId, flags: Option<ChannelAccessSet> },
+}
+
+/// A SASL authentication response
+#[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
+pub enum AuthenticateStatus
+{
+    /// Authentication flow should continue, with the enclosed data to be sent to the client
+    InProgress(Vec<u8>),
+    /// Authentication success; the user should be logged in to the enclosed account ID
+    Success(AccountId),
+    /// Authentication failed
+    Fail,
+    /// Authentication aborted
+    Aborted
 }
 
 /// Remote server response type
@@ -74,6 +94,8 @@ pub enum RemoteServerResponse
     NotSupported,
     /// Operation succeeded, user should be logged in to account
     LogUserIn(AccountId),
+    /// SASL response
+    Authenticate(AuthenticateStatus),
     /// Operation failed due to invalid credentials
     InvalidCredentials,
     /// Registration failed because the account exists

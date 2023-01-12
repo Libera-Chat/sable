@@ -117,7 +117,7 @@ pub struct Network
     #[serde_as(as = "Vec<(_,_)>")]
     channel_roles: HashMap<ChannelRoleId, state::ChannelRole>,
 
-    current_services: Option<ServerId>,
+    current_services: Option<state::ServicesData>,
     config: config::NetworkConfig,
 
     clock: EventClock,

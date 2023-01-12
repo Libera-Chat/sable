@@ -33,7 +33,7 @@ pub type Result<T> = std::result::Result<T, DatabaseError>;
 /// Note that creation functions take their argument by value and return it; callers
 /// must use the returned value for any further use or propagation to the network as
 /// content, including IDs, may have been changed by the database.
-pub trait DatabaseConnection : Sized
+pub trait DatabaseConnection : Sized + Send + Sync + 'static
 {
     /// Constructor. The format of `conn` is defined by the provider and taken from the
     /// server config file.
@@ -43,6 +43,8 @@ pub trait DatabaseConnection : Sized
     fn new_account(&self, data: state::Account, auth: AccountAuth) -> Result<state::Account>;
     /// Retrieve a single account
     fn account(&self, id: AccountId) -> Result<state::Account>;
+    /// Retrieve an account by name
+    fn account_named(&self, name: &Nickname) -> Result<state::Account>;
     /// Update an account's details
     fn update_account(&self, new_data: &state::Account) -> Result<()>;
     /// Retrieve all accounts in the database

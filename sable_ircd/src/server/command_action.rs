@@ -39,7 +39,7 @@ impl ClientServer
                             realname: pre_client.realname.get().unwrap().clone(),
                             mode: state::UserMode::new(umodes),
                             server: self.node.id(),
-                            account: None,
+                            account: pre_client.sasl_account.get().cloned(),
                         };
                         self.node.submit_event(new_user_id, details);
 

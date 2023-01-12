@@ -19,12 +19,11 @@ pub(crate) use with_tags::WithSupportedTags;
 
 pub mod server_time;
 
-
 macro_rules! define_capabilities {
     (
         $typename:ident
         {
-            $( $cap:ident : $val:literal => $name:literal ),*
+            $( $cap:ident : $val:literal => ($name:literal, $def:literal) ),*
         }
     ) => {
         #[derive(Clone,Copy,Debug,PartialEq,Eq,Serialize,Deserialize)]
@@ -45,6 +44,14 @@ macro_rules! define_capabilities {
                 }
             }
 
+            pub fn is_default(&self) -> bool
+            {
+                match self
+                {
+                    $( Self::$cap => $def ),*
+                }
+            }
+
             pub fn flag(&self) -> u64
             {
                 *self as u64
@@ -56,13 +63,14 @@ macro_rules! define_capabilities {
 define_capabilities! (
     ClientCapability
     {
-        MessageTags:            0x01 => "message-tags",
-        ServerTime:             0x02 => "server-time",
-        EchoMessage:            0x04 => "echo-message",
+        MessageTags:            0x01 => ("message-tags", true),
+        ServerTime:             0x02 => ("server-time", true),
+        EchoMessage:            0x04 => ("echo-message", true),
+        Sasl:                   0x08 => ("sasl", false),
 
-        ChatHistory:            0x101 => "draft/chathistory",
-        PersistentSession:      0x102 => "sable/persistent-session",
-        AccountRegistration:    0x104 => "sable/account-registration"
+        ChatHistory:            0x101 => ("draft/chathistory", true),
+        PersistentSession:      0x102 => ("sable/persistent-session", true),
+        AccountRegistration:    0x104 => ("sable/account-registration", true)
     }
 );
 

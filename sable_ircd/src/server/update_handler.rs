@@ -24,6 +24,12 @@ impl ClientServer
                             drop(history);
                             self.handle_new_user(&new_user)?;
                         }
+                        NetworkStateChange::ServicesUpdate(detail) =>
+                        {
+                            let update = detail.clone();
+                            drop(history);
+                            self.handle_services_update(&update)?;
+                        }
                         _ =>
                         {
                         }
@@ -84,4 +90,19 @@ impl ClientServer
         Ok(())
     }
 
+    fn handle_services_update(&self, detail: &update::ServicesUpdate) -> HandleResult
+    {
+        match &detail.new_state
+        {
+            Some(state) =>
+            {
+                self.client_caps.enable_with_values(ClientCapability::Sasl, &state.sasl_mechanisms);
+            }
+            None =>
+            {
+                self.client_caps.disable(ClientCapability::Sasl);
+            }
+        }
+        Ok(())
+    }
 }

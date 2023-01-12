@@ -29,3 +29,4 @@ pub struct Server
     pub flags: ServerFlags,
     pub version: String,
 }
+

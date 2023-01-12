@@ -32,6 +32,9 @@ define_messages! {
     Note    => { (command: &str, code: &str, context: &str, description: &str)
                                 => "NOTE {command} {code} {context} :{description}" },
 
+    // SASL
+    Authenticate    => { (data: &str) => "AUTHENTICATE :{data}" },
+
     // Extension messages
     ChatHistoryTarget => { (target_name: &str, timestamp: &str) => "CHATHISTORY TARGETS {target_name} {timestamp}" },
     Register => { (status: &str, account: Nickname, message: &str) => "REGISTER {status} {account} {message}" }

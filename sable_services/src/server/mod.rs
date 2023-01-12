@@ -1,4 +1,4 @@
-use crate::{database::{DatabaseConnection, DatabaseError}, model::AccountAuth};
+use crate::{database::{DatabaseConnection, DatabaseError}, model::*};
 use command::CommandError;
 
 use sable_server::ServerType;
@@ -31,9 +31,12 @@ use tokio::sync::{
     Mutex,
 };
 
+use dashmap::DashMap;
+
 mod sync;
 mod command;
 mod roles;
+mod sasl;
 
 #[derive(Deserialize)]
 pub struct ServicesConfig
@@ -48,6 +51,8 @@ pub struct ServicesServer<DB>
     node: Arc<NetworkNode>,
     history_receiver: Mutex<UnboundedReceiver<sable_network::rpc::NetworkHistoryUpdate>>,
     config: ServicesConfig,
+    sasl_sessions: DashMap<SaslSessionId, SaslSession>,
+    sasl_mechanisms: HashMap<String, Box<dyn sasl::SaslMechanism<DB>>>,
 }
 
 #[async_trait]
@@ -72,6 +77,8 @@ impl<DB> ServerType for ServicesServer<DB>
             node,
             history_receiver: Mutex::new(history_receiver),
             config,
+            sasl_sessions: DashMap::new(),
+            sasl_mechanisms: sasl::build_mechanisms(),
         }
     }
 
@@ -167,7 +174,25 @@ impl<DB> ServerType for ServicesServer<DB>
 
                 self.modify_role(source, id, flags)
             }
-            _ =>
+            BeginAuthenticate(session, mechanism) =>
+            {
+                tracing::debug!(?session, ?mechanism, "Got begin authenticate");
+
+                self.begin_authenticate(session, mechanism)
+            }
+            Authenticate(session, data) =>
+            {
+                tracing::debug!(?session, ?data, "Got authenticate data");
+
+                self.authenticate(session, data)
+            }
+            AbortAuthenticate(session) =>
+            {
+                tracing::debug!(?session, "Got abort authenticate");
+
+                self.abort_authenticate(session)
+            }
+            Ping =>
             {
                 tracing::warn!(?req, "Got unsupported request");
                 Ok(RemoteServerResponse::NotSupported)

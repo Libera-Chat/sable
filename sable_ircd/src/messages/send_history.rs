@@ -39,6 +39,7 @@ impl SendHistoryItem for HistoryLogEntry
             NetworkStateChange::ServerQuit(detail) => detail.send_to(conn, self),
             NetworkStateChange::NewAuditLogEntry(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserLoginChange(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ServicesUpdate(detail) => detail.send_to(conn, self),
         }
     }
 }
@@ -291,5 +292,13 @@ impl SendHistoryItem for update::UserLoginChange
     fn send_to(&self, _conn: &(impl MessageSink + ?Sized), _from_entry: &HistoryLogEntry) -> HandleResult
     {
         todo!();
+    }
+}
+
+impl SendHistoryItem for update::ServicesUpdate
+{
+    fn send_to(&self, _conn: &(impl MessageSink + ?Sized), _from_entry: &HistoryLogEntry) -> HandleResult
+    {
+        Ok(())
     }
 }

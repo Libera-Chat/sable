@@ -5,9 +5,16 @@ use crate::network::update::*;
 
 impl Network
 {
-    pub(super) fn introduce_services(&mut self, target: ServerId, _event: &Event, _update: &IntroduceServices, _updates: &dyn NetworkUpdateReceiver)
+    pub(super) fn introduce_services(&mut self, target: ServerId, event: &Event, update: &IntroduceServices, updates: &dyn NetworkUpdateReceiver)
     {
-        self.current_services = Some(target);
+        self.current_services = Some(state::ServicesData {
+            server_id: target,
+            sasl_mechanisms: update.sasl_mechanisms.clone()
+        });
+
+        updates.notify(update::ServicesUpdate {
+            new_state: self.current_services.clone()
+        }, event);
     }
 
     pub(super) fn update_account(&mut self, target: AccountId, _event: &Event, update: &AccountUpdate, _updates: &dyn NetworkUpdateReceiver)

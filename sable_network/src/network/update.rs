@@ -189,6 +189,11 @@ NetworkStateChange => {
         pub old_account: Option<state::Account>,
         pub new_account: Option<state::Account>,
     }
+
+    /// The current services node has changed
+    struct ServicesUpdate {
+        pub new_state: Option<state::ServicesData>,
+    }
 });
 
 /// Trait to be implemented by an object which wants to be notified of network state updates

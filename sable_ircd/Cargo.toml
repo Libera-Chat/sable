@@ -34,7 +34,8 @@ rand = "0.8"
 sha256 = "1"
 once_cell = "1.13"
 concurrent-queue = "1.2.4"
-arc-swap = "1.5"
+arc-swap = { version = "1.5", features = [ "serde" ] }
 parking_lot = { version = "0.12", features = [ "serde" ] }
 async-trait = "0.1.57"
 structopt = "0.3"
+base64 = "0.21"

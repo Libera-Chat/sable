@@ -145,6 +145,6 @@ impl<DB> ServicesServer<DB>
         }
 
         // Finally, set ourselves as the active services node
-        self.node.submit_event(self.node.id(), IntroduceServices { });
+        self.node.submit_event(self.node.id(), IntroduceServices { sasl_mechanisms: vec!["PLAIN".to_owned()] });
     }
 }

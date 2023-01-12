@@ -49,6 +49,16 @@ impl Network
     {
         if let Some(removed) = self.servers.remove(&target)
         {
+            // If the server being removed is the current services node, then we need to notify
+            // that services has gone away
+            if let Some(services) = &self.current_services
+            {
+                if removed.id == services.server_id
+                {
+                    updates.notify(update::ServicesUpdate { new_state: None }, event);
+                }
+            }
+
             let mut users_to_remove = Vec::new();
 
             for u in self.users

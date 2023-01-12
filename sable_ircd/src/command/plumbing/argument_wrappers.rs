@@ -20,7 +20,7 @@ impl<'a> AmbientArgument<'a> for ServicesTarget<'a>
     fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError>
     {
         Ok(Self {
-            name: ctx.network().current_services().ok_or(CommandError::ServicesNotAvailable)?,
+            name: ctx.network().current_services_name().ok_or(CommandError::ServicesNotAvailable)?,
             server: ctx.server()
         })
     }

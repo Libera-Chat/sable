@@ -133,6 +133,14 @@ impl DatabaseConnection for JsonDatabase
         self.state.read().accounts.get(&id).ok_or(DatabaseError::NoSuchId).cloned()
     }
 
+    fn account_named(&self, name: &Nickname) -> Result<state::Account>
+    {
+        self.state.read().accounts.values()
+                                  .find(|a| &a.name == name)
+                                  .ok_or(DatabaseError::NoSuchId)
+                                  .cloned()
+    }
+
     fn update_account(&self, new_data: &state::Account) -> Result<()>
     {
         let ret = match self.state.write().accounts.entry(new_data.id)

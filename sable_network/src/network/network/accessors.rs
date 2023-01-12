@@ -184,10 +184,17 @@ impl Network {
     }
 
     /// Retrieve the server name of the current active services
-    pub fn current_services(&self) -> Option<ServerName>
+    pub fn current_services_name(&self) -> Option<ServerName>
     {
-        self.current_services.and_then(|id| self.servers.get(&id))
+        self.current_services.as_ref()
+                             .and_then(|state| self.servers.get(&state.server_id))
                              .map(|s| s.name.clone())
+    }
+
+    /// Retrieve the current services data
+    pub fn current_services(&self) -> Option<wrapper::ServicesData>
+    {
+        self.current_services.as_ref().wrap(self)
     }
 
     /// Retrieve the current network configuration

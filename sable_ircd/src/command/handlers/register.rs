@@ -21,7 +21,7 @@ pub async fn handle_register(network: &Network, source: CommandSource<'_>, cmd: 
 async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &dyn Command,
                     account: &str, _email: &str, password: &str) -> CommandResult
 {
-    let Some(services_name) = network.current_services() else {
+    let Some(services_name) = network.current_services_name() else {
         cmd.response(&message::Fail::new("REGISTER",
                                                 "TEMPORARILY_UNAVAILABLE",
                                                 "*",

@@ -153,5 +153,6 @@ impl<'a> Command for ServicesCommand<'a>
 mod dispatch_alias;
 pub use dispatch_alias::*;
 
+mod sasl;
 mod ns;
 mod cs;

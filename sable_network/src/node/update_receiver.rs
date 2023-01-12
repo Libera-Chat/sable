@@ -239,6 +239,11 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
 
         Ok(())
     }
+
+    fn handle_services_update(&self, _entry: &HistoryLogEntry, _detail: &update::ServicesUpdate) -> HandleResult
+    {
+        Ok(())
+    }
 }
 
 impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode<Policy>
@@ -279,6 +284,7 @@ impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode
             ServerQuit(details) => self.handle_server_quit(entry, details),
             NewAuditLogEntry(details) => self.report_audit_entry(entry, details),
             UserLoginChange(details) => self.handle_user_login(entry, details),
+            ServicesUpdate(details) => self.handle_services_update(entry, details),
         };
         if let Err(e) = res
         {
