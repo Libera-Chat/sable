@@ -130,9 +130,14 @@ impl Command for ClientCommand
         self.connection.send(m);
     }
 
-    fn connection(&self) -> client_listener::ConnectionId
+    fn connection_id(&self) -> client_listener::ConnectionId
     {
         self.connection.id()
+    }
+
+    fn connection(&self) -> &ClientConnection
+    {
+        self.connection.as_ref()
     }
 
     fn response_source(&self) -> &dyn messages::MessageSource

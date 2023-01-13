@@ -16,3 +16,4 @@ async fn handle_cs<'a>(_source: UserSource<'a>, subcommand: &'a str, args: ArgLi
 }
 
 mod login;
+mod cert;

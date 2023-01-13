@@ -68,6 +68,10 @@ pub enum RemoteServerRequestType
     CreateRole{ source: AccountId, channel: ChannelRegistrationId, name: CustomRoleName, flags: ChannelAccessSet },
     /// Modify or delete a channel role
     ModifyRole{ source: AccountId, id: ChannelRoleId, flags: Option<ChannelAccessSet> },
+    /// Add an authorised fingerprint to an account
+    AddAccountFingerprint(AccountId, String),
+    /// Remove an authorised fingerprint from an account
+    RemoveAccountFingerprint(AccountId, String),
 }
 
 /// A SASL authentication response

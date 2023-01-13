@@ -89,7 +89,7 @@ define_messages! {
 
     440(ServicesNotAvailable) => { () => ":Services are not available"},
 
-    903(SaslSuccess)        => { () => "SASL authentication successful" },
-    904(SaslFail)           => { () => "SASL authentication failed" },
-    906(SaslAborted)        => { () => "SASL authentication aborted" }
+    903(SaslSuccess)        => { () => ":SASL authentication successful" },
+    904(SaslFail)           => { () => ":SASL authentication failed" },
+    906(SaslAborted)        => { () => ":SASL authentication aborted" }
 }

@@ -52,6 +52,9 @@ impl<T> Conditional<T>
 {
     /// Return the original result of argument parsing, whether successful or not
     pub fn require(self) -> Result<T, CommandError> { self.0 }
+
+    /// Return the argument, if it was successfully parsed
+    pub fn is_present(self) -> Option<T> { self.0.ok() }
 }
 
 impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for Conditional<T>

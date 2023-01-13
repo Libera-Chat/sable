@@ -243,7 +243,7 @@ impl ListenerCollection
     /// Restore a connection belonging to this connection from its saved [`ConnectionData`]
     pub fn restore_connection(&self, data: ConnectionData) -> Connection
     {
-        Connection::new(data.id, data.conn_type, data.remote_addr, self.control_sender.clone())
+        Connection::new(data.id, data.tls_info, data.remote_addr, self.control_sender.clone())
     }
 
     /// Shut down the worker process and communication task.
@@ -292,7 +292,7 @@ async fn run_communication_task<'a>(
                         NewConnection(data) =>
                         {
                             tracing::debug!(?data, "got new connection");
-                            let new_connection = Connection::new(data.id, data.conn_type, data.remote_addr, local_control_send.clone());
+                            let new_connection = Connection::new(data.id, data.tls_info, data.remote_addr, local_control_send.clone());
                             ConnectionEvent::new(new_connection.id, new_connection)
                         },
                         ConnectionError(id, err) =>

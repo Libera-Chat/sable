@@ -223,6 +223,13 @@ impl Network {
                               .wrap(self)
     }
 
+    /// Retrieve an account with the given authorised fingerprint
+    pub fn account_with_fingerprint(&self, fp: &str) -> Option<wrapper::Account>
+    {
+        self.accounts.values().find(|a| a.authorised_fingerprints.iter().any(|f| f == fp))
+                              .wrap(self)
+    }
+
     /// Iterate over accounts
     pub fn accounts(&self) -> impl Iterator<Item=wrapper::Account>
     {

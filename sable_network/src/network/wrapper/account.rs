@@ -35,6 +35,11 @@ impl Account<'_>
         let access_id = ChannelAccessId::new(self.data.id, channel);
         self.network.channel_access(access_id).ok()
     }
+
+    pub fn fingerprints(&self) -> &Vec<String>
+    {
+        &&self.data.authorised_fingerprints
+    }
 }
 
 impl<'a> super::ObjectWrapper<'a> for Account<'a> {

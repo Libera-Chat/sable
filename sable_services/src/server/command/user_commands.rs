@@ -15,6 +15,7 @@ impl<DB: DatabaseConnection> ServicesServer<DB>
         let account_data = state::Account {
             id: new_account_id,
             name: account_name,
+            authorised_fingerprints: Vec::new(),
         };
         let auth_data = AccountAuth {
             account: new_account_id,
@@ -63,4 +64,40 @@ impl<DB: DatabaseConnection> ServicesServer<DB>
             Err(_) => Err("Couldn't verify password".into())
         }
     }
+
+    pub(crate) fn user_add_fp(&self, account_id: AccountId, fp: String) -> CommandResult
+    {
+        if self.node.network().account_with_fingerprint(&fp).is_some()
+        {
+            return Err("Duplicate fingerprint".into());
+        }
+
+        let Ok(mut account) = self.db.account(account_id) else {
+            tracing::error!(?account_id, "Error looking up account");
+            return Err("Couldn't look up account".into());
+        };
+
+        account.authorised_fingerprints.push(fp);
+
+        self.db.update_account(&account)?;
+        self.node.submit_event(account.id, event::AccountUpdate { data: Some(account) });
+
+        Ok(RemoteServerResponse::Success)
+    }
+
+    pub(crate) fn user_del_fp(&self, account_id: AccountId, fp: String) -> CommandResult
+    {
+        let Ok(mut account) = self.db.account(account_id) else {
+            tracing::error!(?account_id, "Error looking up account");
+            return Err("Couldn't look up account".into());
+        };
+
+        account.authorised_fingerprints.retain(|f| f != &fp);
+
+        self.db.update_account(&account)?;
+        self.node.submit_event(account.id, event::AccountUpdate { data: Some(account) });
+
+        Ok(RemoteServerResponse::Success)
+    }
+
 }

@@ -45,6 +45,7 @@ mod internal
     pub(crate) use connection_task::*;
     pub mod listener;
     pub(crate) use listener::*;
+    pub mod client_verifier;
 }
 
 pub use internal::InternalConnectionEvent;

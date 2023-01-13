@@ -10,6 +10,8 @@ pub struct Account
 {
     pub id: AccountId,
     pub name: Nickname,
+
+    pub authorised_fingerprints: Vec<String>,
 }
 
 #[derive(PartialEq,Debug,Clone,Serialize,Deserialize)]

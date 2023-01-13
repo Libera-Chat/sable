@@ -29,7 +29,7 @@ fn handle_session(server: &ClientServer, cmd: &dyn Command, source: CommandSourc
             if let Some(target_user) = server.network().raw_users()
                                             .find(|u| matches!(&u.session_key, Some(sk) if &sk.key_hash == key))
             {
-                server.add_action(CommandAction::AttachToUser(cmd.connection(), target_user.id));
+                server.add_action(CommandAction::AttachToUser(cmd.connection_id(), target_user.id));
             }
 
             Ok(())

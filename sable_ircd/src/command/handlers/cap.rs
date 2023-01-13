@@ -41,7 +41,7 @@ fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Comm
                 {
                     new_caps.set(cap);
                 }
-                server.add_action(CommandAction::UpdateConnectionCaps(cmd.connection(), new_caps));
+                server.add_action(CommandAction::UpdateConnectionCaps(cmd.connection_id(), new_caps));
 
                 cmd.response(&message::Cap::new(&server,
                                                 &UnknownTarget,
@@ -63,7 +63,7 @@ fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Comm
         {
             if pre_client.complete_progress(ProgressFlag::CapNegotiation)
             {
-                server.add_action(CommandAction::RegisterClient(cmd.connection()));
+                server.add_action(CommandAction::RegisterClient(cmd.connection_id()));
             }
             Ok(())
         }

@@ -96,11 +96,16 @@ impl ClientServer
         {
             Some(state) =>
             {
-                self.client_caps.enable_with_values(ClientCapability::Sasl, &state.sasl_mechanisms);
+                let mut mechanisms = state.sasl_mechanisms.clone();
+                mechanisms.push("EXTERNAL".to_string());
+                self.client_caps.enable_with_values(ClientCapability::Sasl, &mechanisms);
             }
             None =>
             {
-                self.client_caps.disable(ClientCapability::Sasl);
+                // Services has disappeared for some reason. Don't fully disable SASL, though,
+                // since we can still process external auth via certificates locally
+                let mechanisms = vec!["EXTERNAL".to_string()];
+                self.client_caps.enable_with_values(ClientCapability::Sasl, &mechanisms);
             }
         }
         Ok(())

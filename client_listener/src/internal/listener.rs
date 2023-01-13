@@ -80,31 +80,26 @@ impl Listener
         {
             select! {
                 res = listener.accept() => {
-                    let event = match res {
+                    match res {
                         Ok((stream,_)) =>
                         {
                             let id = id_gen.next();
-                            match InternalConnection::new(id, stream, connection_type.clone(), event_channel.clone())
-                            {
-                                Ok(conn) => {
-                                    if event_channel.send(InternalConnectionEventType::New(conn)).await.is_err()
-                                    {
-                                        InternalConnectionEvent::CommunicationError
-                                    }
-                                    else
-                                    {
-                                        continue;
-                                    }
-                                },
-                                Err(e) => InternalConnectionEvent::ConnectionError(id, e)
-                            }
+                            let connection_type = connection_type.clone();
+                            let event_channel = event_channel.clone();
+
+                            tokio::spawn(async move {
+                                if let Err(e) = InternalConnection::create_and_send(id, stream, connection_type, event_channel).await
+                                {
+                                    tracing::error!("Error creating connection: {}", e);
+                                }
+                            });
+                            continue
                         },
-                        Err(e) => InternalConnectionEvent::ListenerError(listener_id, e.into())
+                        Err(e) =>
+                        {
+                            tracing::error!("Error accepting connection: {}", e);
+                        }
                     };
-                    if let Err(e) = event_channel.send(InternalConnectionEventType::Event(event)).await
-                    {
-                        tracing::error!("Error sending connection event: {}", e);
-                    }
                 },
                 control = control_channel.recv() => {
                     match control {

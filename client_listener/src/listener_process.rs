@@ -72,11 +72,13 @@ impl ListenerProcess
     fn build_tls_config(&self, settings: TlsSettings) -> Result<Arc<rustls::ServerConfig>, rustls::Error>
     {
         let key = rustls::PrivateKey(settings.key);
-        let certs = settings.cert_chain.into_iter().map(rustls::Certificate).collect();
+        let certs: Vec<rustls::Certificate> = settings.cert_chain.into_iter().map(rustls::Certificate).collect();
+
+        let client_cert_verifier = internal::client_verifier::AcceptAnyClientCertVerifier::new(&certs[0]);
 
         Ok(Arc::new(rustls::ServerConfig::builder()
             .with_safe_defaults()
-            .with_no_client_auth()
+            .with_client_cert_verifier(Arc::new(client_cert_verifier))
             .with_single_cert(certs, key)?))
     }
 

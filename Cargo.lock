@@ -421,6 +421,8 @@ dependencies = [
 name = "client_listener"
 version = "0.1.0"
 dependencies = [
+ "console-subscriber",
+ "hex",
  "libc",
  "memfd",
  "nix 0.24.2",
@@ -429,11 +431,13 @@ dependencies = [
  "sable_macros",
  "serde",
  "serde_json",
+ "sha1",
  "thiserror",
  "tokio",
  "tokio-rustls",
  "tracing",
  "tracing-subscriber",
+ "x509-parser",
 ]
 
 [[package]]

@@ -11,7 +11,7 @@ fn handle_user(server: &ClientServer, source: PreClientSource, cmd: &dyn Command
 
     if source.can_register()
     {
-        server.add_action(CommandAction::RegisterClient(cmd.connection()));
+        server.add_action(CommandAction::RegisterClient(cmd.connection_id()));
     }
     Ok(())
 }

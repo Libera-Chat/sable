@@ -2,7 +2,7 @@ use client_listener::ConnectionId;
 use sable_network::prelude::*;
 use crate::{
     server::ClientServer,
-    command::CommandError, messages,
+    command::CommandError, messages, client::ClientConnection,
 };
 use std::{
     sync::Arc,
@@ -34,7 +34,10 @@ pub trait Command : Send + Sync
     fn response(&self, message: &dyn messages::MessageTypeFormat);
 
     /// Retrieve the underlying connection ID
-    fn connection(&self) -> ConnectionId;
+    fn connection_id(&self) -> ConnectionId;
+
+    /// Access the underlying connection object
+    fn connection(&self) -> &ClientConnection;
 
     /// The source from which responses to this command should be sent
     fn response_source(&self) -> &dyn messages::MessageSource;

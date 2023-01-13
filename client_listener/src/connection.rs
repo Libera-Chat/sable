@@ -9,18 +9,18 @@ use tokio::sync::mpsc::UnboundedSender;
 pub struct Connection
 {
     pub id: ConnectionId,
-    pub conn_type: ConnectionType,
+    pub tls_info: Option<TlsInfo>,
     pub remote_addr: IpAddr,
     send_channel: UnboundedSender<ControlMessage>
 }
 
 impl Connection
 {
-    pub(crate) fn new(id: ConnectionId, conn_type: ConnectionType, remote_addr: IpAddr, send_channel: UnboundedSender<ControlMessage>) -> Self
+    pub(crate) fn new(id: ConnectionId, tls_info: Option<TlsInfo>, remote_addr: IpAddr, send_channel: UnboundedSender<ControlMessage>) -> Self
     {
         Self {
             id,
-            conn_type,
+            tls_info,
             remote_addr,
             send_channel,
         }
@@ -29,10 +29,7 @@ impl Connection
     /// Is this a TLS connection?
     pub fn is_tls(&self) -> bool
     {
-        match self.conn_type {
-            ConnectionType::Clear => false,
-            ConnectionType::Tls => true
-        }
+        self.tls_info.is_some()
     }
 
     fn send_control(&self, msg: ConnectionControlDetail)
@@ -64,7 +61,7 @@ impl Connection
         ConnectionData {
             id: self.id,
             remote_addr: self.remote_addr,
-            conn_type: self.conn_type
+            tls_info: self.tls_info
         }
     }
 }

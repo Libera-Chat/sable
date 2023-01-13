@@ -192,6 +192,18 @@ impl<DB> ServerType for ServicesServer<DB>
 
                 self.abort_authenticate(session)
             }
+            AddAccountFingerprint(acc, fp) =>
+            {
+                tracing::debug!(?acc, ?fp, "Got add fingerprint");
+
+                self.user_add_fp(acc, fp)
+            }
+            RemoveAccountFingerprint(acc, fp) =>
+            {
+                tracing::debug!(?acc, ?fp, "Got remove fingerprint");
+
+                self.user_del_fp(acc, fp)
+            }
             Ping =>
             {
                 tracing::warn!(?req, "Got unsupported request");

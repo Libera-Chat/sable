@@ -5,6 +5,13 @@ use crate::Connection;
 use std::net::IpAddr;
 use serde::{Serialize,Deserialize};
 
+/// Information about a client connection's TLS status
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct TlsInfo
+{
+    pub fingerprint: Option<String>,
+}
+
 #[derive(Clone,Debug,Serialize,Deserialize)]
 pub enum ConnectionType
 {
@@ -18,7 +25,7 @@ pub struct ConnectionData
 {
     pub(crate) id: ConnectionId,
     pub(crate) remote_addr: IpAddr,
-    pub(crate) conn_type: ConnectionType,
+    pub(crate) tls_info: Option<TlsInfo>,
 }
 
 /// The certificate chain and private key required to create a TLS listener.

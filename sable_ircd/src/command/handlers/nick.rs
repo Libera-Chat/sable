@@ -23,7 +23,7 @@ fn handle_preclient(server: &ClientServer, net: &Network, cmd: &dyn Command, sou
                                     // a new one
         if source.can_register()
         {
-            server.add_action(CommandAction::RegisterClient(cmd.connection()));
+            server.add_action(CommandAction::RegisterClient(cmd.connection_id()));
         }
 
         Ok(())

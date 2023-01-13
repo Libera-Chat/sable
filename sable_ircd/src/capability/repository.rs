@@ -87,7 +87,7 @@ impl CapabilityRepository
                            .find(|e| e.name() == name)
                            .map(|e| e.cap)
     }
-
+/*
     pub fn enable(&self, cap: ClientCapability)
     {
         for entry in &self.supported_caps
@@ -112,7 +112,7 @@ impl CapabilityRepository
         }
         self.update_supported_lists();
     }
-
+*/
     pub fn enable_with_values(&self, cap: ClientCapability, values: &Vec<String>)
     {
         for entry in &self.supported_caps

@@ -1,7 +1,8 @@
 use crate::*;
 use crate::internal::*;
 
-use std::net::IpAddr;
+use std::{net::IpAddr, convert::TryInto};
+use sha1::{Sha1, Digest};
 use tokio::{
     net::{
         TcpStream,
@@ -9,8 +10,7 @@ use tokio::{
     sync::mpsc::{
         Sender,
         channel,
-    },
-    task,
+    }, io::AsyncWriteExt,
 };
 
 const SEND_QUEUE_LEN: usize = 100;
@@ -19,51 +19,74 @@ pub(crate) struct InternalConnection {
     pub id: ConnectionId,
     pub remote_addr: IpAddr,
     pub control_channel: Sender<ConnectionControlDetail>,
-    pub connection_type: InternalConnectionType,
+    pub tls_info: Option<TlsInfo>,
 }
 
 
 impl InternalConnection
 {
-    pub fn new(id: ConnectionId,
-                      stream: TcpStream,
-                      conntype: InternalConnectionType,
-                      events: Sender<InternalConnectionEventType>)
-                    -> Result<Self,ConnectionError>
+    pub async fn create_and_send(id: ConnectionId,
+                                 stream: TcpStream,
+                                 conntype: InternalConnectionType,
+                                 events: Sender<InternalConnectionEventType>)
+                            -> Result<(), ConnectionError>
     {
         let (control_send, control_recv) = channel(SEND_QUEUE_LEN);
 
         let addr = stream.peer_addr()?.ip();
         let connection_type = conntype.clone();
+        let mut tls_info = None;
 
-        task::spawn(async move {
-            match connection_type {
-                InternalConnectionType::Tls(tls_config) => {
-                    let tls_acceptor: tokio_rustls::TlsAcceptor = tls_config.into();
-                    match tls_acceptor.accept(stream).await
-                    {
-                        Ok(tls_stream) => {
-                            let conntask = ConnectionTask::new(id, tls_stream, control_recv, events.clone());
-                            conntask.run().await;
-                        }
-                        Err(err) => {
-                            let _ = events.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(id, err.into()))).await;
-                        }
+        match connection_type {
+            InternalConnectionType::Tls(tls_config) => {
+                let tls_acceptor: tokio_rustls::TlsAcceptor = tls_config.into();
+                match tls_acceptor.accept(stream).await
+                {
+                    Ok(mut tls_stream) => {
+                        // We need to flush to make sure the tls handshake has finished, before the client
+                        // info will be available
+                        tls_stream.flush().await?;
+
+                        let fingerprint = tls_stream.get_ref().1
+                                                    .peer_certificates()
+                                                    .map(|c| c.get(0))
+                                                    .flatten()
+                                                    .map(|cert| {
+                                                        let mut hasher = Sha1::new();
+                                                        hasher.update(&cert.0);
+                                                        hex::encode(hasher.finalize())
+                                                            .as_str().try_into().unwrap()
+                                                    });
+
+                        tls_info = Some(TlsInfo { fingerprint });
+
+                        let conntask = ConnectionTask::new(id, tls_stream, control_recv, events.clone());
+                        tokio::spawn(conntask.run());
+                    }
+                    Err(err) => {
+                        let _ = events.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(id, err.into()))).await;
                     }
                 }
-                InternalConnectionType::Clear => {
-                    let conntask = ConnectionTask::new(id, stream, control_recv, events.clone());
-                    conntask.run().await;
-                }
             }
-        });
+            InternalConnectionType::Clear => {
+                let conntask = ConnectionTask::new(id, stream, control_recv, events.clone());
+                tokio::spawn(conntask.run());
+            }
+        }
 
-        Ok(Self {
+        let conn = Self {
             id,
             remote_addr: addr,
             control_channel: control_send,
-            connection_type: conntype,
-        })
+            tls_info,
+        };
+
+        if let Err(_) = events.send(InternalConnectionEventType::New(conn)).await
+        {
+            tracing::error!("Error sending new connection");
+        };
+
+        Ok(())
     }
 
     pub fn data(&self) -> ConnectionData
@@ -71,7 +94,7 @@ impl InternalConnection
         ConnectionData {
             id: self.id,
             remote_addr: self.remote_addr,
-            conn_type: self.connection_type.to_pub()
+            tls_info: self.tls_info.clone(),
         }
     }
 }

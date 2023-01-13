@@ -7,7 +7,7 @@ pub struct SaslPlain;
 
 impl<DB: DatabaseConnection> SaslMechanism<DB> for SaslPlain
 {
-    fn step(&self, server: &ServicesServer<DB>, session: &SaslSession, data: Vec<u8>) -> SaslResult
+    fn step(&self, server: &ServicesServer<DB>, _session: &SaslSession, data: Vec<u8>) -> SaslResult
     {
         let elements = data.split(|e| *e == 0).collect::<Vec<_>>();
 

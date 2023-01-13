@@ -140,6 +140,12 @@ impl ClientConnection
         self.connection.remote_addr
     }
 
+    /// The TLS info for this connection, if any
+    pub fn tls_info(&self) -> Option<&TlsInfo>
+    {
+        self.connection.tls_info.as_ref()
+    }
+
     /// Close this connection with an error message
     pub fn error(&self, msg: &str)
     {
@@ -187,6 +193,7 @@ impl MessageSink for ClientConnection
     {
         if let Some(formatted) = msg.format_for_client_caps(&(&self.capabilities).into())
         {
+            tracing::trace!("Sending to {:?}: {}", self.id(), formatted);
             self.connection.send(formatted)
         }
     }

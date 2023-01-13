@@ -16,16 +16,6 @@ pub enum InternalConnectionType
     Tls(Arc<ServerConfig>)
 }
 
-impl InternalConnectionType
-{
-    pub fn to_pub(&self) -> ConnectionType {
-        match self {
-            InternalConnectionType::Clear => ConnectionType::Clear,
-            InternalConnectionType::Tls(_) => ConnectionType::Tls
-        }
-    }
-}
-
 #[derive(Debug,Serialize,Deserialize)]
 pub enum ConnectionControlDetail
 {
