@@ -77,8 +77,8 @@ pub mod wrapper {
     pub use services::*;
 }
 
+pub mod ban;
 pub mod config;
-
 pub mod event;
 
 pub mod errors;

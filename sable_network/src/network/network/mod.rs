@@ -96,8 +96,7 @@ pub struct Network
     #[serde_as(as = "Vec<(_,_)>")]
     servers: HashMap<ServerId, state::Server>,
 
-    #[serde_as(as = "Vec<(_,_)>")]
-    klines: HashMap<NetworkBanId, state::KLine>,
+    network_bans: ban::BanRepository,
 
     #[serde_as(as = "Vec<(_,_)>")]
     audit_log: HashMap<AuditLogEntryId, state::AuditLogEntry>,
@@ -146,7 +145,7 @@ impl Network {
 
             messages: HashMap::new(),
             servers: HashMap::new(),
-            klines: HashMap::new(),
+            network_bans: ban::BanRepository::new(),
 
             audit_log: HashMap::new(),
 
@@ -219,8 +218,8 @@ impl Network {
             ChannelPart => self.user_left_channel,
             ChannelInvite => self.new_channel_invite,
             NewMessage => self.new_message,
-            NewKLine => self.new_kline,
-            KLineRemoved => self.remove_kline,
+            NewNetworkBan => self.new_ban,
+            RemoveNetworkBan => self.remove_ban,
             NewServer => self.new_server,
             ServerPing => self.server_ping,
             ServerQuit => self.server_quit,

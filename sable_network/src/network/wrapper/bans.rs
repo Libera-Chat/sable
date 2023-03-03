@@ -1,29 +1,31 @@
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    network::ban::*
+};
 
-/// A wrapper around a [`state::KLine`]
-pub struct KLine<'a> {
+/// A wrapper around a [`state::NetworkBan`]
+pub struct NetworkBan<'a> {
     _network: &'a Network,
-    data: &'a state::KLine,
+    data: &'a state::NetworkBan,
 }
 
-
-impl KLine<'_> {
+impl NetworkBan<'_> {
     /// Return this object's ID
     pub fn id(&self) -> NetworkBanId
     {
         self.data.id
     }
 
-    /// The host part of the ban
-    pub fn host(&self) -> &Pattern
+    /// The ban match criteria
+    pub fn matcher(&self) -> &NetworkBanMatch
     {
-        &self.data.host
+        &self.data.matcher
     }
 
-    /// The ident part of the ban
-    pub fn user(&self) -> &Pattern
+    /// The action to be applied by the ban
+    pub fn action(&self) -> &NetworkBanAction
     {
-        &self.data.user
+        &self.data.action
     }
 
     /// Details of who set this ban
@@ -57,10 +59,10 @@ impl KLine<'_> {
     }
 }
 
-impl<'a> super::ObjectWrapper<'a> for KLine<'a> {
-    type Underlying = state::KLine;
+impl<'a> super::ObjectWrapper<'a> for NetworkBan<'a> {
+    type Underlying = state::NetworkBan;
 
-    fn wrap(net: &'a Network, data: &'a state::KLine) -> Self
+    fn wrap(net: &'a Network, data: &'a state::NetworkBan) -> Self
     {
         Self{ _network: net, data }
     }

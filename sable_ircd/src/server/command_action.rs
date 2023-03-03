@@ -4,6 +4,17 @@ use parking_lot::RwLockUpgradableReadGuard;
 
 impl ClientServer
 {
+    fn notify_access_error(&self, err: &user_access::AccessError, conn: &ClientConnection)
+    {
+        match err
+        {
+            user_access::AccessError::Banned(reason) =>
+            {
+                conn.send(&make_numeric!(YoureBanned, &reason).format_for(self, &UnknownTarget));
+            }
+        }
+    }
+
     pub(super) async fn apply_action(&self, action: CommandAction)
     {
         match action {
@@ -14,8 +25,9 @@ impl ClientServer
                 if let Ok(conn) = connections.get(id)
                 {
                     {
-                        if ! self.check_user_access(self, &*self.network(), &*conn)
+                        if let Err(e) = self.check_user_access(&*self.network(), &*conn)
                         {
+                            self.notify_access_error(&e, conn.as_ref());
                             RwLockUpgradableReadGuard::upgrade(connections).remove(id);
                             return;
                         }

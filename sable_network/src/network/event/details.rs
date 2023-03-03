@@ -107,17 +107,12 @@ EventDetails => {
     }
 
     #[target_type(NetworkBanId)]
-    struct NewKLine {
-        pub user: Pattern,
-        pub host: Pattern,
-        pub setter: UserId,
-        pub duration: i64,
-        pub user_reason: String,
-        pub oper_reason: Option<String>,
+    struct NewNetworkBan {
+        pub data: state::NetworkBan,
     }
 
     #[target_type(NetworkBanId)]
-    struct KLineRemoved {
+    struct RemoveNetworkBan {
         pub remover: UserId,
     }
 

@@ -177,10 +177,10 @@ impl Network {
         self.messages.get(&id).ok_or(NoSuchMessage(id)).wrap(self)
     }
 
-    /// Iterate over K:Lines
-    pub fn klines(&self) -> impl std::iter::Iterator<Item=wrapper::KLine>
+    /// Iterate over network bans
+    pub fn network_bans(&self) -> &ban::BanRepository
     {
-        self.klines.values().wrap(self)
+        &self.network_bans
     }
 
     /// Retrieve the server name of the current active services

@@ -1,4 +1,5 @@
 use super::*;
+use sable_network::network::ban::*;
 use event::*;
 use state::{
     AuditLogCategory,
@@ -35,15 +36,25 @@ fn handle_kline(server: &ClientServer, cmd: &dyn Command, source: UserSource,
         };
         server.add_action(CommandAction::state_change(server.ids().next_audit_log_entry(), audit));
 
-        let new_kline = details::NewKLine {
-            user: Pattern::new(user.to_string()),
-            host: Pattern::new(host.to_string()),
-            setter: source.id(),
-            duration: (duration * 60) as i64,
-            user_reason: user_reason.to_string(),
+        let matcher = match NetworkBanMatch::from_user_host(user, host) {
+            Ok(matcher) => matcher,
+            Err(_) => {
+                cmd.notice(format_args!("A network ban is already set on {}", mask));
+                return Ok(())
+            }
+        };
+
+        let new_kline = state::NetworkBan {
+            id: server.ids().next_network_ban(),
+            matcher,
+            action: NetworkBanAction::RefuseConnection(true),
+            setter_info: source.0.nuh(),
+            timestamp: sable_network::utils::now(),
+            expires: sable_network::utils::now() + (duration * 60) as i64,
+            reason: user_reason.to_string(),
             oper_reason: oper_reason.map(|s| s.to_string())
         };
-        server.add_action(CommandAction::state_change(server.ids().next_network_ban(), new_kline));
+        server.node().submit_event(new_kline.id, details::NewNetworkBan{ data: new_kline });
     }
     else
     {
