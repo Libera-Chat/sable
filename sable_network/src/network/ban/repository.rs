@@ -90,9 +90,23 @@ impl BanRepository
         Ok(())
     }
 
-    pub fn remove(&mut self, ban: NetworkBanId)
+    pub fn remove(&mut self, id: NetworkBanId)
     {
-
+        if let Some(ban) = self.all_bans.remove(&id)
+        {
+            let search_vec = match &ban.matcher.host
+            {
+                NetworkBanHostMatch::ExactIp(ip) => self.exact_ip_bans.get_mut(&ip),
+                NetworkBanHostMatch::IpRange(ip_net) => self.ip_net_bans.get_mut(&ip_net.network()),
+                NetworkBanHostMatch::ExactHostname(host) => self.exact_host_bans.get_mut(host),
+                NetworkBanHostMatch::HostnameRange(host) => self.host_range_bans.get_mut(host),
+                NetworkBanHostMatch::HostnameMask(_) => Some(&mut self.freeform_hostmask_bans),
+            };
+            if let Some(search_vec) = search_vec
+            {
+                search_vec.retain(|id| id != &ban.id)
+            }
+        }
     }
 
     pub fn find(&self, user_details: &UserDetails) -> Option<&state::NetworkBan>
