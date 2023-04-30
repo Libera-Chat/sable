@@ -1,4 +1,3 @@
-use crate::id::*;
 use crate::network::*;
 use super::*;
 
@@ -36,11 +35,11 @@ impl BanRepository
         }
     }
 
-    pub fn from_ban_set(bans: HashMap<NetworkBanId, state::NetworkBan>) -> Result<Self, DuplicateNetworkBan>
+    pub fn from_ban_set(bans: Vec<state::NetworkBan>) -> Result<Self, DuplicateNetworkBan>
     {
         let mut ret = Self::new();
 
-        for (_, ban) in bans
+        for ban in bans
         {
             ret.add(ban)?;
         }
@@ -48,7 +47,7 @@ impl BanRepository
         Ok(ret)
     }
 
-    fn add_index_for(&mut self, ban: &state::NetworkBan) -> Result<(), DuplicateNetworkBan>
+    fn add_index_for(&mut self, ban: &state::NetworkBan) -> Result<(), NetworkBanId>
     {
         let ban_vec = match &ban.matcher.host
         {
@@ -74,7 +73,7 @@ impl BanRepository
                 }
             })
         {
-            Err(DuplicateNetworkBan(*existing))
+            Err(*existing)
         }
         else
         {
@@ -85,9 +84,15 @@ impl BanRepository
 
     pub fn add(&mut self, ban: state::NetworkBan) -> Result<(), DuplicateNetworkBan>
     {
-        self.add_index_for(&ban)?;
-        self.all_bans.insert(ban.id, ban);
-        Ok(())
+        if let Err(existing_id) = self.add_index_for(&ban)
+        {
+            Err(DuplicateNetworkBan { existing_id, ban })
+        }
+        else
+        {
+            self.all_bans.insert(ban.id, ban);
+            Ok(())
+        }
     }
 
     pub fn remove(&mut self, id: NetworkBanId)
@@ -107,6 +112,11 @@ impl BanRepository
                 search_vec.retain(|id| id != &ban.id)
             }
         }
+    }
+
+    pub fn get(&self, id: &NetworkBanId) -> Option<&state::NetworkBan>
+    {
+        self.all_bans.get(id)
     }
 
     pub fn find(&self, user_details: &UserDetails) -> Option<&state::NetworkBan>
@@ -182,7 +192,7 @@ impl serde::ser::Serialize for BanRepository
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: serde::Serializer
     {
-        self.all_bans.serialize(serializer)
+        serializer.collect_seq(self.all_bans.values())
     }
 }
 
@@ -191,7 +201,7 @@ impl<'de> serde::de::Deserialize<'de> for BanRepository
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where D: serde::Deserializer<'de>
     {
-        let bans = HashMap::deserialize(deserializer)?;
+        let bans = Vec::deserialize(deserializer)?;
         Self::from_ban_set(bans).map_err(serde::de::Error::custom)
     }
 }

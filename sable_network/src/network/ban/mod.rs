@@ -59,10 +59,11 @@ pub struct InvalidBanMask;
 /// Error type denoting that a duplicate ban was provided
 #[derive(Debug,Clone,Error)]
 #[error("Duplicate network ban")]
-pub struct DuplicateNetworkBan(
+pub struct DuplicateNetworkBan{
     /// The ID of the pre-existing ban
-    pub NetworkBanId
-);
+    pub existing_id: NetworkBanId,
+    pub ban: crate::network::state::NetworkBan,
+}
 
 /// Criteria for matching a network ban.
 ///

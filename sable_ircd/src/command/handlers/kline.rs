@@ -44,8 +44,7 @@ fn handle_kline(server: &ClientServer, cmd: &dyn Command, source: UserSource,
             }
         };
 
-        let new_kline = state::NetworkBan {
-            id: server.ids().next_network_ban(),
+        let new_kline = event::NewNetworkBan {
             matcher,
             action: NetworkBanAction::RefuseConnection(true),
             setter_info: source.0.nuh(),
@@ -54,7 +53,7 @@ fn handle_kline(server: &ClientServer, cmd: &dyn Command, source: UserSource,
             reason: user_reason.to_string(),
             oper_reason: oper_reason.map(|s| s.to_string())
         };
-        server.node().submit_event(new_kline.id, details::NewNetworkBan{ data: new_kline });
+        server.node().submit_event(server.ids().next_network_ban(), new_kline);
     }
     else
     {

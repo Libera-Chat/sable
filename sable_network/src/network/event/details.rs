@@ -108,7 +108,15 @@ EventDetails => {
 
     #[target_type(NetworkBanId)]
     struct NewNetworkBan {
-        pub data: state::NetworkBan,
+        pub matcher: ban::NetworkBanMatch,
+        pub action: ban::NetworkBanAction,
+
+        pub timestamp: i64,
+        pub expires: i64,
+        pub reason: String,
+        pub oper_reason: Option<String>,
+        pub setter_info: String,
+
     }
 
     #[target_type(NetworkBanId)]

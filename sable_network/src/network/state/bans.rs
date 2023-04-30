@@ -11,6 +11,7 @@ use serde::{
 pub struct NetworkBan
 {
     pub id: NetworkBanId,
+    pub created_by: EventId,
 
     pub matcher: NetworkBanMatch,
     pub action: NetworkBanAction,
