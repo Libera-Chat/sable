@@ -59,8 +59,13 @@ Currently, Sable is split into several crates:
     * `sable_network::history` contains the `NetworkHistoryLog` type which represents the network history
       as it is visible to each user of the network
     * `sable_network::sync` contains the network synchronisation code
-    * `sable_network::server` contains the basic network server and state management
+    * `sable_network::node` contains the `NetworkNode` struct which manages synchronisation and communication
+      with the rest of the network
+  * `sable_server` contains generic code to run a network node and plug in node-specific functionality (such
+    as a client server or services node)
   * `sable_ircd` contains the IRC client server
+  * `sable_services` contains the special-purpose services node, which maintains a network-wide source of
+    truth for account and registration data.
   * `client_listener` and `auth_client` contain split-out parts of the client server which run in their
     own processes.
   * `sable_ipc` contains IPC channel types used by the split-out processes to communicate with the main
