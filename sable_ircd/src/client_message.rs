@@ -1,4 +1,5 @@
 use client_listener::ConnectionId;
+use std::collections::HashMap;
 
 /// A tokenised, but not yet processed, message from a client connection
 #[derive(Debug)]
@@ -9,7 +10,9 @@ pub struct ClientMessage
     /// The command
     pub command: String,
     /// The list of arguments
-    pub args: Vec<String>
+    pub args: Vec<String>,
+    /// The list of tags attached to the message
+    pub tags: HashMap<String, Option<String>>
 }
 
 impl ClientMessage
@@ -18,10 +21,33 @@ impl ClientMessage
     pub fn parse(source: ConnectionId, raw: &str) -> Option<Self>
     {
         let mut args = Vec::new();
-        let raw = raw.trim_start();
+        let mut tags = HashMap::new();
+
+        let mut raw = raw.trim_start();
         if raw.is_empty()
         {
             return None;
+        }
+
+        if raw.starts_with('@') {
+            // We've got message tags, so parse them
+            let Some(space_offset) = raw.find(' ') else {
+                // TODO: handle this better? We got a string of tags with no command
+                return None;
+            };
+
+            // Take the text between the '@' and the delimiting space and split
+            for tag_def in raw[1..space_offset].split(';') {
+                let (name, value) = match tag_def.split_once('=') {
+                    Some((n,v)) => (n.to_string(), Some(v.to_string())),
+                    None => (tag_def.to_string(), None)
+                };
+
+                tags.insert(name, value);
+            }
+
+            // Skip over the tag definitions and the delimiting space(s)
+            raw = raw[space_offset..].trim_start();
         }
 
         let offset = match raw.find(' ')
@@ -31,7 +57,8 @@ impl ClientMessage
                 return Some(Self {
                     source,
                     command: raw.to_string(),
-                    args: Vec::new()
+                    args: Vec::new(),
+                    tags
                 });
             }
         };
@@ -77,7 +104,8 @@ impl ClientMessage
         Some(Self {
             source,
             command: command.to_string(),
-            args
+            args,
+            tags,
         })
     }
 }
@@ -157,5 +185,19 @@ mod tests
 
         assert_eq!(msg.command, "command");
         assert_eq!(msg.args, &["arg1", "arg2", "arg three"]);
+    }
+
+    #[test]
+    fn tags()
+    {
+        let msg = ClientMessage::parse(get_connid(), "@tag1;tag2=val2 command arg1 arg2 :arg three").unwrap();
+
+        assert_eq!(msg.command, "command");
+        assert_eq!(msg.args, &["arg1", "arg2", "arg three"]);
+        assert_eq!(msg.tags.len(), 2);
+        println!("{:?}", msg.tags);
+        assert_eq!(msg.tags.get("tag1"), Some(&None));
+        assert_eq!(msg.tags.get("tag2"), Some(&Some("val2".to_string())));
+        assert_eq!(msg.tags.get("tag3"), None);
     }
 }
