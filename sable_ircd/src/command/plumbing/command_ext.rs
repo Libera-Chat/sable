@@ -2,13 +2,13 @@ use sable_network::prelude::*;
 
 use crate::{
     command::Command,
-    messages::{Numeric, message},
+    messages::{UntargetedNumeric, message},
 };
 
 pub trait CommandExt
 {
     fn notice(&self, text: impl ToString);
-    fn numeric(&self, numeric: impl Numeric);
+    fn numeric(&self, numeric: UntargetedNumeric);
     fn new_event(&self, target: impl Into<ObjectId>, detail: impl Into<EventDetails>);
 }
 
@@ -20,7 +20,7 @@ impl<T: Command + ?Sized> CommandExt for T
         self.response(&n);
     }
 
-    fn numeric(&self, numeric: impl Numeric)
+    fn numeric(&self, numeric: UntargetedNumeric)
     {
         self.response(&numeric.format_for(self.response_source(), &self.source()));
     }

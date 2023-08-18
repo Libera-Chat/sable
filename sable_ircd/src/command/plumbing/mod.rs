@@ -1,4 +1,5 @@
 use client_listener::ConnectionId;
+use messages::OutboundClientMessage;
 use sable_network::prelude::*;
 use crate::{
     server::ClientServer,
@@ -31,7 +32,7 @@ pub trait Command : Send + Sync
     fn notify_error(&self, err: CommandError);
 
     /// Send a message in response to this command, to the user that originated it
-    fn response(&self, message: &dyn messages::MessageTypeFormat);
+    fn response(&self, message: &OutboundClientMessage);
 
     /// Retrieve the underlying connection ID
     fn connection_id(&self) -> ConnectionId;
@@ -45,7 +46,7 @@ pub trait Command : Send + Sync
 
 impl<T: Command + ?Sized> messages::MessageSink for T
 {
-    fn send(&self, msg: &dyn messages::MessageTypeFormat)
+    fn send(&self, msg: &OutboundClientMessage)
     {
         self.response(msg)
     }

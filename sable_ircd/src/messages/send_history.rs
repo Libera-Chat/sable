@@ -1,7 +1,6 @@
 use sable_network::prelude::*;
 use sable_network::utils::*;
 use crate::messages::MessageSink;
-use crate::capability::CapableMessage;
 use crate::capability::ClientCapability;
 use crate::capability::WithSupportedTags;
 use crate::errors::HandleResult;

@@ -44,7 +44,7 @@ pub enum CommandError
 
     /// The command couldn't be processed successfully; the provided
     /// [`Numeric`](messages::Numeric) will be sent to the client to notify them
-    Numeric(Box<dyn messages::Numeric + Send + Sync>)
+    Numeric(messages::UntargetedNumeric)
 }
 
 
@@ -149,10 +149,10 @@ impl From<InvalidChannelNameError> for CommandError
     { Self::InvalidChannelName(e.0) }
 }
 
-impl<T: messages::Numeric + Send + Sync + 'static> From<T> for CommandError
+impl From<UntargetedNumeric> for CommandError
 {
-    fn from(t: T) -> Self {
-        Self::Numeric(Box::new(t))
+    fn from(n: UntargetedNumeric) -> Self {
+        Self::Numeric(n)
     }
 }
 

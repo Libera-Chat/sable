@@ -1,17 +1,16 @@
+use crate::messages::OutboundClientMessage;
+
 use super::*;
 use sable_network::history::*;
 
 pub(crate) trait WithSupportedTags
 {
-    type Tagged;
-    fn with_tags_from(self, history_entry: &HistoryLogEntry) -> Self::Tagged;
+    fn with_tags_from(self, history_entry: &HistoryLogEntry) -> Self;
 }
 
-impl<T: TaggableMessage> WithSupportedTags for T
+impl WithSupportedTags for OutboundClientMessage
 {
-    type Tagged = <Self as TaggableMessage>::Tagged;
-
-    fn with_tags_from(self, history_entry: &HistoryLogEntry) -> Self::Tagged
+    fn with_tags_from(self, history_entry: &HistoryLogEntry) -> Self
     {
         let server_time_tag = server_time::server_time_tag(history_entry.timestamp);
 

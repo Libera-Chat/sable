@@ -21,7 +21,7 @@ fn handle_user(server: &ClientServer, cmd: &dyn Command, source: UserSource,
 }
 
 fn make_who_reply(target: &wrapper::User, channel: Option<&wrapper::Channel>,
-                    membership: Option<&wrapper::Membership>, server: &wrapper::Server) -> numeric::WhoReply
+                    membership: Option<&wrapper::Membership>, server: &wrapper::Server) -> UntargetedNumeric
 {
     let chname = channel.map(|c| c.name().value() as &str).unwrap_or("*");
     let status = format!("H{}", membership.map(|m| m.permissions().to_prefixes()).unwrap_or_else(|| "".to_string()));

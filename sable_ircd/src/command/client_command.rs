@@ -142,7 +142,7 @@ impl Command for ClientCommand
         }
     }
 
-    fn response(&self, m: &dyn messages::MessageTypeFormat)
+    fn response(&self, m: &OutboundClientMessage)
     {
         self.connection.send(m);
     }
@@ -165,7 +165,7 @@ impl Command for ClientCommand
 
 impl ClientCommand
 {
-    fn translate_command_error(&self, err: CommandError) -> Option<Box<dyn Numeric>>
+    fn translate_command_error(&self, err: CommandError) -> Option<UntargetedNumeric>
     {
         match err
         {
@@ -179,27 +179,27 @@ impl ClientCommand
                 todo!()
             }
             CommandError::CommandNotFound(cmd) => {
-                Some(Box::new(make_numeric!(UnknownCommand, &cmd)))
+                Some(make_numeric!(UnknownCommand, &cmd))
             }
             CommandError::NotEnoughParameters => {
-                Some(Box::new(make_numeric!(NotEnoughParameters, &self.command)))
+                Some(make_numeric!(NotEnoughParameters, &self.command))
             }
             CommandError::LookupError(le) => {
                 match le
                 {
-                    LookupError::NoSuchNick(nick) => Some(Box::new(make_numeric!(NoSuchTarget, &nick))),
-                    LookupError::NoSuchChannelName(name) => Some(Box::new(make_numeric!(NoSuchChannel, &name))),
+                    LookupError::NoSuchNick(nick) => Some(make_numeric!(NoSuchTarget, &nick)),
+                    LookupError::NoSuchChannelName(name) => Some(make_numeric!(NoSuchChannel, &name)),
                     _ => None
                 }
             }
             CommandError::InvalidNick(name) => {
-                Some(Box::new(make_numeric!(ErroneousNickname, &name)))
+                Some(make_numeric!(ErroneousNickname, &name))
             }
             CommandError::InvalidChannelName(name) => {
-                Some(Box::new(make_numeric!(InvalidChannelName, &name)))
+                Some(make_numeric!(InvalidChannelName, &name))
             }
             CommandError::ServicesNotAvailable => {
-                Some(Box::new(make_numeric!(ServicesNotAvailable)))
+                Some(make_numeric!(ServicesNotAvailable))
             }
             CommandError::NotLoggedIn
                     | CommandError::Permission(PermissionError::User(UserPermissionError::NotLoggedIn))
@@ -228,12 +228,12 @@ impl ClientCommand
 
                         match channel_err
                         {
-                            UserNotOnChannel => Some(Box::new(make_numeric!(NotOnChannel, &channel_name))),
-                            UserNotOp => Some(Box::new(make_numeric!(ChanOpPrivsNeeded, &channel_name))),
-                            UserIsBanned => Some(Box::new(make_numeric!(BannedOnChannel, &channel_name))),
-                            CannotSendToChannel => Some(Box::new(make_numeric!(CannotSendToChannel, &channel_name))),
-                            InviteOnlyChannel => Some(Box::new(make_numeric!(InviteOnlyChannel, &channel_name))),
-                            BadChannelKey => Some(Box::new(make_numeric!(BadChannelKey, &channel_name))),
+                            UserNotOnChannel => Some(make_numeric!(NotOnChannel, &channel_name)),
+                            UserNotOp => Some(make_numeric!(ChanOpPrivsNeeded, &channel_name)),
+                            UserIsBanned => Some(make_numeric!(BannedOnChannel, &channel_name)),
+                            CannotSendToChannel => Some(make_numeric!(CannotSendToChannel, &channel_name)),
+                            InviteOnlyChannel => Some(make_numeric!(InviteOnlyChannel, &channel_name)),
+                            BadChannelKey => Some(make_numeric!(BadChannelKey, &channel_name)),
                             NotRegistered | NoAccess => None,
                         }
                     },

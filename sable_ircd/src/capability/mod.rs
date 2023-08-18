@@ -8,12 +8,6 @@ use std::sync::atomic::{AtomicU64,Ordering};
 mod repository;
 pub use repository::*;
 
-mod capability_message;
-pub use capability_message::*;
-
-pub mod message_tag;
-pub use message_tag::TaggableMessage;
-
 mod with_tags;
 pub(crate) use with_tags::WithSupportedTags;
 
@@ -94,9 +88,17 @@ impl ClientCapabilitySet
         (self.0 & caps.0) == caps.0
     }
 
+    pub fn has_any(&self, caps: ClientCapabilitySet) -> bool {
+        (self.0 & caps.0) != 0
+    }
+
     pub fn set(&mut self, cap: ClientCapability)
     {
         self.0 |= cap as u64;
+    }
+
+    pub fn set_all(&mut self, caps: ClientCapabilitySet) {
+        self.0 |= caps.0;
     }
 
     pub fn unset(&mut self, cap: ClientCapability)
@@ -124,9 +126,17 @@ impl AtomicCapabilitySet
         (self.0.load(Ordering::Relaxed) & caps.0) == caps.0
     }
 
+    pub fn has_any(&self, caps: ClientCapabilitySet) -> bool {
+        (self.0.load(Ordering::Relaxed) & caps.0) != 0
+    }
+
     pub fn set(&self, cap: ClientCapability)
     {
         self.0.fetch_or(cap as u64, Ordering::Relaxed);
+    }
+
+    pub fn set_all(&self, caps: ClientCapabilitySet) {
+        self.0.fetch_or(caps.0, Ordering::Relaxed);
     }
 
     pub fn unset(&mut self, cap: ClientCapability)

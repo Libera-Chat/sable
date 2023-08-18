@@ -230,81 +230,45 @@ fn generate_message_list(input: MessageDefnList) -> TokenStream
             (None, None)
         };
 
-        out.extend(quote!(
-            #[derive(Debug,Clone)]
-            pub struct #typename(String);
-            #( pub type #aliases = #typename; )*
+        let impl_type = if message.is_numeric { quote!(UntargetedNumeric) } else { quote!(OutboundClientMessage) };
+        let numeric_arg = if message.is_numeric { Some(quote!( #name.to_string(), )) } else { None };
 
-            impl #typename
-            {
-                pub fn new(#source_arg #target_arg #( #message_args: #message_argtypes ),* ) -> Self
+        out.extend(quote!(
+            pub struct #typename;
+            #(pub type #aliases = #typename; )*
+
+            impl #typename {
+                pub fn new(#source_arg #target_arg #( #message_args: #message_argtypes ),* ) -> #impl_type
                 {
-                    Self(format!(concat!(#format_str, "\r\n"),
-                                 #source_def
-                                 #target_def
-                                 #( #format_args = #format_values),*
-                            ))
+                    #impl_type::new(#numeric_arg
+                                    format!(
+                                        #format_str,
+                                        #source_def
+                                        #target_def
+                                        #( #format_args = #format_values),*
+                                    ))
                 }
             }
         ));
 
-        if message.is_numeric
-        {
+        if message.is_numeric {
             out.extend(quote!(
-                impl Numeric for #typename
-                {
-                    fn format_for(&self,
-                                  source: &dyn MessageSource,
-                                  target: &dyn MessageTarget
-                                )
-                            -> TargetedNumeric
+                impl #typename {
+                    pub fn new_for(source: &(impl MessageSource + ?Sized),
+                                   target: &(impl MessageTarget + ?Sized),
+                                   #( #message_args: #message_argtypes ),* ) -> OutboundClientMessage
                     {
-                        TargetedNumeric(format!(":{source} {numeric} {target} {body}",
-                                                                            source=source.format(),
-                                                                            numeric=#name,
-                                                                            target=target.format(),
-                                                                            body=self.0
-                                                                        ))
-                    }
-
-                    fn message(&self) -> &str
-                    {
-                        &self.0
+                        #impl_type::new(#numeric_arg
+                                        format!(
+                                            #format_str,
+                                            #source_def
+                                            #target_def
+                                            #( #format_args = #format_values),*
+                                        ))
+                            .format_for(source, target)
                     }
                 }
-
-                impl #typename
-                {
-                    pub fn new_for(source: &dyn MessageSource,
-                               target: &dyn MessageTarget,
-                               #( #message_args: #message_argtypes ),*
-                            ) -> TargetedNumeric
-                    {
-                        TargetedNumeric(
-                                     format!(concat!(":{source} {numeric} {target} ", #format_str, "\r\n"),
-                                     source=source.format(),
-                                     numeric=#name,
-                                     target=target.format(),
-                                     #( #format_args = #format_values),*
-                                ))
-                    }
-                    }
-            ));
-        }
-        else
-        {
-            out.extend(quote!(
-                impl std::fmt::Display for #typename
-                {
-                    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result
-                    {
-                        self.0.fmt(f)
-                    }
-                }
-
-                impl MessageType for #typename
-                { }
-            ));
+            ))
         }
     }
 

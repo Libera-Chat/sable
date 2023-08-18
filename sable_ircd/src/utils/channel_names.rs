@@ -40,8 +40,10 @@ pub fn send_channel_names(server: &ClientServer, to: &(impl MessageSink + ?Sized
 
     for line in lines
     {
-        to.send(&numeric::NamesReply::new_for(server, to_user, pub_or_secret, channel, &line));
+        to.send(&numeric::NamesReply::new(pub_or_secret, channel, &line)
+                        .format_for(server, to_user));
     }
-    to.send(&numeric::EndOfNames::new_for(server, to_user, channel));
+    to.send(&numeric::EndOfNames::new(channel)
+                        .format_for(server, to_user));
     Ok(())
 }

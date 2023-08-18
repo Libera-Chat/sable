@@ -29,7 +29,7 @@ impl<'a> Command for ServicesCommand<'a>
     fn source(&self) -> CommandSource<'_> { self.outer.source() }
     fn server(&self) -> &Arc<ClientServer> { self.outer.server() }
     fn network(&self) -> &Arc<Network> { self.outer.network() }
-    fn response(&self, message: &dyn messages::MessageTypeFormat) { self.outer.response(message) }
+    fn response(&self, message: &OutboundClientMessage) { self.outer.response(message) }
     fn connection_id(&self) -> client_listener::ConnectionId { self.outer.connection_id() }
     fn connection(&self) -> &ClientConnection { self.outer.connection() }
 
@@ -145,7 +145,7 @@ impl<'a> Command for ServicesCommand<'a>
             }
             CommandError::Numeric(n) => {
                 tracing::warn!("Translating unknown error numeric from services response: {:?}", n);
-                self.notice(format_args!("Unknown error: {}", n.message()));
+                self.notice(format_args!("Unknown error: {}", n.debug_format()));
             }
         }
     }
