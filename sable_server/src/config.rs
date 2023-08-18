@@ -56,8 +56,7 @@ pub enum LogLevel
 pub struct LogEntry
 {
     pub target: LogTarget,
-//    #[serde(default)]
-//    pub categories: Vec<LogCategory>,
+    pub category: Option<String>,
     #[serde(default)]
     pub modules: Vec<String>,
     pub level: Option<LogLevel>,

@@ -85,8 +85,8 @@ two servers on 127.0.1.2 and 127.0.1.3, both using 6667 and 6697 for client conn
 linking. To run them:
 
 ```
-$ ./target/debug/ircd -n configs/network.conf -s configs/server1.conf --bootstrap-network configs/network_config.json
-$ ./target/debug/ircd -n configs/network.conf -s configs/server2.conf
+$ ./target/debug/sable_ircd -n configs/network.conf -s configs/server1.conf --bootstrap-network configs/network_config.json
+$ ./target/debug/sable_ircd -n configs/network.conf -s configs/server2.conf
 ```
 
 There are two types of network configuration. At present, the list of nodes and their network addresses

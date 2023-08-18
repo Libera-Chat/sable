@@ -50,6 +50,12 @@ fn build_target<S>(conf: LogEntry, dir: impl AsRef<Path>) -> Result<Box<dyn Laye
                     } else {
                         true
                     }
+            ) && (
+                if let Some(category) = &conf.category {
+                    category == metadata.target()
+                } else {
+                    true
+                }
             )
     });
 

@@ -10,6 +10,23 @@ pub enum CommandSource<'a>
     User(wrapper::User<'a>),
 }
 
+impl<'a> CommandSource<'a>
+{
+    pub fn user(&self) -> Option<&wrapper::User<'a>> {
+        match self {
+            Self::PreClient(_) => None,
+            Self::User(u) => Some(&u)
+        }
+    }
+
+    pub fn pre_client(&self) -> Option<&PreClient> {
+        match self {
+            Self::PreClient(pc) => Some(pc.as_ref()),
+            Self::User(_) => None
+        }
+    }
+}
+
 /// Internal representation of a `CommandSource`
 enum InternalCommandSource
 {

@@ -150,8 +150,7 @@ EventDetails => {
 
     #[target_type(AuditLogEntryId)]
     struct NewAuditLogEntry {
-        pub category: state::AuditLogCategory,
-        pub fields: Vec<(state::AuditLogField, String)>
+        pub entry: state::AuditLogEntry,
     }
 
     #[target_type(UserId)]

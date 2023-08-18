@@ -14,18 +14,6 @@ pub enum AuditLogCategory
     ServerKill,
 }
 
-/// A data field for an audit log entry
-#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
-pub enum AuditLogField
-{
-    Source,
-    ActionType,
-    TargetUser,
-    NetworkBanMask,
-    NetworkBanDuration,
-    Reason,
-}
-
 /// An audit log entry
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct AuditLogEntry
@@ -33,5 +21,12 @@ pub struct AuditLogEntry
     pub id: AuditLogEntryId,
     pub timestamp: i64,
     pub category: AuditLogCategory,
-    pub fields: Vec<(AuditLogField, String)>
+    pub source_id: Option<UserId>,
+    pub source_addr: Option<std::net::IpAddr>,
+    pub source_str: String,
+    pub action: String,
+    pub target_id: Option<UserId>,
+    pub target_str: Option<String>,
+    pub target_duration: Option<i64>,
+    pub reason: Option<String>
 }

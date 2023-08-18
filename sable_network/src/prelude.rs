@@ -20,4 +20,5 @@ pub use crate::{
     sync::*,
     types::*,
     history::*,
+    audit::*,
 };

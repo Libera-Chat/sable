@@ -1,3 +1,5 @@
+use sable_network::audit::AuditLogger;
+
 use super::*;
 
 use std::str::FromStr;
@@ -124,6 +126,18 @@ impl<'a> AmbientArgument<'a> for &'a Network
     fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError>
     {
         Ok(ctx.network().as_ref())
+    }
+}
+
+impl<'a> AmbientArgument<'a> for AuditLogger<'a>
+{
+    fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError> {
+        Ok(AuditLogger::new(
+            ctx.server().node(),
+            ctx.source().user().map(|u| u.id()),
+            ctx.connection().remote_addr(),
+            ctx.command().to_string()
+        ))
     }
 }
 

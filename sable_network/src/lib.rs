@@ -20,6 +20,8 @@ pub mod node;
 
 pub mod config;
 
+pub mod audit;
+
 pub mod types
 {
     mod pattern;

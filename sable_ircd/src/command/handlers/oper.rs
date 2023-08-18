@@ -1,12 +1,8 @@
 use super::*;
 use event::*;
-use state::{
-    AuditLogCategory,
-    AuditLogField
-};
 
 #[command_handler("OPER")]
-fn handle_oper(server: &ClientServer, net: &Network, source: UserSource,
+fn handle_oper(server: &ClientServer, net: &Network, source: UserSource, audit: AuditLogger,
                oper_name: &str, password: &str) -> CommandResult
 {
     server.policy().user_can_oper(&source)?;
@@ -15,14 +11,7 @@ fn handle_oper(server: &ClientServer, net: &Network, source: UserSource,
     {
         if server.policy().authenticate(conf, oper_name, password)
         {
-            let audit = details::NewAuditLogEntry {
-                category: AuditLogCategory::General,
-                fields: vec![
-                    (AuditLogField::Source, source.nuh()),
-                    (AuditLogField::ActionType, "OPER".to_string()),
-                ]
-            };
-            server.add_action(CommandAction::state_change(server.ids().next_audit_log_entry(), audit));
+            audit.general().log();
 
             server.add_action(CommandAction::state_change(source.id(), details::OperUp {
                 oper_name: oper_name.to_owned()
