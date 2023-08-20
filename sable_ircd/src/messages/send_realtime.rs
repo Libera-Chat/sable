@@ -47,9 +47,9 @@ impl SendRealtimeItem for update::ChannelJoin
 
         if let Some(topic) = channel.topic()
         {
-            conn.send(&numeric::TopicIs::new(&channel, topic.text())
+            conn.send(numeric::TopicIs::new(&channel, topic.text())
                           .format_for(server, &self.user));
-            conn.send(&numeric::TopicSetBy::new(&channel, topic.setter(), topic.timestamp())
+            conn.send(numeric::TopicSetBy::new(&channel, topic.setter(), topic.timestamp())
                           .format_for(server, &self.user));
         }
 

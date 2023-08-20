@@ -10,7 +10,7 @@ impl ClientServer
         {
             user_access::AccessError::Banned(reason) =>
             {
-                conn.send(&make_numeric!(YoureBanned, &reason).format_for(self, &UnknownTarget));
+                conn.send(make_numeric!(YoureBanned, &reason).format_for(self, &UnknownTarget));
             }
         }
     }

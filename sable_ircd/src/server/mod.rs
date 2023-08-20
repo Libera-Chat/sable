@@ -156,7 +156,7 @@ impl ClientServer
                 tracing::trace!("Got new connection");
                 let conn = ClientConnection::new(conn);
 
-                conn.send(&message::Notice::new(self, &UnknownTarget,
+                conn.send(message::Notice::new(self, &UnknownTarget,
                             "*** Looking up your hostname"));
                 self.auth_client.start_dns_lookup(conn.id(), conn.remote_addr());
                 self.connections.write().add(msg.source, conn);
@@ -326,12 +326,12 @@ impl ClientServer
                                                                                 );
                                 if let Some(pc) = conn.pre_client() {
                                     if let Some(hostname) = msg.hostname {
-                                        conn.send(&message::Notice::new(&self, &UnknownTarget,
+                                        conn.send(message::Notice::new(&self, &UnknownTarget,
                                                         &format!("*** Found your hostname: {}", hostname)));
 
                                         pc.hostname.set(hostname).ok();
                                     } else {
-                                        conn.send(&message::Notice::new(&self, &UnknownTarget,
+                                        conn.send(message::Notice::new(&self, &UnknownTarget,
                                                         "*** Couldn't look up your hostname"));
                                         let no_hostname = Hostname::convert(conn.remote_addr());
                                         match no_hostname {

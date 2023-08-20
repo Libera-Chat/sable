@@ -58,7 +58,7 @@ async fn handle_authenticate(source: PreClientSource, net: &Network, cmd: &dyn C
                     } else {
                         BASE64_STANDARD.encode(data)
                     };
-                    cmd.response(&message::Authenticate::new(&client_data));
+                    cmd.response(message::Authenticate::new(&client_data));
                 }
                 Success(account) =>
                 {

@@ -49,6 +49,8 @@ pub struct ClientCommand
     pub command: String,
     /// Arguments supplied
     pub args: Vec<String>,
+    /// Tags provided by the client
+    pub tags: InboundTagSet,
 }
 
 // Safety: this isn't automatically Send/Sync because of the raw pointer inside `InternalCommandSource`.
@@ -74,6 +76,7 @@ impl ClientCommand
             source,
             command: message.command,
             args: message.args,
+            tags: message.tags,
         })
     }
 
@@ -138,11 +141,11 @@ impl Command for ClientCommand
     {
         if let Some(n) = self.translate_command_error(err)
         {
-            let _ = self.response(&n.format_for(self.server(), &self.source()));
+            let _ = self.response(n.format_for(self.server(), &self.source()));
         }
     }
 
-    fn response(&self, m: &OutboundClientMessage)
+    fn response(&self, m: OutboundClientMessage)
     {
         self.connection.send(m);
     }

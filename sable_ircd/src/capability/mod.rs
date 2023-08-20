@@ -11,6 +11,9 @@ pub use repository::*;
 mod with_tags;
 pub(crate) use with_tags::WithSupportedTags;
 
+mod capability_condition;
+pub use capability_condition::*;
+
 pub mod server_time;
 
 macro_rules! define_capabilities {
@@ -61,6 +64,8 @@ define_capabilities! (
         ServerTime:             0x02 => ("server-time", true),
         EchoMessage:            0x04 => ("echo-message", true),
         Sasl:                   0x08 => ("sasl", false),
+        Batch:                  0x10 => ("batch", true),
+        LabeledResponse:        0x20 => ("labeled-response", true),
 
         ChatHistory:            0x101 => ("draft/chathistory", true),
         PersistentSession:      0x102 => ("sable/persistent-session", true),

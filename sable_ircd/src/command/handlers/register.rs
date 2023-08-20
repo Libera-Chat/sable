@@ -8,7 +8,7 @@ pub async fn handle_register(network: &Network, source: CommandSource<'_>, cmd: 
     {
         CommandSource::PreClient(_) =>
         {
-            cmd.response(&message::Fail::new("REGISTER",
+            cmd.response(message::Fail::new("REGISTER",
                                              "COMPLETE_CONNECTION_REQUIRED",
                                              "*",
                                              "Finish connecting before registering"));
@@ -22,7 +22,7 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &dy
                     account: &str, _email: &str, password: &str) -> CommandResult
 {
     let Some(services_name) = network.current_services_name() else {
-        cmd.response(&message::Fail::new("REGISTER",
+        cmd.response(message::Fail::new("REGISTER",
                                                 "TEMPORARILY_UNAVAILABLE",
                                                 "*",
                                                 "Services are temporarily unavailable"));
@@ -34,7 +34,7 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &dy
     if requested_account != source.nick()
     {
         // We don't support registering with an account other than your current nick (yet?)
-        cmd.response(&message::Fail::new("REGISTER",
+        cmd.response(message::Fail::new("REGISTER",
                                             "ACCOUNT_NAME_MUST_BE_NICK",
                                             account,
                                             "Your account name must be your current nickname"));
@@ -43,7 +43,7 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &dy
 
     if network.account_by_name(&requested_account).is_ok()
     {
-        cmd.response(&message::Fail::new("REGISTER",
+        cmd.response(message::Fail::new("REGISTER",
                                                 "ACCOUNT_EXISTS",
                                                 requested_account.value().as_str(),
                                                 "Account already exists"));
@@ -59,11 +59,11 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &dy
             cmd.server().add_action(CommandAction::state_change(source.id(), event::UserLogin {
                 account: Some(account)
             }));
-            cmd.response(&message::Register::new("SUCCESS", requested_account, "You have successfully registered"));
+            cmd.response(message::Register::new("SUCCESS", requested_account, "You have successfully registered"));
         }
         Ok(rpc::RemoteServerResponse::AlreadyExists) =>
         {
-            cmd.response(&message::Fail::new("REGISTER",
+            cmd.response(message::Fail::new("REGISTER",
                                                     "ACCOUNT_EXISTS",
                                                     account,
                                                     "Account already exists"));
@@ -71,7 +71,7 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &dy
         Ok(response) =>
         {
             tracing::error!(?response, "Unexpected response from services");
-            cmd.response(&message::Fail::new("REGISTER",
+            cmd.response(message::Fail::new("REGISTER",
                                                     "TEMPORARILY_UNAVAILABLE",
                                                     account,
                                                     "Services are temporarily unavailable"));
@@ -79,7 +79,7 @@ async fn do_register_user(network: &Network, source: wrapper::User<'_>, cmd: &dy
         Err(e) =>
         {
             tracing::error!(?e, "Error sending register request");
-            cmd.response(&message::Fail::new("REGISTER",
+            cmd.response(message::Fail::new("REGISTER",
                                                     "TEMPORARILY_UNAVAILABLE",
                                                     account,
                                                     "Services are temporarily unavailable"));

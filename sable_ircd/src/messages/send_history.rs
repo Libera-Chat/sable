@@ -59,7 +59,7 @@ impl SendHistoryItem for update::UserNickChange
         let message = message::Nick::new(&source_str, &self.new_nick)
                                     .with_tags_from(from_entry);
 
-        conn.send(&message);
+        conn.send(message);
 
         Ok(())
     }
@@ -73,7 +73,7 @@ impl SendHistoryItem for update::UserModeChange
                                     .with_tags_from(from_entry);
 
 
-        conn.send(&message);
+        conn.send(message);
 
         Ok(())
     }
@@ -86,7 +86,7 @@ impl SendHistoryItem for update::UserQuit
         let message = message::Quit::new(&self.user, &self.message)
                                     .with_tags_from(from_entry);
 
-        conn.send(&message);
+        conn.send(message);
 
         Ok(())
     }
@@ -114,7 +114,7 @@ impl SendHistoryItem for update::ChannelModeChange
         let message = message::Mode::new(&self.changed_by, &self.channel, &changes)
                                     .with_tags_from(from_entry);
 
-        conn.send(&message);
+        conn.send(message);
 
         Ok(())
     }
@@ -127,7 +127,7 @@ impl SendHistoryItem for update::ChannelTopicChange
         let message = message::Topic::new(&self.setter, &self.channel.name, &self.new_text)
                                     .with_tags_from(from_entry);
 
-        conn.send(&message);
+        conn.send(message);
 
         Ok(())
     }
@@ -140,7 +140,7 @@ impl SendHistoryItem for update::ListModeAdded
         let text = format!("+{} {}", self.list_type.mode_letter(), self.pattern);
         let message = message::Mode::new(&self.set_by, &self.channel, &text)
                                     .with_tags_from(from_entry);
-        conn.send(&message);
+        conn.send(message);
         Ok(())
     }
 }
@@ -152,7 +152,7 @@ impl SendHistoryItem for update::ListModeRemoved
         let text = format!("-{} {}", self.list_type.mode_letter(), self.pattern);
         let message = message::Mode::new(&self.removed_by, &self.channel, &text)
                                     .with_tags_from(from_entry);
-        conn.send(&message);
+        conn.send(message);
         Ok(())
     }
 }
@@ -169,7 +169,7 @@ impl SendHistoryItem for update::MembershipFlagChange
         let message = message::Mode::new(&self.changed_by, &self.channel, &changes)
                                     .with_tags_from(from_entry);
 
-        conn.send(&message);
+        conn.send(message);
 
         Ok(())
     }
@@ -182,7 +182,7 @@ impl SendHistoryItem for update::ChannelJoin
         let message = message::Join::new(&self.user, &self.channel.name)
                                     .with_tags_from(from_entry);
 
-        conn.send(&message);
+        conn.send(message);
 
         if ! self.membership.permissions.is_empty()
         {
@@ -192,7 +192,7 @@ impl SendHistoryItem for update::ChannelJoin
             changes += &args.join(" ");
 
             let msg = message::Mode::new(&self.user, &self.channel, &changes);
-            conn.send(&msg);
+            conn.send(msg);
         }
 
         Ok(())
@@ -206,7 +206,7 @@ impl SendHistoryItem for update::ChannelPart
         let message = message::Part::new(&self.user, &self.channel.name, &self.message)
                                     .with_tags_from(from_entry);
 
-        conn.send(&message);
+        conn.send(message);
 
         Ok(())
     }
@@ -219,7 +219,7 @@ impl SendHistoryItem for update::ChannelInvite
         let message = message::Invite::new(&self.source, &self.user, &self.channel.name)
                                     .with_tags_from(from_entry);
 
-        conn.send(&message);
+        conn.send(message);
 
         Ok(())
 
@@ -248,14 +248,14 @@ impl SendHistoryItem for update::NewMessage
             {
                 if conn.user_id() == Some(user.user.id)
                 {
-                    conn.send(&message.with_required_capability(ClientCapability::EchoMessage));
+                    conn.send(message.with_required_capabilities(ClientCapability::EchoMessage));
                 }
                 else
                 {
-                    conn.send(&message);
+                    conn.send(message);
                 }
             }
-            _ => conn.send(&message)
+            _ => conn.send(message)
         }
 
         Ok(())

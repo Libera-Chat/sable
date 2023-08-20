@@ -37,5 +37,7 @@ define_messages! {
 
     // Extension messages
     ChatHistoryTarget => { (target_name: &str, timestamp: &str) => "CHATHISTORY TARGETS {target_name} {timestamp}" },
-    Register => { (status: &str, account: Nickname, message: &str) => "REGISTER {status} {account} {message}" }
+    Register => { (status: &str, account: Nickname, message: &str) => "REGISTER {status} {account} {message}" },
+    BatchStart => { (name: &str, batch_type: &str, args: &str) => "BATCH +{name} {batch_type} {args}" },
+    BatchEnd => { (name: &str) => "BATCH -{name}" },
 }

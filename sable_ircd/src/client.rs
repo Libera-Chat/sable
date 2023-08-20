@@ -189,9 +189,9 @@ impl ClientConnection
 
 impl MessageSink for ClientConnection
 {
-    fn send(&self, msg: &messages::OutboundClientMessage)
+    fn send(&self, msg: messages::OutboundClientMessage)
     {
-        if let Some(formatted) = msg.format_for_client_caps(&(&self.capabilities).into())
+        if let Some(formatted) = msg.format_for_client_caps((&self.capabilities).into())
         {
             tracing::trace!("Sending to {:?}: {}", self.id(), formatted);
             self.connection.send(formatted)

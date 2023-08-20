@@ -24,12 +24,12 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
 
             if from_ts.is_none() || to_ts.is_none()
             {
-                cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                 return Ok(());
             }
             if limit.is_none()
             {
-                cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
@@ -46,7 +46,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
                 {
                     Some(ts) => Some(ts),
                     None => {
-                        cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                        cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                         return Ok(());
                     }
                 }
@@ -55,7 +55,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             let limit = arg_3.parse().ok();
             if limit.is_none()
             {
-                cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
@@ -68,7 +68,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -76,7 +76,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             let limit = arg_3.parse().ok();
             if limit.is_none()
             {
-                cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
@@ -89,7 +89,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -97,7 +97,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             let limit = arg_3.parse().ok();
             if limit.is_none()
             {
-                cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
@@ -110,7 +110,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -120,7 +120,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
                 Some(limit) => limit,
                 None =>
                 {
-                    cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                     return Ok(());
                 }
             };
@@ -135,7 +135,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -143,7 +143,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -151,7 +151,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             let limit = arg_4.and_then(|arg| arg.parse().ok());
             if limit.is_none()
             {
-                cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
@@ -159,7 +159,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
         }
         _ =>
         {
-            cmd.response(&message::Fail::new("CHATHISTORY", "INVALID_PARAMS", subcommand, "Invalid subcommand"));
+            cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", subcommand, "Invalid subcommand"));
         }
     }
 
@@ -222,9 +222,11 @@ fn list_targets(server: &ClientServer, into: &(impl MessageSink + ?Sized), sourc
         }
     }
 
+    let batch = into.batch("chathistory-targets").start();
+
     for (target, timestamp) in found_targets
     {
-        into.send(&message::ChatHistoryTarget::new(&target, &utils::format_timestamp(timestamp)))
+        batch.send(message::ChatHistoryTarget::new(&target, &utils::format_timestamp(timestamp)))
     }
 }
 
@@ -260,9 +262,13 @@ fn send_history_for_target_forward(server: &ClientServer, into: &(impl MessageSi
         }
     }
 
+    let batch = into.batch("chathistory")
+                    .with_arguments(&[ target ])
+                    .start();
+
     for entry in entries
     {
-        entry.send_to(into, entry)?;
+        entry.send_to(&batch, entry)?;
     }
 
     Ok(())
@@ -301,9 +307,13 @@ fn send_history_for_target_reverse(server: &ClientServer, into: &(impl MessageSi
         }
     }
 
+    let batch = into.batch("chathistory")
+                    .with_arguments(&[ target ])
+                    .start();
+
     for entry in entries.into_iter().rev()
     {
-        entry.send_to(into, entry)?;
+        entry.send_to(&batch, entry)?;
     }
 
     Ok(())

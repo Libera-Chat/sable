@@ -3,8 +3,7 @@ use crate::capability::*;
 
 #[derive(Debug)]
 pub struct UntargetedNumeric {
-    required_caps: ClientCapabilitySet,
-    except_caps: ClientCapabilitySet,
+    caps: CapabilityCondition,
     tags: Vec<OutboundMessageTag>,
     numeric_code: String,
     args: String,
@@ -14,8 +13,7 @@ impl UntargetedNumeric {
     /// Create a new message
     pub fn new(numeric_code: String, args: String) -> Self {
         Self {
-            required_caps: Default::default(),
-            except_caps: Default::default(),
+            caps: Default::default(),
             tags: Default::default(),
             numeric_code,
             args,
@@ -28,30 +26,23 @@ impl UntargetedNumeric {
         self
     }
 
-    /// Specify a single required client capability, without which the formatted message will not be sent
-    pub fn with_required_capability(mut self, cap: ClientCapability) -> Self {
-        self.required_caps.set(cap);
-        self
-    }
-
     /// Specify a set of required client capabilities, without which the formatted message will not be sent
-    pub fn with_required_capabilities(mut self, caps: ClientCapabilitySet) -> Self {
-        self.required_caps.set_all(caps);
+    pub fn with_required_capabilities(mut self, caps: impl Into<ClientCapabilitySet>) -> Self {
+        self.caps.require(caps);
         self
     }
 
     /// Specify a negative capability requirement - the formatted message will only be sent to
     /// clients that do not have this capability
-    pub fn except_capability(mut self, caps: ClientCapabilitySet) -> Self {
-        self.except_caps = caps;
+    pub fn except_capability(mut self, caps: impl Into<ClientCapabilitySet>) -> Self {
+        self.caps.except(caps);
         self
     }
 
     /// Provide the source and target information required to convert this to an [`OutboundClientMessage`]
     pub fn format_for(self, source: &(impl MessageSource + ?Sized), target: &(impl MessageTarget + ?Sized)) -> OutboundClientMessage {
         OutboundClientMessage {
-            required_caps: self.required_caps,
-            except_caps: self.except_caps,
+            caps: self.caps,
             tags: self.tags,
             content: format!(":{} {} {} {}", source.format(), self.numeric_code, target.format(), self.args)
         }
@@ -66,8 +57,7 @@ impl UntargetedNumeric {
 /// A server-to-client protocol message
 #[derive(Debug)]
 pub struct OutboundClientMessage {
-    required_caps: ClientCapabilitySet,
-    except_caps: ClientCapabilitySet,
+    caps: CapabilityCondition,
     tags: Vec<OutboundMessageTag>,
     content: String,
 }
@@ -76,8 +66,7 @@ impl OutboundClientMessage {
     /// Create a new message
     pub fn new(content: String) -> Self {
         Self {
-            required_caps: Default::default(),
-            except_caps: Default::default(),
+            caps: Default::default(),
             tags: Default::default(),
             content: content
         }
@@ -89,60 +78,52 @@ impl OutboundClientMessage {
         self
     }
 
-    /// Specify a single required client capability, without which the formatted message will not be sent
-    pub fn with_required_capability(mut self, cap: ClientCapability) -> Self {
-        self.required_caps.set(cap);
+    /// Add a set of message tags to the message
+    pub fn with_tags(mut self, tags: &Vec<OutboundMessageTag>) -> Self {
+        self.tags.extend_from_slice(tags);
         self
     }
 
-    /// Specify a required client capability, without which this message will not be sent
-    pub fn with_required_capabilities(mut self, caps: ClientCapabilitySet) -> Self {
-        self.required_caps = caps;
+    /// Specify a set of required client capabilities, without which the formatted message will not be sent
+    pub fn with_required_capabilities(mut self, caps: impl Into<ClientCapabilitySet>) -> Self {
+        self.caps.require(caps);
         self
     }
 
-    /// Specify a negative capability requirement - this message will only be sent to
+    /// Specify a negative capability requirement - the formatted message will only be sent to
     /// clients that do not have this capability
-    pub fn except_capability(mut self, caps: ClientCapabilitySet) -> Self {
-        self.except_caps = caps;
+    pub fn except_capability(mut self, caps: impl Into<ClientCapabilitySet>) -> Self {
+        self.caps.except(caps);
         self
     }
+
 
     /// Format this message to be sent to a client with the given capabilities
     ///
     /// Returns `None` if the client should not receive the message at all, otherwise
     /// `Some(_)` with the appropriate set of outbound message tags prepended
-    pub fn format_for_client_caps(&self, caps: &ClientCapabilitySet) -> Option<String> {
-        // If the target connection doesn't support all the message's required caps,
-        // don't send it
-        if ! caps.has_all(self.required_caps) {
-            return None;
-        }
-
-        // If the target does have any of our except capabilities, don't send it
-        if caps.has_any(self.except_caps) {
+    pub fn format_for_client_caps(&self, client_caps: ClientCapabilitySet) -> Option<String> {
+        // Check capability requirements
+        if ! self.caps.matches(client_caps) {
             return None;
         }
 
         let mut result = String::new();
 
-        // If the target connection doesn't support message tags, don't send them
-        if caps.has(ClientCapability::MessageTags) {
-            let mut supported_tags = self.tags.iter().filter(|t| caps.has(t.required_cap));
+        let mut supported_tags = self.tags.iter().filter(|t| t.caps.matches(client_caps));
 
-            if let Some(first_tag) = supported_tags.next()
+        if let Some(first_tag) = supported_tags.next()
+        {
+            result.push('@');
+            result.push_str(&first_tag.format());
+
+            for tag in supported_tags
             {
-                result.push('@');
-                result.push_str(&first_tag.format());
-
-                for tag in supported_tags
-                {
-                    result.push(';');
-                    result.push_str(&tag.format());
-                }
-
-                result.push(' ');
+                result.push(';');
+                result.push_str(&tag.format());
             }
+
+            result.push(' ');
         }
 
         result.push_str(&self.content);
@@ -158,14 +139,20 @@ pub struct OutboundMessageTag
 {
     name: String,
     value: Option<String>,
-    required_cap: ClientCapability,
+    caps: CapabilityCondition,
 }
 
 impl OutboundMessageTag
 {
-    pub fn new(name: &str, value: Option<String>, required_cap: ClientCapability) -> Self
+    /// Construct an outbound message tag, to be attached to a protocol message.
+    ///
+    /// Unlike in other areas, `caps` is not optional; an outbound message tag
+    /// always needs a capability attached to it because legacy clients can't understand
+    /// them and there's no single capability that can be relied on to signal a client
+    /// that does.
+    pub fn new(name: &str, value: Option<String>, caps: impl Into<ClientCapabilitySet>) -> Self
     {
-        Self { name: name.to_string(), value , required_cap }
+        Self { name: name.to_string(), value, caps: CapabilityCondition::requires(caps.into()) }
     }
 
     fn format(&self) -> String
@@ -179,6 +166,7 @@ impl OutboundMessageTag
     }
 }
 
+pub mod batch;
 pub mod message;
 pub mod numeric;
 pub mod send_history;

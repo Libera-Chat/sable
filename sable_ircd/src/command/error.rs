@@ -43,7 +43,7 @@ pub enum CommandError
     Permission(policy::PermissionError),
 
     /// The command couldn't be processed successfully; the provided
-    /// [`Numeric`](messages::Numeric) will be sent to the client to notify them
+    /// numeric(messages::UntargetedNumeric) will be sent to the client to notify them
     Numeric(messages::UntargetedNumeric)
 }
 

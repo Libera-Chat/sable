@@ -1,5 +1,20 @@
 use client_listener::ConnectionId;
-use std::collections::HashMap;
+
+/// A message tag attached to an inbound (client->server) message
+#[derive(Debug)]
+pub struct InboundMessageTag {
+    pub name: String,
+    pub value: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct InboundTagSet(pub Vec<InboundMessageTag>);
+
+impl InboundTagSet {
+    pub fn has(&self, name: &str) -> Option<&InboundMessageTag> {
+        self.0.iter().find(|t| t.name == name)
+    }
+}
 
 /// A tokenised, but not yet processed, message from a client connection
 #[derive(Debug)]
@@ -12,7 +27,7 @@ pub struct ClientMessage
     /// The list of arguments
     pub args: Vec<String>,
     /// The list of tags attached to the message
-    pub tags: HashMap<String, Option<String>>
+    pub tags: InboundTagSet
 }
 
 impl ClientMessage
@@ -21,7 +36,7 @@ impl ClientMessage
     pub fn parse(source: ConnectionId, raw: &str) -> Option<Self>
     {
         let mut args = Vec::new();
-        let mut tags = HashMap::new();
+        let mut tags = Vec::new();
 
         let mut raw = raw.trim_start();
         if raw.is_empty()
@@ -43,7 +58,7 @@ impl ClientMessage
                     None => (tag_def.to_string(), None)
                 };
 
-                tags.insert(name, value);
+                tags.push(InboundMessageTag{ name, value });
             }
 
             // Skip over the tag definitions and the delimiting space(s)
@@ -58,7 +73,7 @@ impl ClientMessage
                     source,
                     command: raw.to_string(),
                     args: Vec::new(),
-                    tags
+                    tags: InboundTagSet(tags)
                 });
             }
         };
@@ -105,7 +120,7 @@ impl ClientMessage
             source,
             command: command.to_string(),
             args,
-            tags,
+            tags: InboundTagSet(tags),
         })
     }
 }
@@ -194,10 +209,11 @@ mod tests
 
         assert_eq!(msg.command, "command");
         assert_eq!(msg.args, &["arg1", "arg2", "arg three"]);
-        assert_eq!(msg.tags.len(), 2);
+        assert_eq!(msg.tags.0.len(), 2);
         println!("{:?}", msg.tags);
-        assert_eq!(msg.tags.get("tag1"), Some(&None));
-        assert_eq!(msg.tags.get("tag2"), Some(&Some("val2".to_string())));
-        assert_eq!(msg.tags.get("tag3"), None);
+        assert_eq!(&msg.tags.0[0].name, "tag1");
+        assert_eq!(msg.tags.0[0].value, None);
+        assert_eq!(&msg.tags.0[1].name, "tag2");
+        assert_eq!(msg.tags.0[1].value, Some("val2".to_string()));
     }
 }
