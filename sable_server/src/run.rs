@@ -200,7 +200,6 @@ where
     // we already are.
     if !foreground && upgrade_fd.is_none() {
         let mut daemon = daemonize::Daemonize::new()
-            .exit_action(|| println!("Running in background mode"))
             .working_directory(std::env::current_dir()?);
 
         if let Some(stdout) = &server_config.log.stdout {
@@ -219,6 +218,7 @@ where
             daemon = daemon.pid_file(server_config.log.prefix_file(pidfile));
         }
 
+        println!("Running in background mode");
         daemon.start().expect("Failed to fork to background");
     }
 

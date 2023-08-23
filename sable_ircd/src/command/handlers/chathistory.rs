@@ -54,7 +54,7 @@ fn handle_chathistory(
             );
         }
         "LATEST" => {
-            let target = arg_1.clone();
+            let target = arg_1;
             let from_ts = match arg_2 {
                 "*" => None,
                 _ => match utils::parse_timestamp(arg_2) {
@@ -123,7 +123,7 @@ fn handle_chathistory(
             )?;
         }
         "AFTER" => {
-            let target = arg_1.clone();
+            let target = arg_1;
             let start_ts = match utils::parse_timestamp(arg_2) {
                 Some(ts) => ts,
                 None => {
@@ -159,7 +159,7 @@ fn handle_chathistory(
             )?;
         }
         "AROUND" => {
-            let target = arg_1.clone();
+            let target = arg_1;
             let around_ts = match utils::parse_timestamp(arg_2) {
                 Some(ts) => ts,
                 None => {
@@ -206,7 +206,7 @@ fn handle_chathistory(
             )?;
         }
         "BETWEEN" => {
-            let target = arg_1.clone();
+            let target = arg_1;
             let start_ts = match utils::parse_timestamp(arg_2) {
                 Some(ts) => ts,
                 None => {
@@ -246,7 +246,7 @@ fn handle_chathistory(
             send_history_for_target_forward(
                 server,
                 &response,
-                source.deref(),
+                source,
                 &target,
                 Some(start_ts),
                 Some(end_ts),
