@@ -38,7 +38,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
         }
         "LATEST" =>
         {
-            let target = arg_1.clone();
+            let target = arg_1;
             let from_ts = match arg_2
             {
                 "*" => None,
@@ -84,7 +84,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
         }
         "AFTER" =>
         {
-            let target = arg_1.clone();
+            let target = arg_1;
             let start_ts = match utils::parse_timestamp(arg_2)
             {
                 Some(ts) => ts,
@@ -105,7 +105,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
         }
         "AROUND" =>
         {
-            let target = arg_1.clone();
+            let target = arg_1;
             let around_ts = match utils::parse_timestamp(arg_2)
             {
                 Some(ts) => ts,
@@ -130,7 +130,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
         }
         "BETWEEN" =>
         {
-            let target = arg_1.clone();
+            let target = arg_1;
             let start_ts = match utils::parse_timestamp(arg_2)
             {
                 Some(ts) => ts,
@@ -155,7 +155,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
                 return Ok(());
             }
 
-            send_history_for_target_forward(server, cmd, source.deref(), &target, Some(start_ts), Some(end_ts), limit)?;
+            send_history_for_target_forward(server, cmd, source, &target, Some(start_ts), Some(end_ts), limit)?;
         }
         _ =>
         {

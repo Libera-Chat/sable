@@ -30,7 +30,7 @@ sha1 = "0.10"
 chrono = "0.4"
 async-trait = "0.1.57"
 hex = "0.4"
-daemonize = "0.4"
+daemonize = "0.5"
 nix = "0.24"
 memfd = "0.4"
 parking_lot = { version = "0.12", features = [ "serde" ] }
