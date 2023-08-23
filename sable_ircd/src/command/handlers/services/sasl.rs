@@ -5,6 +5,7 @@ use base64::prelude::*;
 
 #[command_handler("AUTHENTICATE")]
 async fn handle_authenticate(source: PreClientSource, net: &Network, cmd: &dyn Command,
+                             response: CommandResponse<'_>,
                              server: &ClientServer, services: Conditional<ServicesTarget<'_>>,
                              text: &str) -> CommandResult
 {
@@ -18,7 +19,7 @@ async fn handle_authenticate(source: PreClientSource, net: &Network, cmd: &dyn C
         else
         {
             let Ok(data) = BASE64_STANDARD.decode(text) else {
-                cmd.notice("Invalid base64");
+                response.notice("Invalid base64");
                 return Ok(())
             };
 
@@ -32,7 +33,7 @@ async fn handle_authenticate(source: PreClientSource, net: &Network, cmd: &dyn C
         // Special case for EXTERNAL, which we can handle without going to services
         if text == "EXTERNAL"
         {
-            return do_sasl_external(source, net, cmd);
+            return do_sasl_external(source, cmd.connection(), net, response);
         }
 
         let mechanism = text.to_owned();
@@ -58,46 +59,44 @@ async fn handle_authenticate(source: PreClientSource, net: &Network, cmd: &dyn C
                     } else {
                         BASE64_STANDARD.encode(data)
                     };
-                    cmd.response(message::Authenticate::new(&client_data));
+                    response.send(message::Authenticate::new(&client_data));
                 }
                 Success(account) =>
                 {
                     source.sasl_account.set(account).ok();
 
-                    cmd.numeric(make_numeric!(SaslSuccess));
+                    response.numeric(make_numeric!(SaslSuccess));
                 }
                 Fail =>
                 {
-                    cmd.numeric(make_numeric!(SaslFail));
+                    response.numeric(make_numeric!(SaslFail));
                 }
                 Aborted =>
                 {
-                    cmd.numeric(make_numeric!(SaslAborted));
+                    response.numeric(make_numeric!(SaslAborted));
                 }
             }
         }
         _ =>
         {
-            cmd.numeric(make_numeric!(SaslAborted));
+            response.numeric(make_numeric!(SaslAborted));
         }
     }
     Ok(())
 }
 
-fn do_sasl_external(source: PreClientSource, net: &Network, cmd: &dyn Command) -> CommandResult
+fn do_sasl_external(source: PreClientSource, conn: &ClientConnection, net: &Network, response: CommandResponse) -> CommandResult
 {
-    let conn = cmd.connection();
-
     if let Some(fp) = conn.tls_info().and_then(|ti| ti.fingerprint.as_ref())
     {
         if let Some(account) = net.account_with_fingerprint(fp.as_str())
         {
             source.sasl_account.set(account.id()).ok();
-            cmd.numeric(make_numeric!(SaslSuccess));
+            response.numeric(make_numeric!(SaslSuccess));
             return Ok(())
         }
     }
 
-    cmd.numeric(make_numeric!(SaslFail));
+    response.numeric(make_numeric!(SaslFail));
     Ok(())
 }

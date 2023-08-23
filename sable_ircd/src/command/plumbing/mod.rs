@@ -31,8 +31,9 @@ pub trait Command : Send + Sync
     /// Notify the user of an error
     fn notify_error(&self, err: CommandError);
 
-    /// Send a message in response to this command, to the user that originated it
-    fn response(&self, message: OutboundClientMessage);
+    /// Construct a [`CommandResponse`] implementation which can receive responses
+    /// to this command
+    fn make_response_sink(&self) -> Box<dyn CommandResponseSink + '_>;
 
     /// Retrieve the underlying connection ID
     fn connection_id(&self) -> ConnectionId;
@@ -42,22 +43,6 @@ pub trait Command : Send + Sync
 
     /// The source from which responses to this command should be sent
     fn response_source(&self) -> &dyn messages::MessageSource;
-}
-
-impl<T: Command + ?Sized> messages::MessageSink for T
-{
-    fn send(&self, msg: OutboundClientMessage)
-    {
-        self.response(msg)
-    }
-
-    fn user_id(&self) -> Option<UserId> {
-        match self.source()
-        {
-            CommandSource::User(u) => Some(u.id()),
-            CommandSource::PreClient(_) => None
-        }
-    }
 }
 
 pub(crate) fn call_handler<'a, Amb, Pos>(ctx: &'a dyn Command, handler: &impl HandlerFn<'a, Amb, Pos>, args: ArgListIter<'a>) -> CommandResult
@@ -76,6 +61,9 @@ pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(ctx: &'ctx dyn Comman
 
 mod command_ext;
 pub use command_ext::*;
+
+mod command_response;
+pub use command_response::*;
 
 mod argument_list;
 pub use argument_list::*;

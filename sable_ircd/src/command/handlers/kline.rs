@@ -4,7 +4,7 @@ use sable_network::network::ban::*;
 const DEFAULT_KLINE_DURATION: u32 = 1440;
 
 #[command_handler("KLINE")]
-fn handle_kline(server: &ClientServer, cmd: &dyn Command, source: UserSource, audit: AuditLogger,
+fn handle_kline(server: &ClientServer, response: CommandResponse, source: UserSource, audit: AuditLogger,
                 duration: IfParses<u32>, mask: &str, message: &str) -> CommandResult
 {
     server.policy().require_oper(&source)?;
@@ -27,7 +27,7 @@ fn handle_kline(server: &ClientServer, cmd: &dyn Command, source: UserSource, au
         let matcher = match NetworkBanMatch::from_user_host(user, host) {
             Ok(matcher) => matcher,
             Err(_) => {
-                cmd.notice(format_args!("A network ban is already set on {}", mask));
+                response.notice(&format!("A network ban is already set on {}", mask));
                 return Ok(())
             }
         };
@@ -45,7 +45,7 @@ fn handle_kline(server: &ClientServer, cmd: &dyn Command, source: UserSource, au
     }
     else
     {
-        cmd.notice("Invalid kline mask");
+        response.notice("Invalid kline mask");
     }
 
     Ok(())

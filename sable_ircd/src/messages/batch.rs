@@ -14,10 +14,14 @@ fn random_batch_name() -> String {
 
 impl<'a, Underlying: MessageSink + ?Sized + 'a> BatchBuilder<'a, Underlying> {
     /// Construct a new builder with the given name
-    pub(super) fn with_name(batch_type: impl ToString, name: impl ToString, target: &'a Underlying) -> Self {
+    pub(super) fn with_name(batch_type: impl ToString,
+                            capability: impl Into<ClientCapabilitySet>,
+                            name: impl ToString,
+                            target: &'a Underlying) -> Self {
         Self {
             batch: MessageBatch {
                 name: name.to_string(),
+                capability: capability.into(),
                 target,
             },
             batch_type: batch_type.to_string(),
@@ -27,8 +31,10 @@ impl<'a, Underlying: MessageSink + ?Sized + 'a> BatchBuilder<'a, Underlying> {
     }
 
     /// Construct a new builder with a randomly generated name
-    pub(super) fn new(batch_type: impl ToString, target: &'a Underlying) -> Self {
-        Self::with_name(batch_type, random_batch_name(), target)
+    pub(super) fn new(batch_type: impl ToString,
+                      capability: impl Into<ClientCapabilitySet>,
+                      target: &'a Underlying) -> Self {
+        Self::with_name(batch_type, capability, random_batch_name(), target)
     }
 
     /// Add a tag to the batch
@@ -51,7 +57,7 @@ impl<'a, Underlying: MessageSink + ?Sized + 'a> BatchBuilder<'a, Underlying> {
                                                  &self.batch_type,
                                                  &self.batch_args.join(" "))
                                             .with_tags(&self.tags)
-                                            .with_required_capabilities(ClientCapability::Batch);
+                                            .with_required_capabilities(self.batch.capability);
         self.batch.target.send(start_msg);
         self.batch
     }
@@ -64,13 +70,14 @@ impl<'a, Underlying: MessageSink + ?Sized + 'a> BatchBuilder<'a, Underlying> {
 /// and wrapped before sending.
 pub struct MessageBatch<'a, Underlying: MessageSink + ?Sized + 'a> {
     name: String,
+    capability: ClientCapabilitySet,
     target: &'a Underlying,
 }
 
 impl<'a, Underlying: MessageSink + ?Sized + 'a> Drop for MessageBatch<'a, Underlying> {
     fn drop(&mut self) {
         let end_msg = message::BatchEnd::new(&self.name)
-                                        .with_required_capabilities(ClientCapability::Batch);
+                                        .with_required_capabilities(self.capability);
         self.target.send(end_msg);
     }
 }
@@ -79,7 +86,7 @@ impl<'a, Underlying: MessageSink + ?Sized + 'a> MessageSink for MessageBatch<'a,
     fn send(&self, msg: OutboundClientMessage) {
         let tag = OutboundMessageTag::new("batch",
                                           Some(self.name.clone()),
-                                          ClientCapability::Batch);
+                                          self.capability);
         let message = msg.with_tag(tag);
         self.target.send(message);
     }

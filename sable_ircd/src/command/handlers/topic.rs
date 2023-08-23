@@ -1,7 +1,7 @@
 use super::*;
 
 #[command_handler("TOPIC")]
-fn handle_topic(server: &ClientServer, net: &Network, source: UserSource, cmd: &dyn Command,
+fn handle_topic(server: &ClientServer, net: &Network, source: UserSource, response: CommandResponse,
                 channel: wrapper::Channel, new_topic: Option<&str>) -> CommandResult
 {
     if let Some(text) = new_topic
@@ -17,12 +17,12 @@ fn handle_topic(server: &ClientServer, net: &Network, source: UserSource, cmd: &
     }
     else if let Ok(topic) = net.topic_for_channel(channel.id())
     {
-        cmd.numeric(make_numeric!(TopicIs, &channel, topic.text()));
-        cmd.numeric(make_numeric!(TopicSetBy, &channel, topic.setter(), topic.timestamp()));
+        response.numeric(make_numeric!(TopicIs, &channel, topic.text()));
+        response.numeric(make_numeric!(TopicSetBy, &channel, topic.setter(), topic.timestamp()));
     }
     else
     {
-        cmd.numeric(make_numeric!(NoTopic, &channel));
+        response.numeric(make_numeric!(NoTopic, &channel));
     }
 
     Ok(())

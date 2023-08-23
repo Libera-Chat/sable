@@ -2,7 +2,7 @@ use super::*;
 //use crate::capability::*;
 
 #[command_handler("SESSION")]
-fn handle_session(server: &ClientServer, cmd: &dyn Command, source: CommandSource,
+fn handle_session(server: &ClientServer, cmd: &dyn Command, response: CommandResponse, source: CommandSource,
                   subcommand: &str, key: Conditional<&str>) -> CommandResult
 {
     match (source, subcommand.to_ascii_uppercase().as_str())
@@ -12,7 +12,7 @@ fn handle_session(server: &ClientServer, cmd: &dyn Command, source: CommandSourc
             let key_input = format!("{:?}{}", user.id(), rand::random::<u64>());
             let key_hash = sha256::digest(key_input);
 
-            cmd.notice(format_args!("Your session resumption token is {}", key_hash));
+            response.notice(&format!("Your session resumption token is {}", key_hash));
 
             server.add_action(CommandAction::state_change(user.id(),
                 event::details::EnablePersistentSession {

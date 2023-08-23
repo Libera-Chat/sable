@@ -1,8 +1,8 @@
 use super::*;
 
 #[command_handler("PING")]
-fn handle_ping(server: &ClientServer, cmd: &dyn Command, cookie: &str) -> CommandResult
+fn handle_ping(server: &ClientServer, response: CommandResponse, cookie: &str) -> CommandResult
 {
-    cmd.response(message::Pong::new(server, cookie));
+    response.send(message::Pong::new(server, cookie));
     Ok(())
 }

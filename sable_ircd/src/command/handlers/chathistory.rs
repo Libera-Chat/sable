@@ -1,5 +1,5 @@
 use super::*;
-use crate::utils;
+use crate::{utils, capability::ClientCapability};
 use messages::send_history::SendHistoryItem;
 use sable_network::network::update::HistoricMessageTarget;
 
@@ -9,7 +9,7 @@ use std::cmp::{
 };
 
 #[command_handler("CHATHISTORY")]
-fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Command,
+fn handle_chathistory(source: UserSource, server: &ClientServer, response: CommandResponse,
                       subcommand: &str, arg_1: &str, arg_2: &str, arg_3: &str, arg_4: Option<&str>) -> CommandResult
 {
     let source = source.deref();
@@ -24,17 +24,17 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
 
             if from_ts.is_none() || to_ts.is_none()
             {
-                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                 return Ok(());
             }
             if limit.is_none()
             {
-                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
             // The spec allows the from and to timestamps in either order; list_targets requires from < to
-            list_targets(server, cmd, source, min(from_ts, to_ts), max(from_ts, to_ts), limit);
+            list_targets(server, &response, source, min(from_ts, to_ts), max(from_ts, to_ts), limit);
         }
         "LATEST" =>
         {
@@ -46,7 +46,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
                 {
                     Some(ts) => Some(ts),
                     None => {
-                        cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                        response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                         return Ok(());
                     }
                 }
@@ -55,11 +55,11 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             let limit = arg_3.parse().ok();
             if limit.is_none()
             {
-                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
-            send_history_for_target_reverse(server, cmd, source, &target, from_ts, None, limit)?;
+            send_history_for_target_reverse(server, &response, source, &target, from_ts, None, limit)?;
         }
         "BEFORE" =>
         {
@@ -68,7 +68,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -76,11 +76,11 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             let limit = arg_3.parse().ok();
             if limit.is_none()
             {
-                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
-            send_history_for_target_reverse(server, cmd, source, &target, None, Some(end_ts), limit)?;
+            send_history_for_target_reverse(server, &response, source, &target, None, Some(end_ts), limit)?;
         }
         "AFTER" =>
         {
@@ -89,7 +89,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -97,11 +97,11 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             let limit = arg_3.parse().ok();
             if limit.is_none()
             {
-                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
-            send_history_for_target_forward(server, cmd, source, &target, Some(start_ts), None, limit)?;
+            send_history_for_target_forward(server, &response, source, &target, Some(start_ts), None, limit)?;
         }
         "AROUND" =>
         {
@@ -110,7 +110,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -120,13 +120,13 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
                 Some(limit) => limit,
                 None =>
                 {
-                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                    response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                     return Ok(());
                 }
             };
 
-            send_history_for_target_reverse(server, cmd, source, &target, Some(around_ts), None, Some(limit/2))?;
-            send_history_for_target_forward(server, cmd, source, &target, Some(around_ts), None, Some(limit/2))?;
+            send_history_for_target_reverse(server, &response, source, &target, Some(around_ts), None, Some(limit/2))?;
+            send_history_for_target_forward(server, &response, source, &target, Some(around_ts), None, Some(limit/2))?;
         }
         "BETWEEN" =>
         {
@@ -135,7 +135,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -143,7 +143,7 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             {
                 Some(ts) => ts,
                 None => {
-                    cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
+                    response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid timestamp"));
                     return Ok(());
                 }
             };
@@ -151,15 +151,15 @@ fn handle_chathistory(source: UserSource, server: &ClientServer, cmd: &dyn Comma
             let limit = arg_4.and_then(|arg| arg.parse().ok());
             if limit.is_none()
             {
-                cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
+                response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", "", "Invalid limit"));
                 return Ok(());
             }
 
-            send_history_for_target_forward(server, cmd, source.deref(), &target, Some(start_ts), Some(end_ts), limit)?;
+            send_history_for_target_forward(server, &response, source.deref(), &target, Some(start_ts), Some(end_ts), limit)?;
         }
         _ =>
         {
-            cmd.response(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", subcommand, "Invalid subcommand"));
+            response.send(message::Fail::new("CHATHISTORY", "INVALID_PARAMS", subcommand, "Invalid subcommand"));
         }
     }
 
@@ -222,7 +222,9 @@ fn list_targets(server: &ClientServer, into: &(impl MessageSink + ?Sized), sourc
         }
     }
 
-    let batch = into.batch("chathistory-targets").start();
+    // The appropriate cap here is Batch - chathistory is enabled because we got here,
+    // but can be used without batch support.
+    let batch = into.batch("chathistory-targets", ClientCapability::Batch).start();
 
     for (target, timestamp) in found_targets
     {
@@ -262,7 +264,7 @@ fn send_history_for_target_forward(server: &ClientServer, into: &(impl MessageSi
         }
     }
 
-    let batch = into.batch("chathistory")
+    let batch = into.batch("chathistory", ClientCapability::Batch)
                     .with_arguments(&[ target ])
                     .start();
 
@@ -307,7 +309,7 @@ fn send_history_for_target_reverse(server: &ClientServer, into: &(impl MessageSi
         }
     }
 
-    let batch = into.batch("chathistory")
+    let batch = into.batch("chathistory", ClientCapability::Batch)
                     .with_arguments(&[ target ])
                     .start();
 

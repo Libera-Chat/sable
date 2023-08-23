@@ -1,4 +1,4 @@
-use super::{*, plumbing::{Command,CommandExt}};
+use super::{*, plumbing::{Command,CommandExt, CommandResponseSink}};
 use sable_network::{network::wrapper::ObjectWrapper, policy::*};
 
 /// Describes the possible types of connection that can invoke a command handler
@@ -141,13 +141,13 @@ impl Command for ClientCommand
     {
         if let Some(n) = self.translate_command_error(err)
         {
-            let _ = self.response(n.format_for(self.server(), &self.source()));
+            let _ = self.connection.send(n.format_for(self.server(), &self.source()));
         }
     }
 
-    fn response(&self, m: OutboundClientMessage)
-    {
-        self.connection.send(m);
+    fn make_response_sink(&self) -> Box<dyn CommandResponseSink + '_> {
+        // TODO: labeled-response batch if appropriate
+        Box::new(plumbing::PlainCommandResponseSink::new(self, self.connection()))
     }
 
     fn connection_id(&self) -> client_listener::ConnectionId

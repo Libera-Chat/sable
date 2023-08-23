@@ -2,12 +2,12 @@ use super::*;
 
 
 #[command_handler("MODE")]
-fn handle_user(server: &ClientServer, source: UserSource, cmd: &dyn Command,
+fn handle_user(server: &ClientServer, source: UserSource, response: CommandResponse,
                target: TargetParameter, mode_str: Option<&str>, args: ArgList) -> CommandResult
 {
     match target
     {
-        TargetParameter::Channel(chan) => handle_channel_mode(server, &source, cmd, chan, mode_str, args),
+        TargetParameter::Channel(chan) => handle_channel_mode(server, &source, response, chan, mode_str, args),
         TargetParameter::User(user) =>
         {
             if source.id() != user.id()
@@ -25,7 +25,7 @@ fn handle_user(server: &ClientServer, source: UserSource, cmd: &dyn Command,
             let mut dir = Direction::Query;
 
             let Some(mode_str) = mode_str else {
-                cmd.numeric(make_numeric!(UserModeIs, &mode.format()));
+                response.numeric(make_numeric!(UserModeIs, &mode.format()));
                 return Ok(())
             };
 
@@ -52,7 +52,7 @@ fn handle_user(server: &ClientServer, source: UserSource, cmd: &dyn Command,
                         }
                         else if ! sent_unknown
                         {
-                            cmd.numeric(make_numeric!(UnknownMode, c));
+                            response.numeric(make_numeric!(UnknownMode, c));
                             sent_unknown = true;
                         }
                     }
@@ -69,13 +69,13 @@ fn handle_user(server: &ClientServer, source: UserSource, cmd: &dyn Command,
     }
 }
 
-fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, cmd: &dyn Command,
+fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, response: CommandResponse,
         chan: wrapper::Channel, mode_str: Option<&str>, mut args: ArgList) -> CommandResult
 {
     let mode = chan.mode();
 
     let Some(mode_str) = mode_str else {
-        cmd.numeric(make_numeric!(ChannelModeIs, &chan, &mode));
+        response.numeric(make_numeric!(ChannelModeIs, &chan, &mode));
         return Ok(())
     };
 
@@ -139,7 +139,7 @@ fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, cmd: &dyn 
                     if dir == Direction::Query || args.is_empty()
                     {
                         server.policy().can_query_list(source, &chan, list_type)?;
-                        send_channel_banlike_list(cmd, &chan, &list)?;
+                        send_channel_banlike_list(&response, &chan, &list)?;
                     }
                     else
                     {
@@ -191,7 +191,7 @@ fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, cmd: &dyn 
                 }
                 else if ! sent_unknown
                 {
-                    cmd.numeric(make_numeric!(UnknownMode, c));
+                    response.numeric(make_numeric!(UnknownMode, c));
                     sent_unknown = true;
                 }
             }
@@ -211,36 +211,36 @@ fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, cmd: &dyn 
     Ok(())
 }
 
-fn send_channel_banlike_list(cmd: &dyn Command, chan: &wrapper::Channel, list: &wrapper::ListMode) -> CommandResult
+fn send_channel_banlike_list(to: &CommandResponse, chan: &wrapper::Channel, list: &wrapper::ListMode) -> CommandResult
 {
     for entry in list.entries()
     {
-        send_banlike_list_entry(cmd, chan, list.list_type(), &entry)?;
+        send_banlike_list_entry(to, chan, list.list_type(), &entry)?;
     }
 
-    send_banlike_end_numeric(cmd, chan, list.list_type())?;
+    send_banlike_end_numeric(to, chan, list.list_type())?;
 
     Ok(())
 }
 
-fn send_banlike_list_entry(cmd: &dyn Command, chan: &wrapper::Channel, list_type: ListModeType, entry: &wrapper::ListModeEntry) -> CommandResult
+fn send_banlike_list_entry(to: &CommandResponse, chan: &wrapper::Channel, list_type: ListModeType, entry: &wrapper::ListModeEntry) -> CommandResult
 {
     match list_type {
-        ListModeType::Ban => cmd.numeric(make_numeric!(BanList, chan, entry)),
-        ListModeType::Quiet => cmd.numeric(make_numeric!(QuietList, chan, entry)),
-        ListModeType::Except => cmd.numeric(make_numeric!(ExceptList, chan, entry)),
-        ListModeType::Invex => cmd.numeric(make_numeric!(InviteList, chan, entry)),
+        ListModeType::Ban => to.numeric(make_numeric!(BanList, chan, entry)),
+        ListModeType::Quiet => to.numeric(make_numeric!(QuietList, chan, entry)),
+        ListModeType::Except => to.numeric(make_numeric!(ExceptList, chan, entry)),
+        ListModeType::Invex => to.numeric(make_numeric!(InviteList, chan, entry)),
     }
     Ok(())
 }
 
-fn send_banlike_end_numeric(cmd: &dyn Command, chan: &wrapper::Channel, list_type: ListModeType) -> CommandResult
+fn send_banlike_end_numeric(to: &CommandResponse, chan: &wrapper::Channel, list_type: ListModeType) -> CommandResult
 {
     match list_type {
-        ListModeType::Ban => cmd.numeric(make_numeric!(EndOfBanList, chan)),
-        ListModeType::Quiet => cmd.numeric(make_numeric!(EndOfQuietList, chan)),
-        ListModeType::Except => cmd.numeric(make_numeric!(EndOfExceptList, chan)),
-        ListModeType::Invex => cmd.numeric(make_numeric!(EndOfInviteList, chan)),
+        ListModeType::Ban => to.numeric(make_numeric!(EndOfBanList, chan)),
+        ListModeType::Quiet => to.numeric(make_numeric!(EndOfQuietList, chan)),
+        ListModeType::Except => to.numeric(make_numeric!(EndOfExceptList, chan)),
+        ListModeType::Invex => to.numeric(make_numeric!(EndOfInviteList, chan)),
     }
     Ok(())
 }

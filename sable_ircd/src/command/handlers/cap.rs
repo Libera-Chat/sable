@@ -3,6 +3,7 @@ use crate::capability::*;
 
 #[command_handler("CAP")]
 fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Command,
+              response: CommandResponse,
               subcommand: &str, cap_list: Option<&str>) -> CommandResult
 {
     match subcommand.to_ascii_uppercase().as_str()
@@ -13,14 +14,14 @@ fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Comm
 
             if matches!(cap_list, Some("302"))
             {
-                cmd.response(message::Cap::new(&server,
+                response.send(message::Cap::new(&server,
                                                 &UnknownTarget,
                                                 "LS",
                                                 server.client_capabilities().supported_caps_302().as_ref()));
             }
             else
             {
-                cmd.response(message::Cap::new(&server,
+                response.send(message::Cap::new(&server,
                                                 &UnknownTarget,
                                                 "LS",
                                                 server.client_capabilities().supported_caps_301().as_ref()));
@@ -43,14 +44,14 @@ fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Comm
                 }
                 server.add_action(CommandAction::UpdateConnectionCaps(cmd.connection_id(), new_caps));
 
-                cmd.response(message::Cap::new(&server,
+                response.send(message::Cap::new(&server,
                                                 &UnknownTarget,
                                                 "ACK",
                                                 requested_arg));
             }
             else
             {
-                cmd.response(message::Cap::new(server,
+                response.send(message::Cap::new(server,
                                                 &UnknownTarget,
                                                 "NAK",
                                                 requested_arg));
