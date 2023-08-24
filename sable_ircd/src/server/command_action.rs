@@ -2,39 +2,30 @@ use super::*;
 
 use parking_lot::RwLockUpgradableReadGuard;
 
-impl ClientServer
-{
-    fn notify_access_error(&self, err: &user_access::AccessError, conn: &ClientConnection)
-    {
-        match err
-        {
-            user_access::AccessError::Banned(reason) =>
-            {
+impl ClientServer {
+    fn notify_access_error(&self, err: &user_access::AccessError, conn: &ClientConnection) {
+        match err {
+            user_access::AccessError::Banned(reason) => {
                 conn.send(make_numeric!(YoureBanned, &reason).format_for(self, &UnknownTarget));
             }
         }
     }
 
-    pub(super) async fn apply_action(&self, action: CommandAction)
-    {
+    pub(super) async fn apply_action(&self, action: CommandAction) {
         match action {
-            CommandAction::RegisterClient(id) =>
-            {
+            CommandAction::RegisterClient(id) => {
                 let mut should_add_user = None;
                 let connections = self.connections.upgradable_read();
-                if let Ok(conn) = connections.get(id)
-                {
+                if let Ok(conn) = connections.get(id) {
                     {
-                        if let Err(e) = self.check_user_access(&*self.network(), &*conn)
-                        {
+                        if let Err(e) = self.check_user_access(&*self.network(), &*conn) {
                             self.notify_access_error(&e, conn.as_ref());
                             RwLockUpgradableReadGuard::upgrade(connections).remove(id);
                             return;
                         }
                     }
 
-                    if let Some(pre_client) = conn.pre_client()
-                    {
+                    if let Some(pre_client) = conn.pre_client() {
                         // We don't delete the preclient here, because it's possible the event will fail to apply
                         // if someone else takes the nickname in between
                         let new_user_id = self.ids().next_user();
@@ -59,39 +50,32 @@ impl ClientServer
                     }
                 }
 
-                if let Some((user_id, conn_id)) = should_add_user
-                {
+                if let Some((user_id, conn_id)) = should_add_user {
                     RwLockUpgradableReadGuard::upgrade(connections).add_user(user_id, conn_id);
                 }
             }
 
-            CommandAction::AttachToUser(connection_id, user_id) =>
-            {
+            CommandAction::AttachToUser(connection_id, user_id) => {
                 // This operation will almost always require the write lock, so just get it immediately
                 let mut connections = self.connections.write();
-                if let Ok(conn) = connections.get(connection_id)
-                {
+                if let Ok(conn) = connections.get(connection_id) {
                     conn.set_user_id(user_id);
 
                     connections.add_user(user_id, connection_id);
                 }
             }
 
-            CommandAction::UpdateConnectionCaps(conn_id, new_caps) =>
-            {
-                if let Ok(connection) = self.connections.get(conn_id)
-                {
+            CommandAction::UpdateConnectionCaps(conn_id, new_caps) => {
+                if let Ok(connection) = self.connections.get(conn_id) {
                     connection.capabilities.reset(new_caps);
                 }
             }
 
-            CommandAction::DisconnectUser(user_id) =>
-            {
+            CommandAction::DisconnectUser(user_id) => {
                 self.connections.write().remove_user(user_id);
             }
 
-            CommandAction::StateChange(id, detail) =>
-            {
+            CommandAction::StateChange(id, detail) => {
                 self.node.submit_event(id, detail);
             }
         }

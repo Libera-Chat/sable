@@ -1,24 +1,18 @@
 //! Types providing audit log functionality.
 
-use std::{
-    fmt::Write,
-    net::IpAddr
-};
+use std::{fmt::Write, net::IpAddr};
 
 use crate::{
-    node::NetworkNode,
     id::*,
-    network::{
-        event::*,
-        state::*,
-    },
+    network::{event::*, state::*},
+    node::NetworkNode,
 };
 
 pub struct AuditLogger<'a> {
     node: &'a NetworkNode,
     user: Option<UserId>,
     ip: IpAddr,
-    action: String
+    action: String,
 }
 
 pub struct AuditLoggerEntry<'a> {
@@ -31,12 +25,10 @@ pub struct AuditLoggerEntry<'a> {
     pub target_id: Option<UserId>,
     pub target_str: Option<String>,
     pub target_duration: Option<i64>,
-    pub reason: Option<String>
-
+    pub reason: Option<String>,
 }
 
-fn format_source(node: &NetworkNode, id: Option<UserId>, ip: Option<IpAddr>) -> String
-{
+fn format_source(node: &NetworkNode, id: Option<UserId>, ip: Option<IpAddr>) -> String {
     let mut ret = if let Some(id) = id {
         if let Ok(source_user) = node.network().user(id) {
             let mut source = source_user.nuh();
@@ -58,16 +50,17 @@ fn format_source(node: &NetworkNode, id: Option<UserId>, ip: Option<IpAddr>) -> 
     ret
 }
 
-impl<'a> AuditLogger<'a>
-{
+impl<'a> AuditLogger<'a> {
     pub fn new(node: &'a NetworkNode, user: Option<UserId>, ip: IpAddr, action: String) -> Self {
         Self {
-            node, user, ip, action
+            node,
+            user,
+            ip,
+            action,
         }
     }
 
-    pub fn entry(&self, category: AuditLogCategory) -> AuditLoggerEntry<'a>
-    {
+    pub fn entry(&self, category: AuditLogCategory) -> AuditLoggerEntry<'a> {
         AuditLoggerEntry {
             node: self.node,
             category,
@@ -78,7 +71,7 @@ impl<'a> AuditLogger<'a>
             target_id: None,
             target_str: None,
             target_duration: None,
-            reason: None
+            reason: None,
         }
     }
 
@@ -93,7 +86,6 @@ impl<'a> AuditLogger<'a>
     pub fn kill(&self) -> AuditLoggerEntry<'a> {
         self.entry(AuditLogCategory::ServerKill)
     }
-
 }
 
 impl<'a> AuditLoggerEntry<'a> {
@@ -134,18 +126,18 @@ impl<'a> AuditLoggerEntry<'a> {
         let timestamp = crate::utils::now();
 
         tracing::info!(target: "audit",
-                       ?id,
-                       category = ?self.category,
-                       timestamp,
-                       source_id = ?self.source_id,
-                       source_addr = ?self.source_addr,
-                       source_str = self.source_str,
-                       action = self.action,
-                       target_id = ?self.target_id,
-                       target_str = self.target_str,
-                       target_duration = self.target_duration,
-                       reason = self.reason,
-                     );
+          ?id,
+          category = ?self.category,
+          timestamp,
+          source_id = ?self.source_id,
+          source_addr = ?self.source_addr,
+          source_str = self.source_str,
+          action = self.action,
+          target_id = ?self.target_id,
+          target_str = self.target_str,
+          target_duration = self.target_duration,
+          reason = self.reason,
+        );
 
         let entry = AuditLogEntry {
             id,
@@ -160,6 +152,9 @@ impl<'a> AuditLoggerEntry<'a> {
             target_duration: self.target_duration,
             reason: self.reason,
         };
-        self.node.submit_event(self.node.ids().next_audit_log_entry(), details::NewAuditLogEntry { entry });
+        self.node.submit_event(
+            self.node.ids().next_audit_log_entry(),
+            details::NewAuditLogEntry { entry },
+        );
     }
 }

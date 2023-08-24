@@ -1,19 +1,12 @@
+use crate::{client::ClientConnection, command::CommandError, messages, server::ClientServer};
 use client_listener::ConnectionId;
 use messages::OutboundClientMessage;
 use sable_network::prelude::*;
-use crate::{
-    server::ClientServer,
-    command::CommandError, messages, client::ClientConnection,
-};
-use std::{
-    sync::Arc,
-    future::Future,
-};
+use std::{future::Future, sync::Arc};
 
-use super::{CommandSource, CommandResult};
+use super::{CommandResult, CommandSource};
 
-pub trait Command : Send + Sync
-{
+pub trait Command: Send + Sync {
     /// Return a `CommandSource` describing the originating user or connection
     fn source(&self) -> CommandSource<'_>;
 
@@ -45,16 +38,21 @@ pub trait Command : Send + Sync
     fn response_source(&self) -> &dyn messages::MessageSource;
 }
 
-pub(crate) fn call_handler<'a, Amb, Pos>(ctx: &'a dyn Command, handler: &impl HandlerFn<'a, Amb, Pos>, args: ArgListIter<'a>) -> CommandResult
-{
+pub(crate) fn call_handler<'a, Amb, Pos>(
+    ctx: &'a dyn Command,
+    handler: &impl HandlerFn<'a, Amb, Pos>,
+    args: ArgListIter<'a>,
+) -> CommandResult {
     handler.call(ctx, args)
 }
 
-pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(ctx: &'ctx dyn Command,
-                                                       handler: &'handler impl AsyncHandlerFn<'ctx, Amb, Pos>,
-                                                       args: ArgListIter<'ctx>
-                                            ) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx
-    where 'handler: 'ctx
+pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(
+    ctx: &'ctx dyn Command,
+    handler: &'handler impl AsyncHandlerFn<'ctx, Amb, Pos>,
+    args: ArgListIter<'ctx>,
+) -> impl Future<Output = CommandResult> + Send + Sync + 'ctx
+where
+    'handler: 'ctx,
 {
     handler.call(ctx, args)
 }

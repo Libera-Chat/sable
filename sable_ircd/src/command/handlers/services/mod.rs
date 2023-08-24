@@ -3,60 +3,66 @@ use sable_network::policy::*;
 
 /// CommandContext wrapper which replaces the error notification code to send
 /// notices instead of numerics.
-pub struct ServicesCommand<'a>
-{
+pub struct ServicesCommand<'a> {
     outer: &'a dyn Command,
     command: &'a str,
     args: ArgListIter<'a>,
-    is_from_alias: Option<&'a wrapper::User<'a>>
+    is_from_alias: Option<&'a wrapper::User<'a>>,
 }
 
-impl<'a> ServicesCommand<'a>
-{
-    pub fn new(outer: &'a dyn Command, command: &'a str, args: ArgListIter<'a>, is_from_alias: Option<&'a wrapper::User<'a>>) -> Self
-    {
+impl<'a> ServicesCommand<'a> {
+    pub fn new(
+        outer: &'a dyn Command,
+        command: &'a str,
+        args: ArgListIter<'a>,
+        is_from_alias: Option<&'a wrapper::User<'a>>,
+    ) -> Self {
         Self {
             outer,
             command,
             args,
-            is_from_alias
+            is_from_alias,
         }
     }
 }
 
-impl<'a> Command for ServicesCommand<'a>
-{
-    fn source(&self) -> CommandSource<'_> { self.outer.source() }
-    fn server(&self) -> &Arc<ClientServer> { self.outer.server() }
-    fn network(&self) -> &Arc<Network> { self.outer.network() }
-    fn response_sink(&self) -> &dyn CommandResponse { self.outer.response_sink() }
-    fn connection_id(&self) -> client_listener::ConnectionId { self.outer.connection_id() }
-    fn connection(&self) -> &ClientConnection { self.outer.connection() }
+impl<'a> Command for ServicesCommand<'a> {
+    fn source(&self) -> CommandSource<'_> {
+        self.outer.source()
+    }
+    fn server(&self) -> &Arc<ClientServer> {
+        self.outer.server()
+    }
+    fn network(&self) -> &Arc<Network> {
+        self.outer.network()
+    }
+    fn response_sink(&self) -> &dyn CommandResponse {
+        self.outer.response_sink()
+    }
+    fn connection_id(&self) -> client_listener::ConnectionId {
+        self.outer.connection_id()
+    }
+    fn connection(&self) -> &ClientConnection {
+        self.outer.connection()
+    }
 
-    fn response_source(&self) -> &dyn messages::MessageSource
-    {
-        if let Some(alias) = self.is_from_alias
-        {
+    fn response_source(&self) -> &dyn messages::MessageSource {
+        if let Some(alias) = self.is_from_alias {
             alias
-        }
-        else
-        {
+        } else {
             self.server()
         }
     }
 
-    fn command(&self) -> &str
-    {
+    fn command(&self) -> &str {
         self.command
     }
 
-    fn args(&self) -> ArgListIter
-    {
+    fn args(&self) -> ArgListIter {
         self.args.clone()
     }
 
-    fn notify_error(&self, err: CommandError)
-    {
+    fn notify_error(&self, err: CommandError) {
         match err
         {
             CommandError::UnderlyingError(_) => {
@@ -154,6 +160,6 @@ impl<'a> Command for ServicesCommand<'a>
 mod dispatch_alias;
 pub use dispatch_alias::*;
 
-mod sasl;
-mod ns;
 mod cs;
+mod ns;
+mod sasl;

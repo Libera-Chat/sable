@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug,Default,Clone,Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct CapabilityCondition {
     must_have: ClientCapabilitySet,
     must_not_have: ClientCapabilitySet,
@@ -12,7 +12,7 @@ impl CapabilityCondition {
     pub fn requires(caps: impl Into<ClientCapabilitySet>) -> Self {
         Self {
             must_have: caps.into(),
-            must_not_have: ClientCapabilitySet::new()
+            must_not_have: ClientCapabilitySet::new(),
         }
     }
 
@@ -30,6 +30,6 @@ impl CapabilityCondition {
     ///
     /// Returns true iff all required flags, and no except flags, are present in `caps`
     pub fn matches(&self, caps: ClientCapabilitySet) -> bool {
-        caps.has_all(self.must_have) && ! caps.has_any(self.must_not_have)
+        caps.has_all(self.must_have) && !caps.has_any(self.must_not_have)
     }
 }

@@ -2,15 +2,14 @@
 
 use crate::prelude::*;
 
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 
 /// The content of a protocol message.
-#[derive(Debug,Clone,Serialize,Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 // The largest variant is NewEvent, which is also the most frequently used
 #[allow(clippy::large_enum_variant)]
-pub enum MessageDetail
-{
+pub enum MessageDetail {
     /// A new event has been created
     NewEvent(Event),
     /// Used in response to `SyncRequest` or `GetEvent` to transmit multiple
@@ -31,13 +30,12 @@ pub enum MessageDetail
     /// Message was rejected because the source server has quit
     MessageRejected,
     /// Finished processing; close the connection
-    Done
+    Done,
 }
 
 /// Details of a request/response message targeted to a particular server in the network
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct TargetedMessage
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TargetedMessage {
     /// The server from which the message originated
     pub source: String,
     /// The server to which the message is targeted
@@ -50,9 +48,8 @@ pub struct TargetedMessage
 }
 
 /// A single protocol message
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct Message
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Message {
     /// The server from which this message was received
     pub source_server: (ServerId, EpochId),
     /// The content of the message
@@ -61,21 +58,19 @@ pub struct Message
 
 /// A network protocol request
 #[derive(Debug)]
-pub struct Request
-{
+pub struct Request {
     pub received_from: String,
     pub response: Sender<Message>,
     pub message: Message,
 }
 
-impl Message
-{
-    pub fn expects_response(&self) -> bool
-    {
-        matches!(self.content,
-                    MessageDetail::SyncRequest(_) |
-                    MessageDetail::GetEvent(_) |
-                    MessageDetail::GetNetworkState
-                )
+impl Message {
+    pub fn expects_response(&self) -> bool {
+        matches!(
+            self.content,
+            MessageDetail::SyncRequest(_)
+                | MessageDetail::GetEvent(_)
+                | MessageDetail::GetNetworkState
+        )
     }
 }

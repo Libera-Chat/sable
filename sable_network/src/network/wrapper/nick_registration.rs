@@ -5,10 +5,8 @@ pub struct NickRegistration<'a> {
     data: &'a state::NickRegistration,
 }
 
-impl NickRegistration<'_>
-{
-    pub fn id(&self) -> NickRegistrationId
-    {
+impl NickRegistration<'_> {
+    pub fn id(&self) -> NickRegistrationId {
         self.data.id
     }
 }
@@ -16,11 +14,14 @@ impl NickRegistration<'_>
 impl<'a> super::ObjectWrapper<'a> for NickRegistration<'a> {
     type Underlying = state::NickRegistration;
 
-    fn wrap(net: &'a Network, data: &'a Self::Underlying) -> Self
-    {
-        Self{ _network: net, data }
+    fn wrap(net: &'a Network, data: &'a Self::Underlying) -> Self {
+        Self {
+            _network: net,
+            data,
+        }
     }
 
-    fn raw(&self) -> &'a Self::Underlying { self.data }
+    fn raw(&self) -> &'a Self::Underlying {
+        self.data
+    }
 }
-

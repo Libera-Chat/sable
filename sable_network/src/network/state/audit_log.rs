@@ -1,23 +1,18 @@
 use crate::prelude::*;
 
-use serde::{
-    Serialize,
-    Deserialize
-};
+use serde::{Deserialize, Serialize};
 
 /// An audit log category
-#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
-pub enum AuditLogCategory
-{
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum AuditLogCategory {
     General,
     NetworkBan,
     ServerKill,
 }
 
 /// An audit log entry
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct AuditLogEntry
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditLogEntry {
     pub id: AuditLogEntryId,
     pub timestamp: i64,
     pub category: AuditLogCategory,
@@ -28,5 +23,5 @@ pub struct AuditLogEntry
     pub target_id: Option<UserId>,
     pub target_str: Option<String>,
     pub target_duration: Option<i64>,
-    pub reason: Option<String>
+    pub reason: Option<String>,
 }

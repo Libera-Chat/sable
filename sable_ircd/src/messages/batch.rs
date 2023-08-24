@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU32, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use super::*;
 
@@ -18,10 +18,12 @@ fn random_batch_name() -> String {
 
 impl<'a, Underlying: MessageSink> BatchBuilder<Underlying> {
     /// Construct a new builder with the given name
-    pub(super) fn with_name(batch_type: impl ToString,
-                            capability: impl Into<ClientCapabilitySet>,
-                            name: impl ToString,
-                            target: Underlying) -> Self {
+    pub(super) fn with_name(
+        batch_type: impl ToString,
+        capability: impl Into<ClientCapabilitySet>,
+        name: impl ToString,
+        target: Underlying,
+    ) -> Self {
         Self {
             name: name.to_string(),
             capability: capability.into(),
@@ -33,9 +35,11 @@ impl<'a, Underlying: MessageSink> BatchBuilder<Underlying> {
     }
 
     /// Construct a new builder with a randomly generated name
-    pub(super) fn new(batch_type: impl ToString,
-                      capability: impl Into<ClientCapabilitySet>,
-                      target: Underlying) -> Self {
+    pub(super) fn new(
+        batch_type: impl ToString,
+        capability: impl Into<ClientCapabilitySet>,
+        target: Underlying,
+    ) -> Self {
         Self::with_name(batch_type, capability, random_batch_name(), target)
     }
 
@@ -46,8 +50,12 @@ impl<'a, Underlying: MessageSink> BatchBuilder<Underlying> {
     }
 
     /// Add arguments
-    pub fn with_arguments<'b>(mut self, args: impl IntoIterator<Item=&'b (impl ToString + 'b)>) -> Self {
-        self.batch_args.extend(args.into_iter().map(ToString::to_string));
+    pub fn with_arguments<'b>(
+        mut self,
+        args: impl IntoIterator<Item = &'b (impl ToString + 'b)>,
+    ) -> Self {
+        self.batch_args
+            .extend(args.into_iter().map(ToString::to_string));
         self
     }
 
@@ -55,29 +63,27 @@ impl<'a, Underlying: MessageSink> BatchBuilder<Underlying> {
     /// open the batch and return the `MessageBatch` object to allow sending inside
     /// it. The `BATCH -<name>` closing message will be sent when that object drops.
     pub fn start(self) -> MessageBatch<Underlying> {
-        let start_msg = message::BatchStart::new(&self.name,
-                                                 &self.batch_type,
-                                                 &self.batch_args.join(" "))
-                                            .with_tags(&self.tags)
-                                            .with_required_capabilities(self.capability);
+        let start_msg =
+            message::BatchStart::new(&self.name, &self.batch_type, &self.batch_args.join(" "))
+                .with_tags(&self.tags)
+                .with_required_capabilities(self.capability);
         self.target.send(start_msg);
         MessageBatch {
             name: self.name,
             target: self.target,
-            capability: self.capability
+            capability: self.capability,
         }
     }
 
     /// Build the batch, but don't send the start message yet. The batch start message
     /// will be sent before the first message written to the resulting [`LazyMessageBatch`].
     pub fn delay_start(self) -> LazyMessageBatch<Underlying> {
-        let start_msg = message::BatchStart::new(&self.name,
-                                                 &self.batch_type,
-                                                 &self.batch_args.join(" "))
-                                            .with_tags(&self.tags)
-                                            .with_required_capabilities(self.capability);
+        let start_msg =
+            message::BatchStart::new(&self.name, &self.batch_type, &self.batch_args.join(" "))
+                .with_tags(&self.tags)
+                .with_required_capabilities(self.capability);
 
-       LazyMessageBatch::new(self.name, self.capability, self.target, start_msg)
+        LazyMessageBatch::new(self.name, self.capability, self.target, start_msg)
     }
 }
 
@@ -94,17 +100,15 @@ pub struct MessageBatch<Underlying: MessageSink> {
 
 impl<'a, Underlying: MessageSink> Drop for MessageBatch<Underlying> {
     fn drop(&mut self) {
-        let end_msg = message::BatchEnd::new(&self.name)
-                                        .with_required_capabilities(self.capability);
+        let end_msg =
+            message::BatchEnd::new(&self.name).with_required_capabilities(self.capability);
         self.target.send(end_msg);
     }
 }
 
 impl<'a, Underlying: MessageSink> MessageSink for MessageBatch<Underlying> {
     fn send(&self, msg: OutboundClientMessage) {
-        let tag = OutboundMessageTag::new("batch",
-                                          Some(self.name.clone()),
-                                          self.capability);
+        let tag = OutboundMessageTag::new("batch", Some(self.name.clone()), self.capability);
         let message = msg.with_tag(tag);
         self.target.send(message);
     }
@@ -127,7 +131,12 @@ pub struct LazyMessageBatch<Sink: MessageSink> {
 }
 
 impl<Sink: MessageSink> LazyMessageBatch<Sink> {
-    fn new(name: String, capability: ClientCapabilitySet, target: Sink, start_msg: OutboundClientMessage) -> Self {
+    fn new(
+        name: String,
+        capability: ClientCapabilitySet,
+        target: Sink,
+        start_msg: OutboundClientMessage,
+    ) -> Self {
         Self {
             name,
             capability,
@@ -147,8 +156,8 @@ impl<'a, Underlying: MessageSink> Drop for LazyMessageBatch<Underlying> {
     fn drop(&mut self) {
         // Only send the batch end if we sent the start
         if self.is_opened() {
-            let end_msg = message::BatchEnd::new(&self.name)
-                                            .with_required_capabilities(self.capability);
+            let end_msg =
+                message::BatchEnd::new(&self.name).with_required_capabilities(self.capability);
             self.target.send(end_msg);
         }
     }
@@ -165,13 +174,11 @@ impl<Sink: MessageSink> MessageSink for LazyMessageBatch<Sink> {
         } else {
             // This isn't the first message, so we just need to wait until
             // the start message has definitely been sent before continuing
-            while ! self.sent_start.load(Ordering::Acquire) {
+            while !self.sent_start.load(Ordering::Acquire) {
                 // Nothing
             }
         }
-        let tag = OutboundMessageTag::new("batch",
-                                          Some(self.name.clone()),
-                                          self.capability);
+        let tag = OutboundMessageTag::new("batch", Some(self.name.clone()), self.capability);
         let message = msg.with_tag(tag);
         self.target.send(message);
     }

@@ -1,56 +1,30 @@
-use crate::*;
 use crate::internal::*;
+use crate::*;
 
 use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    path::Path,
-    env::current_exe,
-    convert::TryInto,
-    io,
+    collections::HashMap, convert::TryInto, env::current_exe, io, net::SocketAddr, path::Path,
 };
 
+use sable_ipc::{channel as ipc_channel, Receiver as IpcReceiver, Sender as IpcSender};
 use tokio::{
-    sync::mpsc::{
-        UnboundedSender,
-        UnboundedReceiver,
-        unbounded_channel
-    },
     select,
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
     task,
     task::JoinHandle,
 };
-use sable_ipc::{
-    Sender as IpcSender,
-    Receiver as IpcReceiver,
-    channel as ipc_channel
-};
 
-use std::os::unix::{
-    io::{
-        RawFd,
-    },
-    process::CommandExt
-};
-use std::process::{
-    Command,
-    Child
-};
+use std::os::unix::{io::RawFd, process::CommandExt};
+use std::process::{Child, Command};
 
 use nix::{
-    sys::wait::{
-        waitpid,
-        WaitPidFlag,
-        WaitStatus,
-    },
+    sys::wait::{waitpid, WaitPidFlag, WaitStatus},
     unistd::Pid,
 };
 
 /// Saved state which can be used to recreate a [`ListenerCollection`] after an
 /// `exec()` transition.
-#[derive(serde::Serialize,serde::Deserialize)]
-pub struct SavedListenerCollection
-{
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SavedListenerCollection {
     control_sender: RawFd,
     event_receiver: RawFd,
     id_gen: ListenerIdGenerator,
@@ -58,7 +32,10 @@ pub struct SavedListenerCollection
     child_pid: i32,
 }
 
-type CommResult = std::io::Result<(IpcSender<ControlMessage>, IpcReceiver<InternalConnectionEvent>)>;
+type CommResult = std::io::Result<(
+    IpcSender<ControlMessage>,
+    IpcReceiver<InternalConnectionEvent>,
+)>;
 
 /// The primary interface to the client listener worker process.
 ///
@@ -70,8 +47,7 @@ type CommResult = std::io::Result<(IpcSender<ControlMessage>, IpcReceiver<Intern
 /// Listener collections can be saved into a [`SavedListenerCollection`] and then
 /// reconstructed after an `exec()` operation or in a child process, provided that
 /// open file descriptors are inherited.
-pub struct ListenerCollection
-{
+pub struct ListenerCollection {
     listener_id_generator: ListenerIdGenerator,
     control_sender: UnboundedSender<ControlMessage>,
     comm_task: JoinHandle<CommResult>,
@@ -81,13 +57,11 @@ pub struct ListenerCollection
     child_pid: Pid,
 }
 
-impl ListenerCollection
-{
+impl ListenerCollection {
     /// Create a new `ListenerCollection` with an automatically guessed worker process
     /// executable. `new` will look for an executable named `listener_process` in the
     /// same directory as the currently running executable, then call `with_exe_path`.
-    pub fn new(event_channel: UnboundedSender<ConnectionEvent>) -> std::io::Result<Self>
-    {
+    pub fn new(event_channel: UnboundedSender<ConnectionEvent>) -> std::io::Result<Self> {
         let my_path = current_exe()?;
         let dir = my_path.parent().ok_or(io::ErrorKind::NotFound)?;
         let default_listener_path = dir.join("listener_process");
@@ -100,35 +74,42 @@ impl ListenerCollection
     /// The worker process will be spawned, along with an asynchronous task to run
     /// communications. Incoming connections, data and other events will be notified
     /// via `event_channel`.
-    pub fn with_exe_path(exec_path: impl AsRef<Path>, event_channel: UnboundedSender<ConnectionEvent>) -> std::io::Result<Self>
-    {
+    pub fn with_exe_path(
+        exec_path: impl AsRef<Path>,
+        event_channel: UnboundedSender<ConnectionEvent>,
+    ) -> std::io::Result<Self> {
         let (control_send, control_recv) = ipc_channel(crate::MAX_CONTROL_SIZE)?;
         let (event_send, event_recv) = ipc_channel(crate::MAX_MSG_SIZE)?;
         let (local_control_send, local_control_recv) = unbounded_channel();
 
-        let child = unsafe
-        {
+        let child = unsafe {
             let control_fd = control_recv.into_raw_fd()?;
             let event_fd = event_send.into_raw_fd()?;
 
             Command::new(exec_path.as_ref())
-                    .args([control_fd.to_string(), event_fd.to_string()])
-                    .pre_exec(move || {
-                        use libc::{fcntl, F_GETFD, F_SETFD, FD_CLOEXEC};
+                .args([control_fd.to_string(), event_fd.to_string()])
+                .pre_exec(move || {
+                    use libc::{fcntl, FD_CLOEXEC, F_GETFD, F_SETFD};
 
-                        let cfd_flags = fcntl(control_fd, F_GETFD);
-                        fcntl(control_fd, F_SETFD, cfd_flags & !FD_CLOEXEC);
-                        let efd_flags = fcntl(event_fd, F_GETFD);
-                        fcntl(event_fd, F_SETFD, efd_flags & !FD_CLOEXEC);
-                        Ok(())
-                    })
-                    .spawn()?
+                    let cfd_flags = fcntl(control_fd, F_GETFD);
+                    fcntl(control_fd, F_SETFD, cfd_flags & !FD_CLOEXEC);
+                    let efd_flags = fcntl(event_fd, F_GETFD);
+                    fcntl(event_fd, F_SETFD, efd_flags & !FD_CLOEXEC);
+                    Ok(())
+                })
+                .spawn()?
         };
 
         let child_pid = Pid::from_raw(child.id().try_into().unwrap());
 
-        let comm_task = task::spawn(run_communication_task(control_send, local_control_send.clone(),
-                                            local_control_recv, event_recv, event_channel, child_pid));
+        let comm_task = task::spawn(run_communication_task(
+            control_send,
+            local_control_send.clone(),
+            local_control_recv,
+            event_recv,
+            event_channel,
+            child_pid,
+        ));
 
         let ret = Self {
             listener_id_generator: ListenerIdGenerator::new(0),
@@ -136,7 +117,7 @@ impl ListenerCollection
             comm_task,
             connection_data: HashMap::new(),
             child_pid,
-            child_process: Some(child)
+            child_process: Some(child),
         };
 
         Ok(ret)
@@ -148,20 +129,20 @@ impl ListenerCollection
     /// marked as not to be closed on exec, and wrapped in the opaque `ListenerCollectionState`
     /// type for later use. This type can be serialised and transmitted to a new
     /// executable image, provided that the open file descriptors are inherited.
-    pub async fn save(self) -> std::io::Result<SavedListenerCollection>
-    {
+    pub async fn save(self) -> std::io::Result<SavedListenerCollection> {
         tracing::debug!("Saving state");
         tracing::debug!("Stopping control task...");
-        self.control_sender.send(ControlMessage::SaveForUpgrade).map_err(|_| std::io::Error::from(std::io::ErrorKind::Other))?;
+        self.control_sender
+            .send(ControlMessage::SaveForUpgrade)
+            .map_err(|_| std::io::Error::from(std::io::ErrorKind::Other))?;
         let (ctl_send, evt_recv) = self.comm_task.await??;
         tracing::debug!("control task done");
 
-        let (ctl_fd, evt_fd) = unsafe
-        {
+        let (ctl_fd, evt_fd) = unsafe {
             let control_fd = ctl_send.into_raw_fd()?;
             let event_fd = evt_recv.into_raw_fd()?;
 
-            use libc::{fcntl, F_GETFD, F_SETFD, FD_CLOEXEC};
+            use libc::{fcntl, FD_CLOEXEC, F_GETFD, F_SETFD};
 
             let cfd_flags = fcntl(control_fd, F_GETFD);
             fcntl(control_fd, F_SETFD, cfd_flags & !FD_CLOEXEC);
@@ -193,19 +174,35 @@ impl ListenerCollection
     /// method) along with any application-specific state relating to them; they can then
     /// be recreated using [`restore_connection`](Self::restore_connection) on the
     /// recreated listener collection.
-    pub fn resume(state: SavedListenerCollection, event_channel: UnboundedSender<ConnectionEvent>) -> std::io::Result<Self>
-    {
-        let (control_sender, event_receiver) = unsafe
-        {
-            (IpcSender::<ControlMessage>::from_raw_fd(state.control_sender, crate::MAX_MSG_SIZE)?,
-             IpcReceiver::<InternalConnectionEvent>::from_raw_fd(state.event_receiver, crate::MAX_MSG_SIZE)?)
+    pub fn resume(
+        state: SavedListenerCollection,
+        event_channel: UnboundedSender<ConnectionEvent>,
+    ) -> std::io::Result<Self> {
+        let (control_sender, event_receiver) = unsafe {
+            (
+                IpcSender::<ControlMessage>::from_raw_fd(
+                    state.control_sender,
+                    crate::MAX_MSG_SIZE,
+                )?,
+                IpcReceiver::<InternalConnectionEvent>::from_raw_fd(
+                    state.event_receiver,
+                    crate::MAX_MSG_SIZE,
+                )?,
+            )
         };
 
         let (local_control_send, local_control_recv) = unbounded_channel();
 
         let child_pid = Pid::from_raw(state.child_pid);
 
-        let handle = tokio::spawn(run_communication_task(control_sender, local_control_send.clone(), local_control_recv, event_receiver, event_channel, child_pid));
+        let handle = tokio::spawn(run_communication_task(
+            control_sender,
+            local_control_send.clone(),
+            local_control_recv,
+            event_receiver,
+            event_channel,
+            child_pid,
+        ));
 
         Ok(Self {
             control_sender: local_control_send,
@@ -223,8 +220,11 @@ impl ListenerCollection
     /// control message to the child process fails. If the worker process is unable
     /// to create the listener, a separate error event will later be emitted on the
     /// event channel.
-    pub fn add_listener(&self, address: SocketAddr, conn_type: ConnectionType) -> Result<ListenerId,ListenerError>
-    {
+    pub fn add_listener(
+        &self,
+        address: SocketAddr,
+        conn_type: ConnectionType,
+    ) -> Result<ListenerId, ListenerError> {
         let id = self.listener_id_generator.next();
 
         let message = ControlMessage::Listener(id, ListenerControlDetail::Add(address, conn_type));
@@ -234,25 +234,32 @@ impl ListenerCollection
 
     /// Load the provided TLS settings. This must be done before a TLS listener can be
     /// created.
-    pub fn load_tls_certificates(&self, key: Vec<u8>, cert_chain: Vec<Vec<u8>>) -> Result<(), ListenerError>
-    {
+    pub fn load_tls_certificates(
+        &self,
+        key: Vec<u8>,
+        cert_chain: Vec<Vec<u8>>,
+    ) -> Result<(), ListenerError> {
         let settings = TlsSettings { key, cert_chain };
-        Ok(self.control_sender.send(ControlMessage::LoadTlsSettings(settings))?)
+        Ok(self
+            .control_sender
+            .send(ControlMessage::LoadTlsSettings(settings))?)
     }
 
     /// Restore a connection belonging to this connection from its saved [`ConnectionData`]
-    pub fn restore_connection(&self, data: ConnectionData) -> Connection
-    {
-        Connection::new(data.id, data.tls_info, data.remote_addr, self.control_sender.clone())
+    pub fn restore_connection(&self, data: ConnectionData) -> Connection {
+        Connection::new(
+            data.id,
+            data.tls_info,
+            data.remote_addr,
+            self.control_sender.clone(),
+        )
     }
 
     /// Shut down the worker process and communication task.
-    pub async fn shutdown(self)
-    {
+    pub async fn shutdown(self) {
         let _ = self.control_sender.send(ControlMessage::Shutdown);
         let _ = self.comm_task.await;
-        if let Some(mut child) = self.child_process
-        {
+        if let Some(mut child) = self.child_process {
             let _ = child.wait();
         }
     }
@@ -260,18 +267,15 @@ impl ListenerCollection
 
 #[tracing::instrument(skip_all)]
 async fn run_communication_task<'a>(
-        control_send: IpcSender<ControlMessage>,
-        local_control_send: UnboundedSender<ControlMessage>,
-        mut local_control_recv: UnboundedReceiver<ControlMessage>,
-        event_receiver: IpcReceiver<InternalConnectionEvent>,
-        event_sender: UnboundedSender<ConnectionEvent>,
-        child_pid: Pid,
-    ) -> CommResult
-{
-    loop
-    {
-        match waitpid(child_pid, Some(WaitPidFlag::WNOHANG))
-        {
+    control_send: IpcSender<ControlMessage>,
+    local_control_send: UnboundedSender<ControlMessage>,
+    mut local_control_recv: UnboundedReceiver<ControlMessage>,
+    event_receiver: IpcReceiver<InternalConnectionEvent>,
+    event_sender: UnboundedSender<ConnectionEvent>,
+    child_pid: Pid,
+) -> CommResult {
+    loop {
+        match waitpid(child_pid, Some(WaitPidFlag::WNOHANG)) {
             Ok(WaitStatus::StillAlive) => {}
             Ok(status) => {
                 panic!("Client listener process exited with status {:?}", status);

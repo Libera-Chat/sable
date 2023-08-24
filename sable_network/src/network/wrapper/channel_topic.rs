@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use super::*;
+use crate::prelude::*;
 
 /// A wrapper around a [`state::ChannelTopic`]
 pub struct ChannelTopic<'a> {
@@ -14,26 +14,22 @@ impl ChannelTopic<'_> {
     }
 
     /// Return the `Channel` to which this mode object is attached
-    pub fn channel(&self) -> LookupResult<Channel>
-    {
+    pub fn channel(&self) -> LookupResult<Channel> {
         self.network.channel(self.data.channel)
     }
 
     /// Return the topic text
-    pub fn text(&self) -> &str
-    {
+    pub fn text(&self) -> &str {
         &self.data.text
     }
 
     /// Return the setter information
-    pub fn setter(&self) -> &str
-    {
+    pub fn setter(&self) -> &str {
         &self.data.setter_info
     }
 
     /// Timestamp when this topic was set
-    pub fn timestamp(&self) -> i64
-    {
+    pub fn timestamp(&self) -> i64 {
         self.data.timestamp
     }
 }
@@ -41,10 +37,11 @@ impl ChannelTopic<'_> {
 impl<'a> super::ObjectWrapper<'a> for ChannelTopic<'a> {
     type Underlying = state::ChannelTopic;
 
-    fn wrap(network: &'a Network, data: &'a state::ChannelTopic) -> Self
-    {
+    fn wrap(network: &'a Network, data: &'a state::ChannelTopic) -> Self {
         Self { network, data }
     }
 
-    fn raw(&self) -> &'a Self::Underlying { self.data }
+    fn raw(&self) -> &'a Self::Underlying {
+        self.data
+    }
 }

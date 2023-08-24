@@ -1,29 +1,23 @@
-use std::{path::PathBuf, collections::hash_map::Entry, ops::DerefMut};
-use serde::{Serialize,Deserialize};
-use serde_with::serde_as;
-use std::{
-    fs::File,
-    collections::HashMap,
-    ops::Deref,
-};
 use parking_lot::{RwLock, RwLockReadGuard};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+use std::{collections::hash_map::Entry, ops::DerefMut, path::PathBuf};
+use std::{collections::HashMap, fs::File, ops::Deref};
 
 use super::*;
 
 /// A simple JSON file-backed database for testing and demonstration purposes
 ///
 /// This is not intended to perform adequately under significant loads.
-pub struct JsonDatabase
-{
+pub struct JsonDatabase {
     filename: PathBuf,
 
     state: RwLock<JsonDatabaseState>,
 }
 
 #[serde_as]
-#[derive(Serialize,Deserialize,Default)]
-struct JsonDatabaseState
-{
+#[derive(Serialize, Deserialize, Default)]
+struct JsonDatabaseState {
     #[serde_as(as = "Vec<(_,_)>")]
     accounts: HashMap<AccountId, state::Account>,
 
@@ -45,16 +39,20 @@ struct JsonDatabaseState
 
 #[ouroboros::self_referencing]
 pub struct LockedHashMapValueIterator<'a, K, V>
-    where K: 'static, V: 'static
+where
+    K: 'static,
+    V: 'static,
 {
     lock: RwLockReadGuard<'a, JsonDatabaseState>,
     #[borrows(lock)]
     #[covariant]
-    iter: std::collections::hash_map::Values<'this, K, V>
+    iter: std::collections::hash_map::Values<'this, K, V>,
 }
 
 impl<'a, K, V> Iterator for LockedHashMapValueIterator<'a, K, V>
-    where K: 'static, V: 'static + Clone
+where
+    K: 'static,
+    V: 'static + Clone,
 {
     type Item = V;
 
@@ -63,10 +61,8 @@ impl<'a, K, V> Iterator for LockedHashMapValueIterator<'a, K, V>
     }
 }
 
-impl JsonDatabase
-{
-    fn save(&self) -> super::Result<()>
-    {
+impl JsonDatabase {
+    fn save(&self) -> super::Result<()> {
         let state = self.state.read();
 
         let file = File::create(&self.filename).map_err(DatabaseError::from_inner)?;
@@ -76,33 +72,24 @@ impl JsonDatabase
     }
 }
 
-impl DatabaseConnection for JsonDatabase
-{
-    fn connect(conn: impl AsRef<str>) -> Result<Self>
-    {
+impl DatabaseConnection for JsonDatabase {
+    fn connect(conn: impl AsRef<str>) -> Result<Self> {
         let filename = conn.as_ref().to_owned().into();
 
-        if let Ok(file) = File::open(&filename)
-        {
+        if let Ok(file) = File::open(&filename) {
             let state = serde_json::from_reader(file).map_err(DatabaseError::from_inner)?;
 
-            Ok(Self {
-                filename,
-                state
-            })
-        }
-        else
-        {
+            Ok(Self { filename, state })
+        } else {
             tracing::warn!("Couldn't open database file, starting from empty");
             Ok(Self {
                 filename,
-                state: Default::default()
+                state: Default::default(),
             })
         }
     }
 
-    fn new_account(&self, data: state::Account, mut auth: AccountAuth) -> Result<state::Account>
-    {
+    fn new_account(&self, data: state::Account, mut auth: AccountAuth) -> Result<state::Account> {
         let mut state_guard = self.state.write();
         // Get the raw mut reference out of the guard so we can mutably borrow multiple fields
         let state = state_guard.deref_mut();
@@ -112,13 +99,12 @@ impl DatabaseConnection for JsonDatabase
         // Just in case
         auth.account = data.id;
 
-        let result = match (account_entry, auth_entry)
-        {
+        let result = match (account_entry, auth_entry) {
             (Entry::Vacant(account_entry), Entry::Vacant(auth_entry)) => {
                 auth_entry.insert(auth);
                 Ok(account_entry.insert(data).clone())
             }
-            _ => Err(DatabaseError::DuplicateId)
+            _ => Err(DatabaseError::DuplicateId),
         };
 
         drop(state_guard);
@@ -128,88 +114,104 @@ impl DatabaseConnection for JsonDatabase
         result
     }
 
-    fn account(&self, id: AccountId) -> Result<state::Account>
-    {
-        self.state.read().accounts.get(&id).ok_or(DatabaseError::NoSuchId).cloned()
+    fn account(&self, id: AccountId) -> Result<state::Account> {
+        self.state
+            .read()
+            .accounts
+            .get(&id)
+            .ok_or(DatabaseError::NoSuchId)
+            .cloned()
     }
 
-    fn account_named(&self, name: &Nickname) -> Result<state::Account>
-    {
-        self.state.read().accounts.values()
-                                  .find(|a| &a.name == name)
-                                  .ok_or(DatabaseError::NoSuchId)
-                                  .cloned()
+    fn account_named(&self, name: &Nickname) -> Result<state::Account> {
+        self.state
+            .read()
+            .accounts
+            .values()
+            .find(|a| &a.name == name)
+            .ok_or(DatabaseError::NoSuchId)
+            .cloned()
     }
 
-    fn update_account(&self, new_data: &state::Account) -> Result<()>
-    {
-        let ret = match self.state.write().accounts.entry(new_data.id)
-        {
+    fn update_account(&self, new_data: &state::Account) -> Result<()> {
+        let ret = match self.state.write().accounts.entry(new_data.id) {
             Entry::Occupied(mut entry) => {
                 entry.insert(new_data.clone());
                 Ok(())
             }
-            Entry::Vacant(_) => Err(DatabaseError::NoSuchId)
+            Entry::Vacant(_) => Err(DatabaseError::NoSuchId),
         };
 
         self.save()?;
         ret
     }
 
-    fn all_accounts(&self) -> Result<impl Iterator<Item=state::Account> + '_>
-    {
-        Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.accounts.values()))
+    fn all_accounts(&self) -> Result<impl Iterator<Item = state::Account> + '_> {
+        Ok(LockedHashMapValueIterator::new(
+            self.state.read(),
+            |state| state.accounts.values(),
+        ))
     }
 
-    fn auth_for_account(&self, id: AccountId) -> Result<AccountAuth>
-    {
-        self.state.read().account_auth.get(&id).ok_or(DatabaseError::NoSuchId).cloned()
+    fn auth_for_account(&self, id: AccountId) -> Result<AccountAuth> {
+        self.state
+            .read()
+            .account_auth
+            .get(&id)
+            .ok_or(DatabaseError::NoSuchId)
+            .cloned()
     }
 
-    fn new_nick_registration(&self, data: state::NickRegistration) -> Result<state::NickRegistration>
-    {
-        let ret = match self.state.write().nick_registrations.entry(data.id)
-        {
+    fn new_nick_registration(
+        &self,
+        data: state::NickRegistration,
+    ) -> Result<state::NickRegistration> {
+        let ret = match self.state.write().nick_registrations.entry(data.id) {
             Entry::Occupied(_) => Err(DatabaseError::DuplicateId),
-            Entry::Vacant(entry) => Ok(entry.insert(data).clone())
+            Entry::Vacant(entry) => Ok(entry.insert(data).clone()),
         };
 
         self.save()?;
         ret
     }
 
-    fn nick_registration(&self, id: NickRegistrationId) -> Result<state::NickRegistration>
-    {
-        self.state.read().nick_registrations.get(&id).ok_or(DatabaseError::NoSuchId).cloned()
+    fn nick_registration(&self, id: NickRegistrationId) -> Result<state::NickRegistration> {
+        self.state
+            .read()
+            .nick_registrations
+            .get(&id)
+            .ok_or(DatabaseError::NoSuchId)
+            .cloned()
     }
 
-    fn update_nick_registration(&self, new_data: &state::NickRegistration) -> Result<()>
-    {
-        let ret = match self.state.write().nick_registrations.entry(new_data.id)
-        {
+    fn update_nick_registration(&self, new_data: &state::NickRegistration) -> Result<()> {
+        let ret = match self.state.write().nick_registrations.entry(new_data.id) {
             Entry::Occupied(mut entry) => {
                 entry.insert(new_data.clone());
                 Ok(())
             }
-            Entry::Vacant(_) => Err(DatabaseError::NoSuchId)
+            Entry::Vacant(_) => Err(DatabaseError::NoSuchId),
         };
 
         self.save()?;
         ret
     }
 
-    fn all_nick_registrations(&self) -> Result<impl Iterator<Item=state::NickRegistration> + '_>
-    {
-        Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.nick_registrations.values()))
+    fn all_nick_registrations(&self) -> Result<impl Iterator<Item = state::NickRegistration> + '_> {
+        Ok(LockedHashMapValueIterator::new(
+            self.state.read(),
+            |state| state.nick_registrations.values(),
+        ))
     }
 
-    fn new_channel_registration(&self, data: state::ChannelRegistration) -> Result<state::ChannelRegistration>
-    {
+    fn new_channel_registration(
+        &self,
+        data: state::ChannelRegistration,
+    ) -> Result<state::ChannelRegistration> {
         let mut state = self.state.write();
         let registration_entry = state.channel_registrations.entry(data.id);
 
-        match registration_entry
-        {
+        match registration_entry {
             Entry::Occupied(_) => Err(DatabaseError::DuplicateId),
             Entry::Vacant(entry) => {
                 let ret = entry.insert(data).clone();
@@ -222,39 +224,50 @@ impl DatabaseConnection for JsonDatabase
         }
     }
 
-    fn channel_registration(&self, id: ChannelRegistrationId) -> Result<state::ChannelRegistration>
-    {
-        self.state.read().channel_registrations.get(&id).ok_or(DatabaseError::NoSuchId).cloned()
+    fn channel_registration(
+        &self,
+        id: ChannelRegistrationId,
+    ) -> Result<state::ChannelRegistration> {
+        self.state
+            .read()
+            .channel_registrations
+            .get(&id)
+            .ok_or(DatabaseError::NoSuchId)
+            .cloned()
     }
 
-    fn update_channel_registration(&self, new_data: &state::ChannelRegistration) -> Result<()>
-    {
-        let ret = match self.state.write().channel_registrations.entry(new_data.id)
-        {
+    fn update_channel_registration(&self, new_data: &state::ChannelRegistration) -> Result<()> {
+        let ret = match self.state.write().channel_registrations.entry(new_data.id) {
             Entry::Occupied(mut entry) => {
                 entry.insert(new_data.clone());
                 Ok(())
             }
-            Entry::Vacant(_) => Err(DatabaseError::NoSuchId)
+            Entry::Vacant(_) => Err(DatabaseError::NoSuchId),
         };
         self.save()?;
         ret
     }
 
-    fn all_channel_registrations(&self) -> Result<impl Iterator<Item=state::ChannelRegistration> + '_>
-    {
-        Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.channel_registrations.values()))
+    fn all_channel_registrations(
+        &self,
+    ) -> Result<impl Iterator<Item = state::ChannelRegistration> + '_> {
+        Ok(LockedHashMapValueIterator::new(
+            self.state.read(),
+            |state| state.channel_registrations.values(),
+        ))
     }
 
-    fn channel_access(&self, id: ChannelAccessId) -> Result<state::ChannelAccess>
-    {
-        self.state.read().channel_accesses.get(&id).ok_or(DatabaseError::NoSuchId).cloned()
+    fn channel_access(&self, id: ChannelAccessId) -> Result<state::ChannelAccess> {
+        self.state
+            .read()
+            .channel_accesses
+            .get(&id)
+            .ok_or(DatabaseError::NoSuchId)
+            .cloned()
     }
 
-    fn update_channel_access(&self, data: &state::ChannelAccess) -> Result<()>
-    {
-        let ret = match self.state.write().channel_accesses.entry(data.id)
-        {
+    fn update_channel_access(&self, data: &state::ChannelAccess) -> Result<()> {
+        let ret = match self.state.write().channel_accesses.entry(data.id) {
             Entry::Occupied(mut entry) => {
                 entry.insert(data.clone());
                 Ok(())
@@ -268,57 +281,59 @@ impl DatabaseConnection for JsonDatabase
         ret
     }
 
-    fn all_channel_accesses(&self) -> Result<impl Iterator<Item=state::ChannelAccess> + '_>
-    {
-        Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.channel_accesses.values()))
+    fn all_channel_accesses(&self) -> Result<impl Iterator<Item = state::ChannelAccess> + '_> {
+        Ok(LockedHashMapValueIterator::new(
+            self.state.read(),
+            |state| state.channel_accesses.values(),
+        ))
     }
 
-    fn remove_channel_access(&self, id: ChannelAccessId) -> Result<()>
-    {
+    fn remove_channel_access(&self, id: ChannelAccessId) -> Result<()> {
         self.state.write().channel_accesses.remove(&id);
         self.save()?;
         Ok(())
     }
 
-    fn new_channel_role(&self, data: state::ChannelRole) -> Result<state::ChannelRole>
-    {
-        let ret = match self.state.write().channel_roles.entry(data.id)
-        {
+    fn new_channel_role(&self, data: state::ChannelRole) -> Result<state::ChannelRole> {
+        let ret = match self.state.write().channel_roles.entry(data.id) {
             Entry::Occupied(_) => Err(DatabaseError::DuplicateId),
-            Entry::Vacant(entry) => Ok(entry.insert(data).clone())
+            Entry::Vacant(entry) => Ok(entry.insert(data).clone()),
         };
 
         self.save()?;
         ret
     }
 
-    fn channel_role(&self, id: ChannelRoleId) -> Result<state::ChannelRole>
-    {
-        self.state.read().channel_roles.get(&id).ok_or(DatabaseError::NoSuchId).cloned()
+    fn channel_role(&self, id: ChannelRoleId) -> Result<state::ChannelRole> {
+        self.state
+            .read()
+            .channel_roles
+            .get(&id)
+            .ok_or(DatabaseError::NoSuchId)
+            .cloned()
     }
 
-    fn update_channel_role(&self, data: &state::ChannelRole) -> Result<()>
-    {
-        let ret = match self.state.write().channel_roles.entry(data.id)
-        {
+    fn update_channel_role(&self, data: &state::ChannelRole) -> Result<()> {
+        let ret = match self.state.write().channel_roles.entry(data.id) {
             Entry::Occupied(mut entry) => {
                 entry.insert(data.clone());
                 Ok(())
             }
-            Entry::Vacant(_) => Err(DatabaseError::NoSuchId)
+            Entry::Vacant(_) => Err(DatabaseError::NoSuchId),
         };
 
         self.save()?;
         ret
     }
 
-    fn all_channel_roles(&self) -> Result<impl Iterator<Item=state::ChannelRole> + '_>
-    {
-        Ok(LockedHashMapValueIterator::new(self.state.read(), |state| state.channel_roles.values()))
+    fn all_channel_roles(&self) -> Result<impl Iterator<Item = state::ChannelRole> + '_> {
+        Ok(LockedHashMapValueIterator::new(
+            self.state.read(),
+            |state| state.channel_roles.values(),
+        ))
     }
 
-    fn remove_channel_role(&self, id: ChannelRoleId) -> Result<()>
-    {
+    fn remove_channel_role(&self, id: ChannelRoleId) -> Result<()> {
         self.state.write().channel_roles.remove(&id);
         self.save()
     }

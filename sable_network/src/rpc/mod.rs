@@ -1,7 +1,6 @@
 //! Defines types used to communicate between various components of the
 //! server architecture.
 
-
 mod network_message;
 pub use network_message::*;
 

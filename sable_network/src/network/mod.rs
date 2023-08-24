@@ -3,78 +3,78 @@
 
 /// Defines the various state objects making up a network
 pub mod state {
-    mod user;
+    mod access_flag;
+    mod account;
+    mod audit_log;
+    mod bans;
     mod channel;
     mod message;
     mod server;
-    mod bans;
-    mod audit_log;
-    mod account;
-    mod access_flag;
     mod services;
+    mod user;
 
-    pub use user::*;
+    pub use access_flag::*;
+    pub use account::*;
+    pub use audit_log::*;
+    pub use bans::*;
     pub use channel::*;
     pub use message::*;
     pub use server::*;
-    pub use bans::*;
-    pub use audit_log::*;
-    pub use account::*;
-    pub use access_flag::*;
     pub use services::*;
+    pub use user::*;
 }
 
 /// Defines wrapper objects which provide accessor methods and basic
 /// application logic for objects in [`state`]
 pub mod wrapper {
 
-    mod wrapper;
-    mod nick_binding;
-    mod user;
-    mod user_mode;
+    mod account;
+    mod bans;
     mod channel;
+    mod channel_access;
+    mod channel_invite;
     mod channel_mode;
+    mod channel_registration;
+    mod channel_role;
+    mod channel_topic;
     mod list_mode;
     mod list_mode_entry;
-    mod channel_topic;
-    mod channel_invite;
     mod membership;
-    mod server;
     mod message;
-    mod bans;
-    mod account;
+    mod nick_binding;
     mod nick_registration;
-    mod channel_registration;
-    mod channel_access;
-    mod channel_role;
+    mod server;
     mod services;
+    mod user;
+    mod user_mode;
+    mod wrapper;
 
     pub use wrapper::ObjectWrapper;
-    pub use wrapper::WrappedObjectIterator;
+    pub use wrapper::WrapIterator;
     pub use wrapper::WrapOption;
     pub use wrapper::WrapResult;
-    pub use wrapper::WrapIterator;
+    pub use wrapper::WrappedObjectIterator;
 
-    pub use nick_binding::NickBinding;
-    pub use user::User;
-    pub use user_mode::UserMode;
+    pub use account::*;
+    pub use bans::*;
     pub use channel::Channel;
+    pub use channel_access::*;
+    pub use channel_invite::ChannelInvite;
     pub use channel_mode::ChannelMode;
+    pub use channel_registration::*;
+    pub use channel_role::*;
+    pub use channel_topic::ChannelTopic;
     pub use list_mode::ListMode;
     pub use list_mode_entry::ListModeEntry;
-    pub use channel_topic::ChannelTopic;
-    pub use channel_invite::ChannelInvite;
     pub use membership::Membership;
-    pub use server::Server;
     pub use message::Message;
     pub use message::MessageTarget;
-    pub use bans::*;
-    pub use account::*;
+    pub use nick_binding::NickBinding;
     pub use nick_registration::*;
-    pub use channel_registration::*;
-    pub use channel_access::*;
-    pub use channel_role::*;
+    pub use server::Server;
     pub use services::*;
+    pub use user::User;
+    pub use user_mode::UserMode;
 }
 
 pub mod ban;
@@ -101,7 +101,7 @@ mod state_utils;
 
 #[cfg(test)]
 pub mod tests {
+    mod event_application;
     pub mod fixtures;
     mod serialize;
-    mod event_application;
 }

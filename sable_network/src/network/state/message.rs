@@ -1,22 +1,17 @@
 use crate::prelude::*;
 
-use serde::{
-    Serialize,
-    Deserialize
-};
+use serde::{Deserialize, Serialize};
 
 /// Message type - privmsg or notice
-#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
-pub enum MessageType
-{
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum MessageType {
     Privmsg,
-    Notice
+    Notice,
 }
 
 /// A message
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct Message
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Message {
     pub id: MessageId,
     pub source: UserId,
     pub target: ObjectId,
@@ -25,14 +20,11 @@ pub struct Message
     pub text: String,
 }
 
-impl std::fmt::Display for MessageType
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result
-    {
-        match self
-        {
+impl std::fmt::Display for MessageType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
             Self::Privmsg => "PRIVMSG".fmt(f),
-            Self::Notice => "NOTICE".fmt(f)
+            Self::Notice => "NOTICE".fmt(f),
         }
     }
 }

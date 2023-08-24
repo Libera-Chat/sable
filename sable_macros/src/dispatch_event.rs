@@ -1,57 +1,46 @@
 use super::*;
 use quote::quote;
-use syn::{
-    parse_macro_input,
-    braced,
-    parenthesized,
-    Token,
-    Result,
-    Ident,
-    Expr,
-    token,
-    punctuated::Punctuated,
-};
 use syn::parse::{Parse, ParseStream};
+use syn::{
+    braced, parenthesized, parse_macro_input, punctuated::Punctuated, token, Expr, Ident, Result,
+    Token,
+};
 
-struct ExtraArgList
-{
+struct ExtraArgList {
     _paren: token::Paren,
-    args: Punctuated<Expr, Token![,]>
+    args: Punctuated<Expr, Token![,]>,
 }
 
-struct HandlerList
-{
+struct HandlerList {
     event_name: Ident,
     extra_args: Option<ExtraArgList>,
     _arrow: Token![=>],
     _brace: token::Brace,
-    handlers: Punctuated<Handler, Token![,]>
+    handlers: Punctuated<Handler, Token![,]>,
 }
 
-impl Parse for ExtraArgList
-{
+impl Parse for ExtraArgList {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
 
         Ok(Self {
             _paren: parenthesized!(content in input),
-            args: content.parse_terminated(Expr::parse)?
+            args: content.parse_terminated(Expr::parse)?,
         })
     }
 }
 
-impl Parse for HandlerList
-{
+impl Parse for HandlerList {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
 
         Ok(Self {
             event_name: input.parse()?,
             extra_args: if input.peek(token::Paren) {
-                    Some(input.parse()?)
-                } else {
-                    None
-                },
+                Some(input.parse()?)
+            } else {
+                None
+            },
             _arrow: input.parse()?,
             _brace: braced!(content in input),
             handlers: content.parse_terminated(Handler::parse)?,
@@ -61,7 +50,7 @@ impl Parse for HandlerList
 
 enum EventType {
     Event(Ident),
-    Any
+    Any,
 }
 
 struct Handler {
@@ -70,8 +59,7 @@ struct Handler {
     handler: Expr,
 }
 
-impl Parse for Handler
-{
+impl Parse for Handler {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(Self {
             event_type: if input.peek(Token![_]) {
@@ -81,14 +69,12 @@ impl Parse for Handler
                 EventType::Event(input.parse()?)
             },
             _arrow: input.parse()?,
-            handler: input.parse()?
+            handler: input.parse()?,
         })
     }
 }
 
-
-pub fn dispatch_event(input: TokenStream, is_async: bool) -> TokenStream
-{
+pub fn dispatch_event(input: TokenStream, is_async: bool) -> TokenStream {
     let handlers = parse_macro_input!(input as HandlerList);
 
     let mut cases = Vec::new();
@@ -103,12 +89,10 @@ pub fn dispatch_event(input: TokenStream, is_async: bool) -> TokenStream
         None
     };
 
-    for item in handlers.handlers
-    {
+    for item in handlers.handlers {
         let handler = item.handler;
 
-        match item.event_type
-        {
+        match item.event_type {
             EventType::Event(event_type) => {
                 cases.push(quote!(
                     crate::network::event::EventDetails::#event_type(detail) => {
@@ -125,14 +109,11 @@ pub fn dispatch_event(input: TokenStream, is_async: bool) -> TokenStream
                         }
                     }
                 ));
-            },
-            EventType::Any => {
-                cases.push(quote!(
-                    _ => { Ok( #handler ( #event_name ) ) }
-                ))
             }
+            EventType::Any => cases.push(quote!(
+                _ => { Ok( #handler ( #event_name ) ) }
+            )),
         }
-
     }
 
     let out = quote!(

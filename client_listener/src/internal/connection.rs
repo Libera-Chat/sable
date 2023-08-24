@@ -1,16 +1,12 @@
-use crate::*;
 use crate::internal::*;
+use crate::*;
 
-use std::{net::IpAddr, convert::TryInto};
-use sha1::{Sha1, Digest};
+use sha1::{Digest, Sha1};
+use std::{convert::TryInto, net::IpAddr};
 use tokio::{
-    net::{
-        TcpStream,
-    },
-    sync::mpsc::{
-        Sender,
-        channel,
-    }, io::AsyncWriteExt,
+    io::AsyncWriteExt,
+    net::TcpStream,
+    sync::mpsc::{channel, Sender},
 };
 
 const SEND_QUEUE_LEN: usize = 100;
@@ -22,15 +18,13 @@ pub(crate) struct InternalConnection {
     pub tls_info: Option<TlsInfo>,
 }
 
-
-impl InternalConnection
-{
-    pub async fn create_and_send(id: ConnectionId,
-                                 stream: TcpStream,
-                                 conntype: InternalConnectionType,
-                                 events: Sender<InternalConnectionEventType>)
-                            -> Result<(), ConnectionError>
-    {
+impl InternalConnection {
+    pub async fn create_and_send(
+        id: ConnectionId,
+        stream: TcpStream,
+        conntype: InternalConnectionType,
+        events: Sender<InternalConnectionEventType>,
+    ) -> Result<(), ConnectionError> {
         let (control_send, control_recv) = channel(SEND_QUEUE_LEN);
 
         let addr = stream.peer_addr()?.ip();
@@ -40,31 +34,36 @@ impl InternalConnection
         match connection_type {
             InternalConnectionType::Tls(tls_config) => {
                 let tls_acceptor: tokio_rustls::TlsAcceptor = tls_config.into();
-                match tls_acceptor.accept(stream).await
-                {
+                match tls_acceptor.accept(stream).await {
                     Ok(mut tls_stream) => {
                         // We need to flush to make sure the tls handshake has finished, before the client
                         // info will be available
                         tls_stream.flush().await?;
 
-                        let fingerprint = tls_stream.get_ref().1
-                                                    .peer_certificates()
-                                                    .map(|c| c.get(0))
-                                                    .flatten()
-                                                    .map(|cert| {
-                                                        let mut hasher = Sha1::new();
-                                                        hasher.update(&cert.0);
-                                                        hex::encode(hasher.finalize())
-                                                            .as_str().try_into().unwrap()
-                                                    });
+                        let fingerprint = tls_stream
+                            .get_ref()
+                            .1
+                            .peer_certificates()
+                            .map(|c| c.get(0))
+                            .flatten()
+                            .map(|cert| {
+                                let mut hasher = Sha1::new();
+                                hasher.update(&cert.0);
+                                hex::encode(hasher.finalize()).as_str().try_into().unwrap()
+                            });
 
                         tls_info = Some(TlsInfo { fingerprint });
 
-                        let conntask = ConnectionTask::new(id, tls_stream, control_recv, events.clone());
+                        let conntask =
+                            ConnectionTask::new(id, tls_stream, control_recv, events.clone());
                         tokio::spawn(conntask.run());
                     }
                     Err(err) => {
-                        let _ = events.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(id, err.into()))).await;
+                        let _ = events
+                            .send(InternalConnectionEventType::Event(
+                                InternalConnectionEvent::ConnectionError(id, err.into()),
+                            ))
+                            .await;
                     }
                 }
             }
@@ -81,16 +80,14 @@ impl InternalConnection
             tls_info,
         };
 
-        if let Err(_) = events.send(InternalConnectionEventType::New(conn)).await
-        {
+        if let Err(_) = events.send(InternalConnectionEventType::New(conn)).await {
             tracing::error!("Error sending new connection");
         };
 
         Ok(())
     }
 
-    pub fn data(&self) -> ConnectionData
-    {
+    pub fn data(&self) -> ConnectionData {
         ConnectionData {
             id: self.id,
             remote_addr: self.remote_addr,

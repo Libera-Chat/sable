@@ -4,10 +4,7 @@
 use crate::prelude::*;
 use wrapper::*;
 
-use ambassador::{
-    delegatable_trait,
-    Delegate
-};
+use ambassador::{delegatable_trait, Delegate};
 
 mod ban_resolver;
 pub use ban_resolver::*;
@@ -48,31 +45,29 @@ pub type PermissionResult = Result<(), PermissionError>;
 
 /// A `PolicyService` provides all the various policy traits in one place
 pub trait PolicyService:
-            ChannelPolicyService +
-            UserPolicyService +
-            OperAuthenticationService +
-            OperPolicyService +
-            RegistrationPolicyService
+    ChannelPolicyService
+    + UserPolicyService
+    + OperAuthenticationService
+    + OperPolicyService
+    + RegistrationPolicyService
 {
 }
 
 /// The standard implementation of a [`PolicyService`]
 #[derive(Delegate)]
-#[delegate(ChannelPolicyService, target="channel_policy")]
-#[delegate(UserPolicyService, target="user_policy")]
-#[delegate(OperPolicyService, target="oper_policy")]
-#[delegate(OperAuthenticationService, target="oper_policy")]
-#[delegate(RegistrationPolicyService, target="registration_policy")]
-pub struct StandardPolicyService
-{
+#[delegate(ChannelPolicyService, target = "channel_policy")]
+#[delegate(UserPolicyService, target = "user_policy")]
+#[delegate(OperPolicyService, target = "oper_policy")]
+#[delegate(OperAuthenticationService, target = "oper_policy")]
+#[delegate(RegistrationPolicyService, target = "registration_policy")]
+pub struct StandardPolicyService {
     channel_policy: StandardChannelPolicy,
     user_policy: StandardUserPolicy,
     oper_policy: StandardOperPolicy,
     registration_policy: StandardRegistrationPolicy,
 }
 
-impl StandardPolicyService
-{
+impl StandardPolicyService {
     pub fn new() -> Self {
         Self {
             channel_policy: StandardChannelPolicy::new(),
@@ -83,14 +78,13 @@ impl StandardPolicyService
     }
 }
 
-impl PolicyService for StandardPolicyService
-{
-}
+impl PolicyService for StandardPolicyService {}
 
-impl crate::saveable::Saveable for StandardPolicyService
-{
+impl crate::saveable::Saveable for StandardPolicyService {
     type Saved = ();
 
-    fn save(self) -> Self::Saved {  }
-    fn restore(_from: Self::Saved) -> Self { Self::new() }
+    fn save(self) -> Self::Saved {}
+    fn restore(_from: Self::Saved) -> Self {
+        Self::new()
+    }
 }

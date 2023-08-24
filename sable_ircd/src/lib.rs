@@ -50,13 +50,13 @@
 //! not included in the history log entry, for example to notify a joining user of the
 //! current channel membership.
 
-mod command;
 mod capability;
+mod command;
 mod dns;
-mod messages;
-mod utils;
 mod errors;
+mod messages;
 mod throttled_queue;
+mod utils;
 
 mod client;
 use client::*;
@@ -65,9 +65,9 @@ mod client_message;
 pub use client_message::*;
 
 mod connection_collection;
+use command::*;
 use connection_collection::ConnectionCollection;
 use connection_collection::ConnectionCollectionLockHelper;
-use command::*;
 
 mod isupport;
 use isupport::*;

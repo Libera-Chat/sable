@@ -42,10 +42,11 @@ impl Membership<'_> {
 
 impl<'a> super::ObjectWrapper<'a> for Membership<'a> {
     type Underlying = state::Membership;
-    fn wrap(network: &'a Network, data: &'a state::Membership) -> Self
-    {
+    fn wrap(network: &'a Network, data: &'a state::Membership) -> Self {
         Self { network, data }
     }
 
-    fn raw(&self) -> &'a Self::Underlying { self.data }
+    fn raw(&self) -> &'a Self::Underlying {
+        self.data
+    }
 }

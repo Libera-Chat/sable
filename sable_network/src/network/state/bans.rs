@@ -1,15 +1,11 @@
-use crate::prelude::*;
 use crate::network::ban::*;
+use crate::prelude::*;
 
-use serde::{
-    Serialize,
-    Deserialize
-};
+use serde::{Deserialize, Serialize};
 
 /// A network ban
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct NetworkBan
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkBan {
     pub id: NetworkBanId,
     pub created_by: EventId,
 

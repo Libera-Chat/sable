@@ -9,9 +9,8 @@ pub struct WrongEventTypeError;
 
 /// Info about a User at a point in time, in a form which can be stored for replay. This contains
 /// both the [`state::User`] object itself and the user's nickname at the given time
-#[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
-pub struct HistoricUser
-{
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct HistoricUser {
     pub user: state::User,
     pub nickname: Nickname,
 }
@@ -21,23 +20,21 @@ pub struct HistoricUser
 ///
 /// This roughly corresponds to "things that can go in the source field of a client protocol
 /// message".
-#[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
-pub enum HistoricMessageSource
-{
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum HistoricMessageSource {
     Server(state::Server),
     User(HistoricUser),
-    Unknown
+    Unknown,
 }
 
 /// Some messages can be targeted at either a user or a channel; this enum is used in the
 /// [`NetworkStateChange`] for those changes to describe the target in a way that can be
 /// replayed later
-#[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
-pub enum HistoricMessageTarget
-{
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum HistoricMessageTarget {
     User(HistoricUser),
     Channel(state::Channel),
-    Unknown
+    Unknown,
 }
 
 event_details!(
@@ -203,8 +200,7 @@ NetworkStateChange => {
 ///
 /// This primarily exists to avoid the network state library depending on tokio or other async
 /// runtime for channel types.
-pub trait NetworkUpdateReceiver
-{
+pub trait NetworkUpdateReceiver {
     /// Notify the receiver of a network state change
     fn notify_update(&self, update: NetworkStateChange, source_event: &Event);
 }
@@ -212,15 +208,12 @@ pub trait NetworkUpdateReceiver
 use std::convert::Into;
 
 /// Helper to make sending updates easier
-pub(crate) trait NetworkUpdateHelper
-{
+pub(crate) trait NetworkUpdateHelper {
     fn notify(&self, update: impl Into<NetworkStateChange>, source_event: &Event);
 }
 
-impl<T: NetworkUpdateReceiver + ?Sized> NetworkUpdateHelper for T
-{
-    fn notify(&self, update: impl Into<NetworkStateChange>, source_event: &Event)
-    {
+impl<T: NetworkUpdateReceiver + ?Sized> NetworkUpdateHelper for T {
+    fn notify(&self, update: impl Into<NetworkStateChange>, source_event: &Event) {
         self.notify_update(update.into(), source_event);
     }
 }

@@ -7,8 +7,8 @@ pub mod details;
 
 pub use clock::EventClock;
 
-pub use event::Event;
 pub use event::DetailType;
+pub use event::Event;
 
 pub use details::*;
 

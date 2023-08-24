@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use super::*;
+use crate::prelude::*;
 
 /// A wrapper around a [`state::User`]
 pub struct User<'a> {
@@ -17,8 +17,7 @@ impl<'a> User<'a> {
     /// If a nickname binding exists, then the associated nick is returned; otherwise,
     /// a fallback nick based on the hash of the user ID is used - this is the same
     /// computed nickname used in case of binding collisions.
-    pub fn nick(&self) -> Nickname
-    {
+    pub fn nick(&self) -> Nickname {
         self.network.infallible_nick_for_user(self.data.id)
     }
 
@@ -53,56 +52,61 @@ impl<'a> User<'a> {
     }
 
     /// Iterate over the user's channel memberships
-    pub fn channels(&self) -> impl Iterator<Item=Membership> {
+    pub fn channels(&self) -> impl Iterator<Item = Membership> {
         let my_id = self.data.id;
-        self.network.raw_memberships().filter(move|x| x.user == my_id).wrap(self.network)
+        self.network
+            .raw_memberships()
+            .filter(move |x| x.user == my_id)
+            .wrap(self.network)
     }
 
     /// Test whether the user is in a given channel
-    pub fn is_in_channel(&self, c: ChannelId) -> Option<Membership>
-    {
+    pub fn is_in_channel(&self, c: ChannelId) -> Option<Membership> {
         self.channels().find(|m| m.channel_id() == c)
     }
 
     /// Test whether an invite exists for this user to a given channel
-    pub fn has_invite_for(&self, c: ChannelId) -> Option<ChannelInvite>
-    {
-        self.network.channel_invite(InviteId::new(self.data.id, c)).ok()
+    pub fn has_invite_for(&self, c: ChannelId) -> Option<ChannelInvite> {
+        self.network
+            .channel_invite(InviteId::new(self.data.id, c))
+            .ok()
     }
 
     /// Test whether this user is a network operator
-    pub fn is_oper(&self) -> bool
-    {
+    pub fn is_oper(&self) -> bool {
         self.data.oper_privileges.is_some()
     }
 
     /// Access the user's operator privilege information
-    pub fn oper_privileges(&self) -> Option<&state::UserPrivileges>
-    {
+    pub fn oper_privileges(&self) -> Option<&state::UserPrivileges> {
         self.data.oper_privileges.as_ref()
     }
 
     /// The user's nick!user@host mask, as used in the IRC client protocol
-    pub fn nuh(&self) -> String
-    {
-        format!("{}!{}@{}", self.nick().value(), self.data.user.value(), self.data.visible_host.value())
+    pub fn nuh(&self) -> String {
+        format!(
+            "{}!{}@{}",
+            self.nick().value(),
+            self.data.user.value(),
+            self.data.visible_host.value()
+        )
     }
 
     /// Return the user's session key, if any
-    pub fn session_key(&self) -> Option<&state::UserSessionKey>
-    {
+    pub fn session_key(&self) -> Option<&state::UserSessionKey> {
         self.data.session_key.as_ref()
     }
 
     /// Return the user's account, if any
-    pub fn account(&self) -> LookupResult<Option<super::Account<'a>>>
-    {
-        self.data.account.map(|id| self.network.account(id)).transpose()
+    pub fn account(&self) -> LookupResult<Option<super::Account<'a>>> {
+        self.data
+            .account
+            .map(|id| self.network.account(id))
+            .transpose()
     }
 
     /// Determine whether this user refers to a compatibility alias
-    pub fn is_alias_user(&self) -> Option<&config::AliasUser>
-    {
+    pub fn is_alias_user(&self) -> Option<&config::AliasUser> {
         self.network.user_is_alias(self.data.id)
     }
 }
@@ -110,10 +114,11 @@ impl<'a> User<'a> {
 impl<'a> super::ObjectWrapper<'a> for User<'a> {
     type Underlying = state::User;
 
-    fn wrap(network: &'a Network, data: &'a state::User) -> Self
-    {
+    fn wrap(network: &'a Network, data: &'a state::User) -> Self {
         Self { network, data }
     }
 
-    fn raw(&self) -> &'a Self::Underlying { self.data }
+    fn raw(&self) -> &'a Self::Underlying {
+        self.data
+    }
 }

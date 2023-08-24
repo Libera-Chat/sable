@@ -1,7 +1,7 @@
 use sable_network::prelude::*;
 
-use sable_macros::define_messages;
 use super::*;
+use sable_macros::define_messages;
 
 define_messages! {
     Cap     => { (source, target, subcmd: &str, text: &str) => ":{source} CAP {target} {subcmd} :{text}" },

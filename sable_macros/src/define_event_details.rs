@@ -1,17 +1,8 @@
 use super::*;
 
 use quote::quote;
-use syn::{
-    parse_macro_input,
-    braced,
-    Result,
-    Attribute,
-    ItemStruct,
-    Ident,
-    Token,
-    token,
-};
 use syn::parse::{Parse, ParseStream};
+use syn::{braced, parse_macro_input, token, Attribute, Ident, ItemStruct, Result, Token};
 
 struct DefinitionList {
     attrs: Vec<Attribute>,
@@ -22,13 +13,13 @@ struct DefinitionList {
 }
 
 struct ItemStructList {
-    items: Vec<ItemStruct>
+    items: Vec<ItemStruct>,
 }
 
 impl Parse for DefinitionList {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
-        Ok(Self{
+        Ok(Self {
             attrs: input.call(Attribute::parse_outer)?,
             enum_name: input.parse()?,
             _arrow: input.parse()?,
@@ -42,18 +33,15 @@ impl Parse for ItemStructList {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut items = Vec::new();
 
-        while ! input.is_empty() {
+        while !input.is_empty() {
             items.push(input.parse::<ItemStruct>()?);
         }
 
-        Ok(ItemStructList {
-            items
-        })
+        Ok(ItemStructList { items })
     }
 }
 
-pub fn event_details(input: TokenStream) -> TokenStream
-{
+pub fn event_details(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DefinitionList);
     let attrs = input.attrs;
     let enum_name = input.enum_name;
@@ -62,8 +50,7 @@ pub fn event_details(input: TokenStream) -> TokenStream
     let mut output = proc_macro2::TokenStream::new();
     let mut names = Vec::<Ident>::new();
 
-    for item in &items.items
-    {
+    for item in &items.items {
         let name = &item.ident;
         names.push(name.clone());
 
@@ -110,8 +97,7 @@ pub fn event_details(input: TokenStream) -> TokenStream
     output.into()
 }
 
-pub fn target_type_attribute(attr: TokenStream, item: TokenStream) -> TokenStream
-{
+pub fn target_type_attribute(attr: TokenStream, item: TokenStream) -> TokenStream {
     let target_typename = parse_macro_input!(attr as Ident);
     let item = parse_macro_input!(item as ItemStruct);
 
@@ -124,5 +110,6 @@ pub fn target_type_attribute(attr: TokenStream, item: TokenStream) -> TokenStrea
         {
             type Target = #target_typename;
         }
-    ).into()
+    )
+    .into()
 }

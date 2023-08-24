@@ -1,28 +1,25 @@
-use crate::id::*;
 use crate::error::*;
+use crate::id::*;
 use crate::Connection;
 
+use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
-use serde::{Serialize,Deserialize};
 
 /// Information about a client connection's TLS status
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct TlsInfo
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TlsInfo {
     pub fingerprint: Option<String>,
 }
 
-#[derive(Clone,Debug,Serialize,Deserialize)]
-pub enum ConnectionType
-{
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ConnectionType {
     Clear,
-    Tls
+    Tls,
 }
 
 /// The saved state of a [`Connection`]
-#[derive(Debug,Serialize,Deserialize)]
-pub struct ConnectionData
-{
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConnectionData {
     pub(crate) id: ConnectionId,
     pub(crate) remote_addr: IpAddr,
     pub(crate) tls_info: Option<TlsInfo>,
@@ -32,16 +29,14 @@ pub struct ConnectionData
 ///
 /// Should be provided to
 /// [`ListenerCollection::load_tls_certificates`](crate::ListenerCollection::load_tls_certificates).
-#[derive(Clone,Debug,Serialize,Deserialize)]
-pub struct TlsSettings
-{
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TlsSettings {
     pub cert_chain: Vec<Vec<u8>>,
     pub key: Vec<u8>,
 }
 
 /// Possible types of event that might occur on a given connection.
-pub enum ConnectionEventDetail
-{
+pub enum ConnectionEventDetail {
     /// A new connection was accepted
     NewConnection(Connection),
     /// A new line was received
@@ -51,28 +46,32 @@ pub enum ConnectionEventDetail
 }
 
 /// An event be notified via a `ListenerCollection`'s event channel.
-pub struct ConnectionEvent
-{
+pub struct ConnectionEvent {
     /// The connection ID to which this event relates
     pub source: ConnectionId,
     /// The type of event and its content
-    pub detail: ConnectionEventDetail
+    pub detail: ConnectionEventDetail,
 }
 
-impl ConnectionEvent
-{
-    pub(crate) fn message(id: ConnectionId, message: String) -> Self
-    {
-        Self { source: id, detail: ConnectionEventDetail::Message(message) }
+impl ConnectionEvent {
+    pub(crate) fn message(id: ConnectionId, message: String) -> Self {
+        Self {
+            source: id,
+            detail: ConnectionEventDetail::Message(message),
+        }
     }
 
-    pub(crate) fn error(id: ConnectionId, error: ConnectionError) -> Self
-    {
-        Self { source: id, detail: ConnectionEventDetail::Error(error) }
+    pub(crate) fn error(id: ConnectionId, error: ConnectionError) -> Self {
+        Self {
+            source: id,
+            detail: ConnectionEventDetail::Error(error),
+        }
     }
 
-    pub(crate) fn new(id: ConnectionId, conn: Connection) -> Self
-    {
-        Self { source: id, detail: ConnectionEventDetail::NewConnection(conn) }
+    pub(crate) fn new(id: ConnectionId, conn: Connection) -> Self {
+        Self {
+            source: id,
+            detail: ConnectionEventDetail::NewConnection(conn),
+        }
     }
 }

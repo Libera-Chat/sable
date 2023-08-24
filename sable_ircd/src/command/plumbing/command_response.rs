@@ -1,14 +1,17 @@
 use crate::capability::ClientCapability;
 
 use super::*;
-use messages::{MessageSink, MessageSinkExt, UntargetedNumeric, message, batch::{MessageBatch, BatchBuilder, LazyMessageBatch}, OutboundMessageTag, MessageTarget};
+use messages::{
+    batch::{BatchBuilder, LazyMessageBatch, MessageBatch},
+    message, MessageSink, MessageSinkExt, MessageTarget, OutboundMessageTag, UntargetedNumeric,
+};
 
 /// Trait describing the ability to send responses to a command.
 ///
 /// This essentially combines a [`MessageSink`] with knowledge of the source
 /// and target parameters that should be injected into notices, numerics, and
 /// the like.
-pub trait CommandResponse : MessageSink + Send + Sync {
+pub trait CommandResponse: MessageSink + Send + Sync {
     /// Send the given text as a notice in response to this command
     fn notice(&self, text: &str);
 
@@ -25,18 +28,26 @@ pub struct PlainResponseSink<Sink> {
 }
 
 impl<Sink: MessageSink> PlainResponseSink<Sink> {
-    pub (in crate::command) fn new(response_source: String, response_target: String, sink: Arc<Sink>) -> Self {
+    pub(in crate::command) fn new(
+        response_source: String,
+        response_target: String,
+        sink: Arc<Sink>,
+    ) -> Self {
         Self {
             response_source,
             response_target,
-            sink
+            sink,
         }
     }
 }
 
 impl<Sink: MessageSink> CommandResponse for PlainResponseSink<Sink> {
     fn notice(&self, text: &str) {
-        self.send(message::Notice::new(&self.response_source, &self.response_target, text));
+        self.send(message::Notice::new(
+            &self.response_source,
+            &self.response_target,
+            text,
+        ));
     }
 
     fn numeric(&self, numeric: UntargetedNumeric) {
@@ -67,26 +78,37 @@ pub struct LabeledResponseSink<Sink: MessageSink> {
 }
 
 impl<'a, Sink: MessageSink> LabeledResponseSink<Sink> {
-    pub (in crate::command) fn new(response_source: String, response_target: String, sink: Arc<Sink>, label: String) -> Self {
-        let label_tag = OutboundMessageTag::new("label", Some(label), ClientCapability::LabeledResponse);
+    pub(in crate::command) fn new(
+        response_source: String,
+        response_target: String,
+        sink: Arc<Sink>,
+        label: String,
+    ) -> Self {
+        let label_tag =
+            OutboundMessageTag::new("label", Some(label), ClientCapability::LabeledResponse);
 
-        let batch = Arc::clone(&sink).into_batch("labeled-response", ClientCapability::LabeledResponse)
-                        .with_tag(label_tag.clone())
-                        .delay_start();
+        let batch = Arc::clone(&sink)
+            .into_batch("labeled-response", ClientCapability::LabeledResponse)
+            .with_tag(label_tag.clone())
+            .delay_start();
 
         Self {
             response_source,
             response_target,
             raw_target: sink,
             label_tag,
-            batch
+            batch,
         }
     }
 }
 
 impl<Sink: MessageSink> CommandResponse for LabeledResponseSink<Sink> {
     fn notice(&self, text: &str) {
-        self.send(message::Notice::new(&self.response_source, &self.response_target, text));
+        self.send(message::Notice::new(
+            &self.response_source,
+            &self.response_target,
+            text,
+        ));
     }
 
     fn numeric(&self, numeric: UntargetedNumeric) {
@@ -104,9 +126,9 @@ impl<Sink: MessageSink> MessageSink for LabeledResponseSink<Sink> {
     }
 }
 
-impl <Sink: MessageSink> Drop for LabeledResponseSink<Sink> {
+impl<Sink: MessageSink> Drop for LabeledResponseSink<Sink> {
     fn drop(&mut self) {
-        if ! self.batch.is_opened() {
+        if !self.batch.is_opened() {
             let msg = message::Ack::new(&self.response_source).with_tag(self.label_tag.clone());
             self.raw_target.send(msg);
         }

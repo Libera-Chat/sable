@@ -1,14 +1,10 @@
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use serde::{Serialize,Deserialize};
-use tokio::sync::mpsc::error::{
-    SendError,
-    TrySendError
-};
+use tokio::sync::mpsc::error::{SendError, TrySendError};
 
 /// An error that might occur on a single connection.
-#[derive(Error,Debug,Serialize,Deserialize)]
-pub enum ConnectionError
-{
+#[derive(Error, Debug, Serialize, Deserialize)]
+pub enum ConnectionError {
     #[error("Connection closed")]
     Closed,
     #[error("I/O Error: {0}")]
@@ -20,9 +16,8 @@ pub enum ConnectionError
 }
 
 /// An error that might occur when configuring a listener.
-#[derive(Error,Debug,Serialize,Deserialize)]
-pub enum ListenerError
-{
+#[derive(Error, Debug, Serialize, Deserialize)]
+pub enum ListenerError {
     #[error("TLS requested with no TLS config")]
     NoTlsConfig,
     #[error("I/O Error: {0}")]
@@ -35,47 +30,38 @@ pub enum ListenerError
     CommunicationError,
 }
 
-impl From<std::io::Error> for ListenerError
-{
-    fn from(e: std::io::Error) -> Self
-    {
+impl From<std::io::Error> for ListenerError {
+    fn from(e: std::io::Error) -> Self {
         Self::IoError(e.to_string())
     }
 }
 
-impl<T> From<SendError<T>> for ListenerError
-{
-    fn from(_: SendError<T>) -> Self { Self::CommunicationError }
+impl<T> From<SendError<T>> for ListenerError {
+    fn from(_: SendError<T>) -> Self {
+        Self::CommunicationError
+    }
 }
 
-impl From<std::io::Error> for ConnectionError
-{
-    fn from(e: std::io::Error) -> Self
-    {
+impl From<std::io::Error> for ConnectionError {
+    fn from(e: std::io::Error) -> Self {
         Self::IoError(e.to_string())
     }
 }
 
-impl<T> From<TrySendError<T>> for ConnectionError
-{
-    fn from(e: TrySendError<T>) -> Self
-    {
-        match e
-        {
+impl<T> From<TrySendError<T>> for ConnectionError {
+    fn from(e: TrySendError<T>) -> Self {
+        match e {
             TrySendError::Full(_) => Self::SendQueueFull,
-            TrySendError::Closed(_) => Self::Closed
+            TrySendError::Closed(_) => Self::Closed,
         }
     }
 }
 
-impl<T> From<TrySendError<T>> for ListenerError
-{
-    fn from(e: TrySendError<T>) -> Self
-    {
-        match e
-        {
+impl<T> From<TrySendError<T>> for ListenerError {
+    fn from(e: TrySendError<T>) -> Self {
+        match e {
             TrySendError::Full(_) => Self::ControlQueueFull,
-            TrySendError::Closed(_) => Self::ControlQueueClosed
+            TrySendError::Closed(_) => Self::ControlQueueClosed,
         }
     }
 }

@@ -1,24 +1,16 @@
 //! Collects commonly-used names for convenient import
 
 pub use crate::{
-    validated::*,
+    audit::*,
+    history::*,
     id::*,
-    network::*,
-    network::event::{
-        Event,
-        EventClock,
-        EventDetails,
-    },
-    network::errors::{
-        LookupError,
-        LookupResult,
-    },
     modes::*,
-    policy,
-    rpc,
+    network::errors::{LookupError, LookupResult},
+    network::event::{Event, EventClock, EventDetails},
+    network::*,
     node::NetworkNode,
+    policy, rpc,
     sync::*,
     types::*,
-    history::*,
-    audit::*,
+    validated::*,
 };
