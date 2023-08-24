@@ -6,7 +6,7 @@ use crate::messages::numeric;
 
 use std::fmt::Write;
 
-pub fn send_channel_names(server: &ClientServer, to: &(impl MessageSink + ?Sized), to_user: &wrapper::User, channel: &wrapper::Channel) -> HandleResult
+pub fn send_channel_names(server: &ClientServer, to: impl MessageSink, to_user: &wrapper::User, channel: &wrapper::Channel) -> HandleResult
 {
     let mut lines = Vec::new();
     let mut current_line = String::new();

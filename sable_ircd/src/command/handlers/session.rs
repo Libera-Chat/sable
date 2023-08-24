@@ -2,7 +2,7 @@ use super::*;
 //use crate::capability::*;
 
 #[command_handler("SESSION")]
-fn handle_session(server: &ClientServer, cmd: &dyn Command, response: CommandResponse, source: CommandSource,
+fn handle_session(server: &ClientServer, cmd: &dyn Command, response: &dyn CommandResponse, source: CommandSource,
                   subcommand: &str, key: Conditional<&str>) -> CommandResult
 {
     match (source, subcommand.to_ascii_uppercase().as_str())

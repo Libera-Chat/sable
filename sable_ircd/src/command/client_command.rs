@@ -1,4 +1,6 @@
-use super::{*, plumbing::{Command,CommandExt, CommandResponseSink}};
+use crate::capability::ClientCapability;
+
+use super::{*, plumbing::{Command,CommandExt, CommandResponse, LabeledResponseSink, PlainResponseSink}};
 use sable_network::{network::wrapper::ObjectWrapper, policy::*};
 
 /// Describes the possible types of connection that can invoke a command handler
@@ -34,6 +36,12 @@ enum InternalCommandSource
     User(*const state::User),
 }
 
+/// Internal enum to hold the possible types of response sink
+enum InternalResponseSink<S: MessageSink> {
+    Labeled(LabeledResponseSink<S>),
+    Standard(PlainResponseSink<S>)
+}
+
 /// A client command to be handled
 pub struct ClientCommand
 {
@@ -51,6 +59,11 @@ pub struct ClientCommand
     pub args: Vec<String>,
     /// Tags provided by the client
     pub tags: InboundTagSet,
+
+    // The response sink. labeled-response requires that this lives for the whole
+    // lifetime of the command, not just the handler duration, because even translated
+    // error returns need to be inside the single batch
+    response_sink: InternalResponseSink<ClientConnection>,
 }
 
 // Safety: this isn't automatically Send/Sync because of the raw pointer inside `InternalCommandSource`.
@@ -68,6 +81,11 @@ impl ClientCommand
     {
         let net = server.network();
         let source = Self::translate_message_source(&*net, &*connection)?;
+        let response_target = Self::translate_internal_source(&source, net.as_ref()).format();
+        let response_sink = Self::make_response_sink(Arc::clone(&connection),
+                                                    &message.tags,
+                                                    server.format(),
+                                                    response_target);
 
         Ok(Self {
             server,
@@ -77,7 +95,23 @@ impl ClientCommand
             command: message.command,
             args: message.args,
             tags: message.tags,
+            response_sink,
         })
+    }
+
+    // Create the appropriate internal response sink
+    fn make_response_sink(conn: Arc<ClientConnection>,
+                          inbound_tags: &InboundTagSet,
+                          response_source: String,
+                          response_target: String) -> InternalResponseSink<ClientConnection> {
+        if conn.capabilities.has(ClientCapability::LabeledResponse) {
+            if let Some(label) = inbound_tags.has("label") {
+                if let Some(label) = &label.value {
+                    return InternalResponseSink::Labeled(LabeledResponseSink::new(response_source, response_target, conn, label.clone()));
+                }
+            }
+        }
+        InternalResponseSink::Standard(PlainResponseSink::new(response_source, response_target, conn))
     }
 
     fn translate_message_source(net: &Network, source: &ClientConnection) -> Result<InternalCommandSource, CommandError>
@@ -96,13 +130,9 @@ impl ClientCommand
             Err(CommandError::unknown("Got message from neither preclient nor client"))
         }
     }
-}
 
-impl Command for ClientCommand
-{
-    fn source(&self) -> CommandSource<'_>
-    {
-        match &self.source
+    fn translate_internal_source<'a>(source: &'a InternalCommandSource, net: &'a Network) -> CommandSource<'a> {
+        match source
         {
             InternalCommandSource::PreClient(pc) => CommandSource::PreClient(Arc::clone(pc)),
             InternalCommandSource::User(user_pointer) =>
@@ -111,10 +141,18 @@ impl Command for ClientCommand
                 // so will always survive at least as long as `self`. The returned `CommandSource`
                 // creates a borrow of `self.net`, so it can't be removed while that exists.
                 let user: &'_ state::User = unsafe { &**user_pointer };
-                let wrapper = <wrapper::User as wrapper::ObjectWrapper>::wrap(&*self.net, user);
+                let wrapper = <wrapper::User as wrapper::ObjectWrapper>::wrap(net, user);
                 CommandSource::User(wrapper)
             }
         }
+    }
+}
+
+impl Command for ClientCommand
+{
+    fn source(&self) -> CommandSource<'_>
+    {
+        Self::translate_internal_source(&self.source, self.net.as_ref())
     }
 
     fn command(&self) -> &str
@@ -141,13 +179,16 @@ impl Command for ClientCommand
     {
         if let Some(n) = self.translate_command_error(err)
         {
-            let _ = self.connection.send(n.format_for(self.server(), &self.source()));
+            let _ = self.response_sink().numeric(n);
         }
     }
 
-    fn make_response_sink(&self) -> Box<dyn CommandResponseSink + '_> {
+    fn response_sink(&self) -> &dyn CommandResponse {
         // TODO: labeled-response batch if appropriate
-        Box::new(plumbing::PlainCommandResponseSink::new(self, self.connection()))
+        match &self.response_sink {
+            InternalResponseSink::Labeled(s) => s,
+            InternalResponseSink::Standard(s) => s
+        }
     }
 
     fn connection_id(&self) -> client_listener::ConnectionId

@@ -5,7 +5,7 @@ use base64::prelude::*;
 
 #[command_handler("AUTHENTICATE")]
 async fn handle_authenticate(source: PreClientSource, net: &Network, cmd: &dyn Command,
-                             response: CommandResponse<'_>,
+                             response: &dyn CommandResponse,
                              server: &ClientServer, services: Conditional<ServicesTarget<'_>>,
                              text: &str) -> CommandResult
 {
@@ -85,7 +85,7 @@ async fn handle_authenticate(source: PreClientSource, net: &Network, cmd: &dyn C
     Ok(())
 }
 
-fn do_sasl_external(source: PreClientSource, conn: &ClientConnection, net: &Network, response: CommandResponse) -> CommandResult
+fn do_sasl_external(source: PreClientSource, conn: &ClientConnection, net: &Network, response: &dyn CommandResponse) -> CommandResult
 {
     if let Some(fp) = conn.tls_info().and_then(|ti| ti.fingerprint.as_ref())
     {

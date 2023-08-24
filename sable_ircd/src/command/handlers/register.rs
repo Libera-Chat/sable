@@ -1,7 +1,7 @@
 use super::*;
 
 #[command_handler("REGISTER")]
-pub async fn handle_register(network: &Network, source: CommandSource<'_>, response: CommandResponse<'_>,
+pub async fn handle_register(network: &Network, source: CommandSource<'_>, response: &dyn CommandResponse,
                              server: &ClientServer,
                          account: &str, email: &str, password: &str) -> CommandResult
 {
@@ -19,7 +19,7 @@ pub async fn handle_register(network: &Network, source: CommandSource<'_>, respo
     }
 }
 
-async fn do_register_user(network: &Network, source: wrapper::User<'_>, response_to: CommandResponse<'_>,
+async fn do_register_user(network: &Network, source: wrapper::User<'_>, response_to: &dyn CommandResponse,
                           server: &ClientServer,
                     account: &str, _email: &str, password: &str) -> CommandResult
 {

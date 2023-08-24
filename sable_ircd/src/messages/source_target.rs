@@ -102,6 +102,11 @@ impl MessageTarget for Nickname
     fn format(&self) -> String { self.value().to_string() }
 }
 
+impl MessageTarget for String
+{
+    fn format(&self) -> String { self.clone() }
+}
+
 impl MessageTarget for update::HistoricUser
 {
     fn format(&self) -> String { self.nickname.to_string() }

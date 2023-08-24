@@ -17,9 +17,36 @@ pub trait MessageSinkExt : MessageSink {
     /// and the corresponding client capability. If a client does not have that capability
     /// enabled, then behaviour will fall back to sending those messages directly.
     fn batch(&self, batch_type: impl ToString,
-                    capability: impl Into<ClientCapabilitySet>) -> batch::BatchBuilder<'_, Self> {
+                    capability: impl Into<ClientCapabilitySet>) -> batch::BatchBuilder<&'_ Self> {
+        batch::BatchBuilder::new(batch_type, capability, self)
+    }
+
+    /// Create a batch, transferring ownership of `self` into it
+    fn into_batch(self, batch_type: impl ToString,
+                        capability: impl Into<ClientCapabilitySet>) -> batch::BatchBuilder<Self>
+        where Self: Sized
+    {
         batch::BatchBuilder::new(batch_type, capability, self)
     }
 }
 
 impl<T: MessageSink + ?Sized> MessageSinkExt for T { }
+
+// All MessageSink's methods are &self, so we can implement it for any reference type as well
+impl<T: MessageSink + ?Sized> MessageSink for &T {
+    fn send(&self, msg: OutboundClientMessage) {
+        (*self).send(msg)
+    }
+    fn user_id(&self) -> Option<UserId> {
+        (*self).user_id()
+    }
+}
+
+impl<T: MessageSink + ?Sized> MessageSink for std::sync::Arc<T> {
+    fn send(&self, msg: OutboundClientMessage) {
+        (*self.as_ref()).send(msg)
+    }
+    fn user_id(&self) -> Option<UserId> {
+        (*self.as_ref()).user_id()
+    }
+}

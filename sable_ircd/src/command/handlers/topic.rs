@@ -1,7 +1,7 @@
 use super::*;
 
 #[command_handler("TOPIC")]
-fn handle_topic(server: &ClientServer, net: &Network, source: UserSource, response: CommandResponse,
+fn handle_topic(server: &ClientServer, net: &Network, source: UserSource, response: &dyn CommandResponse,
                 channel: wrapper::Channel, new_topic: Option<&str>) -> CommandResult
 {
     if let Some(text) = new_topic

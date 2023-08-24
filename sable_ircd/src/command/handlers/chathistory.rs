@@ -9,7 +9,7 @@ use std::cmp::{
 };
 
 #[command_handler("CHATHISTORY")]
-fn handle_chathistory(source: UserSource, server: &ClientServer, response: CommandResponse,
+fn handle_chathistory(source: UserSource, server: &ClientServer, response: &dyn CommandResponse,
                       subcommand: &str, arg_1: &str, arg_2: &str, arg_3: &str, arg_4: Option<&str>) -> CommandResult
 {
     let source = source.deref();
@@ -190,7 +190,7 @@ fn target_name_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<St
 
 // For listing targets, we iterate backwards through time; this allows us to just collect the
 // first timestamp we see for each target and know that it's the most recent one
-fn list_targets(server: &ClientServer, into: &(impl MessageSink + ?Sized), source: &wrapper::User, from_ts: Option<i64>, to_ts: Option<i64>, limit: Option<usize>)
+fn list_targets(server: &ClientServer, into: impl MessageSink, source: &wrapper::User, from_ts: Option<i64>, to_ts: Option<i64>, limit: Option<usize>)
 {
     let log = server.node().history();
     let mut found_targets = HashMap::new();
@@ -232,7 +232,7 @@ fn list_targets(server: &ClientServer, into: &(impl MessageSink + ?Sized), sourc
     }
 }
 
-fn send_history_for_target_forward(server: &ClientServer, into: &(impl MessageSink + ?Sized), source: &wrapper::User, target: &str, from_ts: Option<i64>, to_ts: Option<i64>, limit: Option<usize>) -> CommandResult
+fn send_history_for_target_forward(server: &ClientServer, into: impl MessageSink, source: &wrapper::User, target: &str, from_ts: Option<i64>, to_ts: Option<i64>, limit: Option<usize>) -> CommandResult
 {
     let log = server.node().history();
     let mut entries = Vec::new();
@@ -277,7 +277,7 @@ fn send_history_for_target_forward(server: &ClientServer, into: &(impl MessageSi
 }
 
 // As above, but work backwards
-fn send_history_for_target_reverse(server: &ClientServer, into: &(impl MessageSink + ?Sized), source: &wrapper::User, target: &str, from_ts: Option<i64>, to_ts: Option<i64>, limit: Option<usize>) -> CommandResult
+fn send_history_for_target_reverse(server: &ClientServer, into: impl MessageSink, source: &wrapper::User, target: &str, from_ts: Option<i64>, to_ts: Option<i64>, limit: Option<usize>) -> CommandResult
 {
     let log = server.node().history();
     let mut entries = Vec::new();

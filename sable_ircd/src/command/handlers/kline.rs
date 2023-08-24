@@ -4,7 +4,7 @@ use sable_network::network::ban::*;
 const DEFAULT_KLINE_DURATION: u32 = 1440;
 
 #[command_handler("KLINE")]
-fn handle_kline(server: &ClientServer, response: CommandResponse, source: UserSource, audit: AuditLogger,
+fn handle_kline(server: &ClientServer, response: &dyn CommandResponse, source: UserSource, audit: AuditLogger,
                 duration: IfParses<u32>, mask: &str, message: &str) -> CommandResult
 {
     server.policy().require_oper(&source)?;

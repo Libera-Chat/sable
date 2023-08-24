@@ -29,7 +29,7 @@ impl<'a> Command for ServicesCommand<'a>
     fn source(&self) -> CommandSource<'_> { self.outer.source() }
     fn server(&self) -> &Arc<ClientServer> { self.outer.server() }
     fn network(&self) -> &Arc<Network> { self.outer.network() }
-    fn make_response_sink(&self) -> Box<dyn CommandResponseSink + '_> { self.outer.make_response_sink() }
+    fn response_sink(&self) -> &dyn CommandResponse { self.outer.response_sink() }
     fn connection_id(&self) -> client_listener::ConnectionId { self.outer.connection_id() }
     fn connection(&self) -> &ClientConnection { self.outer.connection() }
 

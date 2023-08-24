@@ -2,7 +2,7 @@ use super::*;
 
 
 #[command_handler("MODE")]
-fn handle_user(server: &ClientServer, source: UserSource, response: CommandResponse,
+fn handle_user(server: &ClientServer, source: UserSource, response: &dyn CommandResponse,
                target: TargetParameter, mode_str: Option<&str>, args: ArgList) -> CommandResult
 {
     match target
@@ -69,7 +69,7 @@ fn handle_user(server: &ClientServer, source: UserSource, response: CommandRespo
     }
 }
 
-fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, response: CommandResponse,
+fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, response: &dyn CommandResponse,
         chan: wrapper::Channel, mode_str: Option<&str>, mut args: ArgList) -> CommandResult
 {
     let mode = chan.mode();
@@ -139,7 +139,7 @@ fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, response: 
                     if dir == Direction::Query || args.is_empty()
                     {
                         server.policy().can_query_list(source, &chan, list_type)?;
-                        send_channel_banlike_list(&response, &chan, &list)?;
+                        send_channel_banlike_list(response, &chan, &list)?;
                     }
                     else
                     {
@@ -211,7 +211,7 @@ fn handle_channel_mode(server: &ClientServer, source: &wrapper::User, response: 
     Ok(())
 }
 
-fn send_channel_banlike_list(to: &CommandResponse, chan: &wrapper::Channel, list: &wrapper::ListMode) -> CommandResult
+fn send_channel_banlike_list(to: &dyn CommandResponse, chan: &wrapper::Channel, list: &wrapper::ListMode) -> CommandResult
 {
     for entry in list.entries()
     {
@@ -223,7 +223,7 @@ fn send_channel_banlike_list(to: &CommandResponse, chan: &wrapper::Channel, list
     Ok(())
 }
 
-fn send_banlike_list_entry(to: &CommandResponse, chan: &wrapper::Channel, list_type: ListModeType, entry: &wrapper::ListModeEntry) -> CommandResult
+fn send_banlike_list_entry(to: &dyn CommandResponse, chan: &wrapper::Channel, list_type: ListModeType, entry: &wrapper::ListModeEntry) -> CommandResult
 {
     match list_type {
         ListModeType::Ban => to.numeric(make_numeric!(BanList, chan, entry)),
@@ -234,7 +234,7 @@ fn send_banlike_list_entry(to: &CommandResponse, chan: &wrapper::Channel, list_t
     Ok(())
 }
 
-fn send_banlike_end_numeric(to: &CommandResponse, chan: &wrapper::Channel, list_type: ListModeType) -> CommandResult
+fn send_banlike_end_numeric(to: &dyn CommandResponse, chan: &wrapper::Channel, list_type: ListModeType) -> CommandResult
 {
     match list_type {
         ListModeType::Ban => to.numeric(make_numeric!(EndOfBanList, chan)),

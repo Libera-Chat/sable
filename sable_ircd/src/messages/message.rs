@@ -40,4 +40,5 @@ define_messages! {
     Register => { (status: &str, account: Nickname, message: &str) => "REGISTER {status} {account} {message}" },
     BatchStart => { (name: &str, batch_type: &str, args: &str) => "BATCH +{name} {batch_type} {args}" },
     BatchEnd => { (name: &str) => "BATCH -{name}" },
+    Ack => { (source) => ":{source} ACK" },
 }

@@ -3,7 +3,7 @@ use crate::capability::*;
 
 #[command_handler("CAP")]
 fn handle_cap(server: &ClientServer, pre_client: PreClientSource, cmd: &dyn Command,
-              response: CommandResponse,
+              response: &dyn CommandResponse,
               subcommand: &str, cap_list: Option<&str>) -> CommandResult
 {
     match subcommand.to_ascii_uppercase().as_str()

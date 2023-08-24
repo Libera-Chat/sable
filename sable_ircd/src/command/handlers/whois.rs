@@ -1,7 +1,7 @@
 use super::*;
 
 #[sable_macros::command_handler("WHOIS")]
-fn whois_handler(response: CommandResponse, _source: UserSource, target: wrapper::User) -> CommandResult
+fn whois_handler(response: &dyn CommandResponse, _source: UserSource, target: wrapper::User) -> CommandResult
 {
     response.numeric(make_numeric!(WhoisUser, &target));
 

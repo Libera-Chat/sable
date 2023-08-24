@@ -113,10 +113,10 @@ impl<'a> AmbientArgument<'a> for &'a dyn Command
     }
 }
 
-impl<'a> AmbientArgument<'a> for CommandResponse<'a>
+impl<'a> AmbientArgument<'a> for &'a dyn CommandResponse
 {
     fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError> {
-        Ok(CommandResponse(ctx.make_response_sink()))
+        Ok(ctx.response_sink())
     }
 }
 

@@ -55,7 +55,7 @@ impl UntargetedNumeric {
 }
 
 /// A server-to-client protocol message
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct OutboundClientMessage {
     caps: CapabilityCondition,
     tags: Vec<OutboundMessageTag>,

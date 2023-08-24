@@ -31,9 +31,9 @@ pub trait Command : Send + Sync
     /// Notify the user of an error
     fn notify_error(&self, err: CommandError);
 
-    /// Construct a [`CommandResponse`] implementation which can receive responses
+    /// Retrieve a [`CommandResponse`] implementation which can receive responses
     /// to this command
-    fn make_response_sink(&self) -> Box<dyn CommandResponseSink + '_>;
+    fn response_sink(&self) -> &dyn CommandResponse;
 
     /// Retrieve the underlying connection ID
     fn connection_id(&self) -> ConnectionId;
