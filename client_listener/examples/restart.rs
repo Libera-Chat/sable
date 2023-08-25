@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap()
             .join("listener_process");
 
-        let listeners = ListenerCollection::with_exe_path(exe, event_send)?;
+        let listeners = ListenerCollection::with_exe_path(exe, event_send, None)?;
         let _id = listeners.add_listener(addr, ConnectionType::Clear)?;
         listeners
     };

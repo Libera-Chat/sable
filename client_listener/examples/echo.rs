@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .join("listener_process");
     tracing::info!("exe = {:?}", exe);
 
-    let listeners = ListenerCollection::with_exe_path(exe, event_send)?;
+    let listeners = ListenerCollection::with_exe_path(exe, event_send, None)?;
     let _id = listeners.add_listener(addr, ConnectionType::Clear)?;
 
     while let Some(event) = event_recv.recv().await {
