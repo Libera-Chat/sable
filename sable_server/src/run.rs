@@ -63,7 +63,11 @@ where
 
     let err = Command::new(exe.as_ref()).args(args).exec();
 
-    panic!("exec() failed on upgrade: {}", err);
+    panic!(
+        "exec() failed on {} upgrade: {}",
+        exe.as_ref().display(),
+        err
+    );
 }
 
 // The async entry point for the application. Because `run_server` can fork into the background
@@ -111,12 +115,13 @@ where
         }
         ShutdownAction::Restart => {
             server.shutdown().await;
+            let current_exe = env::current_exe().context("Could not get current executable")?;
 
-            let err = Command::new(env::current_exe()?)
+            let err = Command::new(&current_exe)
                 .args(env::args().skip(1).collect::<Vec<_>>())
                 .exec();
 
-            panic!("Couldn't re-execute: {}", err);
+            panic!("Couldn't re-execute {}: {}", current_exe.display(), err);
         }
         ShutdownAction::Upgrade => {
             let server_state = server.save().await.context("Could not save server state")?;

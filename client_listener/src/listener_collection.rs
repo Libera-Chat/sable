@@ -2,7 +2,12 @@ use crate::internal::*;
 use crate::*;
 
 use std::{
-    collections::HashMap, convert::TryInto, env::current_exe, io, net::SocketAddr, path::Path,
+    collections::HashMap,
+    convert::TryInto,
+    env::current_exe,
+    io,
+    net::SocketAddr,
+    path::{Path, PathBuf},
 };
 
 use sable_ipc::{channel as ipc_channel, Receiver as IpcReceiver, Sender as IpcSender};
@@ -20,6 +25,7 @@ use nix::{
     sys::wait::{waitpid, WaitPidFlag, WaitStatus},
     unistd::Pid,
 };
+use thiserror::Error;
 
 /// Saved state which can be used to recreate a [`ListenerCollection`] after an
 /// `exec()` transition.
@@ -36,6 +42,19 @@ type CommResult = std::io::Result<(
     IpcSender<ControlMessage>,
     IpcReceiver<InternalConnectionEvent>,
 )>;
+
+/// Errors that could happen when initializing a listener collection
+#[derive(Debug, Error)]
+pub enum ListenerCollectionError {
+    #[error("Could not get current executable: {0}")]
+    CurrentExecError(std::io::Error),
+    #[error("Could not create IPC channel: {0}")]
+    IpcChannelInitError(sable_ipc::Error),
+    #[error("Could not use IPC channel: {0}")]
+    IpcChannelFdError(std::io::Error),
+    #[error("Could not spawn {1}: {0}")]
+    SpawnError(std::io::Error, PathBuf),
+}
 
 /// The primary interface to the client listener worker process.
 ///
@@ -61,9 +80,18 @@ impl ListenerCollection {
     /// Create a new `ListenerCollection` with an automatically guessed worker process
     /// executable. `new` will look for an executable named `listener_process` in the
     /// same directory as the currently running executable, then call `with_exe_path`.
-    pub fn new(event_channel: UnboundedSender<ConnectionEvent>) -> std::io::Result<Self> {
-        let my_path = current_exe()?;
-        let dir = my_path.parent().ok_or(io::ErrorKind::NotFound)?;
+    ///
+    /// As for `with_exe_path`, this function returns a `std::io::Result` wrapper because
+    /// spawning the child process may fail.
+    pub fn new(
+        event_channel: UnboundedSender<ConnectionEvent>,
+    ) -> Result<Self, ListenerCollectionError> {
+        let my_path = current_exe().map_err(ListenerCollectionError::CurrentExecError)?;
+        let dir = my_path
+            .parent()
+            .ok_or(ListenerCollectionError::CurrentExecError(
+                io::ErrorKind::NotFound.into(),
+            ))?;
         let default_listener_path = dir.join("listener_process");
 
         Self::with_exe_path(default_listener_path, event_channel)
@@ -74,17 +102,26 @@ impl ListenerCollection {
     /// The worker process will be spawned, along with an asynchronous task to run
     /// communications. Incoming connections, data and other events will be notified
     /// via `event_channel`.
+    ///
+    /// The return type is a [`std::io::Result`] wrapper because spawning the child process may fail,
+    /// in which case none of the functionality would be available.
     pub fn with_exe_path(
         exec_path: impl AsRef<Path>,
         event_channel: UnboundedSender<ConnectionEvent>,
-    ) -> std::io::Result<Self> {
-        let (control_send, control_recv) = ipc_channel(crate::MAX_CONTROL_SIZE)?;
-        let (event_send, event_recv) = ipc_channel(crate::MAX_MSG_SIZE)?;
+    ) -> Result<Self, ListenerCollectionError> {
+        let (control_send, control_recv) = ipc_channel(crate::MAX_CONTROL_SIZE)
+            .map_err(ListenerCollectionError::IpcChannelInitError)?;
+        let (event_send, event_recv) = ipc_channel(crate::MAX_MSG_SIZE)
+            .map_err(ListenerCollectionError::IpcChannelInitError)?;
         let (local_control_send, local_control_recv) = unbounded_channel();
 
         let child = unsafe {
-            let control_fd = control_recv.into_raw_fd()?;
-            let event_fd = event_send.into_raw_fd()?;
+            let control_fd = control_recv
+                .into_raw_fd()
+                .map_err(ListenerCollectionError::IpcChannelFdError)?;
+            let event_fd = event_send
+                .into_raw_fd()
+                .map_err(ListenerCollectionError::IpcChannelFdError)?;
 
             Command::new(exec_path.as_ref())
                 .args([control_fd.to_string(), event_fd.to_string()])
@@ -97,7 +134,10 @@ impl ListenerCollection {
                     fcntl(event_fd, F_SETFD, efd_flags & !FD_CLOEXEC);
                     Ok(())
                 })
-                .spawn()?
+                .spawn()
+                .map_err(|e| {
+                    ListenerCollectionError::SpawnError(e, exec_path.as_ref().to_owned())
+                })?
         };
 
         let child_pid = Pid::from_raw(child.id().try_into().unwrap());
