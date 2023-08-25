@@ -30,8 +30,7 @@ impl sable_server::ServerType for ClientServer {
         let (auth_sender, auth_events) = unbounded_channel();
         let (client_send, client_recv) = unbounded_channel();
 
-        let client_listeners =
-            ListenerCollection::new(client_send, config.console_address)
+        let client_listeners = ListenerCollection::new(client_send, config.console_address)
             .context("Could not initialize listener collection")?;
 
         client_listeners
