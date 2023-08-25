@@ -9,9 +9,10 @@ use std::{
         io::{FromRawFd, IntoRawFd, RawFd},
         process::CommandExt,
     },
-    path::Path,
+    path::{Path, PathBuf},
     process::{Child, Command},
 };
+use thiserror::Error;
 use tokio::{
     select,
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
@@ -82,6 +83,17 @@ async fn run_communication_task(
     Ok((control_sender, event_receiver))
 }
 
+/// Errors that could happen when initializing a listener collection
+#[derive(Debug, Error)]
+pub enum AuthClientError {
+    #[error("Could not get current executable: {0}")]
+    CurrentExecError(std::io::Error),
+    #[error("Could not create IPC channel: {0}")]
+    IpcChannelInitError(std::io::Error),
+    #[error("Could not spawn {1}: {0}")]
+    SpawnError(std::io::Error, PathBuf),
+}
+
 impl AuthClient {
     /// Construct a new `AuthClient` using an automatically guessed executable path.
     ///
@@ -90,11 +102,13 @@ impl AuthClient {
     /// as for `with_exe_path`, this will spawn the worker process and an asynchronous
     /// task to manage communications with the worker.
     ///
-    /// As for `with_exe_path`, this function returns a `std::io::Result` because
+    /// As for `with_exe_path`, this function returns a `std::io::Result` wrapper because
     /// spawning the child process may fail.
-    pub fn new(event_channel: UnboundedSender<AuthEvent>) -> std::io::Result<Self> {
-        let my_path = current_exe()?;
-        let dir = my_path.parent().ok_or(io::ErrorKind::NotFound)?;
+    pub fn new(event_channel: UnboundedSender<AuthEvent>) -> Result<Self, AuthClientError> {
+        let my_path = current_exe().map_err(AuthClientError::CurrentExecError)?;
+        let dir = my_path.parent().ok_or(AuthClientError::CurrentExecError(
+            io::ErrorKind::NotFound.into(),
+        ))?;
         let default_listener_path = dir.join("auth_client");
 
         Self::with_exe_path(default_listener_path, event_channel)
@@ -108,14 +122,16 @@ impl AuthClient {
     /// to manage communications with it. The returned `AuthClient` should be used to interact
     /// with the worker.
     ///
-    /// The return type is `std::io::Result` because spawning the child process may fail, in
-    /// which case none of the functionality would be available.
+    /// The return type is a [`std::io::Result`] wrapper because spawning the child process may fail,
+    /// in which case none of the functionality would be available.
     pub fn with_exe_path(
         exec_path: impl AsRef<Path>,
         event_channel: UnboundedSender<AuthEvent>,
-    ) -> std::io::Result<Self> {
-        let (control_send, control_recv) = ipc_channel()?;
-        let (event_send, event_recv) = ipc_channel()?;
+    ) -> Result<Self, AuthClientError> {
+        let (control_send, control_recv) =
+            ipc_channel().map_err(AuthClientError::IpcChannelInitError)?;
+        let (event_send, event_recv) =
+            ipc_channel().map_err(AuthClientError::IpcChannelInitError)?;
         let (local_control_send, local_control_recv) = unbounded_channel();
 
         let child = unsafe {
@@ -133,7 +149,8 @@ impl AuthClient {
                     fcntl(event_fd, F_SETFD, efd_flags & !FD_CLOEXEC);
                     Ok(())
                 })
-                .spawn()?
+                .spawn()
+                .map_err(|e| AuthClientError::SpawnError(e, exec_path.as_ref().to_owned()))?
         };
 
         let (shutdown_send, shutdown_recv) = oneshot::channel();
