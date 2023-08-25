@@ -176,8 +176,7 @@ where
     // Don't re-daemonise if we're upgrading; in that case if we're supposed to be daemonised then
     // we already are.
     if !foreground && upgrade_fd.is_none() {
-        let mut daemon = daemonize::Daemonize::new()
-            .working_directory(std::env::current_dir()?);
+        let mut daemon = daemonize::Daemonize::new().working_directory(std::env::current_dir()?);
 
         if let Some(stdout) = &server_config.log.stdout {
             daemon = daemon.stdout(File::create(&server_config.log.prefix_file(stdout)).unwrap());
