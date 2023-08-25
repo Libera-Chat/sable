@@ -22,6 +22,7 @@ pub use network::GossipNetwork;
 pub use network::GossipNetworkState;
 pub use network::NetworkError;
 
+pub use replicated_log::EventLogSaveError;
 pub use replicated_log::ReplicatedEventLog;
 pub use replicated_log::ReplicatedEventLogState;
 

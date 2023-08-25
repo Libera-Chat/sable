@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::{error::Error, fs::File, io::BufReader, path::PathBuf};
+use std::{fs::File, io::BufReader, path::PathBuf};
 
 use crate::prelude::ConfigError;
 
@@ -16,7 +16,7 @@ pub struct TlsData {
 }
 
 impl TlsConfig {
-    pub fn load_from_disk(&self) -> Result<TlsData, Box<dyn Error>> {
+    pub fn load_from_disk(&self) -> Result<TlsData, anyhow::Error> {
         let cert_file = File::open(&self.cert_file)?;
         let mut cert_reader = BufReader::new(cert_file);
         let cert_chain = rustls_pemfile::certs(&mut cert_reader)?;

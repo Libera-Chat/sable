@@ -27,7 +27,7 @@ pub enum EventLogSaveError {
     #[error("{0}")]
     InternalError(&'static str),
     #[error("Unknown error: {0}")]
-    UnknownError(#[from] Box<dyn std::error::Error + Send + Sync>),
+    UnknownError(#[from] anyhow::Error),
 }
 
 /// Saved state for a [ReplicatedEventLog], used to save and restore across an upgrade

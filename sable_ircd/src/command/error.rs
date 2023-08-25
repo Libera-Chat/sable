@@ -12,7 +12,7 @@ use crate::errors::HandlerError;
 #[derive(Debug)]
 pub enum CommandError {
     /// Something returned an `Error` that we don't know how to handle
-    UnderlyingError(Box<dyn std::error::Error + Send + Sync>),
+    UnderlyingError(anyhow::Error),
     /// Something went wrong but we don't have an `Error` impl for it
     UnknownError(String),
     /// The command couldn't be processed successfully, and the client has already been
@@ -135,12 +135,12 @@ impl From<UntargetedNumeric> for CommandError {
 
 impl From<ConnectionError> for CommandError {
     fn from(e: ConnectionError) -> Self {
-        Self::UnderlyingError(Box::new(e))
+        Self::UnderlyingError(e.into())
     }
 }
 
 impl From<HandlerError> for CommandError {
     fn from(e: HandlerError) -> Self {
-        Self::UnderlyingError(Box::new(e))
+        Self::UnderlyingError(e.into())
     }
 }

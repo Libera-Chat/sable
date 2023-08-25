@@ -14,12 +14,12 @@ pub enum DatabaseError {
     #[error("Invalid data")]
     InvalidData,
     #[error("{0}")]
-    DbError(#[from] Box<dyn std::error::Error + 'static>),
+    DbError(#[from] anyhow::Error),
 }
 
 impl DatabaseError {
-    fn from_inner<T: std::error::Error + 'static>(inner: T) -> Self {
-        Self::DbError(Box::new(inner))
+    fn from_inner<T: Into<anyhow::Error>>(inner: T) -> Self {
+        Self::DbError(inner.into())
     }
 }
 

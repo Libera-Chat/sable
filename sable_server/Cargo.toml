@@ -34,3 +34,4 @@ daemonize = "0.4"
 nix = "0.24"
 memfd = "0.4"
 parking_lot = { version = "0.12", features = [ "serde" ] }
+anyhow = "1.0"

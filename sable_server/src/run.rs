@@ -14,6 +14,7 @@ use std::{
     process::Command,
 };
 
+use anyhow::Context;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use memfd::*;
@@ -75,7 +76,7 @@ async fn do_run_server<ST>(
     tls_data: sable_network::config::TlsData,
     upgrade_fd: Option<i32>,
     bootstrap_network: Option<sable_network::network::config::NetworkConfig>,
-) -> Result<(), Box<dyn std::error::Error>>
+) -> Result<(), anyhow::Error>
 where
     ST: ServerType,
 {
@@ -90,11 +91,12 @@ where
 
         let state = read_upgrade_state(upgrade_fd);
 
-        let server = Server::restore_from(state, sync_config, server_config)?;
-
-        server
+        Server::restore_from(state, sync_config, server_config)
+            .context("Could not restore server")?
     } else {
-        Server::new(server_config, tls_data, sync_config, bootstrap_network).await
+        Server::new(server_config, tls_data, sync_config, bootstrap_network)
+            .await
+            .context("Could not initialize server")?
     };
 
     // Run the actual server
@@ -117,7 +119,7 @@ where
             panic!("Couldn't re-execute: {}", err);
         }
         ShutdownAction::Upgrade => {
-            let server_state = server.save().await;
+            let server_state = server.save().await.context("Could not save server state")?;
 
             exec_upgrade(&exe_path, server_conf_path, sync_conf_path, server_state);
         }
@@ -154,7 +156,7 @@ pub fn run_server<ST>(
     foreground: bool,
     upgrade_fd: Option<RawFd>,
     bootstrap_config: Option<impl AsRef<Path>>,
-) -> Result<(), Box<dyn std::error::Error>>
+) -> anyhow::Result<()>
 where
     ST: ServerType,
 {
@@ -162,12 +164,28 @@ where
     // configs (in order to report as many errors as possible before daemonising), daemonises,
     // initialises the tokio runtime, and begins the async entry point [`sable_main`].
 
-    let sync_config = SyncConfig::load_file(&sync_config_path)?;
-    let server_config = ServerConfig::<ST>::load_file(&server_config_path)?;
+    let sync_config = SyncConfig::load_file(&sync_config_path).with_context(|| {
+        format!(
+            "Failed to read sync config from {}",
+            sync_config_path.as_ref().display()
+        )
+    })?;
+    let server_config = ServerConfig::<ST>::load_file(&server_config_path).with_context(|| {
+        format!(
+            "Failed to read server config from {}",
+            server_config_path.as_ref().display()
+        )
+    })?;
 
-    let tls_data = server_config.tls_config.load_from_disk()?;
+    let tls_data = server_config
+        .tls_config
+        .load_from_disk()
+        .context("Failed to read TLS config")?;
 
-    let bootstrap_conf = bootstrap_config.map(load_network_config).transpose()?;
+    let bootstrap_conf = bootstrap_config
+        .map(load_network_config)
+        .transpose()
+        .context("Failed to transpose network config")?;
 
     if !server_config.log.dir.is_dir() {
         std::fs::create_dir_all(&server_config.log.dir).expect("failed to create log directory");
@@ -181,10 +199,16 @@ where
             .working_directory(std::env::current_dir()?);
 
         if let Some(stdout) = &server_config.log.stdout {
-            daemon = daemon.stdout(File::create(&server_config.log.prefix_file(stdout)).unwrap());
+            let path = server_config.log.prefix_file(stdout);
+            daemon = daemon.stdout(File::create(&path).with_context(|| {
+                format!("Could not create daemon stdout file {}", path.display())
+            })?);
         }
         if let Some(stderr) = &server_config.log.stderr {
-            daemon = daemon.stderr(File::create(&server_config.log.prefix_file(stderr)).unwrap());
+            let path = server_config.log.prefix_file(stderr);
+            daemon = daemon.stderr(File::create(&path).with_context(|| {
+                format!("Could not create daemon stderr file {}", path.display())
+            })?);
         }
         if let Some(pidfile) = &server_config.log.pidfile {
             daemon = daemon.pid_file(server_config.log.prefix_file(pidfile));

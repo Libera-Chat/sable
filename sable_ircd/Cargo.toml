@@ -39,3 +39,4 @@ parking_lot = { version = "0.12", features = [ "serde" ] }
 async-trait = "0.1.57"
 structopt = "0.3"
 base64 = "0.21"
+anyhow = "1.0"

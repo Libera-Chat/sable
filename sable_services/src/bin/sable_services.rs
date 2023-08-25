@@ -22,7 +22,7 @@ struct Opts {
 /// Because the tokio runtime can't survive forking, `main()` loads the application
 /// configs (in order to report as many errors as possible before daemonising), daemonises,
 /// initialises the tokio runtime, and begins the async entry point [`sable_main`].
-pub fn main() -> Result<(), Box<dyn std::error::Error>> {
+pub fn main() -> Result<(), anyhow::Error> {
     let opts = Opts::from_args();
 
     sable_server::run::run_server::<

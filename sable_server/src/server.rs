@@ -1,5 +1,6 @@
 use crate::{config::*, strip_comments::StripComments, *};
 
+use anyhow::Context;
 use parking_lot::Mutex;
 use sable_network::{
     config::*,
@@ -43,7 +44,7 @@ where
     ST::Config: DeserializeOwned,
 {
     /// Load configuration from a file
-    pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, anyhow::Error> {
         let file = File::open(filename)?;
         let reader = StripComments::new(file);
         Ok(serde_json::from_reader(reader)?)
@@ -88,7 +89,7 @@ where
         tls_data: TlsData,
         net_config: SyncConfig,
         bootstrap_config: Option<NetworkConfig>,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let (server_send, server_recv) = unbounded_channel();
         let (history_send, history_recv) = unbounded_channel();
         let (remote_send, remote_recv) = unbounded_channel();
@@ -121,14 +122,12 @@ where
             policy,
         ));
 
-        let server = Arc::new(ST::new(
-            conf.server,
-            &tls_data,
-            Arc::clone(&node),
-            history_recv,
-        ));
+        let server = Arc::new(
+            ST::new(conf.server, &tls_data, Arc::clone(&node), history_recv)
+                .context("Could not initialize server")?,
+        );
 
-        Self {
+        Ok(Self {
             node,
             log,
             server,
@@ -138,7 +137,7 @@ where
                 .load_from_disk()
                 .expect("Couldn't load TLS files"),
             remote_command_recv: Mutex::new(Some(remote_recv)),
-        }
+        })
     }
 
     /// Run the server, including the log synchronisation, the network state tracking, management
@@ -263,7 +262,7 @@ where
     }
 
     /// Save the state of the server, including all its component parts, for resumption after a code upgrade.
-    pub async fn save(self) -> ServerState<ST> {
+    pub async fn save(self) -> Result<ServerState<ST>, ServerSaveError> {
         // Order matters here.
         //
         // Arc::try_unwrap will fail if there are any other Arcs still referencing the same object.
@@ -273,20 +272,20 @@ where
         let server_state = Arc::try_unwrap(self.server)
             .unwrap_or_else(|_| panic!("Couldn't unwrap server"))
             .save()
-            .await;
+            .await?;
         let node_state = Arc::try_unwrap(self.node)
             .unwrap_or_else(|_| panic!("Couldn't unwrap node"))
             .save_state();
         let log_state = Arc::try_unwrap(self.log)
             .unwrap_or_else(|_| panic!("Couldn't unwrap event log"))
             .save_state()
-            .expect("Couldn't save log state");
+            .map_err(server_type::ServerSaveError::EventLogSaveError)?;
 
-        ServerState {
+        Ok(ServerState {
             node_state,
             log_state,
             server_state,
-        }
+        })
     }
 
     /// Restore from a previously-saved application state.
@@ -318,7 +317,7 @@ where
             state.server_state,
             Arc::clone(&node),
             history_recv,
-        ));
+        )?);
 
         Ok(Self {
             node,
