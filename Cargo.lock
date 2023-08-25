@@ -1881,6 +1881,7 @@ dependencies = [
 name = "sable_ircd"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "arc-swap",
  "async-trait",
  "auth_client",
@@ -1927,6 +1928,7 @@ name = "sable_network"
 version = "0.1.0"
 dependencies = [
  "ambassador",
+ "anyhow",
  "arrayvec",
  "bitflags",
  "built",
@@ -1961,6 +1963,7 @@ dependencies = [
 name = "sable_server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "chrono",
  "console-subscriber",
@@ -1990,6 +1993,7 @@ dependencies = [
 name = "sable_services"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "bcrypt",
  "dashmap",

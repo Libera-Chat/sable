@@ -1,7 +1,9 @@
 use super::*;
 use crate::connection_collection::ConnectionCollectionState;
+use anyhow::Context;
 use async_trait::async_trait;
 use client_listener::SavedListenerCollection;
+use sable_server::ServerSaveError;
 
 /// Saved state of a [`ClientServer`] for later resumption
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -23,16 +25,17 @@ impl sable_server::ServerType for ClientServer {
         tls_data: &TlsData,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let (action_submitter, action_receiver) = unbounded_channel();
         let (auth_sender, auth_events) = unbounded_channel();
         let (client_send, client_recv) = unbounded_channel();
 
-        let client_listeners = ListenerCollection::new(client_send).unwrap();
+        let client_listeners = ListenerCollection::new(client_send)
+            .context("Could not initialize listener collection")?;
 
         client_listeners
             .load_tls_certificates(tls_data.key.clone(), tls_data.cert_chain.clone())
-            .unwrap();
+            .context("Could not load TLS certificates")?;
 
         for listener in config.listeners.iter() {
             let conn_type = if listener.tls {
@@ -41,17 +44,23 @@ impl sable_server::ServerType for ClientServer {
                 ConnectionType::Clear
             };
             client_listeners
-                .add_listener(listener.address.parse().unwrap(), conn_type)
-                .unwrap();
+                .add_listener(
+                    listener.address.parse().with_context(|| {
+                        format!("Invalid listener address: {}", listener.address)
+                    })?,
+                    conn_type,
+                )
+                .context("Cannot add listener")?;
         }
 
-        Self {
+        Ok(Self {
             action_receiver: Mutex::new(action_receiver),
             connection_events: Mutex::new(client_recv),
             history_receiver: Mutex::new(history_receiver),
             auth_events: Mutex::new(auth_events),
 
-            auth_client: AuthClient::new(auth_sender).unwrap(),
+            auth_client: AuthClient::new(auth_sender)
+                .context("Could not initialize auth client")?,
 
             action_submitter,
             command_dispatcher: CommandDispatcher::new(),
@@ -60,14 +69,18 @@ impl sable_server::ServerType for ClientServer {
             client_caps: CapabilityRepository::new(),
             node: node,
             listeners: Movable::new(client_listeners),
-        }
+        })
     }
 
     /// Save the server's state for later resumption
-    async fn save(mut self) -> ClientServerState {
-        ClientServerState {
+    async fn save(mut self) -> Result<ClientServerState, ServerSaveError> {
+        Ok(ClientServerState {
             connections: self.connections.into_inner().save_state(),
-            auth_state: self.auth_client.save_state().await.unwrap(),
+            auth_state: self
+                .auth_client
+                .save_state()
+                .await
+                .map_err(ServerSaveError::IoError)?,
             client_caps: self.client_caps,
             listener_state: self
                 .listeners
@@ -75,8 +88,8 @@ impl sable_server::ServerType for ClientServer {
                 .unwrap()
                 .save()
                 .await
-                .expect("failed to save listener state"),
-        }
+                .map_err(ServerSaveError::IoError)?,
+        })
     }
 
     /// Restore from a previously saved state.
@@ -84,15 +97,14 @@ impl sable_server::ServerType for ClientServer {
         state: ClientServerState,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
-    ) -> Self {
+    ) -> std::io::Result<Self> {
         let (auth_send, auth_recv) = unbounded_channel();
         let (action_send, action_recv) = unbounded_channel();
         let (client_send, client_recv) = unbounded_channel();
 
-        let listeners = ListenerCollection::resume(state.listener_state, client_send)
-            .expect("failed to restore listener collection");
+        let listeners = ListenerCollection::resume(state.listener_state, client_send)?;
 
-        Self {
+        Ok(Self {
             node,
             action_receiver: Mutex::new(action_recv),
             action_submitter: action_send,
@@ -102,14 +114,13 @@ impl sable_server::ServerType for ClientServer {
                 &listeners,
             )),
             command_dispatcher: command::CommandDispatcher::new(),
-            auth_client: AuthClient::resume(state.auth_state, auth_send)
-                .expect("Failed to reload auth client"),
+            auth_client: AuthClient::resume(state.auth_state, auth_send)?,
             auth_events: Mutex::new(auth_recv),
             isupport: Self::build_basic_isupport(),
             client_caps: state.client_caps,
             history_receiver: Mutex::new(history_receiver),
             listeners: Movable::new(listeners),
-        }
+        })
     }
 
     async fn run(self: Arc<Self>, shutdown: broadcast::Receiver<ShutdownAction>) {

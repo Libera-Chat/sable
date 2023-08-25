@@ -4,12 +4,21 @@ use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc::UnboundedReceiver};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum ServerSaveError {
+    #[error("{0}")]
+    IoError(std::io::Error),
+    #[error("Unknown error: {0}")]
+    EventLogSaveError(sable_network::sync::EventLogSaveError),
+}
 
 /// Trait to be implemented by providers of server application logic.
 ///
 /// An implementor of this trait can be constructed and used by [`run_server`](crate::run::run_server).
 #[async_trait]
-pub trait ServerType: Send + Sync + 'static {
+pub trait ServerType: Send + Sync + Sized + 'static {
     /// The configuration settings required for this server type
     type Config: DeserializeOwned;
 
@@ -22,7 +31,7 @@ pub trait ServerType: Send + Sync + 'static {
         tls_data: &TlsData,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
-    ) -> Self;
+    ) -> anyhow::Result<Self>;
 
     /// Run the application logic. `shutdown_channel` will be signalled with an `ShutdownAction` when
     /// the server should be stopped.
@@ -32,14 +41,14 @@ pub trait ServerType: Send + Sync + 'static {
     async fn shutdown(self);
 
     /// Save state for later resumption
-    async fn save(self) -> Self::Saved;
+    async fn save(self) -> Result<Self::Saved, ServerSaveError>;
 
     /// Restore from saved state
     fn restore(
         state: Self::Saved,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
-    ) -> Self;
+    ) -> std::io::Result<Self>;
 
     /// Handle a request originating from a remote server
     fn handle_remote_command(&self, request: RemoteServerRequestType) -> RemoteServerResponse;
