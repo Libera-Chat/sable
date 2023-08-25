@@ -15,8 +15,8 @@ use sable_network::{
     prelude::LookupError,
     rpc::*,
 };
-use sable_server::ServerType;
 use sable_server::ServerSaveError;
+use sable_server::ServerType;
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -79,7 +79,8 @@ where
         }
 
         Ok(Self {
-            db: DatabaseConnection::connect(&config.database).context("Could not connect to database")?,
+            db: DatabaseConnection::connect(&config.database)
+                .context("Could not connect to database")?,
             node,
             history_receiver: Mutex::new(history_receiver),
             config,
@@ -128,7 +129,9 @@ where
         }
     }
 
-    async fn save(self) -> Result<(), ServerSaveError> { Ok(()) }
+    async fn save(self) -> Result<(), ServerSaveError> {
+        Ok(())
+    }
 
     fn restore(
         _state: Self::Saved,
