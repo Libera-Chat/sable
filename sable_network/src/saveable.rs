@@ -1,13 +1,9 @@
-use serde::{
-    Serialize,
-    de::DeserializeOwned
-};
+use serde::{de::DeserializeOwned, Serialize};
 
 /// A type that can be converted to and from a serialisable form
-pub trait Saveable
-{
+pub trait Saveable {
     /// The serialisable type into which this can be saved
-    type Saved : Serialize + DeserializeOwned;
+    type Saved: Serialize + DeserializeOwned;
 
     /// Save the object into a serialisable form
     fn save(self) -> Self::Saved;

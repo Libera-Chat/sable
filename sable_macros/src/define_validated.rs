@@ -2,28 +2,18 @@ use super::*;
 
 use proc_macro2::Span;
 use quote::quote;
-use syn::{
-    parenthesized,
-    parse_macro_input,
-    Result,
-    Block,
-    Type,
-    Ident,
-    token,
-};
 use syn::parse::{Parse, ParseStream};
+use syn::{parenthesized, parse_macro_input, token, Block, Ident, Result, Type};
 
 mod kw {
     syn::custom_keyword!(casefolded);
 }
 
-struct ValidatedDefnList
-{
-    items: Vec<ValidatedDefn>
+struct ValidatedDefnList {
+    items: Vec<ValidatedDefn>,
 }
 
-struct ValidatedDefn
-{
+struct ValidatedDefn {
     name: Ident,
     _paren: token::Paren,
     utype: Type,
@@ -31,23 +21,18 @@ struct ValidatedDefn
     body: Block,
 }
 
-impl Parse for ValidatedDefnList
-{
-    fn parse(input: ParseStream) -> Result<Self>
-    {
+impl Parse for ValidatedDefnList {
+    fn parse(input: ParseStream) -> Result<Self> {
         let mut out = Vec::new();
-        while !input.is_empty()
-        {
+        while !input.is_empty() {
             out.push(ValidatedDefn::parse(input)?);
         }
-        Ok(Self{items: out})
+        Ok(Self { items: out })
     }
 }
 
-impl Parse for ValidatedDefn
-{
-    fn parse(input: ParseStream) -> Result<Self>
-    {
+impl Parse for ValidatedDefn {
+    fn parse(input: ParseStream) -> Result<Self> {
         let content;
 
         Ok(Self {
@@ -60,14 +45,12 @@ impl Parse for ValidatedDefn
     }
 }
 
-pub fn define_validated(input: TokenStream) -> TokenStream
-{
+pub fn define_validated(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ValidatedDefnList);
 
     let mut out = proc_macro2::TokenStream::new();
 
-    for def in input.items
-    {
+    for def in input.items {
         let name = def.name;
         let typename = def.utype;
         let body = def.body;
@@ -78,7 +61,7 @@ pub fn define_validated(input: TokenStream) -> TokenStream
         let extra_derives = if def.casefolded.is_none() {
             quote!( #[derive(PartialEq,Eq,Hash,PartialOrd,Ord)] )
         } else {
-            quote!( )
+            quote!()
         };
 
         out.extend(quote!(
@@ -217,8 +200,7 @@ pub fn define_validated(input: TokenStream) -> TokenStream
             }
         ));
 
-        if def.casefolded.is_some()
-        {
+        if def.casefolded.is_some() {
             out.extend(quote!(
                 impl PartialEq for #name
                 {

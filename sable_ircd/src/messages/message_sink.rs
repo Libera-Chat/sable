@@ -1,21 +1,58 @@
 use super::*;
 
 /// Trait describing an object to which a client protocol message can be sent
-pub trait MessageSink
-{
+pub trait MessageSink: Send + Sync {
     /// Send a protocol message to this sink
     fn send(&self, msg: OutboundClientMessage);
 
     /// Sometimes we need to know which, if any, user this will be sent to
     fn user_id(&self) -> Option<UserId>;
+}
 
-    /// Create a batch to be sent to this sink
-    fn batch(&self, batch_type: impl ToString) -> batch::BatchBuilder<'_, Self> {
-        batch::BatchBuilder::new(batch_type, self)
+pub trait MessageSinkExt: MessageSink {
+    /// Create a batch to be sent to this sink.
+    ///
+    /// Required parameters are the batch type as defined in the relevant IRCv3 specification,
+    /// and the corresponding client capability. If a client does not have that capability
+    /// enabled, then behaviour will fall back to sending those messages directly.
+    fn batch(
+        &self,
+        batch_type: impl ToString,
+        capability: impl Into<ClientCapabilitySet>,
+    ) -> batch::BatchBuilder<&'_ Self> {
+        batch::BatchBuilder::new(batch_type, capability, self)
     }
 
-    /// Create a named batch to be sent to this sink
-    fn named_batch(&self, batch_type: impl ToString, name: impl ToString) -> batch::BatchBuilder<'_, Self> {
-        batch::BatchBuilder::with_name(batch_type, name, self)
+    /// Create a batch, transferring ownership of `self` into it
+    fn into_batch(
+        self,
+        batch_type: impl ToString,
+        capability: impl Into<ClientCapabilitySet>,
+    ) -> batch::BatchBuilder<Self>
+    where
+        Self: Sized,
+    {
+        batch::BatchBuilder::new(batch_type, capability, self)
+    }
+}
+
+impl<T: MessageSink + ?Sized> MessageSinkExt for T {}
+
+// All MessageSink's methods are &self, so we can implement it for any reference type as well
+impl<T: MessageSink + ?Sized> MessageSink for &T {
+    fn send(&self, msg: OutboundClientMessage) {
+        (*self).send(msg)
+    }
+    fn user_id(&self) -> Option<UserId> {
+        (*self).user_id()
+    }
+}
+
+impl<T: MessageSink + ?Sized> MessageSink for std::sync::Arc<T> {
+    fn send(&self, msg: OutboundClientMessage) {
+        (*self.as_ref()).send(msg)
+    }
+    fn user_id(&self) -> Option<UserId> {
+        (*self.as_ref()).user_id()
     }
 }

@@ -1,8 +1,8 @@
 pub mod prelude;
 
 pub mod id;
-pub mod validated;
 pub mod modes;
+pub mod validated;
 
 pub mod history;
 
@@ -22,15 +22,13 @@ pub mod config;
 
 pub mod audit;
 
-pub mod types
-{
+pub mod types {
     mod pattern;
     pub use pattern::*;
 }
 
 pub mod utils;
 
-mod build_data
-{
+mod build_data {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }

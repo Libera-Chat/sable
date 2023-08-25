@@ -1,24 +1,16 @@
 use crate::{
-    network::{
-        event::*,
-        Network,
-        state::ChannelAccessSet,
-    },
     id::*,
+    network::{event::*, state::ChannelAccessSet, Network},
     validated::*,
 };
-use tokio::sync::{
-    mpsc::Sender,
-    oneshot,
-};
+use tokio::sync::{mpsc::Sender, oneshot};
 
 /// A message emitted from the `ircd_sync` component when something
 /// needs to be handled by the server logic.
 #[derive(Debug)]
 // The largest variant is NewEvent, which is the most commonly constructed one
 #[allow(clippy::large_enum_variant)]
-pub enum NetworkMessage
-{
+pub enum NetworkMessage {
     /// An export of the current network state is required. A clone
     /// of the [Network] object should be sent across the provided channel.
     ExportNetworkState(Sender<Box<Network>>),
@@ -36,16 +28,14 @@ pub enum NetworkMessage
 }
 
 #[derive(Debug)]
-pub struct RemoteServerRequest
-{
+pub struct RemoteServerRequest {
     pub req: RemoteServerRequestType,
-    pub response: oneshot::Sender<RemoteServerResponse>
+    pub response: oneshot::Sender<RemoteServerResponse>,
 }
 
 /// A message to be handled by a services node
-#[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
-pub enum RemoteServerRequestType
-{
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum RemoteServerRequestType {
     /// Simple ping for communication tests
     Ping,
     /// User attempting registration
@@ -63,11 +53,24 @@ pub enum RemoteServerRequestType
     /// Register a channel
     RegisterChannel(AccountId, ChannelId),
     /// Add, modify or remove a channel access (None to delete)
-    ModifyAccess{ source: AccountId, id: ChannelAccessId, role: Option<ChannelRoleId> },
+    ModifyAccess {
+        source: AccountId,
+        id: ChannelAccessId,
+        role: Option<ChannelRoleId>,
+    },
     /// Create a channel role
-    CreateRole{ source: AccountId, channel: ChannelRegistrationId, name: CustomRoleName, flags: ChannelAccessSet },
+    CreateRole {
+        source: AccountId,
+        channel: ChannelRegistrationId,
+        name: CustomRoleName,
+        flags: ChannelAccessSet,
+    },
     /// Modify or delete a channel role
-    ModifyRole{ source: AccountId, id: ChannelRoleId, flags: Option<ChannelAccessSet> },
+    ModifyRole {
+        source: AccountId,
+        id: ChannelRoleId,
+        flags: Option<ChannelAccessSet>,
+    },
     /// Add an authorised fingerprint to an account
     AddAccountFingerprint(AccountId, String),
     /// Remove an authorised fingerprint from an account
@@ -75,9 +78,8 @@ pub enum RemoteServerRequestType
 }
 
 /// A SASL authentication response
-#[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
-pub enum AuthenticateStatus
-{
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum AuthenticateStatus {
     /// Authentication flow should continue, with the enclosed data to be sent to the client
     InProgress(Vec<u8>),
     /// Authentication success; the user should be logged in to the enclosed account ID
@@ -85,13 +87,12 @@ pub enum AuthenticateStatus
     /// Authentication failed
     Fail,
     /// Authentication aborted
-    Aborted
+    Aborted,
 }
 
 /// Remote server response type
-#[derive(Debug,Clone,serde::Serialize,serde::Deserialize)]
-pub enum RemoteServerResponse
-{
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum RemoteServerResponse {
     /// Operation succeeded, no output
     Success,
     /// Operation not supported by this server
@@ -113,4 +114,3 @@ pub enum RemoteServerResponse
     /// Operation failed, with error message
     Error(String),
 }
-

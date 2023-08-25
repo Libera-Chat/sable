@@ -1,5 +1,5 @@
-use sable_network::prelude::*;
 use crate::capability::*;
+use sable_network::prelude::*;
 
 #[derive(Debug)]
 pub struct UntargetedNumeric {
@@ -40,11 +40,21 @@ impl UntargetedNumeric {
     }
 
     /// Provide the source and target information required to convert this to an [`OutboundClientMessage`]
-    pub fn format_for(self, source: &(impl MessageSource + ?Sized), target: &(impl MessageTarget + ?Sized)) -> OutboundClientMessage {
+    pub fn format_for(
+        self,
+        source: &(impl MessageSource + ?Sized),
+        target: &(impl MessageTarget + ?Sized),
+    ) -> OutboundClientMessage {
         OutboundClientMessage {
             caps: self.caps,
             tags: self.tags,
-            content: format!(":{} {} {} {}", source.format(), self.numeric_code, target.format(), self.args)
+            content: format!(
+                ":{} {} {} {}",
+                source.format(),
+                self.numeric_code,
+                target.format(),
+                self.args
+            ),
         }
     }
 
@@ -55,7 +65,7 @@ impl UntargetedNumeric {
 }
 
 /// A server-to-client protocol message
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OutboundClientMessage {
     caps: CapabilityCondition,
     tags: Vec<OutboundMessageTag>,
@@ -68,7 +78,7 @@ impl OutboundClientMessage {
         Self {
             caps: Default::default(),
             tags: Default::default(),
-            content: content
+            content: content,
         }
     }
 
@@ -97,14 +107,13 @@ impl OutboundClientMessage {
         self
     }
 
-
     /// Format this message to be sent to a client with the given capabilities
     ///
     /// Returns `None` if the client should not receive the message at all, otherwise
     /// `Some(_)` with the appropriate set of outbound message tags prepended
     pub fn format_for_client_caps(&self, client_caps: ClientCapabilitySet) -> Option<String> {
         // Check capability requirements
-        if ! self.caps.matches(client_caps) {
+        if !self.caps.matches(client_caps) {
             return None;
         }
 
@@ -112,13 +121,11 @@ impl OutboundClientMessage {
 
         let mut supported_tags = self.tags.iter().filter(|t| t.caps.matches(client_caps));
 
-        if let Some(first_tag) = supported_tags.next()
-        {
+        if let Some(first_tag) = supported_tags.next() {
             result.push('@');
             result.push_str(&first_tag.format());
 
-            for tag in supported_tags
-            {
+            for tag in supported_tags {
                 result.push(';');
                 result.push_str(&tag.format());
             }
@@ -134,29 +141,29 @@ impl OutboundClientMessage {
 }
 
 /// A message tag
-#[derive(Debug,Clone)]
-pub struct OutboundMessageTag
-{
+#[derive(Debug, Clone)]
+pub struct OutboundMessageTag {
     name: String,
     value: Option<String>,
     caps: CapabilityCondition,
 }
 
-impl OutboundMessageTag
-{
+impl OutboundMessageTag {
     /// Construct an outbound message tag, to be attached to a protocol message.
     ///
     /// Unlike in other areas, `caps` is not optional; an outbound message tag
     /// always needs a capability attached to it because legacy clients can't understand
     /// them and there's no single capability that can be relied on to signal a client
     /// that does.
-    pub fn new(name: &str, value: Option<String>, caps: impl Into<ClientCapabilitySet>) -> Self
-    {
-        Self { name: name.to_string(), value, caps: CapabilityCondition::requires(caps.into()) }
+    pub fn new(name: &str, value: Option<String>, caps: impl Into<ClientCapabilitySet>) -> Self {
+        Self {
+            name: name.to_string(),
+            value,
+            caps: CapabilityCondition::requires(caps.into()),
+        }
     }
 
-    fn format(&self) -> String
-    {
+    fn format(&self) -> String {
         let mut result = self.name.clone();
         if let Some(value) = &self.value {
             result.push('=');

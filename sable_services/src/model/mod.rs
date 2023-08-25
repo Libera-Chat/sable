@@ -1,18 +1,14 @@
-use sable_network::{
-    id::*,
-};
-use serde::{Serialize,Deserialize};
+use sable_network::id::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone,Serialize,Deserialize)]
-pub struct AccountAuth
-{
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AccountAuth {
     pub account: AccountId,
     pub password_hash: String,
 }
 
-#[derive(Clone,Serialize,Deserialize)]
-pub struct SaslSession
-{
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SaslSession {
     pub id: SaslSessionId,
     pub mechanism: String,
 }

@@ -1,48 +1,39 @@
-use std::net::SocketAddr;
 use std::collections::HashMap;
-use tracing_core::{
-    LevelFilter,
-};
+use std::net::SocketAddr;
 use std::{
-    path::{
-        Path,
-        PathBuf,
-    },
     fs::File,
     io::BufReader,
+    path::{Path, PathBuf},
 };
+use tracing_core::LevelFilter;
 
 /// A client certificate fingerprint which is authorised for the management interface
-#[derive(Clone,Debug,serde::Deserialize)]
-pub struct AuthorisedFingerprint
-{
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct AuthorisedFingerprint {
     pub name: String,
     pub fingerprint: String,
 }
 
 /// One of the special built-in log targets
-#[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
-#[serde(rename_all="lowercase")]
-pub enum BuiltinLogTarget
-{
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BuiltinLogTarget {
     Stdout,
     Stderr,
 }
 
 /// A log target
-#[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
-pub enum LogTarget
-{
+pub enum LogTarget {
     File { filename: PathBuf },
     Builtin(BuiltinLogTarget),
 }
 
 /// Log levels. Equivalent to those defined in `tracing`
-#[derive(Clone,Copy,Debug,serde::Serialize,serde::Deserialize)]
-#[serde(rename_all ="lowercase")]
-pub enum LogLevel
-{
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LogLevel {
     Trace,
     Debug,
     Info,
@@ -52,9 +43,8 @@ pub enum LogLevel
 }
 
 /// A log configuration entry. Defines a log target along with the messages to be sent to it.
-#[derive(Clone,Debug,serde::Deserialize)]
-pub struct LogEntry
-{
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct LogEntry {
     pub target: LogTarget,
     pub category: Option<String>,
     #[serde(default)]
@@ -63,10 +53,9 @@ pub struct LogEntry
 }
 
 /// Configuration of the logging system
-#[derive(Clone,Debug,serde::Deserialize)]
-#[serde(rename_all="kebab-case")]
-pub struct LoggingConfig
-{
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct LoggingConfig {
     /// Top level directory. All other paths are relative to this
     pub dir: PathBuf,
     /// File to which stdout will be redirected, if daemonised
@@ -86,9 +75,8 @@ pub struct LoggingConfig
 }
 
 /// Configuration of the management service
-#[derive(Clone,Debug,serde::Deserialize)]
-pub struct ManagementConfig
-{
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct ManagementConfig {
     /// Listener address
     pub address: SocketAddr,
     /// Certificate authority used to authenticate clients
@@ -97,21 +85,17 @@ pub struct ManagementConfig
     pub authorised_fingerprints: Vec<AuthorisedFingerprint>,
 }
 
-impl LoggingConfig
-{
-    pub fn prefix_file(&self, filename: impl AsRef<Path>) -> PathBuf
-    {
+impl LoggingConfig {
+    pub fn prefix_file(&self, filename: impl AsRef<Path>) -> PathBuf {
         let mut path = self.dir.clone();
         path.push(filename);
         path
     }
 }
 
-impl ManagementConfig
-{
+impl ManagementConfig {
     /// Load the client CA from the path specified in this configuration
-    pub fn load_client_ca(&self) -> std::io::Result<Vec<u8>>
-    {
+    pub fn load_client_ca(&self) -> std::io::Result<Vec<u8>> {
         let ca_file = File::open(&self.client_ca)?;
         let mut ca_reader = BufReader::new(ca_file);
         Ok(rustls_pemfile::certs(&mut ca_reader)?.remove(0))
@@ -119,25 +103,23 @@ impl ManagementConfig
 }
 
 /// Load a network state configuration for boostrapping
-pub fn load_network_config(filename: impl AsRef<Path>) -> Result<sable_network::network::config::NetworkConfig, sable_network::sync::ConfigError>
-{
+pub fn load_network_config(
+    filename: impl AsRef<Path>,
+) -> Result<sable_network::network::config::NetworkConfig, sable_network::sync::ConfigError> {
     let file = File::open(filename)?;
     let reader = BufReader::new(file);
     Ok(serde_json::from_reader(reader)?)
 }
 
-impl From<LogLevel> for LevelFilter
-{
-    fn from(arg: LogLevel) -> LevelFilter
-    {
-        match arg
-        {
+impl From<LogLevel> for LevelFilter {
+    fn from(arg: LogLevel) -> LevelFilter {
+        match arg {
             LogLevel::Trace => LevelFilter::TRACE,
             LogLevel::Debug => LevelFilter::DEBUG,
-            LogLevel::Info  => LevelFilter::INFO,
-            LogLevel::Warn  => LevelFilter::WARN,
+            LogLevel::Info => LevelFilter::INFO,
+            LogLevel::Warn => LevelFilter::WARN,
             LogLevel::Error => LevelFilter::ERROR,
-            LogLevel::Off   => LevelFilter::OFF,
+            LogLevel::Off => LevelFilter::OFF,
         }
     }
 }

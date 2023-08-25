@@ -1,10 +1,9 @@
-use crate::prelude::*;
 use super::fixtures::*;
+use crate::prelude::*;
 use std::str::FromStr;
 
 #[test]
-fn add_and_remove_user()
-{
+fn add_and_remove_user() {
     let mut builder = NetworkBuilder::new();
     let empty_net = builder.json_for_compare();
     let nick = Nickname::from_str("aaa").unwrap();

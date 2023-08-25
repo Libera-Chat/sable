@@ -2,28 +2,16 @@ use super::*;
 
 use proc_macro2::Span;
 use quote::quote;
-use syn::{
-    parse_macro_input,
-    Result,
-    Token,
-    Ident,
-    Type,
-    TypeTuple,
-    token
-};
+use syn::{parse_macro_input, token, Ident, Result, Token, Type, TypeTuple};
 //use syn::punctuated::Punctuated;
+use convert_case::{Case, Casing};
 use syn::parse::{Parse, ParseStream};
-use convert_case::{
-    Case,
-    Casing,
-};
 
 mod kw {
     syn::custom_keyword!(sequential);
 }
 
-struct ObjectIdDefn
-{
+struct ObjectIdDefn {
     typename: Ident,
     _colon: Token![:],
     contents: TypeTuple,
@@ -31,32 +19,31 @@ struct ObjectIdDefn
     _semi: Token![;],
 }
 
-impl Parse for ObjectIdDefn
-{
-    fn parse(input: ParseStream) -> Result<Self>
-    {
+impl Parse for ObjectIdDefn {
+    fn parse(input: ParseStream) -> Result<Self> {
         Ok(Self {
             typename: input.parse()?,
             _colon: input.parse()?,
-            contents: if input.peek(kw::sequential) { syn::parse_str("(ServerId,EpochId,LocalId)")? } else { input.parse()? },
+            contents: if input.peek(kw::sequential) {
+                syn::parse_str("(ServerId,EpochId,LocalId)")?
+            } else {
+                input.parse()?
+            },
             is_sequential: input.parse()?,
             _semi: input.parse()?,
         })
     }
 }
 
-struct ObjectIdList
-{
+struct ObjectIdList {
     enum_name: Ident,
     generator_name: Option<Ident>,
     _brace: token::Brace,
-    items: Vec<ObjectIdDefn>
+    items: Vec<ObjectIdDefn>,
 }
 
-impl Parse for ObjectIdList
-{
-    fn parse(input: ParseStream) -> Result<Self>
-    {
+impl Parse for ObjectIdList {
+    fn parse(input: ParseStream) -> Result<Self> {
         let mut items = Vec::new();
         let enum_name = input.parse()?;
         let generator_name = if input.peek(token::Paren) {
@@ -70,8 +57,7 @@ impl Parse for ObjectIdList
         let content2;
         let _brace = syn::braced!(content2 in input);
 
-        while !content2.is_empty()
-        {
+        while !content2.is_empty() {
             items.push(content2.parse::<ObjectIdDefn>()?);
         }
 
@@ -79,13 +65,12 @@ impl Parse for ObjectIdList
             enum_name,
             generator_name,
             _brace,
-            items
+            items,
         })
     }
 }
 
-pub fn object_ids(input: TokenStream) -> TokenStream
-{
+pub fn object_ids(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ObjectIdList);
 
     let mut output = proc_macro2::TokenStream::new();
@@ -98,8 +83,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
     let mut generator_methods = Vec::new();
     let mut generator_initargs = Vec::new();
 
-    for item in input.items
-    {
+    for item in input.items {
         let typename = item.typename;
         let id_typename = Ident::new(&format!("{}Id", typename), Span::call_site());
         let contents = item.contents;
@@ -108,8 +92,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
         let mut arg_names = Vec::new();
         let mut arg_list = Vec::new();
 
-        for (argtype, n) in contents.elems.iter().zip(1..)
-        {
+        for (argtype, n) in contents.elems.iter().zip(1..) {
             let argname = Ident::new(&format!("arg{}", n), Span::call_site());
             arg_types.push(argtype.clone());
             arg_names.push(argname.clone());
@@ -151,8 +134,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream
             }
         ));
 
-        if item.is_sequential.is_some()
-        {
+        if item.is_sequential.is_some() {
             // Generators hold all but the last field
             arg_types.pop();
             arg_names.pop();
@@ -161,9 +143,14 @@ pub fn object_ids(input: TokenStream) -> TokenStream
             let field_numbers: Vec<_> = (0..arg_types.len()).map(syn::Index::from).collect();
             let counter_number = syn::Index::from(arg_types.len());
 
-            let generator_typename = Ident::new(&format!("{}Generator", id_typename), Span::call_site());
+            let generator_typename =
+                Ident::new(&format!("{}Generator", id_typename), Span::call_site());
 
-            let maybe_comma = if arg_list.is_empty() { None } else { Some(token::Comma(Span::call_site())) };
+            let maybe_comma = if arg_list.is_empty() {
+                None
+            } else {
+                Some(token::Comma(Span::call_site()))
+            };
 
             output.extend(quote!(
                 impl #id_typename
@@ -213,8 +200,12 @@ pub fn object_ids(input: TokenStream) -> TokenStream
                     }
                 ));
 
-                let generator_method_name = Ident::new(&format!("next_{}", &typename).to_case(Case::Snake), Span::call_site());
-                let generator_field_name = Ident::new(&format!("{}_generator_field", &typename), Span::call_site());
+                let generator_method_name = Ident::new(
+                    &format!("next_{}", &typename).to_case(Case::Snake),
+                    Span::call_site(),
+                );
+                let generator_field_name =
+                    Ident::new(&format!("{}_generator_field", &typename), Span::call_site());
 
                 generator_methods.push(quote!(
                     pub fn #generator_method_name (&self) -> #id_typename {

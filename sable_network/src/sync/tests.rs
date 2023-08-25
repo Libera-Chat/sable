@@ -1,22 +1,19 @@
 use super::*;
-use crate::network::event::*;
 use crate::id::*;
+use crate::network::event::*;
 use tokio::sync::mpsc::*;
 
-fn drain_from(log: &mut UnboundedReceiver<Event>) -> Vec<Event>
-{
+fn drain_from(log: &mut UnboundedReceiver<Event>) -> Vec<Event> {
     let mut v = Vec::new();
 
-    while let Ok(e) = log.try_recv()
-    {
+    while let Ok(e) = log.try_recv() {
         v.push(e);
     }
     v
 }
 
 #[test]
-fn simple()
-{
+fn simple() {
     let server_id = ServerId::new(1);
     let epoch_id = EpochId::new(1);
     let idgen = EventIdGenerator::new(server_id, epoch_id, 1);
@@ -25,10 +22,20 @@ fn simple()
 
     let uid = UserId::new(server_id, epoch_id, 1);
 
-    let e1 = log.create(uid, details::UserQuit{ message: "aaa".to_string() });
+    let e1 = log.create(
+        uid,
+        details::UserQuit {
+            message: "aaa".to_string(),
+        },
+    );
     log.add(e1.clone());
 
-    let e2 = log.create(uid, details::UserQuit{ message: "bbb".to_string() });
+    let e2 = log.create(
+        uid,
+        details::UserQuit {
+            message: "bbb".to_string(),
+        },
+    );
     log.add(e2.clone());
 
     let entries = drain_from(&mut receiver);
@@ -39,8 +46,7 @@ fn simple()
 }
 
 #[test]
-fn out_of_order()
-{
+fn out_of_order() {
     let server_id = ServerId::new(1);
     let epoch_id = EpochId::new(1);
     let idgen = EventIdGenerator::new(server_id, epoch_id, 1);
@@ -49,8 +55,18 @@ fn out_of_order()
 
     let uid = UserId::new(server_id, epoch_id, 1);
 
-    let e1 = log.create(uid, details::UserQuit{ message: "aaa".to_string() });
-    let mut e2 = log.create(uid, details::UserQuit{ message: "bbb".to_string() });
+    let e1 = log.create(
+        uid,
+        details::UserQuit {
+            message: "aaa".to_string(),
+        },
+    );
+    let mut e2 = log.create(
+        uid,
+        details::UserQuit {
+            message: "bbb".to_string(),
+        },
+    );
 
     e2.clock.update_with_id(e1.id);
 
@@ -101,8 +117,7 @@ fn epochs()
 */
 
 #[test]
-fn get_since()
-{
+fn get_since() {
     let server_id = ServerId::new(1);
     let server_id2 = ServerId::new(2);
     let epoch_id = EpochId::new(1);
@@ -113,15 +128,30 @@ fn get_since()
 
     let uid = UserId::new(server_id, epoch_id, 1);
 
-    let e1 = log.create(uid, details::UserQuit{ message: "aaa".to_string() });
+    let e1 = log.create(
+        uid,
+        details::UserQuit {
+            message: "aaa".to_string(),
+        },
+    );
     log.add(e1.clone());
 
     let clock = log.clock().clone();
 
-    let e2 = log.create(uid, details::UserQuit{ message: "bbb".to_string() });
+    let e2 = log.create(
+        uid,
+        details::UserQuit {
+            message: "bbb".to_string(),
+        },
+    );
     log.add(e2.clone());
 
-    let e3 = log2.create(uid, details::UserQuit{ message: "ccc".to_string() });
+    let e3 = log2.create(
+        uid,
+        details::UserQuit {
+            message: "ccc".to_string(),
+        },
+    );
     log.add(e3.clone());
 
     let entries: Vec<&Event> = log.get_since(clock).collect();

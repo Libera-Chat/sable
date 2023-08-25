@@ -1,19 +1,14 @@
 //! Defines the [Network] object.
 
-use crate::prelude::*;
 use crate::network::event::*;
 use crate::network::update::*;
+use crate::prelude::*;
 
 use sable_macros::dispatch_event;
 
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use thiserror::Error;
-use serde::{
-    Serialize,
-    Deserialize
-};
-use serde_with::{
-    serde_as
-};
 
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -22,9 +17,8 @@ use once_cell::sync::OnceCell;
 
 /// Error enumeration defining possible problems to be returned from
 /// the [Network::validate] method.
-#[derive(Error,Debug)]
-pub enum ValidationError
-{
+#[derive(Error, Debug)]
+pub enum ValidationError {
     #[error("Nickname {0} already in use")]
     NickInUse(Nickname),
     #[error("Object not found: {0}")]
@@ -32,13 +26,13 @@ pub enum ValidationError
     #[error("Wrong object ID type: {0}")]
     WrongTypeId(#[from] WrongIdTypeError),
     #[error("{0}")]
-    InvalidNickname(#[from]InvalidNicknameError),
+    InvalidNickname(#[from] InvalidNicknameError),
     #[error("{0}")]
-    InvalidUsername(#[from]InvalidUsernameError),
+    InvalidUsername(#[from] InvalidUsernameError),
     #[error("{0}")]
-    InvalidHostname(#[from]InvalidHostnameError),
+    InvalidHostname(#[from] InvalidHostnameError),
     #[error("{0}")]
-    InvalidChannelName(#[from]InvalidChannelNameError),
+    InvalidChannelName(#[from] InvalidChannelNameError),
 }
 
 /// Convenience definition for a Result whose Error type is ValidationError
@@ -66,13 +60,11 @@ pub type ValidationResult = Result<(), ValidationError>;
 /// Most public accessors return a [`LookupResult`] instead of an `Option` to
 /// facilitate handling of missing objects in command handlers.
 #[serde_as]
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct Network
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Network {
     // All of these maps are serialised as an array of tuples
     // because their keys don't serialise as strings, so can't be
     // used as a JSON object key.
-
     #[serde_as(as = "Vec<(_,_)>")]
     nick_bindings: HashMap<Nickname, state::NickBinding>,
     #[serde_as(as = "Vec<(_,_)>")]
@@ -131,8 +123,7 @@ pub struct Network
 
 impl Network {
     /// Create an empty network state.
-    pub fn new(config: config::NetworkConfig) -> Network
-    {
+    pub fn new(config: config::NetworkConfig) -> Network {
         let net = Network {
             nick_bindings: HashMap::new(),
             users: HashMap::new(),
@@ -195,10 +186,12 @@ impl Network {
     /// - The network's event clock is updated to reflect the incoming event ID.
     /// - The `notify_update` method is called zero or more times on `updates`
     ///
-    pub fn apply(&mut self, event: &Event, updates: &dyn NetworkUpdateReceiver) -> Result<(),WrongIdTypeError>
-    {
-        if self.clock.contains(event.id)
-        {
+    pub fn apply(
+        &mut self,
+        event: &Event,
+        updates: &dyn NetworkUpdateReceiver,
+    ) -> Result<(), WrongIdTypeError> {
+        if self.clock.contains(event.id) {
             return Ok(());
         }
 
@@ -251,66 +244,63 @@ impl Network {
     ///  will succeed - `apply` always succeeds provided the event is well-
     /// formed. `validate`  provides advance warning of potentially undesirable
     /// effects, such as nickname collisions.
-    pub fn validate(&self, id: ObjectId, detail: &EventDetails) -> ValidationResult
-    {
+    pub fn validate(&self, id: ObjectId, detail: &EventDetails) -> ValidationResult {
         match detail {
             EventDetails::NewUser(newuser) => self.validate_new_user(id.try_into()?, newuser),
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
     /// Translate an object ID into a [`update::HistoricMessageSource`]
-    pub(crate) fn translate_state_change_source(&self, id: ObjectId) -> update::HistoricMessageSource
-    {
-        match id
-        {
-            ObjectId::User(user_id) => {
-                self.users.get(&user_id).map(|user| {
-                    update::HistoricMessageSource::User(self.translate_historic_user(user.clone()))
-                })
-            },
-            ObjectId::Server(server_id) => self.servers.get(&server_id).map(|s| update::HistoricMessageSource::Server(s.clone())),
-            _ => None
-        }.unwrap_or(update::HistoricMessageSource::Unknown)
+    pub(crate) fn translate_state_change_source(
+        &self,
+        id: ObjectId,
+    ) -> update::HistoricMessageSource {
+        match id {
+            ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
+                update::HistoricMessageSource::User(self.translate_historic_user(user.clone()))
+            }),
+            ObjectId::Server(server_id) => self
+                .servers
+                .get(&server_id)
+                .map(|s| update::HistoricMessageSource::Server(s.clone())),
+            _ => None,
+        }
+        .unwrap_or(update::HistoricMessageSource::Unknown)
     }
 
     /// Translate a [`state::User`] to a [`HistoricUser`] based on the current network state
-    pub(crate) fn translate_historic_user(&self, user: state::User) -> update::HistoricUser
-    {
+    pub(crate) fn translate_historic_user(&self, user: state::User) -> update::HistoricUser {
         let nickname = self.infallible_nick_for_user(user.id);
         update::HistoricUser { nickname, user }
     }
 
     /// Translate an [`ObjectId`] into a [`HistoricMessageTarget`] for storage in history log
-    pub(crate) fn translate_message_target(&self, id: ObjectId) -> update::HistoricMessageTarget
-    {
-        match id
-        {
-            ObjectId::User(user_id) => {
-                self.users.get(&user_id).map(|user| {
-                    update::HistoricMessageTarget::User(self.translate_historic_user(user.clone()))
-                })
-            }
-            ObjectId::Channel(channel_id) => {
-                self.channels.get(&channel_id).map(|c| update::HistoricMessageTarget::Channel(c.clone()))
-            }
-            _ => {
-                None
-            }
-        }.unwrap_or(update::HistoricMessageTarget::Unknown)
+    pub(crate) fn translate_message_target(&self, id: ObjectId) -> update::HistoricMessageTarget {
+        match id {
+            ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
+                update::HistoricMessageTarget::User(self.translate_historic_user(user.clone()))
+            }),
+            ObjectId::Channel(channel_id) => self
+                .channels
+                .get(&channel_id)
+                .map(|c| update::HistoricMessageTarget::Channel(c.clone())),
+            _ => None,
+        }
+        .unwrap_or(update::HistoricMessageTarget::Unknown)
     }
 }
 
 mod accessors;
-mod default_roles;
 mod alias_users;
+mod default_roles;
 
-mod user_state;
-mod channel_state;
-mod message_state;
-mod server_state;
-mod ban_state;
-mod config_state;
-mod oper_state;
-mod audit_log;
 mod account_state;
+mod audit_log;
+mod ban_state;
+mod channel_state;
+mod config_state;
+mod message_state;
+mod oper_state;
+mod server_state;
+mod user_state;

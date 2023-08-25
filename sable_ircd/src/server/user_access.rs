@@ -3,21 +3,19 @@ use sable_network::prelude::ban::UserDetails;
 use super::*;
 
 /// An error type describing reasons why a client may be denied access
-#[derive(Debug,Clone)]
-pub enum AccessError
-{
+#[derive(Debug, Clone)]
+pub enum AccessError {
     /// User matched a network ban, with provided reason
-    Banned(String)
+    Banned(String),
 }
 
-impl ClientServer
-{
-    pub(super) fn check_user_access(&self,
-                                    net: &Network,
-                                    client: &ClientConnection) -> Result<(), AccessError>
-    {
-        if let Some(pre_client) = client.pre_client()
-        {
+impl ClientServer {
+    pub(super) fn check_user_access(
+        &self,
+        net: &Network,
+        client: &ClientConnection,
+    ) -> Result<(), AccessError> {
+        if let Some(pre_client) = client.pre_client() {
             let ip = client.remote_addr();
             let user_details = UserDetails {
                 nick: pre_client.nick.get().map(Nickname::as_ref),
@@ -27,8 +25,7 @@ impl ClientServer
                 realname: pre_client.realname.get().map(String::as_ref),
             };
 
-            if let Some(ban) = net.network_bans().find(&user_details)
-            {
+            if let Some(ban) = net.network_bans().find(&user_details) {
                 return Err(AccessError::Banned(ban.reason.clone()));
             }
         }

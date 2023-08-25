@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use sable_macros::{event_details,target_type};
+use sable_macros::{event_details, target_type};
 
 pub struct WrongEventTypeError;
 

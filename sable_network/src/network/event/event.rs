@@ -1,15 +1,15 @@
-use crate::prelude::*;
 use crate::network::event::*;
-use serde::{Serialize,Deserialize};
+use crate::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Used by the `event_details!` and `dispatch_event!` macros to determine the
 /// expected type of the target object for a given event detail type.
-pub trait DetailType : Into<EventDetails> {
+pub trait DetailType: Into<EventDetails> {
     type Target: Into<ObjectId>;
 }
 
 /// A network state event.
-#[derive(Clone,Debug,Serialize,Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Event {
     /// The event ID. This identifies the server which originated this event,
     /// as well as an increasing local identifier.

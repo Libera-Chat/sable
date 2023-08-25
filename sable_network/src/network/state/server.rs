@@ -1,13 +1,7 @@
-use crate::{
-    id::*,
-    validated::*,
-};
+use crate::{id::*, validated::*};
 
-use serde::{
-    Serialize,
-    Deserialize
-};
 use bitflags::bitflags;
+use serde::{Deserialize, Serialize};
 
 bitflags! {
     /// Server flags
@@ -19,9 +13,8 @@ bitflags! {
 }
 
 /// A server
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct Server
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Server {
     pub id: ServerId,
     pub epoch: EpochId,
     pub name: ServerName,
@@ -29,4 +22,3 @@ pub struct Server
     pub flags: ServerFlags,
     pub version: String,
 }
-

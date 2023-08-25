@@ -1,17 +1,15 @@
-use crate::prelude::*;
 use super::fixtures::*;
+use crate::prelude::*;
 use std::str::FromStr;
 
 #[test]
-fn empty_network_can_be_serialized()
-{
+fn empty_network_can_be_serialized() {
     let net = Network::new(config::NetworkConfig::new());
     let _str = serde_json::to_string(&net).unwrap();
 }
 
 #[test]
-fn net_with_channel_can_be_serialized()
-{
+fn net_with_channel_can_be_serialized() {
     let mut builder = NetworkBuilder::new();
     builder.add_channel(ChannelName::from_str("#a").unwrap());
     let str = serde_json::to_string(&builder.net).unwrap();
@@ -22,8 +20,7 @@ fn net_with_channel_can_be_serialized()
 }
 
 #[test]
-fn net_with_user_can_be_serialized()
-{
+fn net_with_user_can_be_serialized() {
     let mut builder = NetworkBuilder::new();
     builder.add_user(Nickname::from_str("a").unwrap());
     let str = serde_json::to_string(&builder.net).unwrap();

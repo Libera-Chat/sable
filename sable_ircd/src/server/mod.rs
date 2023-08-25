@@ -1,26 +1,22 @@
-use crate::*;
 use crate::movable::Movable;
+use crate::*;
 use capability::*;
 use messages::*;
 
-use sable_network::{prelude::*, config::TlsData};
 use event::*;
 use rpc::*;
+use sable_network::{config::TlsData, prelude::*};
 
 use auth_client::*;
 use client_listener::*;
 
 use tokio::{
+    select,
     sync::{
-        mpsc::{
-            UnboundedSender,
-            UnboundedReceiver,
-            unbounded_channel,
-        },
         broadcast,
+        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
         Mutex,
     },
-    select,
 };
 
 use std::sync::Arc;
@@ -39,17 +35,16 @@ use self::config::ClientServerConfig;
 pub mod config;
 
 mod command_action;
+mod server_type;
 mod update_handler;
 mod user_access;
-mod server_type;
 
 /// A client server.
 ///
 /// This type uses the [`NetworkNode`](sable_network::node::NetworkNode) struct to link to the network
 /// and process state. It consumes the stream of history output by `NetworkNode`, and speaks
 /// IRC client protocol.
-pub struct ClientServer
-{
+pub struct ClientServer {
     // These must be tokio Mutexes so that we can hold on to them across await points
     action_receiver: Mutex<UnboundedReceiver<CommandAction>>,
     connection_events: Mutex<UnboundedReceiver<ConnectionEvent>>,
@@ -67,62 +62,56 @@ pub struct ClientServer
     listeners: Movable<ListenerCollection>,
 }
 
-impl ClientServer
-{
+impl ClientServer {
     /// Access the network state
-    pub fn network(&self) -> Arc<Network>
-    {
+    pub fn network(&self) -> Arc<Network> {
         self.node.network()
     }
 
     /// The ID generator used to identify objects created by this server
-    pub fn ids(&self) -> &ObjectIdGenerator
-    {
+    pub fn ids(&self) -> &ObjectIdGenerator {
         self.node.ids()
     }
 
     /// The underlying network node
-    pub fn node(&self) -> &NetworkNode
-    {
+    pub fn node(&self) -> &NetworkNode {
         &self.node
     }
 
     /// This server's name
-    pub fn name(&self) -> &ServerName
-    {
+    pub fn name(&self) -> &ServerName {
         self.node.name()
     }
 
     /// Submit a command action to process in the next loop iteration.
     #[tracing::instrument(skip(self))]
-    pub fn add_action(&self, act: CommandAction)
-    {
+    pub fn add_action(&self, act: CommandAction) {
         self.action_submitter.send(act).unwrap();
     }
 
     /// Access the currently used [`PolicyService`](sable_network::policy::PolicyService)
-    pub(crate) fn policy(&self) -> &dyn sable_network::policy::PolicyService
-    {
+    pub(crate) fn policy(&self) -> &dyn sable_network::policy::PolicyService {
         self.node.policy()
     }
 
     /// Find a client connection
-    pub fn find_connection(&self, id: ConnectionId) -> Option<Arc<ClientConnection>>
-    {
+    pub fn find_connection(&self, id: ConnectionId) -> Option<Arc<ClientConnection>> {
         let ret = self.connections.get(id).ok();
-        tracing::trace!("Looking up connection id {:?}, {}", id, if ret.is_some() {"found"}else{"not found"});
+        tracing::trace!(
+            "Looking up connection id {:?}, {}",
+            id,
+            if ret.is_some() { "found" } else { "not found" }
+        );
         ret
     }
 
     /// The [`CapabilityRepository`] describing the server's supported client capability flags
-    pub(crate) fn client_capabilities(&self) -> &CapabilityRepository
-    {
+    pub(crate) fn client_capabilities(&self) -> &CapabilityRepository {
         &self.client_caps
     }
 
     #[tracing::instrument]
-    fn build_basic_isupport() -> ISupportBuilder
-    {
+    fn build_basic_isupport() -> ISupportBuilder {
         let mut ret = ISupportBuilder::new();
         ret.add(ISupportEntry::simple("EXCEPTS"));
         ret.add(ISupportEntry::simple("INVEX"));
@@ -134,7 +123,10 @@ impl ClientServer
         let key_modes: String = KeyModeType::iter().map(|t| t.mode_letter()).collect();
         let param_modes = "";
         let simple_modes: String = ChannelModeSet::all().map(|m| m.1).iter().collect();
-        let chanmodes = format!("{},{},{},{}", list_modes, key_modes, param_modes, simple_modes);
+        let chanmodes = format!(
+            "{},{},{},{}",
+            list_modes, key_modes, param_modes, simple_modes
+        );
 
         ret.add(ISupportEntry::string("CHANMODES", &chanmodes));
 
@@ -147,25 +139,27 @@ impl ClientServer
         ret
     }
 
-
     #[tracing::instrument(skip_all, fields(source = ?msg.source))]
-    async fn process_connection_event(&self, msg: ConnectionEvent)
-    {
+    async fn process_connection_event(&self, msg: ConnectionEvent) {
         match msg.detail {
             ConnectionEventDetail::NewConnection(conn) => {
                 tracing::trace!("Got new connection");
                 let conn = ClientConnection::new(conn);
 
-                conn.send(message::Notice::new(self, &UnknownTarget,
-                            "*** Looking up your hostname"));
-                self.auth_client.start_dns_lookup(conn.id(), conn.remote_addr());
+                conn.send(message::Notice::new(
+                    self,
+                    &UnknownTarget,
+                    "*** Looking up your hostname",
+                ));
+                self.auth_client
+                    .start_dns_lookup(conn.id(), conn.remote_addr());
                 self.connections.write().add(msg.source, conn);
-            },
+            }
             ConnectionEventDetail::Message(m) => {
                 tracing::trace!(msg=?m, "Got message");
 
                 self.connections.write().new_message(msg.source, m);
-            },
+            }
             ConnectionEventDetail::Error(e) => {
                 if let Ok(conn) = self.connections.get(msg.source) {
                     if let Some(userid) = conn.user_id() {
@@ -177,14 +171,14 @@ impl ClientServer
                             true
                         };
 
-                        if should_quit
-                        {
+                        if should_quit {
                             self.apply_action(CommandAction::state_change(
                                 userid,
                                 details::UserQuit {
-                                    message: e.to_string()
-                                }
-                            )).await;
+                                    message: e.to_string(),
+                                },
+                            ))
+                            .await;
                         }
                     }
                 }
@@ -193,44 +187,39 @@ impl ClientServer
         }
     }
 
-    fn process_pending_client_messages(self: &Arc<Self>, async_handlers: &AsyncHandlerCollection)
-    {
+    fn process_pending_client_messages(self: &Arc<Self>, async_handlers: &AsyncHandlerCollection) {
         let connections = self.connections.read();
-        for (conn_id, message) in connections.poll_messages().collect::<Vec<_>>()
-        {
-            if let Some(parsed) = ClientMessage::parse(conn_id, &message)
-            {
-                if let Ok(connection) = connections.get(conn_id)
-                {
-                    if let Ok(command) = ClientCommand::new(Arc::clone(&self), connection, parsed)
-                    {
-                        if let Some(async_handler) = self.command_dispatcher.dispatch_command(command)
+        for (conn_id, message) in connections.poll_messages().collect::<Vec<_>>() {
+            if let Some(parsed) = ClientMessage::parse(conn_id, &message) {
+                if let Ok(connection) = connections.get(conn_id) {
+                    if let Ok(command) = ClientCommand::new(Arc::clone(&self), connection, parsed) {
+                        if let Some(async_handler) =
+                            self.command_dispatcher.dispatch_command(command)
                         {
                             async_handlers.add(async_handler);
                         }
                     }
                 }
-            }
-            else
-            {
+            } else {
                 tracing::info!(?message, "Failed parsing")
             }
         }
         drop(connections);
 
-        for flooded in self.connections.write().flooded_connections()
-        {
-            if let Some(user_id) = flooded.user_id()
-            {
-                if let Ok(user) = self.node.network().user(user_id)
-                {
-                    if user.session_key().is_some()
-                    {
+        for flooded in self.connections.write().flooded_connections() {
+            if let Some(user_id) = flooded.user_id() {
+                if let Ok(user) = self.node.network().user(user_id) {
+                    if user.session_key().is_some() {
                         // Don't kill a multi-connection or persistent user because one connection flooded off
                         continue;
                     }
 
-                    self.node.submit_event(user_id, event::details::UserQuit { message: "Excess Flood".to_string() });
+                    self.node.submit_event(
+                        user_id,
+                        event::details::UserQuit {
+                            message: "Excess Flood".to_string(),
+                        },
+                    );
                     flooded.error("Excess Flood");
                 }
             }
@@ -243,8 +232,10 @@ impl ClientServer
     /// - `management_channel`: receives management commands from the management service
     /// - `shutdown_channel`: used to signal the server to shut down
     #[tracing::instrument(skip_all)]
-    async fn do_run(self: Arc<Self>, mut shutdown_channel: broadcast::Receiver<ShutdownAction>) -> ShutdownAction
-    {
+    async fn do_run(
+        self: Arc<Self>,
+        mut shutdown_channel: broadcast::Receiver<ShutdownAction>,
+    ) -> ShutdownAction {
         // Take ownership of these receivers here, so that we no longer need a mut borrow of `self` once the
         // run loop starts
         let mut action_receiver = self.action_receiver.lock().await;
@@ -254,16 +245,14 @@ impl ClientServer
 
         let mut async_handlers = AsyncHandlerCollection::new();
 
-        let shutdown_action = loop
-        {
+        let shutdown_action = loop {
             // tracing::trace!("ClientServer run loop");
             // Before looking for an I/O event, do our internal bookkeeping.
             // First, take inbound client messages and process them
             self.process_pending_client_messages(&async_handlers);
 
             // Then, see whether there are any actions we need to process synchronously
-            while let Ok(act) = action_receiver.try_recv()
-            {
+            while let Ok(act) = action_receiver.try_recv() {
                 tracing::trace!(?act, "Got pending CommandAction");
                 self.apply_action(act).await;
             }

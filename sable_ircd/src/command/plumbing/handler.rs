@@ -1,13 +1,15 @@
 use super::*;
 
-pub trait HandlerFn<'ctx, Ambient, Positional>
-{
+pub trait HandlerFn<'ctx, Ambient, Positional> {
     fn call(&self, ctx: &'ctx dyn Command, args: ArgListIter<'ctx>) -> CommandResult;
 }
 
-pub trait AsyncHandlerFn<'ctx, Ambient, Positional> : Send + Sync
-{
-    fn call(&'ctx self, ctx: &'ctx dyn Command, args: ArgListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx;
+pub trait AsyncHandlerFn<'ctx, Ambient, Positional>: Send + Sync {
+    fn call(
+        &'ctx self,
+        ctx: &'ctx dyn Command,
+        args: ArgListIter<'ctx>,
+    ) -> impl Future<Output = CommandResult> + Send + Sync + 'ctx;
 }
 
 macro_rules! define_handler_fn

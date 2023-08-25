@@ -1,19 +1,22 @@
 use sable_network::{
-    rpc::{RemoteServerResponse, RemoteServerRequestType},
-    network::state::ChannelAccessFlag, policy::RegistrationPolicyService,
+    network::state::ChannelAccessFlag,
+    policy::RegistrationPolicyService,
+    rpc::{RemoteServerRequestType, RemoteServerResponse},
 };
 
 use super::*;
 
 #[command_handler("ROLE", in("CS"))]
-async fn handle_role(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_target: ServicesTarget<'_>,
-                     channel: wrapper::ChannelRegistration<'_>, subcommand: Option<&str>, mut args: ArgList<'_>
-                ) -> CommandResult
-{
-    if let Some(subcommand) = subcommand.map(|s| s.to_ascii_uppercase())
-    {
-        match subcommand.as_ref()
-        {
+async fn handle_role(
+    source: LoggedInUserSource<'_>,
+    cmd: &dyn Command,
+    services_target: ServicesTarget<'_>,
+    channel: wrapper::ChannelRegistration<'_>,
+    subcommand: Option<&str>,
+    mut args: ArgList<'_>,
+) -> CommandResult {
+    if let Some(subcommand) = subcommand.map(|s| s.to_ascii_uppercase()) {
+        match subcommand.as_ref() {
             "ADD" => role_add(source, cmd, services_target, channel, args.next()?, args).await,
             "DELETE" => role_delete(source, cmd, services_target, channel, args.next()?).await,
             "EDIT" => role_edit(source, cmd, services_target, channel, args.next()?, args).await,
@@ -22,47 +25,57 @@ async fn handle_role(source: LoggedInUserSource<'_>, cmd: &dyn Command, services
                 Ok(())
             }
         }
-    }
-    else
-    {
+    } else {
         role_list(source, cmd, channel).await
     }
-
 }
 
-async fn role_list(source: LoggedInUserSource<'_>, cmd: &dyn Command,
-                   chan: wrapper::ChannelRegistration<'_>) -> CommandResult
-{
-    cmd.server().node().policy().can_view_roles(&source.user, &chan)?;
+async fn role_list(
+    source: LoggedInUserSource<'_>,
+    cmd: &dyn Command,
+    chan: wrapper::ChannelRegistration<'_>,
+) -> CommandResult {
+    cmd.server()
+        .node()
+        .policy()
+        .can_view_roles(&source.user, &chan)?;
 
     cmd.notice(format_args!("Role list for {}", chan.name()));
     cmd.notice(" ");
 
-    for role in chan.roles()
-    {
-        cmd.notice(format_args!("{} {}", role.name(), state::HumanReadableChannelAccessSet::from(role.flags())))
+    for role in chan.roles() {
+        cmd.notice(format_args!(
+            "{} {}",
+            role.name(),
+            state::HumanReadableChannelAccessSet::from(role.flags())
+        ))
     }
 
     Ok(())
 }
 
-async fn role_edit(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_target: ServicesTarget<'_>,
-                   chan: wrapper::ChannelRegistration<'_>, target_role_name: state::ChannelRoleName, mut args: ArgList<'_>
-                ) -> CommandResult
-{
+async fn role_edit(
+    source: LoggedInUserSource<'_>,
+    cmd: &dyn Command,
+    services_target: ServicesTarget<'_>,
+    chan: wrapper::ChannelRegistration<'_>,
+    target_role_name: state::ChannelRoleName,
+    mut args: ArgList<'_>,
+) -> CommandResult {
     let Some(target_role) = chan.role_named(&target_role_name) else {
         cmd.notice(format_args!("No such role {}", target_role_name));
-        return Ok(())
+        return Ok(());
     };
 
-    cmd.server().node().policy().can_edit_role(&source.account, &chan, &target_role)?;
+    cmd.server()
+        .node()
+        .policy()
+        .can_edit_role(&source.account, &chan, &target_role)?;
 
     let mut flags = target_role.flags();
 
-    while let Ok(flag_str) = args.next::<&str>()
-    {
-        let (adding, flag_name) = match flag_str.as_bytes()[0]
-        {
+    while let Ok(flag_str) = args.next::<&str>() {
+        let (adding, flag_name) = match flag_str.as_bytes()[0] {
             b'+' => (true, &flag_str[1..]),
             b'-' => (false, &flag_str[1..]),
             _ => (true, &flag_str[..]),
@@ -73,39 +86,38 @@ async fn role_edit(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_t
             return Ok(());
         };
 
-        if adding
-        {
+        if adding {
             flags |= flag;
-        }
-        else
-        {
+        } else {
             flags &= !flag;
         }
     }
 
-    cmd.server().node().policy().can_create_role(&source.account, &chan, &flags)?;
+    cmd.server()
+        .node()
+        .policy()
+        .can_create_role(&source.account, &chan, &flags)?;
 
-    let request = RemoteServerRequestType::ModifyRole { source: source.account.id(), id: target_role.id(), flags: Some(flags) };
+    let request = RemoteServerRequestType::ModifyRole {
+        source: source.account.id(),
+        id: target_role.id(),
+        flags: Some(flags),
+    };
     let registration_response = services_target.send_remote_request(request).await;
 
     tracing::debug!(?registration_response, "Got registration response");
-    match registration_response
-    {
-        Ok(RemoteServerResponse::Success) =>
-        {
+    match registration_response {
+        Ok(RemoteServerResponse::Success) => {
             cmd.notice("Role successfully updated");
         }
-        Ok(RemoteServerResponse::AccessDenied) =>
-        {
+        Ok(RemoteServerResponse::AccessDenied) => {
             cmd.notice("Access denied");
         }
-        Ok(response) =>
-        {
+        Ok(response) => {
             tracing::error!(?response, "Unexpected response updating channel access");
             cmd.notice("Error updating role");
         }
-        Err(error) =>
-        {
+        Err(error) => {
             tracing::error!(?error, "Error updating channel role");
             cmd.notice("Error updating role");
         }
@@ -114,14 +126,17 @@ async fn role_edit(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_t
     Ok(())
 }
 
-async fn role_add(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_target: ServicesTarget<'_>,
-                  chan: wrapper::ChannelRegistration<'_>, target_role_name: CustomRoleName, mut args: ArgList<'_>
-                ) -> CommandResult
-{
+async fn role_add(
+    source: LoggedInUserSource<'_>,
+    cmd: &dyn Command,
+    services_target: ServicesTarget<'_>,
+    chan: wrapper::ChannelRegistration<'_>,
+    target_role_name: CustomRoleName,
+    mut args: ArgList<'_>,
+) -> CommandResult {
     let mut flags = state::ChannelAccessSet::new();
 
-    while let Ok(flag_str) = args.next::<&str>()
-    {
+    while let Ok(flag_str) = args.next::<&str>() {
         let Ok(flag) = ChannelAccessFlag::from_str(flag_str) else {
             cmd.notice(format_args!("Invalid access flag {}", flag_str));
             return Ok(());
@@ -130,29 +145,32 @@ async fn role_add(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_ta
         flags |= flag;
     }
 
-    cmd.server().node().policy().can_create_role(&source.account, &chan, &flags)?;
+    cmd.server()
+        .node()
+        .policy()
+        .can_create_role(&source.account, &chan, &flags)?;
 
-    let request = RemoteServerRequestType::CreateRole { source: source.account.id(), channel: chan.id(), name: target_role_name, flags: flags };
+    let request = RemoteServerRequestType::CreateRole {
+        source: source.account.id(),
+        channel: chan.id(),
+        name: target_role_name,
+        flags: flags,
+    };
     let registration_response = services_target.send_remote_request(request).await;
 
     tracing::debug!(?registration_response, "Got registration response");
-    match registration_response
-    {
-        Ok(RemoteServerResponse::Success) =>
-        {
+    match registration_response {
+        Ok(RemoteServerResponse::Success) => {
             cmd.notice("Role successfully updated");
         }
-        Ok(RemoteServerResponse::AccessDenied) =>
-        {
+        Ok(RemoteServerResponse::AccessDenied) => {
             cmd.notice("Access denied");
         }
-        Ok(response) =>
-        {
+        Ok(response) => {
             tracing::error!(?response, "Unexpected response updating channel access");
             cmd.notice("Error updating role");
         }
-        Err(error) =>
-        {
+        Err(error) => {
             tracing::error!(?error, "Error updating channel role");
             cmd.notice("Error updating role");
         }
@@ -161,38 +179,43 @@ async fn role_add(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_ta
     Ok(())
 }
 
-async fn role_delete(source: LoggedInUserSource<'_>, cmd: &dyn Command, services_target: ServicesTarget<'_>,
-                     chan: wrapper::ChannelRegistration<'_>, target_role_name: state::ChannelRoleName
-                ) -> CommandResult
-{
+async fn role_delete(
+    source: LoggedInUserSource<'_>,
+    cmd: &dyn Command,
+    services_target: ServicesTarget<'_>,
+    chan: wrapper::ChannelRegistration<'_>,
+    target_role_name: state::ChannelRoleName,
+) -> CommandResult {
     let Some(target_role) = chan.role_named(&target_role_name) else {
         cmd.notice(format_args!("No such role {}", target_role_name));
-        return Ok(())
+        return Ok(());
     };
 
-    cmd.server().node().policy().can_edit_role(&source.account, &chan, &target_role)?;
+    cmd.server()
+        .node()
+        .policy()
+        .can_edit_role(&source.account, &chan, &target_role)?;
 
-    let request = RemoteServerRequestType::ModifyRole { source: source.account.id(), id: target_role.id(), flags: None };
+    let request = RemoteServerRequestType::ModifyRole {
+        source: source.account.id(),
+        id: target_role.id(),
+        flags: None,
+    };
     let registration_response = services_target.send_remote_request(request).await;
 
     tracing::debug!(?registration_response, "Got registration response");
-    match registration_response
-    {
-        Ok(RemoteServerResponse::Success) =>
-        {
+    match registration_response {
+        Ok(RemoteServerResponse::Success) => {
             cmd.notice("Role successfully updated");
         }
-        Ok(RemoteServerResponse::AccessDenied) =>
-        {
+        Ok(RemoteServerResponse::AccessDenied) => {
             cmd.notice("Access denied");
         }
-        Ok(response) =>
-        {
+        Ok(response) => {
             tracing::error!(?response, "Unexpected response updating channel role");
             cmd.notice("Error updating role");
         }
-        Err(error) =>
-        {
+        Err(error) => {
             tracing::error!(?error, "Error updating channel role");
             cmd.notice("Error updating role");
         }

@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use super::*;
+use crate::prelude::*;
 
 /// A wrapper around a [`state::Server`]
 pub struct Server<'a> {
@@ -29,20 +29,23 @@ impl Server<'_> {
     }
 
     /// Iterate over the users connecting via this server
-    pub fn users(&self) -> impl Iterator<Item=User>
-    {
+    pub fn users(&self) -> impl Iterator<Item = User> {
         let id = self.data.id;
-        self.network.raw_users().filter(move |u| u.server == id).wrap(self.network)
+        self.network
+            .raw_users()
+            .filter(move |u| u.server == id)
+            .wrap(self.network)
     }
 }
 
 impl<'a> super::ObjectWrapper<'a> for Server<'a> {
     type Underlying = state::Server;
 
-    fn wrap(network: &'a Network, data: &'a state::Server) -> Self
-    {
+    fn wrap(network: &'a Network, data: &'a state::Server) -> Self {
         Self { network, data }
     }
 
-    fn raw(&self) -> &'a Self::Underlying { self.data }
+    fn raw(&self) -> &'a Self::Underlying {
+        self.data
+    }
 }

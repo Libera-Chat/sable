@@ -1,9 +1,7 @@
 //! Defines mode flag enumerations and sets
 use sable_macros::mode_flags;
-use serde::{Serialize,Deserialize};
-use strum::{
-    EnumIter
-};
+use serde::{Deserialize, Serialize};
+use strum::EnumIter;
 
 mode_flags!(
     ChannelMode {

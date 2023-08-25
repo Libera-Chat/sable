@@ -1,16 +1,15 @@
 //! Defines validated string types for various names and identifiers
 
-use sable_macros::define_validated;
-use thiserror::Error;
 use arrayvec::ArrayString;
+use sable_macros::define_validated;
 use std::{
-    convert::{TryFrom,Into},
+    convert::{Into, TryFrom},
     str::FromStr,
 };
+use thiserror::Error;
 
 /// Base trait for validated string types.
-pub trait Validated : TryFrom<Self::Underlying> + Into<Self::Underlying> + FromStr + Sized
-{
+pub trait Validated: TryFrom<Self::Underlying> + Into<Self::Underlying> + FromStr + Sized {
     type Underlying;
     type Error;
     type Result;
@@ -33,10 +32,9 @@ pub trait Validated : TryFrom<Self::Underlying> + Into<Self::Underlying> + FromS
 struct StringValidationError(String);
 type StringValidationResult = Result<(), StringValidationError>;
 
-fn check_allowed_chars(value: &str, allowed_chars: &[&str]) -> StringValidationResult
-{
+fn check_allowed_chars(value: &str, allowed_chars: &[&str]) -> StringValidationResult {
     for c in value.chars() {
-        if ! allowed_chars.iter().any(|s| s.contains(c)) {
+        if !allowed_chars.iter().any(|s| s.contains(c)) {
             return Err(StringValidationError(value.to_string()));
         }
     }
@@ -110,22 +108,20 @@ define_validated! {
     }
 }
 
-impl Nickname
-{
+impl Nickname {
     /// Create a new Nickname, bypassing normal validation. This is only for internal use, and only when created
     /// nicknames for collided users
-    pub(crate) fn new_for_collision(value: <Self as Validated>::Underlying) -> <Self as Validated>::Result
-    {
+    pub(crate) fn new_for_collision(
+        value: <Self as Validated>::Underlying,
+    ) -> <Self as Validated>::Result {
         Ok(Self(value))
     }
 }
 
-impl Username
-{
+impl Username {
     /// Coerce the provided value into a valid `Username`, by truncating to the
     /// permitted length and removing any invalid characters.
-    pub fn new_coerce(s: &str) -> Self
-    {
+    pub fn new_coerce(s: &str) -> Self {
         let mut s = s.to_string();
         s.retain(|c| c != '[');
         s.truncate(10);
@@ -134,10 +130,8 @@ impl Username
     }
 }
 
-impl ChannelKey
-{
-    pub fn new_coerce(s: &str) -> Self
-    {
+impl ChannelKey {
+    pub fn new_coerce(s: &str) -> Self {
         let mut s = s.to_string();
         s.retain(|c| c > ' ' && c <= '~' && c != ':' && c != ',');
         let mut val = <Self as Validated>::Underlying::new();

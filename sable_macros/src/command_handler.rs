@@ -2,30 +2,23 @@ use super::*;
 
 use quote::{quote, quote_spanned};
 use syn::{
-    parse_macro_input,
-    LitStr, ItemFn, Ident, Token, token::In, parse::Parse, parenthesized,
+    parenthesized, parse::Parse, parse_macro_input, token::In, Ident, ItemFn, LitStr, Token,
 };
 
-struct CommandHandlerAttr
-{
+struct CommandHandlerAttr {
     command_name: LitStr,
     dispatcher: Option<LitStr>,
 }
 
-impl Parse for CommandHandlerAttr
-{
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self>
-    {
+impl Parse for CommandHandlerAttr {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let command_name = input.parse()?;
-        let dispatcher = if input.parse::<Token![,]>().is_ok()
-        {
+        let dispatcher = if input.parse::<Token![,]>().is_ok() {
             let content;
             input.parse::<In>()?;
             let _paren = parenthesized!(content in input);
             Some(content.parse()?)
-        }
-        else
-        {
+        } else {
             None
         };
         Ok(Self {
@@ -35,8 +28,7 @@ impl Parse for CommandHandlerAttr
     }
 }
 
-pub fn command_handler(attr: TokenStream, item: TokenStream) -> TokenStream
-{
+pub fn command_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(attr as CommandHandlerAttr);
     let item = parse_macro_input!(item as ItemFn);
 
@@ -45,18 +37,15 @@ pub fn command_handler(attr: TokenStream, item: TokenStream) -> TokenStream
 
     let command_name = input.command_name;
 
-    for c in command_name.value().chars()
-    {
-        if ! c.is_ascii_uppercase()
-        {
+    for c in command_name.value().chars() {
+        if !c.is_ascii_uppercase() {
             return quote_spanned!(command_name.span()=> compile_error!("Command names should be uppercase")).into();
         }
     }
 
-    let dispatcher = match input.dispatcher
-    {
+    let dispatcher = match input.dispatcher {
         Some(name) => quote!( Some( #name ) ),
-        None => quote!( None )
+        None => quote!(None),
     };
 
     let body = if asyncness.is_none() {
@@ -78,9 +67,14 @@ pub fn command_handler(attr: TokenStream, item: TokenStream) -> TokenStream
         )
     };
 
-    let reg_mod_name = Ident::new(&format!("register_{}_for_{}",
-                                                    name, command_name.value().to_ascii_lowercase()
-                                            ), name.span());
+    let reg_mod_name = Ident::new(
+        &format!(
+            "register_{}_for_{}",
+            name,
+            command_name.value().to_ascii_lowercase()
+        ),
+        name.span(),
+    );
 
     quote!(
         #item

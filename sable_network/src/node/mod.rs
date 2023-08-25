@@ -1,40 +1,32 @@
 use super::*;
-use crate::utils::*;
-use crate::prelude::*;
-use crate::rpc::*;
 use crate::network::event::*;
-use crate::sync::ReplicatedEventLog;
+use crate::prelude::*;
 use crate::rpc::NetworkMessage;
+use crate::rpc::*;
+use crate::sync::ReplicatedEventLog;
+use crate::utils::*;
 
 use crate::policy::PolicyService;
 use crate::saveable::Saveable;
 
 use parking_lot::RwLockReadGuard;
 use tokio::{
+    select,
     sync::{
-        mpsc::{
-            UnboundedSender,
-            UnboundedReceiver,
-        },
         broadcast,
+        mpsc::{UnboundedReceiver, UnboundedSender},
         Mutex,
     },
     time,
-    select,
 };
 
-use std::{
-    sync::Arc,
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
-use parking_lot::{
-    RwLock,
-};
+use parking_lot::RwLock;
 
+mod history;
 mod pings;
 mod update_receiver;
-mod history;
 
 mod upgrade;
 pub use upgrade::NetworkNodeState;
@@ -43,7 +35,8 @@ mod management;
 
 /// A network server.
 pub struct NetworkNode<Policy = crate::policy::StandardPolicyService>
-    where Policy: PolicyService
+where
+    Policy: PolicyService,
 {
     my_id: ServerId,
     name: ServerName,
@@ -60,9 +53,7 @@ pub struct NetworkNode<Policy = crate::policy::StandardPolicyService>
     policy_service: Policy,
 }
 
-
-impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
-{
+impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     /// Construct a network node.
     ///
     /// Arguments:
@@ -79,19 +70,18 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
     /// - `subscriber`: channel to send out network state changes for consumption
     /// = `policy_service`: a policy service
     ///
-    pub fn new(id: ServerId,
-               epoch: EpochId,
-               name: ServerName,
-               net: Network,
-               event_log: Arc<ReplicatedEventLog>,
-               rpc_receiver: UnboundedReceiver<NetworkMessage>,
-               subscriber: UnboundedSender<NetworkHistoryUpdate>,
-               remote_server_commands: Option<UnboundedSender<RemoteServerRequest>>,
-               policy_service: Policy,
-            ) -> Self
-    {
-        if cfg!(feature = "debug") && !net.config().debug_mode
-        {
+    pub fn new(
+        id: ServerId,
+        epoch: EpochId,
+        name: ServerName,
+        net: Network,
+        event_log: Arc<ReplicatedEventLog>,
+        rpc_receiver: UnboundedReceiver<NetworkMessage>,
+        subscriber: UnboundedSender<NetworkHistoryUpdate>,
+        remote_server_commands: Option<UnboundedSender<RemoteServerRequest>>,
+        policy_service: Policy,
+    ) -> Self {
+        if cfg!(feature = "debug") && !net.config().debug_mode {
             panic!("Server is built with debug code but network has debug disabled")
         }
 
@@ -111,8 +101,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
         }
     }
 
-    pub fn submit_event(&self, id: impl Into<ObjectId>, detail: impl Into<EventDetails>)
-    {
+    pub fn submit_event(&self, id: impl Into<ObjectId>, detail: impl Into<EventDetails>) {
         let id = id.into();
         let detail = detail.into();
         tracing::trace!("Submitting new event {:?} {:?}", id, detail);
@@ -120,14 +109,12 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
     }
 
     /// Retrieve the [`ObjectIdGenerator`] used to generate object identifiers
-    pub fn ids(&self) -> &ObjectIdGenerator
-    {
+    pub fn ids(&self) -> &ObjectIdGenerator {
         &self.id_generator
     }
 
     /// Access the IRC network state
-    pub fn network(&self) -> Arc<Network>
-    {
+    pub fn network(&self) -> Arc<Network> {
         // XXX: This is read_recursive() and not read() because the current architecture
         // requires both `CommandProcessor` and the individual handlers to acquire the read
         // lock at the same time. If this were a normal read lock and the `Server` task
@@ -136,108 +123,107 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
     }
 
     /// Access the policy service
-    pub fn policy(&self) -> &Policy
-    {
+    pub fn policy(&self) -> &Policy {
         &self.policy_service
     }
 
     /// Access the network history
-    pub fn history(&self) -> RwLockReadGuard<NetworkHistoryLog>
-    {
+    pub fn history(&self) -> RwLockReadGuard<NetworkHistoryLog> {
         self.history_log.read()
     }
 
     /// Access the event log.
-    pub fn event_log(&self) -> std::sync::RwLockReadGuard<EventLog>
-    {
+    pub fn event_log(&self) -> std::sync::RwLockReadGuard<EventLog> {
         self.event_log.event_log()
     }
 
     /// Access the replicated event log
-    pub fn sync_log(&self) -> &ReplicatedEventLog
-    {
+    pub fn sync_log(&self) -> &ReplicatedEventLog {
         &self.event_log
     }
 
     /// Get the server's name
-    pub fn name(&self) -> &ServerName
-    {
+    pub fn name(&self) -> &ServerName {
         &self.name
     }
 
     /// The server's ID
-    pub fn id(&self) -> ServerId
-    {
+    pub fn id(&self) -> ServerId {
         self.my_id
     }
 
     /// The server's epoch
-    pub fn epoch(&self) -> EpochId
-    {
+    pub fn epoch(&self) -> EpochId {
         self.epoch
     }
 
     /// The server's build version
-    pub fn version(&self) -> &str
-    {
+    pub fn version(&self) -> &str {
         &self.version
     }
 
-    fn build_version() -> String
-    {
-        let git_version = crate::build_data::GIT_COMMIT_HASH.map(|s| format!("-{}", s)).unwrap_or_else(String::new);
+    fn build_version() -> String {
+        let git_version = crate::build_data::GIT_COMMIT_HASH
+            .map(|s| format!("-{}", s))
+            .unwrap_or_else(String::new);
         let git_dirty = if matches!(crate::build_data::GIT_DIRTY, Some(true)) {
             "-dirty".to_string()
         } else {
             String::new()
         };
-        format!("sable-{}{}{}", crate::build_data::PKG_VERSION, git_version, git_dirty)
+        format!(
+            "sable-{}{}{}",
+            crate::build_data::PKG_VERSION,
+            git_version,
+            git_dirty
+        )
     }
 
     /// The server's build flags
-    pub fn server_flags(&self) -> state::ServerFlags
-    {
+    pub fn server_flags(&self) -> state::ServerFlags {
         let mut ret = state::ServerFlags::empty();
-        if cfg!(feature = "debug")
-        {
+        if cfg!(feature = "debug") {
             ret |= state::ServerFlags::DEBUG;
         }
         ret
     }
 
     #[tracing::instrument(skip(self))]
-    fn apply_event(&self, event: Event)
-    {
+    fn apply_event(&self, event: Event) {
         tracing::trace!("Applying inbound event");
 
         // We need to queue up the emitted updates and process them after `apply()` returns and we've released
         // the write lock on `net`. The handlers for various network updates require read access to `net`.
         let mut update_queue = crate::network::SavedUpdateReceiver::new();
 
-        Arc::make_mut(&mut *self.net.write()).apply(&event, &update_queue).unwrap_or_else(|_| panic!("Event {:?} failed to apply", event));
+        Arc::make_mut(&mut *self.net.write())
+            .apply(&event, &update_queue)
+            .unwrap_or_else(|_| panic!("Event {:?} failed to apply", event));
 
         update_queue.playback(self);
     }
 
     #[tracing::instrument(skip_all)]
-    pub async fn run(self: Arc<Self>,
-                     mut shutdown_channel: broadcast::Receiver<ShutdownAction>
-                ) -> ShutdownAction
-    {
-        self.submit_event(self.my_id, details::NewServer {
-            epoch: self.epoch,
-            name: self.name,
-            ts: crate::utils::now(),
-            flags: self.server_flags(),
-            version: self.version().to_string(),
-        });
+    pub async fn run(
+        self: Arc<Self>,
+        mut shutdown_channel: broadcast::Receiver<ShutdownAction>,
+    ) -> ShutdownAction {
+        self.submit_event(
+            self.my_id,
+            details::NewServer {
+                epoch: self.epoch,
+                name: self.name,
+                ts: crate::utils::now(),
+                flags: self.server_flags(),
+                version: self.version().to_string(),
+            },
+        );
 
         let mut check_ping_timer = time::interval(Duration::from_secs(60));
 
         let mut rpc_receiver = self.rpc_receiver.lock().await;
 
-        let shutdown_action = loop
-        {
+        let shutdown_action = loop {
             tracing::trace!("server run loop");
 
             select! {
@@ -313,11 +299,12 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy>
         };
 
         let net = self.net.read();
-        let me = net.server(self.my_id).expect("Couldn't say I quit as I have no record of myself");
+        let me = net
+            .server(self.my_id)
+            .expect("Couldn't say I quit as I have no record of myself");
 
         self.submit_event(self.my_id, details::ServerQuit { epoch: me.epoch() });
 
         shutdown_action
     }
 }
-

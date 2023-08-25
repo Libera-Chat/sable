@@ -3,29 +3,17 @@ use internal::*;
 
 use std::collections::HashMap;
 use std::sync::{
+    atomic::{AtomicBool, Ordering},
     Arc,
-    atomic::{
-        AtomicBool,
-        Ordering,
-    },
 };
 
-use tokio::{
-    sync::mpsc::{
-        channel
-    },
-    select,
-};
-use sable_ipc::{
-    Sender as IpcSender,
-    Receiver as IpcReceiver,
-};
+use sable_ipc::{Receiver as IpcReceiver, Sender as IpcSender};
+use tokio::{select, sync::mpsc::channel};
 
 /// The worker side of the [`ListenerCollection`] system. This should only be constructed
 /// by the worker process itself; applications using this system have no cause to interact
 /// directly with it.
-pub struct ListenerProcess
-{
+pub struct ListenerProcess {
     control_receiver: IpcReceiver<ControlMessage>,
     event_sender: Arc<IpcSender<InternalConnectionEvent>>,
     tls_config: Option<Arc<rustls::ServerConfig>>,
@@ -36,10 +24,11 @@ pub struct ListenerProcess
     shutdown_flag: Arc<AtomicBool>,
 }
 
-impl ListenerProcess
-{
-    pub fn new(control_receiver: IpcReceiver<ControlMessage>, event_sender: IpcSender<InternalConnectionEvent>) -> Self
-    {
+impl ListenerProcess {
+    pub fn new(
+        control_receiver: IpcReceiver<ControlMessage>,
+        event_sender: IpcSender<InternalConnectionEvent>,
+    ) -> Self {
         Self {
             control_receiver,
             event_sender: Arc::new(event_sender),
@@ -50,73 +39,73 @@ impl ListenerProcess
         }
     }
 
-    fn translate_connection_type(&self, ct: ConnectionType) -> Result<InternalConnectionType,ListenerError>
-    {
-        match ct
-        {
+    fn translate_connection_type(
+        &self,
+        ct: ConnectionType,
+    ) -> Result<InternalConnectionType, ListenerError> {
+        match ct {
             ConnectionType::Clear => Ok(InternalConnectionType::Clear),
-            ConnectionType::Tls =>
-            {
-                if let Some(conf) = &self.tls_config
-                {
+            ConnectionType::Tls => {
+                if let Some(conf) = &self.tls_config {
                     Ok(InternalConnectionType::Tls(conf.clone()))
-                }
-                else
-                {
+                } else {
                     Err(ListenerError::NoTlsConfig)
                 }
             }
         }
     }
 
-    fn build_tls_config(&self, settings: TlsSettings) -> Result<Arc<rustls::ServerConfig>, rustls::Error>
-    {
+    fn build_tls_config(
+        &self,
+        settings: TlsSettings,
+    ) -> Result<Arc<rustls::ServerConfig>, rustls::Error> {
         let key = rustls::PrivateKey(settings.key);
-        let certs: Vec<rustls::Certificate> = settings.cert_chain.into_iter().map(rustls::Certificate).collect();
+        let certs: Vec<rustls::Certificate> = settings
+            .cert_chain
+            .into_iter()
+            .map(rustls::Certificate)
+            .collect();
 
-        let client_cert_verifier = internal::client_verifier::AcceptAnyClientCertVerifier::new(&certs[0]);
+        let client_cert_verifier =
+            internal::client_verifier::AcceptAnyClientCertVerifier::new(&certs[0]);
 
-        Ok(Arc::new(rustls::ServerConfig::builder()
-            .with_safe_defaults()
-            .with_client_cert_verifier(Arc::new(client_cert_verifier))
-            .with_single_cert(certs, key)?))
+        Ok(Arc::new(
+            rustls::ServerConfig::builder()
+                .with_safe_defaults()
+                .with_client_cert_verifier(Arc::new(client_cert_verifier))
+                .with_single_cert(certs, key)?,
+        ))
     }
 
     /// Send an event to the parent process, spawning the task into the background.
     ///
     /// Spawning a separate task avoids blocking the communication task, but does mean
     /// losing the ability to respond to errors, which will be logged instead of returned.
-    fn send_event(&self, event: InternalConnectionEvent)
-    {
+    fn send_event(&self, event: InternalConnectionEvent) {
         let event_sender = Arc::clone(&self.event_sender);
         let shutdown_flag = Arc::clone(&self.shutdown_flag);
         tokio::spawn(async move {
-            if let Err(e) = event_sender.send(&event).await
-            {
+            if let Err(e) = event_sender.send(&event).await {
                 shutdown_flag.store(true, Ordering::Relaxed);
                 panic!("Error sending connection event: {}", e);
             }
         });
     }
 
-    pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>>
-    {
+    pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let (event_send, mut event_recv) = channel(128);
 
         // Golden rule of this loop: don't await anything that could possibly block.
         // If this task blocks on, e.g., sending to a connection's channel when it's full,
         // and that connection task blocks on trying to send to us while the event channel
         // is full, the whole listener process will deadlock.
-        loop
-        {
-            if self.shutdown_flag.load(Ordering::Relaxed)
-            {
+        loop {
+            if self.shutdown_flag.load(Ordering::Relaxed) {
                 tracing::info!("Listener shutting down due to send error");
                 break;
             }
 
-            select!
-            {
+            select! {
                 control = self.control_receiver.recv() =>
                 {
                     match control

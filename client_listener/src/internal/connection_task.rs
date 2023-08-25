@@ -1,53 +1,43 @@
-use crate::*;
 use crate::internal::*;
+use crate::*;
 
 use tokio::{
-    io::{
-        AsyncRead,
-        AsyncWrite,
-        BufReader,
-        AsyncBufReadExt,
-        AsyncWriteExt,
-    },
-    sync::mpsc::{
-        Sender,
-        Receiver
-    },
+    io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader},
     select,
+    sync::mpsc::{Receiver, Sender},
 };
 
 pub(crate) struct ConnectionTask<S> {
     id: ConnectionId,
     conn: S,
     control_channel: Receiver<ConnectionControlDetail>,
-    event_channel: Sender<InternalConnectionEventType>
+    event_channel: Sender<InternalConnectionEventType>,
 }
 
 impl<S> ConnectionTask<S>
-    where S: AsyncRead + AsyncWrite
+where
+    S: AsyncRead + AsyncWrite,
 {
-    pub fn new(id: ConnectionId,
+    pub fn new(
+        id: ConnectionId,
         stream: S,
         control_channel: Receiver<ConnectionControlDetail>,
-        event_channel: Sender<InternalConnectionEventType>) -> Self
-    {
+        event_channel: Sender<InternalConnectionEventType>,
+    ) -> Self {
         Self {
             id,
             conn: stream,
             control_channel,
-            event_channel
+            event_channel,
         }
     }
 
-    pub async fn run(mut self)
-    {
+    pub async fn run(mut self) {
         let (reader, mut writer) = tokio::io::split(self.conn);
         let reader = BufReader::new(reader);
         let mut lines = reader.lines();
-        loop
-        {
-            select!
-            {
+        loop {
+            select! {
                 control = self.control_channel.recv() => match control
                 {
                     None => { break; },
@@ -74,7 +64,14 @@ impl<S> ConnectionTask<S>
                 }
             }
         }
-        if self.event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(self.id, ConnectionError::Closed))).await.is_err() {
+        if self
+            .event_channel
+            .send(InternalConnectionEventType::Event(
+                InternalConnectionEvent::ConnectionError(self.id, ConnectionError::Closed),
+            ))
+            .await
+            .is_err()
+        {
             tracing::error!("Error notifying connection closed on {:?}", self.id);
         }
     }

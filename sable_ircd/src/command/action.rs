@@ -30,13 +30,10 @@ pub enum CommandAction {
     DisconnectUser(UserId),
 }
 
-impl CommandAction
-{
+impl CommandAction {
     /// Helper to create a [`CommandAction::StateChange`] variant. By passing the underlying
     /// ID and detail types, they will be converted into the corresponding enum variants.
-    pub fn state_change(id: impl Into<ObjectId>, detail: impl Into<event::EventDetails>) -> Self
-    {
+    pub fn state_change(id: impl Into<ObjectId>, detail: impl Into<event::EventDetails>) -> Self {
         Self::StateChange(id.into(), detail.into())
     }
 }
-

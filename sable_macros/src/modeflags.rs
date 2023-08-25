@@ -1,66 +1,51 @@
 use super::*;
-use quote::quote;
-use syn::{
-    parse_macro_input,
-    parenthesized,
-    braced,
-    Token,
-    Result,
-    Ident,
-    LitChar,
-    LitInt,
-    token,
-    punctuated::Punctuated,
-};
-use syn::parse::{Parse, ParseStream};
 use proc_macro2::Span;
+use quote::quote;
+use syn::parse::{Parse, ParseStream};
+use syn::{
+    braced, parenthesized, parse_macro_input, punctuated::Punctuated, token, Ident, LitChar,
+    LitInt, Result, Token,
+};
 
-struct ModeDef
-{
+struct ModeDef {
     name: Ident,
     _paren: token::Paren,
     flag: LitInt,
     _comma: Token![,],
-    modechars: Punctuated<LitChar, Token![,]>
+    modechars: Punctuated<LitChar, Token![,]>,
 }
 
-struct ModeSet
-{
+struct ModeSet {
     name: Ident,
     _brace: token::Brace,
-    items: Punctuated<ModeDef, Token![,]>
+    items: Punctuated<ModeDef, Token![,]>,
 }
 
-impl Parse for ModeDef
-{
-    fn parse(input: ParseStream) -> Result<Self>
-    {
+impl Parse for ModeDef {
+    fn parse(input: ParseStream) -> Result<Self> {
         let content;
         Ok(Self {
             name: input.parse()?,
             _paren: parenthesized!(content in input),
             flag: content.parse()?,
             _comma: content.parse()?,
-            modechars: content.parse_terminated(LitChar::parse)?
+            modechars: content.parse_terminated(LitChar::parse)?,
         })
     }
 }
 
-impl Parse for ModeSet
-{
-    fn parse(input: ParseStream) -> Result<Self>
-    {
+impl Parse for ModeSet {
+    fn parse(input: ParseStream) -> Result<Self> {
         let content;
-        Ok(Self{
+        Ok(Self {
             name: input.parse()?,
             _brace: braced!(content in input),
-            items: content.parse_terminated(ModeDef::parse)?
+            items: content.parse_terminated(ModeDef::parse)?,
         })
     }
 }
 
-pub fn mode_flags(input: TokenStream) -> TokenStream
-{
+pub fn mode_flags(input: TokenStream) -> TokenStream {
     let modes = parse_macro_input!(input as ModeSet);
 
     let name_one = Ident::new(&format!("{}Flag", modes.name), Span::call_site());
@@ -78,8 +63,7 @@ pub fn mode_flags(input: TokenStream) -> TokenStream
         mode_char_types.extend(quote!(char,));
     }
 
-    for item in modes.items
-    {
+    for item in modes.items {
         let name = item.name;
         let flag = item.flag;
         let modechars = item.modechars;
@@ -227,8 +211,7 @@ pub fn mode_flags(input: TokenStream) -> TokenStream
         }
     );
 
-    if num_chartypes > 1
-    {
+    if num_chartypes > 1 {
         output.extend(quote!(
             impl #name_one
             {

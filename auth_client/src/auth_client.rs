@@ -1,53 +1,36 @@
 use crate::*;
 use client_listener::ConnectionId;
 
-use tokio::{
-    sync::mpsc::{
-        UnboundedSender,
-        UnboundedReceiver,
-        unbounded_channel,
-    },
-    sync::oneshot,
-    task,
-    select
-};
-use tokio_unix_ipc::{
-    Sender as IpcSender,
-    Receiver as IpcReceiver,
-    channel as ipc_channel
-};
 use std::{
+    env::current_exe,
+    io,
+    net::IpAddr,
     os::unix::{
-        io::{
-            RawFd,
-            IntoRawFd,
-            FromRawFd,
-        },
+        io::{FromRawFd, IntoRawFd, RawFd},
         process::CommandExt,
     },
     path::Path,
-    env::current_exe,
-    io,
-    process::{
-        Command,
-        Child
-    },
-    net::IpAddr,
+    process::{Child, Command},
 };
+use tokio::{
+    select,
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::oneshot,
+    task,
+};
+use tokio_unix_ipc::{channel as ipc_channel, Receiver as IpcReceiver, Sender as IpcSender};
 
 /// Library interface to the auth client process.
-pub struct AuthClient
-{
+pub struct AuthClient {
     control_sender: UnboundedSender<ControlMessage>,
     comm_task_shutdown: oneshot::Sender<()>,
     comm_task: task::JoinHandle<CommResult>,
-    child_process: Option<Child>
+    child_process: Option<Child>,
 }
 
 /// Opaque saved-state to reconstitute an AuthClient after an upgrade
-#[derive(serde::Serialize,serde::Deserialize)]
-pub struct AuthClientState
-{
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct AuthClientState {
     control_fd: RawFd,
     event_fd: RawFd,
 }
@@ -56,15 +39,13 @@ type CommResult = io::Result<(IpcSender<ControlMessage>, IpcReceiver<AuthEvent>)
 
 #[tracing::instrument(skip_all)]
 async fn run_communication_task(
-        control_sender: IpcSender<ControlMessage>,
-        event_receiver: IpcReceiver<AuthEvent>,
-        mut control_receiver: UnboundedReceiver<ControlMessage>,
-        event_sender: UnboundedSender<AuthEvent>,
-        mut shutdown_receiver: oneshot::Receiver<()>
-    ) -> CommResult
-{
-    loop
-    {
+    control_sender: IpcSender<ControlMessage>,
+    event_receiver: IpcReceiver<AuthEvent>,
+    mut control_receiver: UnboundedReceiver<ControlMessage>,
+    event_sender: UnboundedSender<AuthEvent>,
+    mut shutdown_receiver: oneshot::Receiver<()>,
+) -> CommResult {
+    loop {
         select!(
             event = event_receiver.recv() =>
             {
@@ -101,8 +82,7 @@ async fn run_communication_task(
     Ok((control_sender, event_receiver))
 }
 
-impl AuthClient
-{
+impl AuthClient {
     /// Construct a new `AuthClient` using an automatically guessed executable path.
     ///
     /// This version looks for a binary named `auth_client` in the same directory as
@@ -112,8 +92,7 @@ impl AuthClient
     ///
     /// As for `with_exe_path`, this function returns a `std::io::Result` because
     /// spawning the child process may fail.
-    pub fn new(event_channel: UnboundedSender<AuthEvent>) -> std::io::Result<Self>
-    {
+    pub fn new(event_channel: UnboundedSender<AuthEvent>) -> std::io::Result<Self> {
         let my_path = current_exe()?;
         let dir = my_path.parent().ok_or(io::ErrorKind::NotFound)?;
         let default_listener_path = dir.join("auth_client");
@@ -131,41 +110,47 @@ impl AuthClient
     ///
     /// The return type is `std::io::Result` because spawning the child process may fail, in
     /// which case none of the functionality would be available.
-    pub fn with_exe_path(exec_path: impl AsRef<Path>, event_channel: UnboundedSender<AuthEvent>) -> std::io::Result<Self>
-    {
+    pub fn with_exe_path(
+        exec_path: impl AsRef<Path>,
+        event_channel: UnboundedSender<AuthEvent>,
+    ) -> std::io::Result<Self> {
         let (control_send, control_recv) = ipc_channel()?;
         let (event_send, event_recv) = ipc_channel()?;
         let (local_control_send, local_control_recv) = unbounded_channel();
 
-        let child = unsafe
-        {
+        let child = unsafe {
             let control_fd = control_recv.into_raw_fd();
             let event_fd = event_send.into_raw_fd();
 
             Command::new(exec_path.as_ref())
-                    .args([control_fd.to_string(), event_fd.to_string()])
-                    .pre_exec(move || {
-                        use libc::{fcntl, F_GETFD, F_SETFD, FD_CLOEXEC};
+                .args([control_fd.to_string(), event_fd.to_string()])
+                .pre_exec(move || {
+                    use libc::{fcntl, FD_CLOEXEC, F_GETFD, F_SETFD};
 
-                        let cfd_flags = fcntl(control_fd, F_GETFD);
-                        fcntl(control_fd, F_SETFD, cfd_flags & !FD_CLOEXEC);
-                        let efd_flags = fcntl(event_fd, F_GETFD);
-                        fcntl(event_fd, F_SETFD, efd_flags & !FD_CLOEXEC);
-                        Ok(())
-                    })
-                    .spawn()?
+                    let cfd_flags = fcntl(control_fd, F_GETFD);
+                    fcntl(control_fd, F_SETFD, cfd_flags & !FD_CLOEXEC);
+                    let efd_flags = fcntl(event_fd, F_GETFD);
+                    fcntl(event_fd, F_SETFD, efd_flags & !FD_CLOEXEC);
+                    Ok(())
+                })
+                .spawn()?
         };
 
         let (shutdown_send, shutdown_recv) = oneshot::channel();
 
-        let comm_task = task::spawn(run_communication_task(control_send, event_recv,
-                                            local_control_recv, event_channel, shutdown_recv));
+        let comm_task = task::spawn(run_communication_task(
+            control_send,
+            event_recv,
+            local_control_recv,
+            event_channel,
+            shutdown_recv,
+        ));
 
         let ret = Self {
             control_sender: local_control_send,
             comm_task_shutdown: shutdown_send,
             comm_task,
-            child_process: Some(child)
+            child_process: Some(child),
         };
 
         Ok(ret)
@@ -187,9 +172,10 @@ impl AuthClient
     /// Note that 'return' above refers to generating a `DnsResult` message over the channel provided
     /// when this resolver was created.
     #[tracing::instrument(skip(self))]
-    pub fn start_dns_lookup(&self, conn_id: ConnectionId, addr: IpAddr)
-    {
-        self.control_sender.send(ControlMessage::StartDnsLookup(conn_id, addr)).ok();
+    pub fn start_dns_lookup(&self, conn_id: ConnectionId, addr: IpAddr) {
+        self.control_sender
+            .send(ControlMessage::StartDnsLookup(conn_id, addr))
+            .ok();
     }
 
     /// Shut down the communications task and child process, then wait for them to exit.
@@ -199,12 +185,12 @@ impl AuthClient
     ///  with [`resume`](Self::resume). The shutdown signal will be sent in either case, but
     /// `shutdown()` may complete before the child process has fully shut down.
     #[tracing::instrument(skip(self))]
-    pub async fn shutdown(self) -> io::Result<()>
-    {
-        self.control_sender.send(ControlMessage::Shutdown).map_err(|_| io::ErrorKind::Other)?;
+    pub async fn shutdown(self) -> io::Result<()> {
+        self.control_sender
+            .send(ControlMessage::Shutdown)
+            .map_err(|_| io::ErrorKind::Other)?;
         self.comm_task.await??;
-        if let Some(mut child) = self.child_process
-        {
+        if let Some(mut child) = self.child_process {
             child.wait()?;
         }
 
@@ -218,10 +204,8 @@ impl AuthClient
     /// are not closed. These connections are set to not close on exec, so that the returned
     /// [`AuthClientState`] object can be persisted across an `exec()` operation and
     /// reconstructed on the other side.
-    pub async fn save_state(self) -> std::io::Result<AuthClientState>
-    {
-        if self.comm_task_shutdown.send(()).is_err()
-        {
+    pub async fn save_state(self) -> std::io::Result<AuthClientState> {
+        if self.comm_task_shutdown.send(()).is_err() {
             return Err(io::ErrorKind::Other.into());
         }
         let (control_send, event_recv) = self.comm_task.await??;
@@ -229,9 +213,8 @@ impl AuthClient
         let control_fd = control_send.into_raw_fd();
         let event_fd = event_recv.into_raw_fd();
 
-        unsafe
-        {
-            use libc::{fcntl, F_GETFD, F_SETFD, FD_CLOEXEC};
+        unsafe {
+            use libc::{fcntl, FD_CLOEXEC, F_GETFD, F_SETFD};
 
             let cfd_flags = fcntl(control_fd, F_GETFD);
             fcntl(control_fd, F_SETFD, cfd_flags & !FD_CLOEXEC);
@@ -241,7 +224,7 @@ impl AuthClient
 
         Ok(AuthClientState {
             control_fd,
-            event_fd
+            event_fd,
         })
     }
 
@@ -251,26 +234,33 @@ impl AuthClient
     /// worker process, and will therefore start to emit result objects for any
     /// operations which were begun before [`save_state`](Self::save_state) was called
     ///  on the previous client object.
-    pub fn resume(state: AuthClientState, event_channel: UnboundedSender<AuthEvent>) -> std::io::Result<Self>
-    {
-        let (control_send, event_recv) = unsafe
-        {
-            (IpcSender::<ControlMessage>::from_raw_fd(state.control_fd),
-             IpcReceiver::<AuthEvent>::from_raw_fd(state.event_fd))
+    pub fn resume(
+        state: AuthClientState,
+        event_channel: UnboundedSender<AuthEvent>,
+    ) -> std::io::Result<Self> {
+        let (control_send, event_recv) = unsafe {
+            (
+                IpcSender::<ControlMessage>::from_raw_fd(state.control_fd),
+                IpcReceiver::<AuthEvent>::from_raw_fd(state.event_fd),
+            )
         };
 
         let (local_control_send, local_control_recv) = unbounded_channel();
         let (shutdown_send, shutdown_recv) = oneshot::channel();
 
-        let comm_task = task::spawn(run_communication_task(control_send, event_recv,
-            local_control_recv, event_channel, shutdown_recv));
-
+        let comm_task = task::spawn(run_communication_task(
+            control_send,
+            event_recv,
+            local_control_recv,
+            event_channel,
+            shutdown_recv,
+        ));
 
         Ok(Self {
             control_sender: local_control_send,
             comm_task_shutdown: shutdown_send,
             comm_task,
-            child_process: None
+            child_process: None,
         })
     }
 }

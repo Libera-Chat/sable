@@ -8,32 +8,27 @@ pub struct ListModeEntry<'a> {
 
 impl ListModeEntry<'_> {
     /// Return this object's ID
-    pub fn id(&self) -> ListModeEntryId
-    {
+    pub fn id(&self) -> ListModeEntryId {
         self.data.id
     }
 
     /// The mode list to which this belongs
-    pub fn channel(&self) -> LookupResult<wrapper::Channel>
-    {
+    pub fn channel(&self) -> LookupResult<wrapper::Channel> {
         self.network.channel(self.data.list.channel())
     }
 
     /// The hostmask being banned (or whatever else)
-    pub fn pattern(&self) -> &Pattern
-    {
+    pub fn pattern(&self) -> &Pattern {
         &self.data.pattern
     }
 
     /// Details of who set this entry
-    pub fn setter(&self) -> &str
-    {
+    pub fn setter(&self) -> &str {
         &self.data.setter
     }
 
     /// When the entry was set
-    pub fn timestamp(&self) -> i64
-    {
+    pub fn timestamp(&self) -> i64 {
         self.data.timestamp
     }
 }
@@ -41,10 +36,11 @@ impl ListModeEntry<'_> {
 impl<'a> super::ObjectWrapper<'a> for ListModeEntry<'a> {
     type Underlying = state::ListModeEntry;
 
-    fn wrap(network: &'a Network, data: &'a state::ListModeEntry) -> Self
-    {
+    fn wrap(network: &'a Network, data: &'a state::ListModeEntry) -> Self {
         Self { network, data }
     }
 
-    fn raw(&self) -> &'a Self::Underlying { self.data }
+    fn raw(&self) -> &'a Self::Underlying {
+        self.data
+    }
 }

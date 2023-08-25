@@ -2,8 +2,7 @@ use super::*;
 
 /// A channel-related permission error
 #[derive(Debug)]
-pub enum ChannelPermissionError
-{
+pub enum ChannelPermissionError {
     /// The user isn't in a channel, and needs to be in order to be allowed the operation
     UserNotOnChannel,
     /// Channel operator privileges are required
@@ -24,8 +23,7 @@ pub enum ChannelPermissionError
 
 /// A user-related permission error
 #[derive(Debug)]
-pub enum UserPermissionError
-{
+pub enum UserPermissionError {
     /// User is not an oper
     NotOper,
     /// That user mode can't be set directly
@@ -36,8 +34,7 @@ pub enum UserPermissionError
 
 /// A permission error for a registration-related operation
 #[derive(Debug)]
-pub enum RegistrationPermissionError
-{
+pub enum RegistrationPermissionError {
     /// User isn't logged in
     NotLoggedIn,
     /// User doesn't have the required access
@@ -47,29 +44,27 @@ pub enum RegistrationPermissionError
 }
 
 #[derive(Debug)]
-pub enum PermissionError
-{
+pub enum PermissionError {
     Channel(ChannelName, ChannelPermissionError),
     User(UserPermissionError),
     Registration(RegistrationPermissionError),
     InternalError(Box<dyn std::error::Error + Send + Sync>),
 }
 
-impl From<UserPermissionError> for PermissionError
-{
+impl From<UserPermissionError> for PermissionError {
     fn from(value: UserPermissionError) -> Self {
         Self::User(value)
     }
 }
 
-impl From<RegistrationPermissionError> for PermissionError
-{
+impl From<RegistrationPermissionError> for PermissionError {
     fn from(value: RegistrationPermissionError) -> Self {
         Self::Registration(value)
     }
 }
 
-impl From<LookupError> for PermissionError
-{
-    fn from(e: LookupError) -> Self { Self::InternalError(Box::new(e)) }
+impl From<LookupError> for PermissionError {
+    fn from(e: LookupError) -> Self {
+        Self::InternalError(Box::new(e))
+    }
 }

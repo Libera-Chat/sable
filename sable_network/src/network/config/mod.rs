@@ -1,13 +1,12 @@
-use serde::{Serialize,Deserialize};
-use serde_with::serde_as;
-use std::collections::HashMap;
 use super::state;
 use crate::validated::*;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+use std::collections::HashMap;
 
 #[serde_as]
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct NetworkConfig
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkConfig {
     pub opers: Vec<OperConfig>,
     pub debug_mode: bool,
 
@@ -17,9 +16,8 @@ pub struct NetworkConfig
     pub alias_users: Vec<AliasUser>,
 }
 
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct AliasUser
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AliasUser {
     pub nick: Nickname,
     pub user: Username,
     pub host: Hostname,
@@ -28,17 +26,14 @@ pub struct AliasUser
     pub command_alias: String,
 }
 
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct OperConfig
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OperConfig {
     pub name: String,
     pub hash: String,
 }
 
-impl NetworkConfig
-{
-    pub fn new() -> Self
-    {
+impl NetworkConfig {
+    pub fn new() -> Self {
         Self {
             opers: Vec::new(),
             debug_mode: false,
