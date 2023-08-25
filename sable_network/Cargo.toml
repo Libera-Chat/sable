@@ -40,6 +40,7 @@ wildmatch = "2.1"
 concurrent_log = { version = "0.2.4", features = [ "serde" ] }
 once_cell = "1.13"
 ipnet = { version = "2", features = [ "serde" ] }
+anyhow = "1.0"
 
 [dependencies.serde]
 version = "1"

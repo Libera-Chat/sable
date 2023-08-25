@@ -60,7 +60,11 @@ impl<T: Serialize> Sender<T> {
         let bytes = DefaultOptions::new()
             .with_limit(self.max_len)
             .serialize(data)?;
-        self.socket.as_ref().unwrap().send(&bytes).await?;
+        self.socket
+            .as_ref()
+            .expect("Tried to send to closed IPC socket")
+            .send(&bytes)
+            .await?;
 
         Ok(())
     }
@@ -83,7 +87,11 @@ impl<T: Serialize> Sender<T> {
     /// Using the returned FD for anything other than `Self::from_raw_fd` may cause unpredictable
     /// behaviour in the corresponding `Receiver`.
     pub unsafe fn into_raw_fd(mut self) -> std::io::Result<RawFd> {
-        let std_socket = self.socket.take().unwrap().into_std()?;
+        let std_socket = self
+            .socket
+            .take()
+            .expect("Tried to get write FD of closed IPC socket")
+            .into_std()?;
         Ok(std_socket.into_raw_fd())
     }
 }
@@ -118,7 +126,10 @@ impl<T: DeserializeOwned> Receiver<T> {
     }
 
     pub async fn recv(&self) -> Result<T> {
-        let sock = self.socket.as_ref().unwrap();
+        let sock = self
+            .socket
+            .as_ref()
+            .expect("Tried to read from closed IPC socket");
 
         loop {
             sock.readable().await?;
@@ -151,7 +162,11 @@ impl<T: DeserializeOwned> Receiver<T> {
     /// Using the returned FD for anything other than `Self::from_raw_fd` may cause unpredictable
     /// behaviour in the corresponding `Sender`.
     pub unsafe fn into_raw_fd(mut self) -> std::io::Result<RawFd> {
-        let std_socket = self.socket.take().unwrap().into_std()?;
+        let std_socket = self
+            .socket
+            .take()
+            .expect("Tried to get read FD of closed IPC socket")
+            .into_std()?;
         Ok(std_socket.into_raw_fd())
     }
 }

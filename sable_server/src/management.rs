@@ -184,7 +184,7 @@ impl ManagementServer {
         conn: TcpStream,
         acceptor: Arc<TlsAcceptor>,
         data: Arc<ManagementServiceData>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), anyhow::Error> {
         let stream = acceptor.accept(conn).await?;
         let (_, tls_state) = stream.get_ref();
         let client_cert = tls_state
@@ -269,7 +269,7 @@ impl ManagementServer {
         self.command_receiver.recv().await
     }
 
-    pub async fn wait(self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn wait(self) -> Result<(), anyhow::Error> {
         Ok(self.server_task.await??)
     }
 }

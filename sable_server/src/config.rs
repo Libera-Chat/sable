@@ -106,9 +106,12 @@ impl ManagementConfig {
 pub fn load_network_config(
     filename: impl AsRef<Path>,
 ) -> Result<sable_network::network::config::NetworkConfig, sable_network::sync::ConfigError> {
-    let file = File::open(filename)?;
+    let file = File::open(filename.as_ref())
+        .map_err(|e| sable_network::sync::ConfigError::IoError(e, filename.as_ref().to_owned()))?;
     let reader = BufReader::new(file);
-    Ok(serde_json::from_reader(reader)?)
+    Ok(serde_json::from_reader(reader).map_err(|e| {
+        sable_network::sync::ConfigError::JsonError(e, filename.as_ref().to_owned())
+    })?)
 }
 
 impl From<LogLevel> for LevelFilter {

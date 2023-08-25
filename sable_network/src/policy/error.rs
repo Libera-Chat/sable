@@ -48,7 +48,7 @@ pub enum PermissionError {
     Channel(ChannelName, ChannelPermissionError),
     User(UserPermissionError),
     Registration(RegistrationPermissionError),
-    InternalError(Box<dyn std::error::Error + Send + Sync>),
+    InternalError(anyhow::Error),
 }
 
 impl From<UserPermissionError> for PermissionError {
@@ -65,6 +65,6 @@ impl From<RegistrationPermissionError> for PermissionError {
 
 impl From<LookupError> for PermissionError {
     fn from(e: LookupError) -> Self {
-        Self::InternalError(Box::new(e))
+        Self::InternalError(e.into())
     }
 }

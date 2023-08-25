@@ -15,10 +15,12 @@ use sable_network::{
     prelude::LookupError,
     rpc::*,
 };
+use sable_server::ServerSaveError;
 use sable_server::ServerType;
 
 use std::{collections::HashMap, sync::Arc};
 
+use anyhow::Context;
 use async_trait::async_trait;
 use serde::Deserialize;
 
@@ -59,7 +61,7 @@ where
         _tls_data: &TlsData,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<sable_network::rpc::NetworkHistoryUpdate>,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         if !config
             .default_roles
             .contains_key(&ChannelRoleName::BuiltinOp)
@@ -76,14 +78,15 @@ where
             panic!("Builtin roles not defined");
         }
 
-        Self {
-            db: DatabaseConnection::connect(&config.database).unwrap(),
+        Ok(Self {
+            db: DatabaseConnection::connect(&config.database)
+                .context("Could not connect to database")?,
             node,
             history_receiver: Mutex::new(history_receiver),
             config,
             sasl_sessions: DashMap::new(),
             sasl_mechanisms: sasl::build_mechanisms(),
-        }
+        })
     }
 
     async fn shutdown(self) {}
@@ -126,13 +129,15 @@ where
         }
     }
 
-    async fn save(self) {}
+    async fn save(self) -> Result<(), ServerSaveError> {
+        Ok(())
+    }
 
     fn restore(
         _state: Self::Saved,
         _node: Arc<NetworkNode>,
         _history_receiver: UnboundedReceiver<sable_network::rpc::NetworkHistoryUpdate>,
-    ) -> Self {
+    ) -> std::io::Result<Self> {
         unimplemented!("services can't hot-upgrade");
     }
 
