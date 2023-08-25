@@ -285,7 +285,7 @@ impl ReplicatedEventLog {
                     attempts
                 );
                 if attempts % 5 == 3 {
-                    tracing::warn!("Make sure at least one sable_ircd in your network is started and reachable. If this is your first sable_ircd process, you must provide the --bootstrap-network option.");
+                    tracing::warn!("Make sure at least one node in your network is started and reachable. If this is the first (or only) node, you must provide the --bootstrap-network option.");
                 }
             } else {
                 tracing::debug!("Requesting network state from {:?}", peer);
