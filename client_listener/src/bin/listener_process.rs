@@ -6,7 +6,7 @@ use sable_ipc::{Receiver as IpcReceiver, Sender as IpcSender};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    console_subscriber::init();
+    //console_subscriber::init();
 
     let mut args = env::args();
     args.next();
