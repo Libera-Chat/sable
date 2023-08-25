@@ -275,8 +275,21 @@ impl ReplicatedEventLog {
         &self,
         sender: UnboundedSender<Request>,
     ) -> JoinHandle<NetworkResult> {
+        let mut attempts = 0;
         while let Some(peer) = self.net.choose_any_peer() {
-            tracing::debug!("Requesting network state from {:?}", peer);
+            attempts += 1;
+            if attempts >= 3 {
+                tracing::info!(
+                    "Requesting network state from {:?} (attempt #{}).",
+                    peer,
+                    attempts
+                );
+                if attempts % 5 == 3 {
+                    tracing::warn!("Make sure at least one sable_ircd in your network is started and reachable. If this is your first sable_ircd process, you must provide the --bootstrap-network option.");
+                }
+            } else {
+                tracing::debug!("Requesting network state from {:?}", peer);
+            }
             let msg = Message {
                 source_server: self.shared_state.server,
                 content: MessageDetail::GetNetworkState,
@@ -286,7 +299,7 @@ impl ReplicatedEventLog {
                 Err(_) => sleep(Duration::from_secs(3)).await,
             }
         }
-        panic!("No peer available to sync");
+        panic!("No peer available to sync. This probably means you are running a single-node sable_ircd and did not pass the --bootstrap-network option.");
     }
 
     pub fn start_sync(
