@@ -61,12 +61,15 @@ impl ListenerCollection {
     /// Create a new `ListenerCollection` with an automatically guessed worker process
     /// executable. `new` will look for an executable named `listener_process` in the
     /// same directory as the currently running executable, then call `with_exe_path`.
-    pub fn new(event_channel: UnboundedSender<ConnectionEvent>) -> std::io::Result<Self> {
+    pub fn new(
+        event_channel: UnboundedSender<ConnectionEvent>,
+        console_address: Option<std::net::SocketAddr>,
+    ) -> std::io::Result<Self> {
         let my_path = current_exe()?;
         let dir = my_path.parent().ok_or(io::ErrorKind::NotFound)?;
         let default_listener_path = dir.join("listener_process");
 
-        Self::with_exe_path(default_listener_path, event_channel)
+        Self::with_exe_path(default_listener_path, event_channel, console_address)
     }
 
     /// Construct a `ListenerCollection` with the given worker executable.
@@ -74,9 +77,13 @@ impl ListenerCollection {
     /// The worker process will be spawned, along with an asynchronous task to run
     /// communications. Incoming connections, data and other events will be notified
     /// via `event_channel`.
+    ///
+    /// If console_address is provided, the process will start a tokio console-subscriber
+    /// on the given address
     pub fn with_exe_path(
         exec_path: impl AsRef<Path>,
         event_channel: UnboundedSender<ConnectionEvent>,
+        console_address: Option<std::net::SocketAddr>,
     ) -> std::io::Result<Self> {
         let (control_send, control_recv) = ipc_channel(crate::MAX_CONTROL_SIZE)?;
         let (event_send, event_recv) = ipc_channel(crate::MAX_MSG_SIZE)?;
@@ -86,8 +93,14 @@ impl ListenerCollection {
             let control_fd = control_recv.into_raw_fd()?;
             let event_fd = event_send.into_raw_fd()?;
 
+            let mut args = vec![control_fd.to_string(), event_fd.to_string()];
+
+            if let Some(console_address) = console_address {
+                args.push(console_address.to_string());
+            }
+
             Command::new(exec_path.as_ref())
-                .args([control_fd.to_string(), event_fd.to_string()])
+                .args(args)
                 .pre_exec(move || {
                     use libc::{fcntl, FD_CLOEXEC, F_GETFD, F_SETFD};
 

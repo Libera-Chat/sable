@@ -10,4 +10,5 @@ pub struct ListenerConfig {
 #[derive(Debug, Deserialize)]
 pub struct ClientServerConfig {
     pub listeners: Vec<ListenerConfig>,
+    pub console_address: Option<std::net::SocketAddr>,
 }

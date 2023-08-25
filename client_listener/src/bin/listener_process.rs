@@ -1,18 +1,26 @@
 use client_listener::*;
 
 use std::env;
+use std::net::SocketAddr;
 
 use sable_ipc::{Receiver as IpcReceiver, Sender as IpcSender};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    console_subscriber::init();
-
     let mut args = env::args();
     args.next();
 
     let control_fd = args.next().unwrap();
     let event_fd = args.next().unwrap();
+
+    if let Some(console_address) = args.next() {
+        console_subscriber::ConsoleLayer::builder()
+            .server_addr(console_address.parse::<SocketAddr>().expect(&format!(
+                "Could not parse console_address: {}",
+                console_address
+            )))
+            .init()
+    }
 
     let control_fd: i32 = control_fd.trim().parse()?;
     let event_fd: i32 = event_fd.trim().parse()?;
