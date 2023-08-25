@@ -8,7 +8,8 @@ use std::sync::{
 };
 
 use sable_ipc::{Receiver as IpcReceiver, Sender as IpcSender};
-use tokio::{select, sync::mpsc::channel};
+use tokio::select;
+use tokio::sync::mpsc::{channel, unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 /// The worker side of the [`ListenerCollection`] system. This should only be constructed
 /// by the worker process itself; applications using this system have no cause to interact
@@ -17,6 +18,14 @@ pub struct ListenerProcess {
     control_receiver: IpcReceiver<ControlMessage>,
     event_sender: Arc<IpcSender<InternalConnectionEvent>>,
     tls_config: Option<Arc<rustls::ServerConfig>>,
+
+    /// Along with event_out_buffer_rx, this is used to send events "in the background".
+    ///
+    /// Writing to this channel instead of directly to event_sender avoids blocking the
+    /// communication task, but does mean losing the ability to respond to errors,
+    /// which will be logged instead of returned.
+    event_out_buffer_tx: UnboundedSender<InternalConnectionEvent>,
+    event_out_buffer_rx: UnboundedReceiver<InternalConnectionEvent>,
 
     listeners: HashMap<ListenerId, Listener>,
     connections: HashMap<ConnectionId, InternalConnection>,
@@ -29,10 +38,13 @@ impl ListenerProcess {
         control_receiver: IpcReceiver<ControlMessage>,
         event_sender: IpcSender<InternalConnectionEvent>,
     ) -> Self {
+        let (event_out_buffer_tx, event_out_buffer_rx) = unbounded_channel();
         Self {
             control_receiver,
             event_sender: Arc::new(event_sender),
             tls_config: None,
+            event_out_buffer_tx,
+            event_out_buffer_rx,
             listeners: HashMap::new(),
             connections: HashMap::new(),
             shutdown_flag: Arc::new(AtomicBool::new(false)),
@@ -77,21 +89,6 @@ impl ListenerProcess {
         ))
     }
 
-    /// Send an event to the parent process, spawning the task into the background.
-    ///
-    /// Spawning a separate task avoids blocking the communication task, but does mean
-    /// losing the ability to respond to errors, which will be logged instead of returned.
-    fn send_event(&self, event: InternalConnectionEvent) {
-        let event_sender = Arc::clone(&self.event_sender);
-        let shutdown_flag = Arc::clone(&self.shutdown_flag);
-        tokio::spawn(async move {
-            if let Err(e) = event_sender.send(&event).await {
-                shutdown_flag.store(true, Ordering::Relaxed);
-                panic!("Error sending connection event: {}", e);
-            }
-        });
-    }
-
     pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let (event_send, mut event_recv) = channel(128);
 
@@ -106,6 +103,16 @@ impl ListenerProcess {
             }
 
             select! {
+                event = self.event_out_buffer_rx.recv() =>
+                {
+                    let event_sender = Arc::clone(&self.event_sender);
+                    let shutdown_flag = Arc::clone(&self.shutdown_flag);
+                    if let Err(e) = event_sender.send(&event.unwrap()).await {
+                        shutdown_flag.store(true, Ordering::Relaxed);
+                        panic!("Error sending connection event: {}", e);
+                    }
+                }
+
                 control = self.control_receiver.recv() =>
                 {
                     match control
@@ -116,7 +123,7 @@ impl ListenerProcess {
                             {
                                 if let Err(e) = conn.control_channel.try_send(msg)
                                 {
-                                    self.send_event(InternalConnectionEvent::ConnectionError(id, e.into()));
+                                    self.event_out_buffer_tx.send(InternalConnectionEvent::ConnectionError(id, e.into())).unwrap();
                                 }
                             }
                         }
@@ -136,7 +143,7 @@ impl ListenerProcess {
                                         }
                                         Err(e) =>
                                         {
-                                            self.send_event(InternalConnectionEvent::ListenerError(id,e));
+                                            self.event_out_buffer_tx.send(InternalConnectionEvent::ListenerError(id,e)).unwrap();
                                         }
                                     }
                                 }
@@ -146,7 +153,7 @@ impl ListenerProcess {
                                     {
                                         if let Err(e) = listener.control_channel.try_send(msg)
                                         {
-                                            self.send_event(InternalConnectionEvent::ListenerError(id, e.into()));
+                                            self.event_out_buffer_tx.send(InternalConnectionEvent::ListenerError(id, e.into())).unwrap();
                                         }
                                     }
                                 }
@@ -160,7 +167,7 @@ impl ListenerProcess {
                             }
                             else
                             {
-                                self.send_event(InternalConnectionEvent::BadTlsConfig);
+                                self.event_out_buffer_tx.send(InternalConnectionEvent::BadTlsConfig).unwrap();
                             }
                         }
                         Ok(ControlMessage::Shutdown) =>
@@ -174,7 +181,7 @@ impl ListenerProcess {
                         }
                         Err(_) =>
                         {
-                            self.send_event(InternalConnectionEvent::CommunicationError);
+                            self.event_out_buffer_tx.send(InternalConnectionEvent::CommunicationError).unwrap();
                             break;
                         }
                     }
@@ -186,14 +193,14 @@ impl ListenerProcess {
                         Some(InternalConnectionEventType::New(conn)) =>
                         {
                             let data = conn.data();
-                            tracing::trace!("Sending new connection {:?}", data);
-                            self.send_event(InternalConnectionEvent::NewConnection(data));
+                            tracing::warn!("Sending new connection {:?}", data);
+                            self.event_out_buffer_tx.send(InternalConnectionEvent::NewConnection(data)).unwrap();
                             self.connections.insert(conn.id, conn);
                         }
                         Some(InternalConnectionEventType::Event(evt)) =>
                         {
                             tracing::trace!("Sending connection event {:?}", evt);
-                            self.send_event(evt);
+                            self.event_out_buffer_tx.send(evt).unwrap();
                         }
                         None => break
                     }
