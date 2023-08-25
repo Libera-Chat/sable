@@ -181,7 +181,11 @@ impl ClientConnection {
 impl MessageSink for ClientConnection {
     fn send(&self, msg: messages::OutboundClientMessage) {
         if let Some(formatted) = msg.format_for_client_caps((&self.capabilities).into()) {
-            tracing::trace!("Sending to {:?}: {}", self.id(), formatted);
+            tracing::trace!(
+                "Sending to {:?}: {}",
+                self.id(),
+                formatted.strip_suffix("\r\n").unwrap_or(&formatted)
+            );
             self.connection.send(formatted)
         }
     }
