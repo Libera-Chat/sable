@@ -41,11 +41,9 @@
             "always_send",
             "voice_self",
             "receive_voice",
-            "invite_self", "invite_other",
             "ban_view", "quiet_view"
         ],
         "builtin:all": [
-            "invite_self", "invite_other",
             "ban_view", "quiet_view"
         ]
     },
