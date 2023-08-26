@@ -152,6 +152,10 @@ impl<Sink: MessageSink> LazyMessageBatch<Sink> {
     pub fn is_opened(&self) -> bool {
         self.sent_start.is_completed()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.first_inner_msg.get().is_none()
+    }
 }
 
 impl<'a, Underlying: MessageSink> Drop for LazyMessageBatch<Underlying> {
