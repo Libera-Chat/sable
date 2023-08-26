@@ -148,10 +148,6 @@ impl AtomicCapabilitySet {
         self.0.fetch_and(!(cap as u64), Ordering::Relaxed);
     }
 
-    pub fn reset(&self, caps: ClientCapabilitySet) {
-        self.0.store(caps.0, Ordering::Relaxed);
-    }
-
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = ClientCapability> + 'a {
         ClientCapability::ALL
             .iter()
