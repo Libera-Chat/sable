@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::{
     fs::File,
     io::BufReader,
+    io::Read,
     path::{Path, PathBuf},
 };
 use tracing_core::LevelFilter;
@@ -106,10 +107,12 @@ impl ManagementConfig {
 pub fn load_network_config(
     filename: impl AsRef<Path>,
 ) -> Result<sable_network::network::config::NetworkConfig, sable_network::sync::ConfigError> {
-    let file = File::open(filename.as_ref())
+    let mut file = File::open(filename.as_ref())
         .map_err(|e| sable_network::sync::ConfigError::IoError(e, filename.as_ref().to_owned()))?;
-    let reader = BufReader::new(file);
-    Ok(serde_json::from_reader(reader).map_err(|e| {
+    let mut config = String::new();
+    file.read_to_string(&mut config)
+        .map_err(|e| sable_network::sync::ConfigError::IoError(e, filename.as_ref().to_owned()))?;
+    Ok(json5::from_str(&config).map_err(|e| {
         sable_network::sync::ConfigError::JsonError(e, filename.as_ref().to_owned())
     })?)
 }

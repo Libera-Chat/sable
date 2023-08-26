@@ -1,4 +1,4 @@
-use crate::{config::*, strip_comments::StripComments, *};
+use crate::{config::*, *};
 
 use anyhow::Context;
 use parking_lot::Mutex;
@@ -17,7 +17,7 @@ use tokio::sync::{
     oneshot,
 };
 
-use std::{fs::File, path::Path, sync::Arc};
+use std::{fs::File, io::Read, path::Path, sync::Arc};
 
 /// Configuration for a network server
 #[derive(Debug, Deserialize)]
@@ -45,9 +45,10 @@ where
 {
     /// Load configuration from a file
     pub fn load_file<P: AsRef<Path>>(filename: P) -> Result<Self, anyhow::Error> {
-        let file = File::open(filename)?;
-        let reader = StripComments::new(file);
-        Ok(serde_json::from_reader(reader)?)
+        let mut file = File::open(filename)?;
+        let mut config = String::new();
+        file.read_to_string(&mut config)?;
+        Ok(json5::from_str(&config)?)
     }
 }
 
