@@ -72,8 +72,8 @@ define_capabilities! (
         LabeledResponse:        0x20 => ("labeled-response", true),
 
         ChatHistory:            0x101 => ("draft/chathistory", true),
-        PersistentSession:      0x102 => ("sable/persistent-session", true),
-        AccountRegistration:    0x104 => ("sable/account-registration", true)
+        PersistentSession:      0x102 => ("sable.libera.chat/persistent-session", true),
+        AccountRegistration:    0x104 => ("sable.libera.chat/account-registration", true)
     }
 );
 
