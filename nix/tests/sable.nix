@@ -102,6 +102,7 @@ let
           sableModule
           (nodeConfig {
             serverId = 1;
+            serverIP = "127.0.1.2";
             serverName = "server1.test";
             bootstrapped = true;
             caFile = ../../configs/ca_cert.pem;
