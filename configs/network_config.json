@@ -34,15 +34,18 @@
             "quiet_view", "quiet_add", "quiet_remove_any",
             "exempt_view", "exempt_add", "exempt_remove_any",
             "invite_self", "invite_other",
+            "inviteonly_invite_self", "inviteonly_invite_other",
             "invex_view", "invex_add", "invex_remove_any"
         ],
         "builtin:voice": [
             "always_send",
             "voice_self",
             "receive_voice",
+            "invite_self", "invite_other",
             "ban_view", "quiet_view"
         ],
         "builtin:all": [
+            "invite_self", "invite_other",
             "ban_view", "quiet_view"
         ]
     },

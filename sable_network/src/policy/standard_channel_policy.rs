@@ -81,6 +81,7 @@ impl ChannelPolicyService for StandardChannelPolicy {
 
         if channel.mode().has_mode(ChannelModeFlag::InviteOnly)
             && user.has_invite_for(channel.id()).is_none()
+            && has_access(user, channel, ChannelAccessFlag::InviteonlyInviteSelf).is_err()
             && self
                 .ban_resolver
                 .user_matches_list(user, &channel.list(ListModeType::Invex))
@@ -292,6 +293,10 @@ impl ChannelPolicyService for StandardChannelPolicy {
     }
 
     fn can_invite(&self, user: &User, channel: &Channel, _target: &User) -> PermissionResult {
-        has_access(user, channel, ChannelAccessFlag::InviteOther)
+        if channel.mode().has_mode(ChannelModeFlag::InviteOnly) {
+            has_access(user, channel, ChannelAccessFlag::InviteonlyInviteOther)
+        } else {
+            has_access(user, channel, ChannelAccessFlag::InviteOther)
+        }
     }
 }
