@@ -1,7 +1,6 @@
 use super::*;
 use sable_macros::define_messages;
 use sable_network::network::wrapper::{Channel, ChannelMode, ListModeEntry, Server, User};
-use sable_network::validated::*;
 
 define_messages! {
     001(Welcome)    => { (network_name: &str, nick: &Nickname)  => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },

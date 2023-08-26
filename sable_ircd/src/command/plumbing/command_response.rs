@@ -2,8 +2,8 @@ use crate::capability::ClientCapability;
 
 use super::*;
 use messages::{
-    batch::{BatchBuilder, LazyMessageBatch, MessageBatch},
-    message, MessageSink, MessageSinkExt, MessageTarget, OutboundMessageTag, UntargetedNumeric,
+    batch::LazyMessageBatch, message, MessageSink, MessageSinkExt, OutboundMessageTag,
+    UntargetedNumeric,
 };
 
 /// Trait describing the ability to send responses to a command.
