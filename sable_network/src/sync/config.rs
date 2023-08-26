@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use std::{fs::File, io::BufReader, net::SocketAddr, path::Path, path::PathBuf};
+use std::{fs::File, io::BufReader, io::Read, net::SocketAddr, path::Path, path::PathBuf};
 
 use rustls::{Certificate, PrivateKey};
 
@@ -39,7 +39,7 @@ pub enum ConfigError {
     #[error("I/O error on {1}: {0}")]
     IoError(std::io::Error, PathBuf),
     #[error("JSON parse error in {1}: {0}")]
-    JsonError(serde_json::Error, PathBuf),
+    JsonError(json5::Error, PathBuf),
     #[error("Invalid address specifier in {1}: {0}")]
     AddrParseError(std::net::AddrParseError, PathBuf),
     #[error("{1}: {0}")]
@@ -51,10 +51,12 @@ pub enum ConfigError {
 impl SyncConfig {
     /// Load the network configuration from a given file path
     pub fn load_file<P: AsRef<Path> + Copy>(filename: P) -> Result<Self, ConfigError> {
-        let file = File::open(filename)
+        let mut file = File::open(filename)
             .map_err(|e| ConfigError::IoError(e, filename.as_ref().to_owned()))?;
-        let reader = BufReader::new(file);
-        Ok(serde_json::from_reader(reader)
+        let mut config = String::new();
+        file.read_to_string(&mut config)
+            .map_err(|e| ConfigError::IoError(e, filename.as_ref().to_owned()))?;
+        Ok(json5::from_str(&config)
             .map_err(|e| ConfigError::JsonError(e, filename.as_ref().to_owned()))?)
     }
 
@@ -81,10 +83,12 @@ impl SyncConfig {
 impl NodeConfig {
     /// Load the node configuration from a given file path
     pub fn load_file<P: AsRef<Path> + Copy>(filename: P) -> Result<Self, ConfigError> {
-        let file = File::open(filename)
+        let mut file = File::open(filename)
             .map_err(|e| ConfigError::IoError(e, filename.as_ref().to_owned()))?;
-        let reader = BufReader::new(file);
-        Ok(serde_json::from_reader(reader)
+        let mut config = String::new();
+        file.read_to_string(&mut config)
+            .map_err(|e| ConfigError::IoError(e, filename.as_ref().to_owned()))?;
+        Ok(json5::from_str(&config)
             .map_err(|e| ConfigError::JsonError(e, filename.as_ref().to_owned()))?)
     }
 
