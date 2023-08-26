@@ -30,7 +30,11 @@ macro_rules! define_capabilities {
 
         impl $typename
         {
-            pub fn name(&self) -> &'static str
+            /// Exhaustive list of all known capabilities
+            const ALL: &'static [ClientCapability] = &[ $(Self::$cap),* ];
+
+            /// On-the-wire name of the capability
+            pub fn name(self) -> &'static str
             {
                 match self
                 {
@@ -38,6 +42,8 @@ macro_rules! define_capabilities {
                 }
             }
 
+            /// Whether the capability is available without some handler explicitly
+            /// enabling it
             pub fn is_default(&self) -> bool
             {
                 match self
@@ -46,6 +52,7 @@ macro_rules! define_capabilities {
                 }
             }
 
+            /// Bit used as a mask in [`ClientCapabilitySet`]/[`AtomicCapabilitySet`]
             pub fn flag(&self) -> u64
             {
                 *self as u64
@@ -101,6 +108,13 @@ impl ClientCapabilitySet {
     pub fn unset(&mut self, cap: ClientCapability) {
         self.0 &= !(cap as u64);
     }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = ClientCapability> + 'a {
+        ClientCapability::ALL
+            .iter()
+            .cloned()
+            .filter(|cap| self.has(*cap))
+    }
 }
 
 pub struct AtomicCapabilitySet(AtomicU64);
@@ -136,6 +150,13 @@ impl AtomicCapabilitySet {
 
     pub fn reset(&self, caps: ClientCapabilitySet) {
         self.0.store(caps.0, Ordering::Relaxed);
+    }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = ClientCapability> + 'a {
+        ClientCapability::ALL
+            .iter()
+            .cloned()
+            .filter(|cap| self.has(*cap))
     }
 }
 
