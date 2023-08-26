@@ -1,4 +1,5 @@
 use super::*;
+use std::ops::Deref;
 
 /// Trait describing an object to which a client protocol message can be sent
 pub trait MessageSink: Send + Sync {
@@ -39,20 +40,11 @@ pub trait MessageSinkExt: MessageSink {
 impl<T: MessageSink + ?Sized> MessageSinkExt for T {}
 
 // All MessageSink's methods are &self, so we can implement it for any reference type as well
-impl<T: MessageSink + ?Sized> MessageSink for &T {
+impl<T: MessageSink + ?Sized, R: Deref<Target = T> + ?Sized + Send + Sync> MessageSink for R {
     fn send(&self, msg: OutboundClientMessage) {
-        (*self).send(msg)
+        self.deref().send(msg)
     }
     fn user_id(&self) -> Option<UserId> {
-        (*self).user_id()
-    }
-}
-
-impl<T: MessageSink + ?Sized> MessageSink for std::sync::Arc<T> {
-    fn send(&self, msg: OutboundClientMessage) {
-        (*self.as_ref()).send(msg)
-    }
-    fn user_id(&self) -> Option<UserId> {
-        (*self.as_ref()).user_id()
+        self.deref().user_id()
     }
 }
