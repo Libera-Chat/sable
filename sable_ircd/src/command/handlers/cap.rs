@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use super::*;
 use crate::capability::*;
 
@@ -69,6 +71,19 @@ fn handle_cap(
             if pre_client.complete_progress(ProgressFlag::CapNegotiation) {
                 server.add_action(CommandAction::RegisterClient(cmd.connection_id()));
             }
+            Ok(())
+        }
+        "LIST" => {
+            response.send(message::Cap::new(
+                server,
+                &UnknownTarget,
+                "LIST",
+                &cmd.connection()
+                    .capabilities
+                    .iter()
+                    .map(ClientCapability::name)
+                    .join(" "),
+            ));
             Ok(())
         }
         _ => {
