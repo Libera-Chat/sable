@@ -27,7 +27,7 @@
     "default_roles": {
         "builtin:op": [
             "always_send",
-            "op_self", "op_grant",
+            "op_self", "op_grant", "voice_self", "voice_grant",
             "receive_op", "receive_voice", "receive_opmod",
             "topic", "kick", "set_simple_mode", "set_key",
             "ban_view", "ban_add", "ban_remove_any",
