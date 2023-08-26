@@ -1,6 +1,7 @@
 use crate::capability::ClientCapability;
 
 use super::*;
+use crate::command::ClientCapabilitySet;
 use messages::{
     batch::LazyMessageBatch, message, MessageSink, MessageSinkExt, OutboundMessageTag,
     UntargetedNumeric,
@@ -63,6 +64,10 @@ impl<Sink: MessageSink> MessageSink for PlainResponseSink<Sink> {
     fn user_id(&self) -> Option<UserId> {
         self.sink.user_id()
     }
+
+    fn capabilities(&self) -> ClientCapabilitySet {
+        self.sink.capabilities()
+    }
 }
 
 /// A response sink that supports the labeled-response capability
@@ -123,6 +128,10 @@ impl<Sink: MessageSink> MessageSink for LabeledResponseSink<Sink> {
 
     fn user_id(&self) -> Option<UserId> {
         self.batch.user_id()
+    }
+
+    fn capabilities(&self) -> ClientCapabilitySet {
+        self.batch.capabilities()
     }
 }
 

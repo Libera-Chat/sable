@@ -70,6 +70,7 @@ define_capabilities! (
         Sasl:                   0x08 => ("sasl", false),
         Batch:                  0x10 => ("batch", true),
         LabeledResponse:        0x20 => ("labeled-response", true),
+        UserhostInNames:        0x40 => ("userhost-in-names", true),
 
         ChatHistory:            0x100 => ("draft/chathistory", true),
         PersistentSession:      0x200 => ("sable.libera.chat/persistent-session", true),
