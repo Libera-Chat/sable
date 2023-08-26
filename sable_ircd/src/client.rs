@@ -193,6 +193,10 @@ impl MessageSink for ClientConnection {
     fn user_id(&self) -> Option<UserId> {
         ClientConnection::user_id(self)
     }
+
+    fn capabilities(&self) -> ClientCapabilitySet {
+        (&self.capabilities).into()
+    }
 }
 
 impl Drop for ClientConnection {

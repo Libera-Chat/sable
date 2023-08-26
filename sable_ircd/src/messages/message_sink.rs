@@ -7,6 +7,13 @@ pub trait MessageSink: Send + Sync {
 
     /// Sometimes we need to know which, if any, user this will be sent to
     fn user_id(&self) -> Option<UserId>;
+
+    /// Set of client capabilities enabled on this connection.
+    ///
+    /// This should only be used for messages sent directly to this client; broadcasted
+    /// message only need to vary on message tags, and associate the relevant capabilities
+    /// to these tags so they can be efficiently filtered.
+    fn capabilities(&self) -> ClientCapabilitySet;
 }
 
 pub trait MessageSinkExt: MessageSink {
@@ -46,6 +53,9 @@ impl<T: MessageSink + ?Sized> MessageSink for &T {
     fn user_id(&self) -> Option<UserId> {
         (*self).user_id()
     }
+    fn capabilities(&self) -> ClientCapabilitySet {
+        (*self).capabilities()
+    }
 }
 
 impl<T: MessageSink + ?Sized> MessageSink for std::sync::Arc<T> {
@@ -54,5 +64,8 @@ impl<T: MessageSink + ?Sized> MessageSink for std::sync::Arc<T> {
     }
     fn user_id(&self) -> Option<UserId> {
         (*self.as_ref()).user_id()
+    }
+    fn capabilities(&self) -> ClientCapabilitySet {
+        (*self.as_ref()).capabilities()
     }
 }
