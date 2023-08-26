@@ -3,6 +3,9 @@
 let
   inherit (pkgs) lib system;
 
+  stripJSONComments = jsonFile: pkgs.runCommand "strip-json-comments" { } ''
+    sed 's,//.*,,' ${jsonFile} > $out
+  '';
   deriveFingerprint = certFile: builtins.readFile (pkgs.runCommand "openssl-get-sha1-fp" ''
     ${lib.getExe pkgs.openssl} x509 -in ${certFile} -fingerprint -noout | sed 's/.*=//;s/://g;s/.*/Ł&/' > $out
   '');
@@ -10,7 +13,7 @@ let
     , bootstrapped ? false, peers ? null }: { ... }:
     let myFingerprint = ""; # deriveFingerprint certFile; # compute it
     in {
-      imports = [ 
+      imports = [
         sableModule
       ];
 
@@ -29,7 +32,7 @@ let
         enable = true;
         package = pkgs.sable-dev;
         network.bootstrap = if bootstrapped then
-          (lib.importJSON ../../configs/network_config.json)
+          (lib.importJSON (stripJSONComments ../../configs/network_config.json))
         else
           null;
         network.settings = {
@@ -143,7 +146,7 @@ in {
     '';
   };
 
-  basicMultiNodes = 
+  basicMultiNodes =
   let
     peers = [
       {
