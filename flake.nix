@@ -53,7 +53,7 @@
             craneLib = crane.lib.${system}.overrideToolchain
               (fenix.packages.${system}.fromToolchainFile {
                 file = ./rust-toolchain.toml;
-                sha256 = "sha256-kadEI6Hg6v+Xw68334b8XpfNah1pZAJZQ+i6ViN+QyQ=";
+                sha256 = "sha256-Zlp2q9FcSddDlMSONBMC8gIKHT8vNvXQLXMT3KBq9jo=";
               });
             buildSable = features: craneLib.buildPackage {
               src = ./.;
