@@ -8,7 +8,8 @@ use std::sync::{
 };
 
 use sable_ipc::{Receiver as IpcReceiver, Sender as IpcSender};
-use tokio::{select, sync::mpsc::channel};
+use tokio::select;
+use tokio::sync::mpsc::{channel, unbounded_channel, UnboundedReceiver};
 
 /// The worker side of the [`ListenerCollection`] system. This should only be constructed
 /// by the worker process itself; applications using this system have no cause to interact
@@ -40,13 +41,13 @@ impl ListenerProcess {
     }
 
     fn translate_connection_type(
-        &self,
+        tls_config: &Option<Arc<rustls::ServerConfig>>,
         ct: ConnectionType,
     ) -> Result<InternalConnectionType, ListenerError> {
         match ct {
             ConnectionType::Clear => Ok(InternalConnectionType::Clear),
             ConnectionType::Tls => {
-                if let Some(conf) = &self.tls_config {
+                if let Some(conf) = &tls_config {
                     Ok(InternalConnectionType::Tls(conf.clone()))
                 } else {
                     Err(ListenerError::NoTlsConfig)
@@ -55,10 +56,7 @@ impl ListenerProcess {
         }
     }
 
-    fn build_tls_config(
-        &self,
-        settings: TlsSettings,
-    ) -> Result<Arc<rustls::ServerConfig>, rustls::Error> {
+    fn build_tls_config(settings: TlsSettings) -> Result<Arc<rustls::ServerConfig>, rustls::Error> {
         let key = rustls::PrivateKey(settings.key);
         let certs: Vec<rustls::Certificate> = settings
             .cert_chain
@@ -77,23 +75,32 @@ impl ListenerProcess {
         ))
     }
 
-    /// Send an event to the parent process, spawning the task into the background.
+    /// Sends events to the parent process, spawning the task into the background.
     ///
     /// Spawning a separate task avoids blocking the communication task, but does mean
     /// losing the ability to respond to errors, which will be logged instead of returned.
-    fn send_event(&self, event: InternalConnectionEvent) {
-        let event_sender = Arc::clone(&self.event_sender);
-        let shutdown_flag = Arc::clone(&self.shutdown_flag);
-        tokio::spawn(async move {
+    async fn run_event_sender(
+        mut ipc_event_recv: UnboundedReceiver<InternalConnectionEvent>,
+        event_sender: Arc<IpcSender<InternalConnectionEvent>>,
+        shutdown_flag: Arc<AtomicBool>,
+    ) {
+        while let Some(event) = ipc_event_recv.recv().await {
             if let Err(e) = event_sender.send(&event).await {
                 shutdown_flag.store(true, Ordering::Relaxed);
                 panic!("Error sending connection event: {}", e);
             }
-        });
+        }
     }
 
     pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let (event_send, mut event_recv) = channel(128);
+        let (connection_event_send, mut connection_event_recv) = channel(128);
+        let (ipc_event_send, ipc_event_recv) = unbounded_channel();
+
+        let ipc_event_sender = tokio::spawn(ListenerProcess::run_event_sender(
+            ipc_event_recv,
+            self.event_sender.clone(),
+            self.shutdown_flag.clone(),
+        ));
 
         // Golden rule of this loop: don't await anything that could possibly block.
         // If this task blocks on, e.g., sending to a connection's channel when it's full,
@@ -116,7 +123,7 @@ impl ListenerProcess {
                             {
                                 if let Err(e) = conn.control_channel.try_send(msg)
                                 {
-                                    self.send_event(InternalConnectionEvent::ConnectionError(id, e.into()));
+                                    ipc_event_send.send(InternalConnectionEvent::ConnectionError(id, e.into())).unwrap();
                                 }
                             }
                         }
@@ -126,17 +133,17 @@ impl ListenerProcess {
                             {
                                 ListenerControlDetail::Add(address, conn_type) =>
                                 {
-                                    match self.translate_connection_type(conn_type)
+                                    match Self::translate_connection_type(&self.tls_config, conn_type)
                                     {
                                         Ok(ct) =>
                                         {
-                                            let listener = Listener::new(id, address, ct, event_send.clone());
+                                            let listener = Listener::new(id, address, ct, connection_event_send.clone());
 
                                             self.listeners.insert(id, listener);
                                         }
                                         Err(e) =>
                                         {
-                                            self.send_event(InternalConnectionEvent::ListenerError(id,e));
+                                            ipc_event_send.send(InternalConnectionEvent::ListenerError(id,e)).unwrap();
                                         }
                                     }
                                 }
@@ -146,7 +153,7 @@ impl ListenerProcess {
                                     {
                                         if let Err(e) = listener.control_channel.try_send(msg)
                                         {
-                                            self.send_event(InternalConnectionEvent::ListenerError(id, e.into()));
+                                            ipc_event_send.send(InternalConnectionEvent::ListenerError(id, e.into())).unwrap();
                                         }
                                     }
                                 }
@@ -154,13 +161,13 @@ impl ListenerProcess {
                         }
                         Ok(ControlMessage::LoadTlsSettings(settings)) =>
                         {
-                            if let Ok(config) = self.build_tls_config(settings)
+                            if let Ok(config) = Self::build_tls_config(settings)
                             {
                                 self.tls_config = Some(config);
                             }
                             else
                             {
-                                self.send_event(InternalConnectionEvent::BadTlsConfig);
+                                ipc_event_send.send(InternalConnectionEvent::BadTlsConfig).unwrap();
                             }
                         }
                         Ok(ControlMessage::Shutdown) =>
@@ -174,12 +181,12 @@ impl ListenerProcess {
                         }
                         Err(_) =>
                         {
-                            self.send_event(InternalConnectionEvent::CommunicationError);
+                            ipc_event_send.send(InternalConnectionEvent::CommunicationError).unwrap();
                             break;
                         }
                     }
                 }
-                event = event_recv.recv() =>
+                event = connection_event_recv.recv() =>
                 {
                     match event
                     {
@@ -187,19 +194,20 @@ impl ListenerProcess {
                         {
                             let data = conn.data();
                             tracing::trace!("Sending new connection {:?}", data);
-                            self.send_event(InternalConnectionEvent::NewConnection(data));
+                            ipc_event_send.send(InternalConnectionEvent::NewConnection(data)).unwrap();
                             self.connections.insert(conn.id, conn);
                         }
                         Some(InternalConnectionEventType::Event(evt)) =>
                         {
                             tracing::trace!("Sending connection event {:?}", evt);
-                            self.send_event(evt);
+                            ipc_event_send.send(evt).unwrap();
                         }
                         None => break
                     }
                 }
             }
         }
+        ipc_event_sender.abort();
         Ok(())
     }
 }
