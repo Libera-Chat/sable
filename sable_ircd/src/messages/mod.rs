@@ -82,6 +82,10 @@ impl OutboundClientMessage {
         }
     }
 
+    pub fn tags(&self) -> &Vec<OutboundMessageTag> {
+        &self.tags
+    }
+
     /// Add a message tag to the message
     pub fn with_tag(mut self, tag: OutboundMessageTag) -> Self {
         self.tags.push(tag);
