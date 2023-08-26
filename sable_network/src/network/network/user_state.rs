@@ -94,13 +94,13 @@ impl Network {
         &mut self,
         target: NicknameId,
         user: UserId,
-        prev_nick: Nickname,
+        old_nick: Nickname,
         event: &Event,
         updates: &dyn NetworkUpdateReceiver,
     ) {
         // If an alias users exists with this nickname, collide the user attempting to bind it
         if self.get_alias_users().contains_key(target.nick()) {
-            self.collide_user(user, prev_nick, event, updates);
+            self.collide_user(user, old_nick, event, updates);
             return;
         }
         if let Some(existing) = self.nick_bindings.remove(target.nick()) {
@@ -114,7 +114,7 @@ impl Network {
             {
                 // The existing one wins. Collide the user attempting to bind,
                 // and put the existing binding back.
-                self.collide_user(user, prev_nick, event, updates);
+                self.collide_user(user, old_nick, event, updates);
                 self.nick_bindings.insert(existing.nick, existing);
                 return;
             } else {
@@ -127,14 +127,18 @@ impl Network {
         // and we can continue
         let new_binding = state::NickBinding::new(*target.nick(), user, event.timestamp, event.id);
         if let Some(user_object) = self.users.get(&user) {
-            let update = UserNickChange {
-                user: user_object.clone(),
-                old_nick: prev_nick,
-                new_nick: new_binding.nick,
-            };
+            let new_nick = new_binding.nick;
+            self.nick_bindings.insert(new_nick, new_binding);
 
-            self.nick_bindings.insert(new_binding.nick, new_binding);
-            updates.notify(update, event);
+            // Emit UserNickChange update if a nick change happens as a result of this rebinding.
+            if old_nick != new_nick {
+                let update = UserNickChange {
+                    user: user_object.clone(),
+                    old_nick,
+                    new_nick,
+                };
+                updates.notify(update, event);
+            }
         }
     }
 
