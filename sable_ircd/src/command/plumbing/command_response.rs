@@ -128,7 +128,7 @@ impl<Sink: MessageSink> MessageSink for LabeledResponseSink<Sink> {
 
 impl<Sink: MessageSink> Drop for LabeledResponseSink<Sink> {
     fn drop(&mut self) {
-        if !self.batch.is_opened() {
+        if self.batch.is_empty() {
             let msg = message::Ack::new(&self.response_source).with_tag(self.label_tag.clone());
             self.raw_target.send(msg);
         }
