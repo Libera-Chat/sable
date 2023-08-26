@@ -3,6 +3,7 @@ use event::*;
 
 #[command_handler("OPER")]
 fn handle_oper(
+    response: &dyn CommandResponse,
     server: &ClientServer,
     net: &Network,
     source: UserSource,
@@ -16,6 +17,7 @@ fn handle_oper(
         if server.policy().authenticate(conf, oper_name, password) {
             audit.general().log();
 
+            response.numeric(make_numeric!(YoureOper));
             server.add_action(CommandAction::state_change(
                 source.id(),
                 details::OperUp {

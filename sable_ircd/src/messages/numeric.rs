@@ -37,6 +37,8 @@ define_messages! {
                                                                 => "{is_pub} {chan} :{content}" },
     366(EndOfNames)             => { (chan: &Channel.name())    => "{chan} :End of names list" },
 
+    381(YoureOper)              => { ()                         => "You are now an IRC operator" },
+
 
     401(NoSuchTarget)           => { (unknown: &str)            => "{unknown} :No such nick/channel" },
     403(NoSuchChannel)          => { (chname: &ChannelName)     => "{chname} :No such channel" },
