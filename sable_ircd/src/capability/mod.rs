@@ -71,9 +71,9 @@ define_capabilities! (
         Batch:                  0x10 => ("batch", true),
         LabeledResponse:        0x20 => ("labeled-response", true),
 
-        ChatHistory:            0x101 => ("draft/chathistory", true),
-        PersistentSession:      0x102 => ("sable/persistent-session", true),
-        AccountRegistration:    0x104 => ("sable/account-registration", true)
+        ChatHistory:            0x100 => ("draft/chathistory", true),
+        PersistentSession:      0x200 => ("sable/persistent-session", true),
+        AccountRegistration:    0x400 => ("sable/account-registration", true)
     }
 );
 
