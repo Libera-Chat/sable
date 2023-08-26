@@ -67,7 +67,7 @@ impl ClientServer {
 
             CommandAction::UpdateConnectionCaps(conn_id, new_caps) => {
                 if let Ok(connection) = self.connections.get(conn_id) {
-                    connection.capabilities.reset(new_caps);
+                    connection.capabilities.set_all(new_caps);
                 }
             }
 
