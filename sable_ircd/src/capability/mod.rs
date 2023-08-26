@@ -72,9 +72,9 @@ define_capabilities! (
         LabeledResponse:        0x20 => ("labeled-response", true),
         UserhostInNames:        0x40 => ("userhost-in-names", true),
 
-        ChatHistory:            0x101 => ("draft/chathistory", true),
-        PersistentSession:      0x102 => ("sable/persistent-session", true),
-        AccountRegistration:    0x104 => ("sable/account-registration", true)
+        ChatHistory:            0x100 => ("draft/chathistory", true),
+        PersistentSession:      0x200 => ("sable.libera.chat/persistent-session", true),
+        AccountRegistration:    0x400 => ("sable.libera.chat/account-registration", true)
     }
 );
 
@@ -147,10 +147,6 @@ impl AtomicCapabilitySet {
 
     pub fn unset(&mut self, cap: ClientCapability) {
         self.0.fetch_and(!(cap as u64), Ordering::Relaxed);
-    }
-
-    pub fn reset(&self, caps: ClientCapabilitySet) {
-        self.0.store(caps.0, Ordering::Relaxed);
     }
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = ClientCapability> + 'a {

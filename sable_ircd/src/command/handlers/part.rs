@@ -6,12 +6,12 @@ fn handle_part(
     net: &Network,
     source: UserSource,
     channel: wrapper::Channel,
-    msg: &str,
+    msg: Option<&str>,
 ) -> CommandResult {
     let membership_id = MembershipId::new(source.id(), channel.id());
     if net.membership(membership_id).is_ok() {
         let details = event::ChannelPart {
-            message: msg.to_owned(),
+            message: msg.unwrap_or(source.nick().as_ref()).to_owned(),
         };
         server.add_action(CommandAction::state_change(membership_id, details));
     } else {

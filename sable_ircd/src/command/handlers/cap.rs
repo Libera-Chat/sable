@@ -6,15 +6,21 @@ use crate::capability::*;
 #[command_handler("CAP")]
 fn handle_cap(
     server: &ClientServer,
-    pre_client: PreClientSource,
+    source: CommandSource,
     cmd: &dyn Command,
     response: &dyn CommandResponse,
     subcommand: &str,
     cap_list: Option<&str>,
 ) -> CommandResult {
+    let pre_client: Option<Arc<PreClient>> = match source {
+        CommandSource::User(_) => None,
+        CommandSource::PreClient(pre_client) => Some(pre_client),
+    };
     match subcommand.to_ascii_uppercase().as_str() {
         "LS" => {
-            pre_client.start_progress(ProgressFlag::CapNegotiation);
+            if let Some(pre_client) = pre_client {
+                pre_client.start_progress(ProgressFlag::CapNegotiation);
+            }
 
             if matches!(cap_list, Some("302")) {
                 response.send(message::Cap::new(
@@ -35,7 +41,9 @@ fn handle_cap(
             Ok(())
         }
         "REQ" => {
-            pre_client.start_progress(ProgressFlag::CapNegotiation);
+            if let Some(pre_client) = pre_client {
+                pre_client.start_progress(ProgressFlag::CapNegotiation);
+            }
 
             let requested_arg =
                 cap_list.ok_or_else(|| make_numeric!(NotEnoughParameters, "CAP"))?;
@@ -68,10 +76,14 @@ fn handle_cap(
             Ok(())
         }
         "END" => {
-            if pre_client.complete_progress(ProgressFlag::CapNegotiation) {
-                server.add_action(CommandAction::RegisterClient(cmd.connection_id()));
+            if let Some(pre_client) = pre_client {
+                if pre_client.complete_progress(ProgressFlag::CapNegotiation) {
+                    server.add_action(CommandAction::RegisterClient(cmd.connection_id()));
+                }
+                Ok(())
+            } else {
+                numeric_error!(AlreadyRegistered)
             }
-            Ok(())
         }
         "LIST" => {
             response.send(message::Cap::new(
