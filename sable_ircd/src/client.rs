@@ -53,8 +53,8 @@ pub(super) struct ClientConnectionState {
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
 pub enum ProgressFlag {
-    CapNegotiation,
-    SaslAuthentication,
+    CapNegotiation = 0x1,
+    SaslAuthentication = 0x2,
 }
 
 /// Information received from a client connection that has not yet completed registration
