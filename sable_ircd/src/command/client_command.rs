@@ -21,13 +21,14 @@ impl<'a> CommandSource<'a> {
             Self::User(u) => Some(&u),
         }
     }
-
+/*
     pub fn pre_client(&self) -> Option<&PreClient> {
         match self {
             Self::PreClient(pc) => Some(pc.as_ref()),
             Self::User(_) => None,
         }
     }
+*/
 }
 
 /// Internal representation of a `CommandSource`
@@ -216,9 +217,11 @@ impl ClientCommand {
             CommandError::UnknownError(_) => {
                 todo!()
             }
+/*
             CommandError::CustomError => {
                 todo!()
             }
+*/
             CommandError::CommandNotFound(cmd) => Some(make_numeric!(UnknownCommand, &cmd)),
             CommandError::NotEnoughParameters => {
                 Some(make_numeric!(NotEnoughParameters, &self.command))

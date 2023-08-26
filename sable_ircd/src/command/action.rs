@@ -12,7 +12,7 @@ use client_listener::ConnectionId;
 #[allow(clippy::large_enum_variant)] // The largest variant is also the most commonly constructed by far
 pub enum CommandAction {
     /// A network state change. The target object ID and event details are provided
-    /// here; the remaining [`Event`](event::Event) fields are filled in by the
+    /// here; the remaining [`Event`] fields are filled in by the
     /// event log.
     StateChange(ObjectId, EventDetails),
 

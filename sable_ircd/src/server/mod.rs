@@ -41,7 +41,7 @@ mod user_access;
 
 /// A client server.
 ///
-/// This type uses the [`NetworkNode`](sable_network::node::NetworkNode) struct to link to the network
+/// This type uses the [`NetworkNode`] struct to link to the network
 /// and process state. It consumes the stream of history output by `NetworkNode`, and speaks
 /// IRC client protocol.
 pub struct ClientServer {

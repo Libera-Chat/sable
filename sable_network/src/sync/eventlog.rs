@@ -40,7 +40,7 @@ pub struct EventLogStats {
 impl EventLog {
     /// Construct a new `EventLog`. `event_sender`, if `Some`, will receive
     /// notification of all new events as they are added to the log and become
-    /// ready for processing by the [`Network`](crate::network::Network).
+    /// ready for processing by the [`Network`].
     pub fn new(idgen: EventIdGenerator, event_sender: Option<UnboundedSender<Event>>) -> Self {
         Self {
             history: BTreeMap::new(),
@@ -123,7 +123,7 @@ impl EventLog {
     /// Set the clock for this log.
     ///
     /// This should only be used when importing a serialized
-    /// [Network](crate::network::Network) state, to sync the event log's view of
+    /// [Network] state, to sync the event log's view of
     /// 'current' with that from the imported network state.
     pub fn set_clock(&mut self, new_clock: EventClock) {
         self.last_event_clock = new_clock;

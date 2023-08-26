@@ -33,7 +33,7 @@ pub enum ManagementCommand {
 pub struct ManagementServer {
     command_receiver: Receiver<ManagementCommand>,
     server_task: task::JoinHandle<Result<(), hyper::Error>>,
-    service_data: Arc<ManagementServiceData>,
+//    service_data: Arc<ManagementServiceData>,
 }
 
 struct ManagementService {
@@ -261,7 +261,7 @@ impl ManagementServer {
         Self {
             command_receiver,
             server_task,
-            service_data,
+//            service_data,
         }
     }
 

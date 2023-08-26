@@ -71,9 +71,11 @@ impl<'a> Command for ServicesCommand<'a> {
             CommandError::UnknownError(_) => {
                 todo!()
             }
+/*
             CommandError::CustomError => {
                 todo!()
             }
+*/
             CommandError::CommandNotFound(cmd) => {
                 self.notice(format_args!("Unknown command {}", cmd.to_ascii_uppercase()));
             }

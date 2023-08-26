@@ -1,4 +1,4 @@
-//! Contains types used by [`Network`](crate::network::Network) to notify callers of state changes
+//! Contains types used by [`Network`] to notify callers of state changes
 
 use crate::network::state;
 use crate::prelude::*;

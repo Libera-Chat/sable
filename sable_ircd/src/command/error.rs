@@ -15,10 +15,11 @@ pub enum CommandError {
     UnderlyingError(anyhow::Error),
     /// Something went wrong but we don't have an `Error` impl for it
     UnknownError(String),
+/*
     /// The command couldn't be processed successfully, and the client has already been
     /// notified
     CustomError,
-
+*/
     /// The command wasn't recognised
     CommandNotFound(String),
     /// Not enough arguments were provided
