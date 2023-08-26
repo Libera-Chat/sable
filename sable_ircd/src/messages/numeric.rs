@@ -42,6 +42,7 @@ define_messages! {
     401(NoSuchTarget)           => { (unknown: &str)            => "{unknown} :No such nick/channel" },
     403(NoSuchChannel)          => { (chname: &ChannelName)     => "{chname} :No such channel" },
     404(CannotSendToChannel)    => { (chan: &ChannelName)       => "{chan} :Cannot send to channel" },
+    410(InvalidCapCmd)          => { (subcommand: &str)         => "{subcommand} :Invalid CAP command" },
     421(UnknownCommand)         => { (command: &str)            => "{command} :Unknown command" },
     432(ErroneousNickname)      => { (nick: &str)               => "{nick} :Erroneous nickname" },
     433(NicknameInUse)          => { (nick: &Nickname)          => "{nick} :Nickname is already in use." },

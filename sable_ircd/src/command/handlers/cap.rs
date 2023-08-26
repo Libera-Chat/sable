@@ -71,7 +71,10 @@ fn handle_cap(
             }
             Ok(())
         }
-        _ => Ok(()),
+        _ => {
+            response.numeric(make_numeric!(InvalidCapCmd, subcommand));
+            Ok(())
+        }
     }
 }
 
