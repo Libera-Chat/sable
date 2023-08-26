@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::{Once, OnceLock};
 
 use super::*;
 
@@ -118,7 +118,9 @@ impl<'a, Underlying: MessageSink> MessageSink for MessageBatch<Underlying> {
     }
 }
 
-/// A [`MessageBatch`], except that the batch start message is sent lazily on demand
+/// A potential [`MessageBatch`], if more than one message is sent into it.
+///
+/// Consequently, the batch start message is sent lazily on demand.
 pub struct LazyMessageBatch<Sink: MessageSink> {
     // We'd like to just hold a MessageBatch here, but that would unconditionally
     // send batch close on drop, even if we didn't open it
@@ -126,8 +128,8 @@ pub struct LazyMessageBatch<Sink: MessageSink> {
     capability: ClientCapabilitySet,
     target: Sink,
     start_msg: OutboundClientMessage,
-    send_count: AtomicU32,
-    sent_start: AtomicBool,
+    first_inner_msg: OnceLock<OutboundClientMessage>,
+    sent_start: Once,
 }
 
 impl<Sink: MessageSink> LazyMessageBatch<Sink> {
@@ -142,13 +144,13 @@ impl<Sink: MessageSink> LazyMessageBatch<Sink> {
             capability,
             target,
             start_msg,
-            send_count: AtomicU32::new(0),
-            sent_start: AtomicBool::new(false),
+            first_inner_msg: OnceLock::new(),
+            sent_start: Once::new(),
         }
     }
 
     pub fn is_opened(&self) -> bool {
-        self.sent_start.load(Ordering::Acquire)
+        self.sent_start.is_completed()
     }
 }
 
@@ -159,28 +161,39 @@ impl<'a, Underlying: MessageSink> Drop for LazyMessageBatch<Underlying> {
             let end_msg =
                 message::BatchEnd::new(&self.name).with_required_capabilities(self.capability);
             self.target.send(end_msg);
+        } else if let Some(msg) = self.first_inner_msg.take() {
+            // If the batch contains a single message, send it directly without BATCH commands,
+            // and apply tags that would have been on the whole batch to it.
+            self.target.send(msg.with_tags(self.start_msg.tags()));
         }
     }
 }
 
 impl<Sink: MessageSink> MessageSink for LazyMessageBatch<Sink> {
     fn send(&self, msg: OutboundClientMessage) {
-        // Relaxed ordering is fine here; all that matters is that exactly one
-        // call returns 0
-        if self.send_count.fetch_add(1, Ordering::Relaxed) == 0 {
-            // First message being sent. We need to open the batch
-            self.target.send(self.start_msg.clone());
-            self.sent_start.store(true, Ordering::Release);
-        } else {
-            // This isn't the first message, so we just need to wait until
-            // the start message has definitely been sent before continuing
-            while !self.sent_start.load(Ordering::Acquire) {
-                // Nothing
-            }
-        }
+        let mut is_first_inner_msg = false;
+        self.first_inner_msg.get_or_init(|| {
+            is_first_inner_msg = true;
+            msg.clone() // Should actually be moved by the compiler
+        });
+
         let tag = OutboundMessageTag::new("batch", Some(self.name.clone()), self.capability);
-        let message = msg.with_tag(tag);
-        self.target.send(message);
+
+        if !is_first_inner_msg {
+            // >= 2nd message being sent, we'll send it before the end of this block.
+            // Check if there are other messages to send first.
+            self.sent_start.call_once(|| {
+                // This is (exactly) the second message, we need to open the batch
+                self.target.send(self.start_msg.clone());
+
+                // self.first_inner_msg initialized by the previous send() call so we can unwrap
+                let first_inner_msg = self.first_inner_msg.get().unwrap();
+                self.target
+                    .send(first_inner_msg.clone().with_tag(tag.clone()));
+            });
+
+            self.target.send(msg.with_tag(tag));
+        }
     }
 
     fn user_id(&self) -> Option<UserId> {
