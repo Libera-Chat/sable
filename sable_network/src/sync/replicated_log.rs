@@ -67,7 +67,7 @@ struct TaskState {
 
 #[derive(Debug)]
 enum EventLogMessage {
-    NewEvent(ObjectId, EventDetails),
+    NewEvent(ObjectId, EventDetails, Option<oneshot::Sender<EventId>>),
     TargetedMessage(TargetedMessage, oneshot::Sender<RemoteServerResponse>),
 }
 
@@ -176,8 +176,21 @@ impl ReplicatedEventLog {
     /// Arguments are the target object ID, and the event detail.
     pub fn create_event(&self, target: ObjectId, detail: EventDetails) {
         self.new_event_send
-            .send(EventLogMessage::NewEvent(target, detail))
+            .send(EventLogMessage::NewEvent(target, detail, None))
             .expect("Failed to submit new event for creation");
+    }
+
+    /// Create and propagate a new event, returning the event's ID.
+    ///
+    /// Arguments are the target object ID, and the event detail.
+    pub async fn create_event_with_id(&self, target: ObjectId, detail: EventDetails) -> EventId {
+        let (sender, receiver) = oneshot::channel();
+
+        self.new_event_send
+            .send(EventLogMessage::NewEvent(target, detail, Some(sender)))
+            .expect("Failed to submit new event for creation");
+
+        receiver.await.expect("Failed to read new event ID")
     }
 
     /// Disable a given server for sync purposes. This should be called when
@@ -372,7 +385,7 @@ impl TaskState {
                 update = self.new_event_recv.recv() => {
                     tracing::trace!("...from update_recv");
                     match update {
-                        Some(EventLogMessage::NewEvent(id, detail)) =>
+                        Some(EventLogMessage::NewEvent(id, detail, id_sender)) =>
                         {
                             let event = {
                                 let mut log = self.shared_state.log.write().unwrap();
@@ -381,6 +394,11 @@ impl TaskState {
                                 log.add(event.clone());
                                 event
                             };
+                            if let Some(id_sender) = id_sender {
+                                // Discard the result here; we shouldn't kill the sync task if a caller
+                                // hung up the channel.
+                                let _ = id_sender.send(event.id);
+                            }
                             self.net.propagate(&self.message(MessageDetail::NewEvent(event))).await
                         },
                         Some(EventLogMessage::TargetedMessage(message, sender)) =>

@@ -101,11 +101,24 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         }
     }
 
+    /// Submit a new event to be added to the log
     pub fn submit_event(&self, id: impl Into<ObjectId>, detail: impl Into<EventDetails>) {
         let id = id.into();
         let detail = detail.into();
         tracing::trace!("Submitting new event {:?} {:?}", id, detail);
         self.event_log.create_event(id, detail);
+    }
+
+    /// Submit a new event to be added to the log, and return its ID
+    pub async fn submit_event_with_id(
+        &self,
+        id: impl Into<ObjectId>,
+        detail: impl Into<EventDetails>,
+    ) -> EventId {
+        let id = id.into();
+        let detail = detail.into();
+        tracing::trace!("Submitting new event {:?} {:?}", id, detail);
+        self.event_log.create_event_with_id(id, detail).await
     }
 
     /// Retrieve the [`ObjectIdGenerator`] used to generate object identifiers
