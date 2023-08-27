@@ -67,6 +67,7 @@ impl sable_server::ServerType for ClientServer {
             action_submitter,
             command_dispatcher: CommandDispatcher::new(),
             connections: RwLock::new(ConnectionCollection::new()),
+            prereg_connections: Mutex::new(VecDeque::new()),
             isupport: Self::build_basic_isupport(),
             client_caps: CapabilityRepository::new(),
             node: node,
@@ -106,6 +107,7 @@ impl sable_server::ServerType for ClientServer {
 
         let listeners = ListenerCollection::resume(state.listener_state, client_send)?;
 
+        let connections = ConnectionCollection::restore_from(state.connections, &listeners);
         Ok(Self {
             node,
             action_receiver: Mutex::new(action_recv),
@@ -114,10 +116,14 @@ impl sable_server::ServerType for ClientServer {
 
             stored_response_sinks: RwLock::new(MessageSinkRepository::new()),
 
-            connections: RwLock::new(ConnectionCollection::restore_from(
-                state.connections,
-                &listeners,
-            )),
+            prereg_connections: Mutex::new(
+                connections
+                    .iter()
+                    .filter(|conn| conn.pre_client().is_some())
+                    .map(Arc::downgrade)
+                    .collect(),
+            ),
+            connections: RwLock::new(connections),
             command_dispatcher: command::CommandDispatcher::new(),
             auth_client: AuthClient::resume(state.auth_state, auth_send)?,
             auth_events: Mutex::new(auth_recv),

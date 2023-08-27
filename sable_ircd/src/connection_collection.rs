@@ -2,7 +2,10 @@ use super::*;
 
 use client_listener::ConnectionId;
 use sable_network::prelude::*;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Weak},
+};
 
 /// Stores the client connections handled by a [`ClientServer`], and allows lookup by
 /// either connection ID or user ID
@@ -59,8 +62,11 @@ impl ConnectionCollection {
     }
 
     /// Insert a new connection, with no associated user ID
-    pub fn add(&mut self, id: ConnectionId, conn: ClientConnection) {
-        self.client_connections.insert(id, Arc::new(conn));
+    pub fn add(&mut self, id: ConnectionId, conn: ClientConnection) -> Weak<ClientConnection> {
+        let conn = Arc::new(conn);
+        let weak_conn = Arc::downgrade(&conn);
+        self.client_connections.insert(id, conn);
+        weak_conn
     }
 
     /// Associate a user ID with an existing connection ID
@@ -113,13 +119,11 @@ impl ConnectionCollection {
         }
     }
 
-    /*
-        /// Iterate over connections
-        pub fn iter(&self) -> impl Iterator<Item=&ClientConnection>
-        {
-            self.client_connections.values()
-        }
-    */
+    /// Iterate over connections
+    pub fn iter(&self) -> impl Iterator<Item = &Arc<ClientConnection>> {
+        self.client_connections.values()
+    }
+
     /// Get the number of managed connections
     pub fn len(&self) -> usize {
         self.client_connections.len()
