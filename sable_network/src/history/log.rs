@@ -14,6 +14,7 @@ pub type LogEntryId = usize;
 pub struct HistoryLogEntry {
     pub id: LogEntryId,
     pub timestamp: i64,
+    pub source_event: EventId,
     pub details: NetworkStateChange,
 }
 
@@ -144,10 +145,16 @@ impl NetworkHistoryLog {
         }
     }
 
-    pub fn add(&self, details: NetworkStateChange, timestamp: i64) -> &HistoryLogEntry {
+    pub fn add(
+        &self,
+        details: NetworkStateChange,
+        source_event: EventId,
+        timestamp: i64,
+    ) -> &HistoryLogEntry {
         let index = self.entries.push_with_index(
             HistoryLogEntry {
                 id: 0,
+                source_event,
                 timestamp,
                 details,
             },

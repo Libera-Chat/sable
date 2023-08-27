@@ -78,8 +78,11 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         detail: &update::BulkUserQuit,
     ) -> HandleResult {
         for item in &detail.items {
-            let new_entry =
-                history_guard.add(NetworkStateChange::UserQuit(item.clone()), entry.timestamp);
+            let new_entry = history_guard.add(
+                NetworkStateChange::UserQuit(item.clone()),
+                entry.source_event,
+                entry.timestamp,
+            );
             self.handle_user_quit(new_entry, item)?;
         }
         Ok(())
@@ -289,7 +292,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode<Policy> {
     fn notify_update(&self, update: NetworkStateChange, source_event: &Event) {
         let history_guard = self.history_log.read();
-        let entry = history_guard.add(update, source_event.timestamp);
+        let entry = history_guard.add(update, source_event.id, source_event.timestamp);
 
         // Whatever the new entry is, we notify the subscriber of a new entry
         if let Err(e) = self
