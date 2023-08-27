@@ -13,6 +13,13 @@ pub trait CommandExt {
     fn numeric(&self, numeric: UntargetedNumeric);
     /// Submit a new network state event
     fn new_event(&self, target: impl Into<ObjectId>, detail: impl Into<EventDetails>);
+    /// Submit a new network state event which will trigger messages that should be included in this
+    /// command's labeled-response batch
+    async fn new_event_with_response(
+        &self,
+        target: impl Into<ObjectId>,
+        detail: impl Into<EventDetails>,
+    );
 }
 
 impl<T: Command + ?Sized> CommandExt for T {
@@ -28,5 +35,22 @@ impl<T: Command + ?Sized> CommandExt for T {
 
     fn new_event(&self, target: impl Into<ObjectId>, detail: impl Into<EventDetails>) {
         self.server().node().submit_event(target, detail);
+    }
+
+    async fn new_event_with_response(
+        &self,
+        target: impl Into<ObjectId>,
+        detail: impl Into<EventDetails>,
+    ) {
+        let new_event_id = self
+            .server()
+            .node()
+            .submit_event_with_id(target, detail)
+            .await;
+        self.server().store_response_sink(
+            new_event_id,
+            self.connection_id(),
+            self.response_sink_arc(),
+        )
     }
 }

@@ -37,12 +37,6 @@ enum InternalCommandSource {
     User(*const state::User),
 }
 
-/// Internal enum to hold the possible types of response sink
-enum InternalResponseSink<S: MessageSink> {
-    Labeled(LabeledResponseSink<S>),
-    Standard(PlainResponseSink<S>),
-}
-
 /// A client command to be handled
 pub struct ClientCommand {
     /// The [`ClientServer`] instance
@@ -63,7 +57,7 @@ pub struct ClientCommand {
     // The response sink. labeled-response requires that this lives for the whole
     // lifetime of the command, not just the handler duration, because even translated
     // error returns need to be inside the single batch
-    response_sink: InternalResponseSink<ClientConnection>,
+    response_sink: Arc<dyn CommandResponse + 'static>,
 }
 
 // Safety: this isn't automatically Send/Sync because of the raw pointer inside `InternalCommandSource`.
@@ -106,11 +100,11 @@ impl ClientCommand {
         inbound_tags: &InboundTagSet,
         response_source: String,
         response_target: String,
-    ) -> InternalResponseSink<ClientConnection> {
+    ) -> Arc<dyn CommandResponse + 'static> {
         if conn.capabilities.has(ClientCapability::LabeledResponse) {
             if let Some(label) = inbound_tags.has("label") {
                 if let Some(label) = &label.value {
-                    return InternalResponseSink::Labeled(LabeledResponseSink::new(
+                    return Arc::new(LabeledResponseSink::new(
                         response_source,
                         response_target,
                         conn,
@@ -119,7 +113,7 @@ impl ClientCommand {
                 }
             }
         }
-        InternalResponseSink::Standard(PlainResponseSink::new(
+        Arc::new(PlainResponseSink::new(
             response_source,
             response_target,
             conn,
@@ -188,11 +182,11 @@ impl Command for ClientCommand {
     }
 
     fn response_sink(&self) -> &dyn CommandResponse {
-        // TODO: labeled-response batch if appropriate
-        match &self.response_sink {
-            InternalResponseSink::Labeled(s) => s,
-            InternalResponseSink::Standard(s) => s,
-        }
+        self.response_sink.as_ref()
+    }
+
+    fn response_sink_arc(&self) -> Arc<dyn CommandResponse + 'static> {
+        self.response_sink.clone()
     }
 
     fn connection_id(&self) -> client_listener::ConnectionId {

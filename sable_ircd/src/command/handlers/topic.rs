@@ -1,12 +1,13 @@
 use super::*;
 
 #[command_handler("TOPIC")]
-fn handle_topic(
+async fn handle_topic(
+    cmd: &dyn Command,
     server: &ClientServer,
     net: &Network,
-    source: UserSource,
+    source: UserSource<'_>,
     response: &dyn CommandResponse,
-    channel: wrapper::Channel,
+    channel: wrapper::Channel<'_>,
     new_topic: Option<&str>,
 ) -> CommandResult {
     if let Some(text) = new_topic {
@@ -17,10 +18,8 @@ fn handle_topic(
             text: text.to_owned(),
             setter: source.id().into(),
         };
-        server.add_action(CommandAction::state_change(
-            server.ids().next_channel_topic(),
-            details,
-        ));
+        cmd.new_event_with_response(server.ids().next_channel_topic(), details)
+            .await;
     } else if let Ok(topic) = net.topic_for_channel(channel.id()) {
         response.numeric(make_numeric!(TopicIs, &channel, topic.text()));
         response.numeric(make_numeric!(

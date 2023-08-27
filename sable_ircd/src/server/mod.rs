@@ -30,11 +30,12 @@ pub use async_handler_collection::*;
 
 mod upgrade;
 
-use self::config::ClientServerConfig;
+use self::{config::ClientServerConfig, message_sink_repository::MessageSinkRepository};
 
 pub mod config;
 
 mod command_action;
+mod message_sink_repository;
 mod server_type;
 mod update_handler;
 mod user_access;
@@ -50,6 +51,9 @@ pub struct ClientServer {
     connection_events: Mutex<UnboundedReceiver<ConnectionEvent>>,
     auth_events: Mutex<UnboundedReceiver<AuthEvent>>,
     history_receiver: Mutex<UnboundedReceiver<NetworkHistoryUpdate>>,
+
+    // Stored `MessageSink`s for deferred labeled-response
+    stored_response_sinks: RwLock<MessageSinkRepository>,
 
     action_submitter: UnboundedSender<CommandAction>,
     command_dispatcher: command::CommandDispatcher,
@@ -108,6 +112,18 @@ impl ClientServer {
     /// The [`CapabilityRepository`] describing the server's supported client capability flags
     pub(crate) fn client_capabilities(&self) -> &CapabilityRepository {
         &self.client_caps
+    }
+
+    /// Store a [`MessageSink`] to use when processing updates caused by the given event
+    pub(crate) fn store_response_sink(
+        &self,
+        event_id: EventId,
+        connection_id: ConnectionId,
+        sink: Arc<dyn MessageSink + 'static>,
+    ) {
+        self.stored_response_sinks
+            .write()
+            .store(event_id, connection_id, sink);
     }
 
     #[tracing::instrument]

@@ -25,9 +25,7 @@ async fn handle_privmsg(
         message_type: state::MessageType::Privmsg,
         text: msg.to_owned(),
     };
-    server.add_action(CommandAction::state_change(
-        server.ids().next_message(),
-        details,
-    ));
+    cmd.new_event_with_response(server.ids().next_message(), details)
+        .await;
     Ok(())
 }

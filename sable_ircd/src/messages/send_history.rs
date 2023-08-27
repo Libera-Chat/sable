@@ -35,6 +35,8 @@ impl SendHistoryItem for HistoryLogEntry {
             NetworkStateChange::NewAuditLogEntry(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserLoginChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::ServicesUpdate(detail) => detail.send_to(conn, self),
+            // EventComplete is handled further up and has no meaning here
+            NetworkStateChange::EventComplete(_) => Ok(()),
         }
     }
 }
@@ -217,10 +219,13 @@ impl SendHistoryItem for update::NewMessage {
         )
         .with_tags_from(from_entry);
 
-        // Users should only see their own messages echoed if they've asked for it
+        // Users should only see their own message echoed if they've asked for it,
+        // unless it's sent to themself
         match &self.source {
             update::HistoricMessageSource::User(user) => {
-                if conn.user_id() == Some(user.user.id) {
+                if conn.user_id() == Some(user.user.id)
+                    && !matches!(&self.target, update::HistoricMessageTarget::User(target) if target.user.id == user.user.id)
+                {
                     conn.send(message.with_required_capabilities(ClientCapability::EchoMessage));
                 } else {
                     conn.send(message);

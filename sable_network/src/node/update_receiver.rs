@@ -218,7 +218,11 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
                 self.notify_user(user.user.id, entry.id);
                 // Users should always be allowed to see messages they send
                 if let update::HistoricMessageSource::User(source) = &detail.source {
-                    self.notify_user(source.user.id, entry.id);
+                    // However, if the source and target are the same, only notify them once -
+                    // the client server code can handle duplication if required
+                    if source.user.id != user.user.id {
+                        self.notify_user(source.user.id, entry.id);
+                    }
                 }
             }
             update::HistoricMessageTarget::Unknown => (),
@@ -327,6 +331,8 @@ impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode
             NewAuditLogEntry(details) => self.report_audit_entry(entry, details),
             UserLoginChange(details) => self.handle_user_login(entry, details),
             ServicesUpdate(details) => self.handle_services_update(entry, details),
+            // We don't need to do anything with EventComplete, just pass it along to the subscriber
+            EventComplete(_) => Ok(()),
         };
         if let Err(e) = res {
             tracing::error!("Error ({}) handling state update {:?}", e, entry.details);

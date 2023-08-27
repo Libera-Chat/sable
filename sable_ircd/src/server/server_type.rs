@@ -59,6 +59,8 @@ impl sable_server::ServerType for ClientServer {
             history_receiver: Mutex::new(history_receiver),
             auth_events: Mutex::new(auth_events),
 
+            stored_response_sinks: RwLock::new(MessageSinkRepository::new()),
+
             auth_client: AuthClient::new(auth_sender)
                 .context("Could not initialize auth client")?,
 
@@ -109,6 +111,9 @@ impl sable_server::ServerType for ClientServer {
             action_receiver: Mutex::new(action_recv),
             action_submitter: action_send,
             connection_events: Mutex::new(client_recv),
+
+            stored_response_sinks: RwLock::new(MessageSinkRepository::new()),
+
             connections: RwLock::new(ConnectionCollection::restore_from(
                 state.connections,
                 &listeners,
