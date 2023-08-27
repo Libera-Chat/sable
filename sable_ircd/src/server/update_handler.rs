@@ -103,7 +103,11 @@ impl ClientServer {
                     .with_tags_from(entry);
 
                     // First, send the echo-message acknowledgement, into the labeled-response sink
-                    sink.send(message.clone().with_required_capabilities(ClientCapability::EchoMessage));
+                    sink.send(
+                        message
+                            .clone()
+                            .with_required_capabilities(ClientCapability::EchoMessage),
+                    );
                     // Second, send the actual message delivery, into the connection directly so that we
                     // bypass labeled-response
                     conn.send(message);
