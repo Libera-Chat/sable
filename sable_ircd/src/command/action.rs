@@ -26,8 +26,14 @@ pub enum CommandAction {
     UpdateConnectionCaps(ConnectionId, ClientCapabilitySet),
 
     /// Disconnect the given user. The handler should first inform the user of the reason,
-    /// if appropriate
+    /// if appropriate.
+    ///
+    /// `CloseConnection` should be used for pre-clients, as they do not have a user id yet.
     DisconnectUser(UserId),
+
+    /// Close the given connection. `DisconnectUser` should be prefered for registered clients.
+    /// The handler may first inform the user of the reason.
+    CloseConnection(ConnectionId),
 }
 
 impl CommandAction {
