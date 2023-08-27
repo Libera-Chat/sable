@@ -88,10 +88,7 @@ impl ClientServer {
         if let HistoricMessageSource::User(source) = &msg.source {
             if let HistoricMessageTarget::User(target) = &msg.target {
                 // Source and target are both users. Check for self-message with the awkward caps
-                if source.user.id == target.user.id
-                    && conn.capabilities().has(ClientCapability::EchoMessage)
-                    && conn.capabilities().has(ClientCapability::LabeledResponse)
-                {
+                if source.user.id == target.user.id {
                     // We handle this as a special case.
 
                     let message = message::Message::new(

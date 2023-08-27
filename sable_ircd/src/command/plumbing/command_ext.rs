@@ -2,7 +2,7 @@ use sable_network::prelude::*;
 
 use crate::{
     command::Command,
-    messages::{message, MessageSink, UntargetedNumeric},
+    messages::{message, UntargetedNumeric},
 };
 
 /// Extension trait adding some useful functionality to implementors of [`Command`]
