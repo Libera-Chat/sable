@@ -75,6 +75,10 @@ impl ClientServer {
                 self.connections.write().remove_user(user_id);
             }
 
+            CommandAction::CloseConnection(conn_id) => {
+                self.connections.write().remove(conn_id);
+            }
+
             CommandAction::StateChange(id, detail) => {
                 self.node.submit_event(id, detail);
             }
