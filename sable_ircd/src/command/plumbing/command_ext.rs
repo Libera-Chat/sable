@@ -25,11 +25,11 @@ pub trait CommandExt {
 impl<T: Command + ?Sized> CommandExt for T {
     fn notice(&self, text: impl ToString) {
         let n = message::Notice::new(self.response_source(), &self.source(), &text.to_string());
-        self.connection().send(n);
+        self.response_sink().send(n);
     }
 
     fn numeric(&self, numeric: UntargetedNumeric) {
-        self.connection()
+        self.response_sink()
             .send(numeric.format_for(self.response_source(), &self.source()));
     }
 
