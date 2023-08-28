@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 use super::*;
 use crate::connection_collection::ConnectionCollectionState;
 use anyhow::Context;
@@ -17,7 +19,14 @@ pub struct ClientServerState {
 #[async_trait]
 impl sable_server::ServerType for ClientServer {
     type Config = ClientServerConfig;
+    type ProcessedConfig = ClientServerConfig;
+    type ConfigError = Infallible;
+
     type Saved = ClientServerState;
+
+    fn validate_config(config: &ClientServerConfig) -> Result<ClientServerConfig, Infallible> {
+        Ok(config.clone())
+    }
 
     /// Create a new `ClientServer`
     fn new(

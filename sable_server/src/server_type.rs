@@ -19,15 +19,26 @@ pub enum ServerSaveError {
 /// An implementor of this trait can be constructed and used by [`run_server`](crate::run::run_server).
 #[async_trait]
 pub trait ServerType: Send + Sync + Sized + 'static {
-    /// The configuration settings required for this server type
+    /// The configuration settings required for this server type. A field named "server" of this
+    /// type must be read from the server's config file.
     type Config: DeserializeOwned;
+
+    /// The configuration settings after validation or pre-processing. This could include reading
+    /// the content of a file referenced in the `Config` type.
+    type ProcessedConfig;
+
+    /// An error type returned if config validation fails
+    type ConfigError: std::error::Error + Send + Sync;
 
     /// A type describing the saved state of this server type, to be resumed after a code upgrade
     type Saved: Serialize + DeserializeOwned;
 
+    /// Validate a `Config` and transform it into a `ProcessedConfig`
+    fn validate_config(config: &Self::Config) -> Result<Self::ProcessedConfig, Self::ConfigError>;
+
     /// Construct a new server
     fn new(
-        config: Self::Config,
+        config: Self::ProcessedConfig,
         tls_data: &TlsData,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,

@@ -75,6 +75,7 @@ where
 async fn do_run_server<ST>(
     server_conf_path: impl AsRef<Path>,
     server_config: ServerConfig<ST>,
+    processed_server_config: ST::ProcessedConfig,
     sync_conf_path: impl AsRef<Path>,
     sync_config: SyncConfig,
     tls_data: sable_network::config::TlsData,
@@ -98,9 +99,15 @@ where
         Server::restore_from(state, sync_config, server_config)
             .context("Could not restore server")?
     } else {
-        Server::new(server_config, tls_data, sync_config, bootstrap_network)
-            .await
-            .context("Could not initialize server")?
+        Server::new(
+            server_config,
+            processed_server_config,
+            tls_data,
+            sync_config,
+            bootstrap_network,
+        )
+        .await
+        .context("Could not initialize server")?
     };
 
     // Run the actual server
@@ -192,6 +199,9 @@ where
         .transpose()
         .context("Failed to transpose network config")?;
 
+    let processed_server_config = ST::validate_config(&server_config.server)
+        .context("Failed to validate server configuration")?;
+
     if !server_config.log.dir.is_dir() {
         std::fs::create_dir_all(&server_config.log.dir).expect("failed to create log directory");
     }
@@ -226,6 +236,7 @@ where
     runtime.block_on(do_run_server(
         &server_config_path,
         server_config,
+        processed_server_config,
         &sync_config_path,
         sync_config,
         tls_data,

@@ -87,6 +87,7 @@ where
     /// network peers to retrieve the current network state.
     pub async fn new(
         conf: ServerConfig<ST>,
+        server_conf: ST::ProcessedConfig,
         tls_data: TlsData,
         net_config: SyncConfig,
         bootstrap_config: Option<NetworkConfig>,
@@ -124,7 +125,7 @@ where
         ));
 
         let server = Arc::new(
-            ST::new(conf.server, &tls_data, Arc::clone(&node), history_recv)
+            ST::new(server_conf, &tls_data, Arc::clone(&node), history_recv)
                 .context("Could not initialize server")?,
         );
 
