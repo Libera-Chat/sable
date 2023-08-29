@@ -39,10 +39,15 @@ define_messages! {
                                                                 => "{is_pub} {chan} :{content}" },
     366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
 
+    422(NoMotd)                 => { ()                         => ":MOTD File is missing"},
+    375(MotdStart)              => { (server_name: &ServerName)        => ":- {server_name} message of the day -"},
+    372(Motd)                   => { (line: &str)               => ":{line}"},
+    376(EndOfMotd)              => { ()                         => ":End of MOTD" },
     381(YoureOper)              => { ()                         => "You are now an IRC operator" },
 
 
     401(NoSuchTarget)           => { (unknown: &str)            => "{unknown} :No such nick/channel" },
+    402(NoSuchServer)           => { (server_name: &ServerName) => "{server_name} :No such server" },
     403(NoSuchChannel)          => { (chname: &ChannelName)     => "{chname} :No such channel" },
     404(CannotSendToChannel)    => { (chan: &ChannelName)       => "{chan} :Cannot send to channel" },
     410(InvalidCapCmd)          => { (subcommand: &str)         => "{subcommand} :Invalid CAP command" },
