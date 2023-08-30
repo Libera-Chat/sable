@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::{fmt::Display, fs};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ListenerConfig {
@@ -22,6 +22,7 @@ pub struct ClientServerConfig {
     pub info_paths: InfoPaths,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Infos {
     pub motd: Option<String>, // Linewise to not repeatedly split
 }

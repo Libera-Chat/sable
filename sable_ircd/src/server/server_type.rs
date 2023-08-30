@@ -1,4 +1,3 @@
-use super::config::Infos;
 use super::*;
 use crate::connection_collection::ConnectionCollectionState;
 use anyhow::Context;
@@ -13,6 +12,7 @@ pub struct ClientServerState {
     auth_state: AuthClientState,
     client_caps: CapabilityRepository,
     listener_state: SavedListenerCollection,
+    infos: config::Infos,
 }
 
 #[async_trait]
@@ -106,6 +106,7 @@ impl sable_server::ServerType for ClientServer {
                 .save()
                 .await
                 .map_err(ServerSaveError::IoError)?,
+            infos: self.infos,
         })
     }
 
@@ -145,7 +146,7 @@ impl sable_server::ServerType for ClientServer {
             client_caps: state.client_caps,
             history_receiver: Mutex::new(history_receiver),
             listeners: Movable::new(listeners),
-            infos: Infos { motd: None },
+            infos: state.infos,
         })
     }
 
