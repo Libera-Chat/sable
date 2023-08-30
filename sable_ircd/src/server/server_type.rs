@@ -12,7 +12,7 @@ pub struct ClientServerState {
     auth_state: AuthClientState,
     client_caps: CapabilityRepository,
     listener_state: SavedListenerCollection,
-    infos: config::Infos,
+    info_strings: config::ServerInfoStrings,
 }
 
 #[async_trait]
@@ -28,7 +28,7 @@ impl sable_server::ServerType for ClientServer {
     ) -> Result<Self::ProcessedConfig, Self::ConfigError> {
         Ok(Self::ProcessedConfig {
             listeners: config.listeners.clone(),
-            infos: Infos::load(&config.info_paths)?,
+            info_strings: ServerInfoStrings::load(&config.info_paths)?,
         })
     }
 
@@ -85,7 +85,7 @@ impl sable_server::ServerType for ClientServer {
             client_caps: CapabilityRepository::new(),
             node: node,
             listeners: Movable::new(client_listeners),
-            infos: config.infos,
+            info_strings: config.info_strings,
         })
     }
 
@@ -106,7 +106,7 @@ impl sable_server::ServerType for ClientServer {
                 .save()
                 .await
                 .map_err(ServerSaveError::IoError)?,
-            infos: self.infos,
+            info_strings: self.info_strings,
         })
     }
 
@@ -146,7 +146,7 @@ impl sable_server::ServerType for ClientServer {
             client_caps: state.client_caps,
             history_receiver: Mutex::new(history_receiver),
             listeners: Movable::new(listeners),
-            infos: state.infos,
+            info_strings: state.info_strings,
         })
     }
 
