@@ -1,5 +1,4 @@
-use std::convert::Infallible;
-
+use super::config::Infos;
 use super::*;
 use crate::connection_collection::ConnectionCollectionState;
 use anyhow::Context;
@@ -19,18 +18,23 @@ pub struct ClientServerState {
 #[async_trait]
 impl sable_server::ServerType for ClientServer {
     type Config = ClientServerConfig;
-    type ProcessedConfig = ClientServerConfig;
-    type ConfigError = Infallible;
+    type ProcessedConfig = config::ProcessedCSConfig;
+    type ConfigError = config::ConfigProcessingError;
 
     type Saved = ClientServerState;
 
-    fn validate_config(config: &ClientServerConfig) -> Result<ClientServerConfig, Infallible> {
-        Ok(config.clone())
+    fn validate_config(
+        config: &ClientServerConfig,
+    ) -> Result<Self::ProcessedConfig, Self::ConfigError> {
+        Ok(Self::ProcessedConfig {
+            listeners: config.listeners.clone(),
+            infos: Infos::load(&config.info_paths)?,
+        })
     }
 
     /// Create a new `ClientServer`
     fn new(
-        config: Self::Config,
+        config: Self::ProcessedConfig,
         tls_data: &TlsData,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
@@ -81,6 +85,7 @@ impl sable_server::ServerType for ClientServer {
             client_caps: CapabilityRepository::new(),
             node: node,
             listeners: Movable::new(client_listeners),
+            infos: config.infos,
         })
     }
 
@@ -140,6 +145,7 @@ impl sable_server::ServerType for ClientServer {
             client_caps: state.client_caps,
             history_receiver: Mutex::new(history_receiver),
             listeners: Movable::new(listeners),
+            infos: Infos { motd: None },
         })
     }
 
