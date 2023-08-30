@@ -44,6 +44,7 @@ mod handlers {
     mod kill;
     mod kline;
     mod mode;
+    mod motd;
     mod names;
     mod nick;
     mod notice;
