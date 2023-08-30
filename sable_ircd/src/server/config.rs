@@ -1,7 +1,8 @@
+use std::fs;
 use std::path::PathBuf;
-use std::{fmt::Display, fs};
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ListenerConfig {
@@ -23,14 +24,15 @@ pub struct ClientServerConfig {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Infos {
-    pub motd: Option<String>, // Linewise to not repeatedly split
+pub struct ServerInfoStrings {
+    pub motd: Option<Vec<String>>, // Linewise to not repeatedly split
 }
 
-impl Infos {
-    pub fn load(paths: &InfoPaths) -> Result<Infos, ConfigProcessingError> {
+impl ServerInfoStrings {
+    pub fn load(paths: &InfoPaths) -> Result<ServerInfoStrings, ConfigProcessingError> {
         Ok(Self {
-            motd: Self::get_info(&paths.motd, "motd")?,
+            motd: Self::get_info(&paths.motd, "motd")?
+                .and_then(|file| Some(file.lines().map(|v| v.to_string()).collect())),
         })
     }
 
@@ -55,18 +57,11 @@ impl Infos {
 
 pub struct ProcessedCSConfig {
     pub listeners: Vec<ListenerConfig>,
-    pub infos: Infos,
+    pub info_strings: ServerInfoStrings,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("Unable to process config: {reason}")]
 pub struct ConfigProcessingError {
     reason: String,
-}
-
-impl std::error::Error for ConfigProcessingError {}
-
-impl Display for ConfigProcessingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("Unable to process config: {}", self.reason))
-    }
 }

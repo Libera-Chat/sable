@@ -36,7 +36,7 @@ pub use async_handler_collection::*;
 mod upgrade;
 
 use self::{
-    config::{ClientServerConfig, Infos},
+    config::{ClientServerConfig, ServerInfoStrings},
     message_sink_repository::MessageSinkRepository,
 };
 
@@ -81,7 +81,7 @@ pub struct ClientServer {
     listeners: Movable<ListenerCollection>,
 
     // Any general static info (responses for MOTD, ADMIN, and so on)
-    pub infos: Infos,
+    pub info_strings: ServerInfoStrings,
 }
 
 impl ClientServer {
