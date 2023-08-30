@@ -43,6 +43,7 @@ define_messages! {
     375(MotdStart)              => { (server_name: &ServerName)        => ":- {server_name} message of the day -"},
     372(Motd)                   => { (line: &str)               => ":{line}"},
     376(EndOfMotd)              => { ()                         => ":End of MOTD" },
+
     381(YoureOper)              => { ()                         => "You are now an IRC operator" },
 
 
