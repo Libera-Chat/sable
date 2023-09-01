@@ -64,7 +64,6 @@ macro_rules! define_capabilities {
 define_capabilities! (
     ClientCapability
     {
-        MessageTags:            0x01 => ("message-tags", true),
         ServerTime:             0x02 => ("server-time", true),
         EchoMessage:            0x04 => ("echo-message", true),
         Sasl:                   0x08 => ("sasl", false),
