@@ -52,6 +52,8 @@ define_messages! {
     441(UserNotOnChannel)       => { (user: &User.nick(), chan: &Channel.name())
                                                                 => "{user} {chan} :They're not on that channel" },
     442(NotOnChannel)           => { (chan: &ChannelName)       => "{chan} :You're not on that channel" },
+    443(UserOnChannel)          => { (user: &User.nick(), chan: &Channel.name())
+                                                                => "{user} {chan} :They're already on that channel" },
     451(NotRegistered)          => { ()                         => ":You have not registered" },
     461(NotEnoughParameters)    => { (command: &str)            => "{command} :Not enough parameters" },
     462(AlreadyRegistered)      => { ()                         => ":You are already connected and cannot handshake again" },
