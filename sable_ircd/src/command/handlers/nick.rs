@@ -43,11 +43,24 @@ fn handle_user(
 ) -> CommandResult {
     let detail = details::BindNickname { user: source.id() };
 
-    if net.user_by_nick(&nick).is_ok() {
-        numeric_error!(NicknameInUse, &nick)
-    } else {
-        server.add_action(CommandAction::state_change(NicknameId::new(nick), detail));
-
-        Ok(())
+    match net.user_by_nick(&nick) {
+        Ok(other_user) if other_user.id() == source.id() => {
+            // The client is trying to change to a nickname case-equivalent to their
+            // current one
+            assert_eq!(nick, other_user.nick()); // Case-insensitive
+            if nick.value() != other_user.nick().value() {
+                // The nick is not exactly the same, issue the case change
+                server.add_action(CommandAction::state_change(NicknameId::new(nick), detail));
+            }
+            Ok(())
+        }
+        Ok(_) => {
+            numeric_error!(NicknameInUse, &nick)
+        }
+        Err(_) => {
+            // Nickname is available
+            server.add_action(CommandAction::state_change(NicknameId::new(nick), detail));
+            Ok(())
+        }
     }
 }
