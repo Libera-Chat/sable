@@ -58,6 +58,6 @@ pub fn send_channel_names(
             numeric::NamesReply::new(pub_or_secret, channel, &line).format_for(server, to_user),
         );
     }
-    to.send(numeric::EndOfNames::new(channel).format_for(server, to_user));
+    to.send(numeric::EndOfNames::new(channel.name().value()).format_for(server, to_user));
     Ok(())
 }
