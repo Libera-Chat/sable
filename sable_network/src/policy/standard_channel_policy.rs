@@ -292,6 +292,13 @@ impl ChannelPolicyService for StandardChannelPolicy {
     }
 
     fn can_invite(&self, user: &User, channel: &Channel, _target: &User) -> PermissionResult {
-        has_access(user, channel, ChannelAccessFlag::InviteOther)
+        has_access(user, channel, ChannelAccessFlag::InviteOther).map_err(|err| {
+            if user.is_in_channel(channel.id()).is_none() {
+                // Different numeric reply for this specific case
+                PermissionError::Channel(*channel.name(), NotOnChannel)
+            } else {
+                err
+            }
+        })
     }
 }
