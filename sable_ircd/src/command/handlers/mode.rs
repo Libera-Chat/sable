@@ -210,7 +210,10 @@ async fn handle_channel_mode(
                         // Can't query keys
                         Direction::Query => (),
                         Direction::Add => {
-                            let new_key = args.next::<ChannelKey>()?;
+                            let new_key = match args.next().map(ChannelKey::new_coerce)? {
+                                Ok(key) => key,
+                                Err(_) => return numeric_error!(InvalidKey, &chan.name()),
+                            };
                             server.policy().can_set_key(source, &chan, Some(&new_key))?;
                             key_change = OptionChange::Set(new_key);
                         }

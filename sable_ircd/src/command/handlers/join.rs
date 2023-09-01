@@ -9,13 +9,20 @@ async fn handle_join(
     channel_names: &str,
     keys: Option<&str>,
 ) -> CommandResult {
-    let empty_str = String::new();
     let names = channel_names.split(',');
-    let mut keys = keys.unwrap_or(&empty_str).split(',');
+    let mut keys = match keys {
+        None => Vec::new(),
+        Some(keys) => keys.split(',').collect(),
+    }
+    .into_iter();
 
     for name in names {
         let chname = ChannelName::from_str(name)?;
-        let key = keys.next().map(ChannelKey::new_coerce);
+        let key = match keys.next().map(ChannelKey::new_coerce) {
+            Some(Ok(key)) => Some(key),
+            Some(Err(_)) => return numeric_error!(InvalidKey, &chname),
+            None => None,
+        };
 
         let (channel_id, permissions) = match net.channel_by_name(&chname) {
             Ok(channel) => {
