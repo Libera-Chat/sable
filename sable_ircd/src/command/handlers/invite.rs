@@ -4,6 +4,7 @@ use super::*;
 fn handle_invite(
     server: &ClientServer,
     source: UserSource,
+    response: &dyn CommandResponse,
     target: wrapper::User,
     channel: wrapper::Channel,
 ) -> CommandResult {
@@ -18,6 +19,8 @@ fn handle_invite(
     };
 
     server.add_action(CommandAction::state_change(invite_id, event));
+
+    response.numeric(make_numeric!(Inviting, &target, &channel));
 
     Ok(())
 }
