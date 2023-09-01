@@ -256,7 +256,7 @@ impl ClientCommand {
                         use ChannelPermissionError::*;
 
                         match channel_err {
-                            UserNotOnChannel => Some(make_numeric!(NotOnChannel, &channel_name)),
+                            NotOnChannel => Some(make_numeric!(NotOnChannel, &channel_name)),
                             UserNotOp => Some(make_numeric!(ChanOpPrivsNeeded, &channel_name)),
                             UserIsBanned => Some(make_numeric!(BannedOnChannel, &channel_name)),
                             CannotSendToChannel => {
