@@ -17,7 +17,7 @@ pub struct InfoPaths {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct ClientServerConfig {
+pub struct RawClientServerConfig {
     pub listeners: Vec<ListenerConfig>,
     #[serde(flatten)]
     pub info_paths: InfoPaths,
@@ -55,7 +55,7 @@ impl ServerInfoStrings {
     }
 }
 
-pub struct ProcessedCSConfig {
+pub struct ClientServerConfig {
     pub listeners: Vec<ListenerConfig>,
     pub info_strings: ServerInfoStrings,
 }

@@ -17,14 +17,14 @@ pub struct ClientServerState {
 
 #[async_trait]
 impl sable_server::ServerType for ClientServer {
-    type Config = ClientServerConfig;
-    type ProcessedConfig = config::ProcessedCSConfig;
+    type Config = RawClientServerConfig;
+    type ProcessedConfig = config::ClientServerConfig;
     type ConfigError = config::ConfigProcessingError;
 
     type Saved = ClientServerState;
 
     fn validate_config(
-        config: &ClientServerConfig,
+        config: &RawClientServerConfig,
     ) -> Result<Self::ProcessedConfig, Self::ConfigError> {
         Ok(Self::ProcessedConfig {
             listeners: config.listeners.clone(),
