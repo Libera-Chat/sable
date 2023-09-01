@@ -52,12 +52,6 @@ impl<'a> PositionalArgument<'a> for Nickname {
     }
 }
 
-impl<'a> PositionalArgument<'a> for ChannelKey {
-    fn parse_str(_ctx: &'a dyn Command, value: &'a str) -> Result<Self, CommandError> {
-        Ok(ChannelKey::new_coerce(value))
-    }
-}
-
 impl<'a> PositionalArgument<'a> for state::ChannelRoleName {
     fn parse_str(_ctx: &'a dyn Command, value: &'a str) -> Result<Self, CommandError> {
         value

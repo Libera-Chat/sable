@@ -99,6 +99,9 @@ define_validated! {
                 return Self::error(value);
             }
         }
+        if value.len() == 0 {
+            return Self::error(value);
+        }
         Ok(())
     }
 
@@ -131,12 +134,12 @@ impl Username {
 }
 
 impl ChannelKey {
-    pub fn new_coerce(s: &str) -> Self {
+    pub fn new_coerce(s: &str) -> <Self as Validated>::Result {
         let mut s = s.to_string();
         s.retain(|c| c > ' ' && c <= '~' && c != ':' && c != ',');
         let mut val = <Self as Validated>::Underlying::new();
         s.truncate(val.capacity());
         val.push_str(&s);
-        Self(val)
+        Self::validate(&val).map(|()| Self(val))
     }
 }

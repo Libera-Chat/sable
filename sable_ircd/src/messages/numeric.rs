@@ -58,6 +58,8 @@ define_messages! {
 
     502(CantChangeOtherUserMode) => { ()                => ":Can't change mode for other users" },
 
+    525(InvalidKey)             => { (chan: &ChannelName)       => "{chan} :Key is not well-formed" },
+
     367(BanList)        => { (chan: &Channel.name(), entry: &ListModeEntry.pattern(), setter=entry.setter(), ts=entry.timestamp())
         => "{chan} {entry} {setter} {ts}"},
     368(EndOfBanList)   => { (chan: &Channel.name())    => "{chan} :End of channel ban list" },
