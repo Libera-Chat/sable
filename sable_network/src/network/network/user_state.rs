@@ -131,7 +131,7 @@ impl Network {
             self.nick_bindings.insert(new_nick, new_binding);
 
             // Emit UserNickChange update if a nick change happens as a result of this rebinding.
-            if old_nick != new_nick {
+            if old_nick.value() != new_nick.value() {
                 let update = UserNickChange {
                     user: user_object.clone(),
                     old_nick,
