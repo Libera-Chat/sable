@@ -144,11 +144,33 @@ impl<'a> PositionalArgument<'a> for u32 {
 }
 
 impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for Option<T> {
-    fn parse<'b>(ctx: &'a dyn Command, arg: &'b mut ArgListIter<'a>) -> Result<Self, CommandError>
+    fn parse<'b>(
+        ctx: &'a dyn Command,
+        arg_list: &'b mut ArgListIter<'a>,
+    ) -> Result<Self, CommandError>
     where
         'a: 'b,
     {
-        Ok(T::parse(ctx, arg).ok())
+        Ok(T::parse(ctx, arg_list).ok())
+    }
+
+    fn parse_str(_ctx: &'a dyn Command, _value: &'a str) -> Result<Self, CommandError> {
+        unreachable!();
+    }
+}
+
+/// Either Ok(parsed_value) or Err(raw_value) if it cannot be parsed.
+/// Never actually returns a CommandError.
+impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for Result<T, &'a str> {
+    fn parse<'b>(
+        ctx: &'a dyn Command,
+        arg_list: &'b mut ArgListIter<'a>,
+    ) -> Result<Self, CommandError>
+    where
+        'a: 'b,
+    {
+        let s = arg_list.next().ok_or(CommandError::NotEnoughParameters)?;
+        Ok(T::parse_str(ctx, s).map_err(|_| s))
     }
 
     fn parse_str(_ctx: &'a dyn Command, _value: &'a str) -> Result<Self, CommandError> {
