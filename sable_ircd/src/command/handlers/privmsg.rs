@@ -8,6 +8,10 @@ async fn handle_privmsg(
     target: TargetParameter<'_>,
     msg: &str,
 ) -> CommandResult {
+    if msg.len() == 0 {
+        return numeric_error!(NoTextToSend);
+    }
+
     if let Some(user) = target.user() {
         if let Some(alias) = user.is_alias_user() {
             return super::services::dispatch_alias_command(cmd, &user, &alias.command_alias, msg)
