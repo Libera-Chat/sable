@@ -78,9 +78,7 @@ impl ClientMessage {
 
         loop {
             if let Some(arg) = rest.strip_prefix(':') {
-                if !arg.is_empty() {
-                    args.push(arg.to_string());
-                }
+                args.push(arg.to_string());
                 break;
             }
 
@@ -148,7 +146,7 @@ mod tests {
     fn ending_colon() {
         let msg = ClientMessage::parse(get_connid(), "command arg1 arg2 :").unwrap();
 
-        assert_eq!(msg.args, &["arg1", "arg2"]);
+        assert_eq!(msg.args, &["arg1", "arg2", ""]);
     }
 
     #[test]

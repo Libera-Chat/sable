@@ -8,6 +8,10 @@ async fn handle_notice(
     target: TargetParameter<'_>,
     msg: &str,
 ) -> CommandResult {
+    if msg.len() == 0 {
+        return numeric_error!(NoTextToSend);
+    }
+
     if let Some(user) = target.user() {
         if user.is_alias_user().is_some() {
             // This is a notice which doesn't expect a response; drop it
