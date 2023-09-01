@@ -34,7 +34,7 @@ define_messages! {
                                                 => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },
     353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)
                                                                 => "{is_pub} {chan} :{content}" },
-    366(EndOfNames)             => { (chan: &Channel.name())    => "{chan} :End of names list" },
+    366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
 
     381(YoureOper)              => { ()                         => "You are now an IRC operator" },
 
