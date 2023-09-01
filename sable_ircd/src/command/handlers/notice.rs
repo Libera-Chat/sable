@@ -1,10 +1,11 @@
 use super::*;
 
 #[command_handler("NOTICE")]
-fn handle_notice(
+async fn handle_notice(
     server: &ClientServer,
-    source: UserSource,
-    target: TargetParameter,
+    source: UserSource<'_>,
+    cmd: &dyn Command,
+    target: TargetParameter<'_>,
     msg: &str,
 ) -> CommandResult {
     if let Some(user) = target.user() {
@@ -23,9 +24,7 @@ fn handle_notice(
         message_type: state::MessageType::Notice,
         text: msg.to_owned(),
     };
-    server.add_action(CommandAction::state_change(
-        server.ids().next_message(),
-        details,
-    ));
+    cmd.new_event_with_response(server.ids().next_message(), details)
+        .await;
     Ok(())
 }
