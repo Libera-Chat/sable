@@ -1,3 +1,4 @@
+use crate::capability::ClientCapability;
 use crate::errors::*;
 use crate::messages::numeric;
 use crate::messages::*;
@@ -6,6 +7,7 @@ use sable_network::prelude::*;
 
 use std::fmt::Write;
 
+/// Returns a NAMES reply (or the implicit one after joining a channel)
 pub fn send_channel_names(
     server: &ClientServer,
     to: impl MessageSink,
@@ -24,6 +26,8 @@ pub fn send_channel_names(
 
     let user_is_on_chan = to_user.is_in_channel(channel.id()).is_some();
 
+    let with_userhost = to.capabilities().has(ClientCapability::UserhostInNames);
+
     for member in channel.members() {
         if !user_is_on_chan
             && server
@@ -35,7 +39,12 @@ pub fn send_channel_names(
         }
 
         let p = member.permissions().to_prefixes();
-        let n = member.user()?.nick().to_string();
+        let user = member.user()?;
+        let n = if with_userhost {
+            format!("{}!{}@{}", user.nick(), user.user(), user.visible_host())
+        } else {
+            format!("{}", user.nick())
+        };
         if current_line.len() + n.len() + 2 > CONTENT_LEN {
             lines.push(current_line);
             current_line = String::new();
@@ -49,6 +58,6 @@ pub fn send_channel_names(
             numeric::NamesReply::new(pub_or_secret, channel, &line).format_for(server, to_user),
         );
     }
-    to.send(numeric::EndOfNames::new(channel).format_for(server, to_user));
+    to.send(numeric::EndOfNames::new(channel.name().value()).format_for(server, to_user));
     Ok(())
 }

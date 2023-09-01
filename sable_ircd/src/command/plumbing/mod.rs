@@ -28,6 +28,10 @@ pub trait Command: Send + Sync {
     /// to this command
     fn response_sink(&self) -> &dyn CommandResponse;
 
+    /// Retrieve a [`CommandResponse`] implementation which can receive responses
+    /// to this command, in an `Arc`
+    fn response_sink_arc(&self) -> Arc<dyn CommandResponse + 'static>;
+
     /// Retrieve the underlying connection ID
     fn connection_id(&self) -> ConnectionId;
 

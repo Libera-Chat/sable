@@ -191,6 +191,9 @@ NetworkStateChange => {
     struct ServicesUpdate {
         pub new_state: Option<state::ServicesData>,
     }
+
+    /// A delimiter event to denote that an Event has been completely processed
+    struct EventComplete { }
 });
 
 /// Trait to be implemented by an object which wants to be notified of network state updates

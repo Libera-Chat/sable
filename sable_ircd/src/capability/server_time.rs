@@ -4,7 +4,7 @@ use crate::utils::format_timestamp;
 
 pub fn server_time_tag(ts: i64) -> OutboundMessageTag {
     OutboundMessageTag::new(
-        "server-time",
+        "time",
         Some(format_timestamp(ts)),
         ClientCapability::ServerTime,
     )

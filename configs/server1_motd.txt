@@ -1,0 +1,2 @@
+MOTD for server 1!
+- A_Dragon

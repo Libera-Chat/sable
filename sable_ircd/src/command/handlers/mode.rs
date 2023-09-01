@@ -1,17 +1,18 @@
 use super::*;
 
 #[command_handler("MODE")]
-fn handle_user(
+async fn handle_user(
     server: &ClientServer,
-    source: UserSource,
+    source: UserSource<'_>,
+    cmd: &dyn Command,
     response: &dyn CommandResponse,
-    target: TargetParameter,
+    target: TargetParameter<'_>,
     mode_str: Option<&str>,
-    args: ArgList,
+    args: ArgList<'_>,
 ) -> CommandResult {
     match target {
         TargetParameter::Channel(chan) => {
-            handle_channel_mode(server, &source, response, chan, mode_str, args)
+            handle_channel_mode(server, &source, cmd, response, chan, mode_str, args).await
         }
         TargetParameter::User(user) => {
             if source.id() != user.id() {
@@ -75,7 +76,7 @@ fn handle_user(
                     added,
                     removed,
                 };
-                server.add_action(CommandAction::state_change(source.id(), detail));
+                cmd.new_event_with_response(source.id(), detail).await;
             }
 
             Ok(())
@@ -83,13 +84,14 @@ fn handle_user(
     }
 }
 
-fn handle_channel_mode(
+async fn handle_channel_mode(
     server: &ClientServer,
-    source: &wrapper::User,
+    source: &wrapper::User<'_>,
+    cmd: &dyn Command,
     response: &dyn CommandResponse,
-    chan: wrapper::Channel,
+    chan: wrapper::Channel<'_>,
     mode_str: Option<&str>,
-    mut args: ArgList,
+    mut args: ArgList<'_>,
 ) -> CommandResult {
     let mode = chan.mode();
 
@@ -163,7 +165,7 @@ fn handle_channel_mode(
                         added: perm_added,
                         removed: perm_removed,
                     };
-                    server.add_action(CommandAction::state_change(membership.id(), detail));
+                    cmd.new_event_with_response(membership.id(), detail).await;
                 } else if let Some(list_type) = ListModeType::from_char(c) {
                     let list = chan.list(list_type);
 
@@ -184,10 +186,11 @@ fn handle_channel_mode(
                                 pattern: Pattern::new(mask.to_owned()),
                                 setter: source.id(),
                             };
-                            server.add_action(CommandAction::state_change(
+                            cmd.new_event_with_response(
                                 server.ids().next_list_mode_entry(),
                                 detail,
-                            ));
+                            )
+                            .await;
                         } else {
                             // We've already tested for Direction::Query above, so this is definitely Remove
                             if let Some(entry) = list.entries().find(|e| e.pattern() == mask) {
@@ -198,7 +201,7 @@ fn handle_channel_mode(
                                 let detail = event::DelListModeEntry {
                                     removed_by: source.id(),
                                 };
-                                server.add_action(CommandAction::state_change(entry.id(), detail));
+                                cmd.new_event_with_response(entry.id(), detail).await;
                             }
                         }
                     }
@@ -230,7 +233,7 @@ fn handle_channel_mode(
             removed,
             key_change,
         };
-        server.add_action(CommandAction::state_change(chan.id(), detail));
+        cmd.new_event_with_response(chan.id(), detail).await;
     }
 
     Ok(())

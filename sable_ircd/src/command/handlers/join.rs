@@ -1,10 +1,11 @@
 use super::*;
 
 #[command_handler("JOIN")]
-fn handle_join(
+async fn handle_join(
     server: &ClientServer,
     net: &Network,
-    source: UserSource,
+    cmd: &dyn Command,
+    source: UserSource<'_>,
     channel_names: &str,
     keys: Option<&str>,
 ) -> CommandResult {
@@ -29,7 +30,7 @@ fn handle_join(
                 };
 
                 let channel_id = server.ids().next_channel();
-                server.add_action(CommandAction::state_change(channel_id, details));
+                cmd.new_event_with_response(channel_id, details).await;
                 (channel_id, MembershipFlagFlag::Op.into())
             }
         };
@@ -41,7 +42,7 @@ fn handle_join(
         };
 
         let membership_id = MembershipId::new(source.id(), channel_id);
-        server.add_action(CommandAction::state_change(membership_id, details));
+        cmd.new_event_with_response(membership_id, details).await;
     }
     Ok(())
 }

@@ -17,9 +17,14 @@ use tokio::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
         Mutex,
     },
+    time,
 };
 
-use std::sync::Arc;
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Weak},
+    time::Duration,
+};
 
 use parking_lot::RwLock;
 
@@ -30,14 +35,20 @@ pub use async_handler_collection::*;
 
 mod upgrade;
 
-use self::config::ClientServerConfig;
+use self::{
+    config::{RawClientServerConfig, ServerInfoStrings},
+    message_sink_repository::MessageSinkRepository,
+};
 
 pub mod config;
 
 mod command_action;
+mod message_sink_repository;
 mod server_type;
 mod update_handler;
 mod user_access;
+
+const PREREG_TIMEOUT: time::Duration = time::Duration::from_secs(120);
 
 /// A client server.
 ///
@@ -51,15 +62,26 @@ pub struct ClientServer {
     auth_events: Mutex<UnboundedReceiver<AuthEvent>>,
     history_receiver: Mutex<UnboundedReceiver<NetworkHistoryUpdate>>,
 
+    // Stored `MessageSink`s for deferred labeled-response
+    stored_response_sinks: RwLock<MessageSinkRepository>,
+
     action_submitter: UnboundedSender<CommandAction>,
     command_dispatcher: command::CommandDispatcher,
+
     connections: RwLock<ConnectionCollection>,
+    /// Connections which either did not complete registration or completed it recently,
+    /// in increasing order of when they were open.
+    prereg_connections: Mutex<VecDeque<Weak<ClientConnection>>>,
+
     auth_client: AuthClient,
     isupport: ISupportBuilder,
     client_caps: CapabilityRepository,
 
     node: Arc<NetworkNode>,
     listeners: Movable<ListenerCollection>,
+
+    // Any general static info (responses for MOTD, ADMIN, and so on)
+    pub info_strings: ServerInfoStrings,
 }
 
 impl ClientServer {
@@ -110,6 +132,18 @@ impl ClientServer {
         &self.client_caps
     }
 
+    /// Store a [`MessageSink`] to use when processing updates caused by the given event
+    pub(crate) fn store_response_sink(
+        &self,
+        event_id: EventId,
+        connection_id: ConnectionId,
+        sink: Arc<dyn MessageSink + 'static>,
+    ) {
+        self.stored_response_sinks
+            .write()
+            .store(event_id, connection_id, sink);
+    }
+
     #[tracing::instrument]
     fn build_basic_isupport() -> ISupportBuilder {
         let mut ret = ISupportBuilder::new();
@@ -139,6 +173,38 @@ impl ClientServer {
         ret
     }
 
+    /// Disconnects `PreClient`s that have been connected for too long (ie. connections
+    /// which did not complete registration)
+    #[tracing::instrument(skip_all)]
+    async fn reap_preclients(self: Arc<Self>) {
+        match self.prereg_connections.try_lock() {
+            Err(_) => {
+                tracing::warn!("Previous reap_preclients task is still running, skipping.")
+            }
+            Ok(mut prereg_connections) => {
+                let threshold = time::Instant::now() - PREREG_TIMEOUT;
+                while let Some(conn) = prereg_connections.pop_front() {
+                    if let Some(conn) = conn.upgrade() {
+                        // If not already disconnected
+                        if let Some(pre_client) = conn.pre_client() {
+                            // If not done registering
+                            if pre_client.connected_at < threshold {
+                                tracing::debug!("{:?} registration timed out", conn.id());
+                                conn.send(message::Error::new("Registration timed out"));
+                                self.add_action(CommandAction::CloseConnection(conn.id()));
+                            } else {
+                                // Client didn't time out yet, put it back in the queue
+                                prereg_connections.push_front(Arc::downgrade(&conn));
+                                // stop iteration (as the queue is sorted)
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     #[tracing::instrument(skip_all, fields(source = ?msg.source))]
     async fn process_connection_event(&self, msg: ConnectionEvent) {
         match msg.detail {
@@ -153,7 +219,8 @@ impl ClientServer {
                 ));
                 self.auth_client
                     .start_dns_lookup(conn.id(), conn.remote_addr());
-                self.connections.write().add(msg.source, conn);
+                let conn = self.connections.write().add(msg.source, conn);
+                self.prereg_connections.lock().await.push_back(conn);
             }
             ConnectionEventDetail::Message(m) => {
                 tracing::trace!(msg=?m, "Got message");
@@ -245,6 +312,8 @@ impl ClientServer {
 
         let mut async_handlers = AsyncHandlerCollection::new();
 
+        let mut reap_preclients_timer = time::interval(Duration::from_secs(60));
+
         let shutdown_action = loop {
             // tracing::trace!("ClientServer run loop");
             // Before looking for an I/O event, do our internal bookkeeping.
@@ -267,6 +336,12 @@ impl ClientServer {
                     // Make sure we don't block waiting for i/o for too long, in case there are
                     // queued client messages to be processed or other housekeeping
                     continue;
+                },
+                _ = reap_preclients_timer.tick() =>
+                {
+                    // Spawning a sub-task in order not to block all events
+                    tracing::trace!("...from reap_preclients_timer");
+                    tokio::spawn(self.clone().reap_preclients());
                 },
                 _ = async_handlers.poll(), if !async_handlers.is_empty() =>
                 {

@@ -116,6 +116,10 @@ impl<'a, Underlying: MessageSink> MessageSink for MessageBatch<Underlying> {
     fn user_id(&self) -> Option<UserId> {
         self.target.user_id()
     }
+
+    fn capabilities(&self) -> ClientCapabilitySet {
+        self.target.capabilities()
+    }
 }
 
 /// A potential [`MessageBatch`], if more than one message is sent into it.
@@ -202,5 +206,9 @@ impl<Sink: MessageSink> MessageSink for LazyMessageBatch<Sink> {
 
     fn user_id(&self) -> Option<UserId> {
         self.target.user_id()
+    }
+
+    fn capabilities(&self) -> ClientCapabilitySet {
+        self.target.capabilities()
     }
 }

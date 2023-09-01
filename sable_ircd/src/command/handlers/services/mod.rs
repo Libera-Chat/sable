@@ -39,6 +39,9 @@ impl<'a> Command for ServicesCommand<'a> {
     fn response_sink(&self) -> &dyn CommandResponse {
         self.outer.response_sink()
     }
+    fn response_sink_arc(&self) -> Arc<dyn CommandResponse + 'static> {
+        self.outer.response_sink_arc()
+    }
     fn connection_id(&self) -> client_listener::ConnectionId {
         self.outer.connection_id()
     }

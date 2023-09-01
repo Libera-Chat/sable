@@ -2,15 +2,15 @@ use super::*;
 use event::*;
 
 #[command_handler("NICK")]
-fn handle_nick(
+async fn handle_nick(
     server: &ClientServer,
     net: &Network,
     cmd: &dyn Command,
-    source: CommandSource,
+    source: CommandSource<'_>,
     new_nick: Nickname,
 ) -> CommandResult {
     match source {
-        CommandSource::User(user) => handle_user(server, net, user, new_nick),
+        CommandSource::User(user) => handle_user(net, cmd, user, new_nick).await,
         CommandSource::PreClient(pc) => handle_preclient(server, net, cmd, &pc, new_nick),
     }
 }
@@ -35,19 +35,34 @@ fn handle_preclient(
     }
 }
 
-fn handle_user(
-    server: &ClientServer,
+async fn handle_user(
     net: &Network,
-    source: wrapper::User,
+    cmd: &dyn Command,
+    source: wrapper::User<'_>,
     nick: Nickname,
 ) -> CommandResult {
     let detail = details::BindNickname { user: source.id() };
 
-    if net.user_by_nick(&nick).is_ok() {
-        numeric_error!(NicknameInUse, &nick)
-    } else {
-        server.add_action(CommandAction::state_change(NicknameId::new(nick), detail));
-
-        Ok(())
+    match net.user_by_nick(&nick) {
+        Ok(other_user) if other_user.id() == source.id() => {
+            // The client is trying to change to a nickname case-equivalent to their
+            // current one
+            assert_eq!(nick, other_user.nick()); // Case-insensitive
+            if nick.value() != other_user.nick().value() {
+                // The nick is not exactly the same, issue the case change
+                cmd.new_event_with_response(NicknameId::new(nick), detail)
+                    .await;
+            }
+            Ok(())
+        }
+        Ok(_) => {
+            numeric_error!(NicknameInUse, &nick)
+        }
+        Err(_) => {
+            // Nickname is available
+            cmd.new_event_with_response(NicknameId::new(nick), detail)
+                .await;
+            Ok(())
+        }
     }
 }

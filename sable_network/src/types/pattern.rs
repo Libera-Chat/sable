@@ -47,6 +47,6 @@ impl Pattern {
     /// Test whether the given string matches this pattern. Note that this is always
     /// case-insensitive
     pub fn matches(&self, s: &str) -> bool {
-        WildMatch::new(&self.0).matches(s)
+        WildMatch::new(&self.0.to_ascii_lowercase()).matches(&s.to_ascii_lowercase())
     }
 }

@@ -3,8 +3,10 @@ use super::*;
 /// A channel-related permission error
 #[derive(Debug)]
 pub enum ChannelPermissionError {
-    /// The user isn't in a channel, and needs to be in order to be allowed the operation
-    UserNotOnChannel,
+    /// The source user isn't in a channel, and needs to be in order to be allowed the operation.
+    /// This translates to a NotOnChannel (442) numeric; not to be confused with the
+    /// UserNotOnChannel (441) numeric, which means the target user is not in the channel
+    NotOnChannel,
     /// Channel operator privileges are required
     UserNotOp,
     /// User is banned from the channel

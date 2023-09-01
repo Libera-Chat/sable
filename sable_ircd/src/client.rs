@@ -19,6 +19,7 @@ use arc_swap::ArcSwapOption;
 use once_cell::sync::OnceCell;
 use serde::*;
 use serde_with::serde_as;
+use tokio::time::Instant;
 
 /// A client protocol connection
 pub struct ClientConnection {
@@ -61,6 +62,11 @@ pub enum ProgressFlag {
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PreClient {
+    #[serde(skip, default = "Instant::now")]
+    /// Reset on deserialization, to avoid timing out clients if the server took a long
+    /// time to restart.
+    pub connected_at: Instant,
+
     #[serde_as(as = "WrapOption<Username>")]
     pub user: OnceCell<Username>,
     #[serde_as(as = "WrapOption<Nickname>")]
@@ -193,6 +199,10 @@ impl MessageSink for ClientConnection {
     fn user_id(&self) -> Option<UserId> {
         ClientConnection::user_id(self)
     }
+
+    fn capabilities(&self) -> ClientCapabilitySet {
+        (&self.capabilities).into()
+    }
 }
 
 impl Drop for ClientConnection {
@@ -208,6 +218,7 @@ impl PreClient {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
+            connected_at: Instant::now(),
             user: OnceCell::new(),
             nick: OnceCell::new(),
             realname: OnceCell::new(),

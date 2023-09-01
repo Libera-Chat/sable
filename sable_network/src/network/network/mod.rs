@@ -229,6 +229,8 @@ impl Network {
         })?;
 
         self.clock.update_with_id(event.id);
+        updates.notify(EventComplete {}, &event);
+
         Ok(())
     }
 

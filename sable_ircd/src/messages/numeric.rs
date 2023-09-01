@@ -29,17 +29,26 @@ define_messages! {
     333(TopicSetBy)             => { (chan: &Channel.name(), info: &str, timestamp: i64)
                                                                 => "{chan} {info} {timestamp}" },
 
+    341(Inviting)               => { (nick: &User.nick(), chan: &Channel.name())
+                                                                => "{nick} {chan}" },
+
     352(WhoReply)               => { (chname: &str, user: &User.user(), host=user.visible_host(), server: &Server.name(),
                                       nick=user.nick(), status: &str, hopcount: usize, realname=&user.realname())
                                                 => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },
     353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)
                                                                 => "{is_pub} {chan} :{content}" },
-    366(EndOfNames)             => { (chan: &Channel.name())    => "{chan} :End of names list" },
+    366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
+
+    422(NoMotd)                 => { ()                         => ":MOTD File is missing"},
+    375(MotdStart)              => { (server_name: &ServerName)        => ":- {server_name} message of the day -"},
+    372(Motd)                   => { (line: &str)               => ":{line}"},
+    376(EndOfMotd)              => { ()                         => ":End of MOTD" },
 
     381(YoureOper)              => { ()                         => "You are now an IRC operator" },
 
 
     401(NoSuchTarget)           => { (unknown: &str)            => "{unknown} :No such nick/channel" },
+    402(NoSuchServer)           => { (server_name: &ServerName) => "{server_name} :No such server" },
     403(NoSuchChannel)          => { (chname: &ChannelName)     => "{chname} :No such channel" },
     404(CannotSendToChannel)    => { (chan: &ChannelName)       => "{chan} :Cannot send to channel" },
     410(InvalidCapCmd)          => { (subcommand: &str)         => "{subcommand} :Invalid CAP command" },
@@ -49,6 +58,8 @@ define_messages! {
     441(UserNotOnChannel)       => { (user: &User.nick(), chan: &Channel.name())
                                                                 => "{user} {chan} :They're not on that channel" },
     442(NotOnChannel)           => { (chan: &ChannelName)       => "{chan} :You're not on that channel" },
+    443(UserOnChannel)          => { (user: &User.nick(), chan: &Channel.name())
+                                                                => "{user} {chan} :They're already on that channel" },
     451(NotRegistered)          => { ()                         => ":You have not registered" },
     461(NotEnoughParameters)    => { (command: &str)            => "{command} :Not enough parameters" },
     462(AlreadyRegistered)      => { ()                         => ":You are already connected and cannot handshake again" },

@@ -154,7 +154,7 @@ impl ChannelPolicyService for StandardChannelPolicy {
         let chan_is_secret = chan.mode().has_mode(ChannelModeFlag::Secret);
         let user_is_invis = member.user()?.mode().has_mode(UserModeFlag::Invisible);
         if chan_is_secret || user_is_invis {
-            return Err(PermissionError::Channel(*chan.name(), UserNotOnChannel));
+            return Err(PermissionError::Channel(*chan.name(), NotOnChannel));
         }
         Ok(())
     }
@@ -293,10 +293,18 @@ impl ChannelPolicyService for StandardChannelPolicy {
     }
 
     fn can_invite(&self, user: &User, channel: &Channel, _target: &User) -> PermissionResult {
-        if channel.mode().has_mode(ChannelModeFlag::InviteOnly) {
+        let res = if channel.mode().has_mode(ChannelModeFlag::InviteOnly) {
             has_access(user, channel, ChannelAccessFlag::InviteonlyInviteOther)
         } else {
             has_access(user, channel, ChannelAccessFlag::InviteOther)
-        }
+        };
+        res.map_err(|err| {
+            if user.is_in_channel(channel.id()).is_none() {
+                // Different numeric reply for this specific case
+                PermissionError::Channel(*channel.name(), NotOnChannel)
+            } else {
+                err
+            }
+        })
     }
 }

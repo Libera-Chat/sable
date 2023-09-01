@@ -18,7 +18,7 @@ use sable_network::{
 use sable_server::ServerSaveError;
 use sable_server::ServerType;
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, convert::Infallible, sync::Arc};
 
 use anyhow::Context;
 use async_trait::async_trait;
@@ -33,7 +33,7 @@ mod roles;
 mod sasl;
 mod sync;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct ServicesConfig {
     pub database: String,
     pub default_roles: HashMap<ChannelRoleName, Vec<ChannelAccessFlag>>,
@@ -54,7 +54,14 @@ where
     DB: DatabaseConnection + Send + Sync + 'static,
 {
     type Config = ServicesConfig;
+    type ProcessedConfig = ServicesConfig;
+    type ConfigError = Infallible;
+
     type Saved = ();
+
+    fn validate_config(config: &ServicesConfig) -> Result<ServicesConfig, Infallible> {
+        Ok(config.clone())
+    }
 
     fn new(
         config: Self::Config,
