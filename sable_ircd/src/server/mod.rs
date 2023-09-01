@@ -36,7 +36,7 @@ pub use async_handler_collection::*;
 mod upgrade;
 
 use self::{
-    config::{ClientServerConfig, ServerInfoStrings},
+    config::{RawClientServerConfig, ServerInfoStrings},
     message_sink_repository::MessageSinkRepository,
 };
 
