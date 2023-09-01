@@ -153,7 +153,7 @@ impl ChannelPolicyService for StandardChannelPolicy {
         let chan_is_secret = chan.mode().has_mode(ChannelModeFlag::Secret);
         let user_is_invis = member.user()?.mode().has_mode(UserModeFlag::Invisible);
         if chan_is_secret || user_is_invis {
-            return Err(PermissionError::Channel(*chan.name(), UserNotOnChannel));
+            return Err(PermissionError::Channel(*chan.name(), NotOnChannel));
         }
         Ok(())
     }

@@ -82,7 +82,8 @@ impl From<policy::PermissionError> for CommandError {
                     Channel(channel_name, channel_err) => {
                         match channel_err
                         {
-                            UserNotOnChannel => numeric::NotOnChannel::new(&channel_name).into(),
+                            UserNotOnChannel => numeric::UserNotOnChannel::new(&channel_name).into(),
+                            NotOnChannel => numeric::NotOnChannel::new(&channel_name).into(),
                             UserNotOp => numeric::ChanOpPrivsNeeded::new(&channel_name).into(),
                             UserIsBanned => numeric::BannedOnChannel::new(&channel_name).into(),
                             CannotSendToChannel => numeric::CannotSendToChannel::new(&channel_name).into(),
