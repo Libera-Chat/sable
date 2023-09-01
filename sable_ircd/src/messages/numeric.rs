@@ -29,6 +29,9 @@ define_messages! {
     333(TopicSetBy)             => { (chan: &Channel.name(), info: &str, timestamp: i64)
                                                                 => "{chan} {info} {timestamp}" },
 
+    341(Inviting)               => { (nick: &User.nick(), chan: &Channel.name())
+                                                                => "{nick} {chan}" },
+
     352(WhoReply)               => { (chname: &str, user: &User.user(), host=user.visible_host(), server: &Server.name(),
                                       nick=user.nick(), status: &str, hopcount: usize, realname=&user.realname())
                                                 => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },
