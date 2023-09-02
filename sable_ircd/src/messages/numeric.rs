@@ -8,7 +8,7 @@ define_messages! {
     005(ISupport)   => { (data: &str)                           => "{data} :are supported by this server" },
 
     221(UserModeIs)             => { (modestring: &str)         => ":{modestring}" },
-    301(Away)                   => { (nick: &User.nick(), reason: &str)  => "{nick} :{reason}" },
+    301(Away)                   => { (nick: &User.nick(), reason: &AwayReason)  => "{nick} :{reason}" },
     305(Unaway)                 => { ()                         => ":You are no longer marked as being away" },
     306(NowAway)                => { ()                         => ":You have been marked as being away" },
     311(WhoisUser)              => { (nick: &User.nick(), user=nick.user(), host=nick.visible_host(), realname=nick.realname())

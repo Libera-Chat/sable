@@ -50,7 +50,7 @@ impl SendHistoryItem for update::NewUser {
 
 impl SendHistoryItem for update::UserAwayChange {
     fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
-        // TODO: implement invite-notify
+        // TODO: implement away-notify
 
         Ok(())
     }

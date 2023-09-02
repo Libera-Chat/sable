@@ -19,8 +19,8 @@ async fn handle_privmsg(
                 .await;
         }
 
-        if user.away_reason() != "" {
-            response.numeric(make_numeric!(Away, &user, &user.away_reason()));
+        if let Some(away_reason) = user.away_reason() {
+            response.numeric(make_numeric!(Away, &user, away_reason));
         }
     }
 

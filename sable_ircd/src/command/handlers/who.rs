@@ -38,8 +38,8 @@ fn make_who_reply(
 ) -> UntargetedNumeric {
     let chname = channel.map(|c| c.name().value() as &str).unwrap_or("*");
     let away_letter = match target.away_reason() {
-        "" => 'H', // Here
-        _ => 'G',  // Gone
+        None => 'H',    // Here
+        Some(_) => 'G', // Gone
     };
     let status = format!(
         "{}{}",

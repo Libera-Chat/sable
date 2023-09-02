@@ -190,8 +190,8 @@ EventDetails => {
 
     #[target_type(UserId)]
     struct UserAway {
-        /// Empty iff the user is back from being away
-        pub reason: String,
+        /// None iff the user is back from being away
+        pub reason: Option<AwayReason>,
     }
 
     #[target_type(UserId)]

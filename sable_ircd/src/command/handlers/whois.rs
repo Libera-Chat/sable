@@ -26,8 +26,8 @@ fn whois_handler(
         response.numeric(make_numeric!(WhoisAccount, &target, &account.name()));
     }
 
-    if target.away_reason() != "" {
-        response.numeric(make_numeric!(Away, &target, &target.away_reason()));
+    if let Some(away_reason) = target.away_reason() {
+        response.numeric(make_numeric!(Away, &target, away_reason));
     }
 
     response.numeric(make_numeric!(EndOfWhois, &target));

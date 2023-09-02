@@ -161,9 +161,9 @@ impl ClientServer {
         let net = self.node.network();
         let user = net.user(detail.user.user.id)?;
         for connection in self.connections.read().get_user(user.id()) {
-            let message = match detail.new_reason.as_str() {
-                "" => numeric::Unaway::new(),
-                _ => numeric::NowAway::new(),
+            let message = match detail.new_reason {
+                None => numeric::Unaway::new(),
+                Some(_) => numeric::NowAway::new(),
             };
             connection.send(message.format_for(self, &user));
         }

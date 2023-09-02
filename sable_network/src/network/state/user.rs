@@ -31,7 +31,7 @@ pub struct User {
     pub realname: Realname,
 
     /// Empty iff the user is not away
-    pub away_reason: String,
+    pub away_reason: Option<AwayReason>,
     pub mode: UserMode,
     pub oper_privileges: Option<UserPrivileges>,
 
@@ -90,7 +90,7 @@ impl User {
             user,
             visible_host,
             realname,
-            away_reason: "".to_string(), // Initially not away
+            away_reason: None, // Initially not away
             mode,
             oper_privileges: None,
             account,

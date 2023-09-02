@@ -83,7 +83,7 @@ impl<'a> User<'a> {
     }
 
     /// Returns the user's reason for being away, or the empty string if they are not
-    pub fn away_reason(&self) -> &str {
+    pub fn away_reason(&self) -> Option<&AwayReason> {
         self.data.away_reason.as_ref()
     }
 
