@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -14,6 +14,7 @@ pub struct ListenerConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct InfoPaths {
     pub motd: Option<PathBuf>,
+    pub admin: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -26,6 +27,7 @@ pub struct RawClientServerConfig {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ServerInfoStrings {
     pub motd: Option<Vec<String>>, // Linewise to not repeatedly split
+    pub admin_info: Option<AdminInfo>,
 }
 
 impl ServerInfoStrings {
@@ -33,6 +35,7 @@ impl ServerInfoStrings {
         Ok(Self {
             motd: Self::get_info(&paths.motd, "motd")?
                 .and_then(|file| Some(file.lines().map(|v| v.to_string()).collect())),
+            admin_info: Self::read_deserialize(&paths.admin, "admin")?,
         })
     }
 
@@ -53,6 +56,28 @@ impl ServerInfoStrings {
             })
         })
     }
+
+    fn read_deserialize<T: DeserializeOwned>(
+        path: &Option<PathBuf>,
+        name: &str,
+    ) -> Result<Option<T>, ConfigProcessingError> {
+        if let Some(raw_info) = Self::get_info(path, name)? {
+            json5::from_str(raw_info.as_str()).or_else(|serde_err| {
+                Err(ConfigProcessingError {
+                    reason: format!("Unable to parse from {name:?} from {:?}: {serde_err}", path),
+                })
+            })
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct AdminInfo {
+    pub server_location: Option<String>,
+    pub description: Option<String>,
+    pub admin_email: Option<String>,
 }
 
 pub struct ClientServerConfig {
