@@ -15,7 +15,7 @@ fn handle_admin(server: &ClientServer, response: &dyn CommandResponse) -> Comman
             .map(|i| response.numeric(make_numeric!(AdminLocation2, i)));
 
         admin_info
-            .admin_email
+            .email
             .as_ref()
             .map(|i| response.numeric(make_numeric!(AdminEmail, i)));
     }

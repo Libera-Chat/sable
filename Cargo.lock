@@ -1941,7 +1941,6 @@ dependencies = [
  "futures",
  "inventory",
  "itertools",
- "json5",
  "once_cell",
  "parking_lot 0.12.1",
  "pwhash",
