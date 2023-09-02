@@ -261,6 +261,7 @@ impl ClientServer {
                             .await;
                         }
                     }
+                    conn.send(message::Error::new(&e.to_string()));
                 }
                 self.connections.write().remove(msg.source);
             }
