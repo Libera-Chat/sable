@@ -21,6 +21,15 @@ pub enum HandlerError {
 pub type HandleResult = Result<(), HandlerError>;
 
 impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
+    fn handle_away_change(
+        &self,
+        entry: &HistoryLogEntry,
+        detail: &update::UserAwayChange,
+    ) -> HandleResult {
+        self.notify_user(detail.user.user.id, entry.id);
+        Ok(())
+    }
+
     fn handle_nick_change(
         &self,
         entry: &HistoryLogEntry,
@@ -312,6 +321,7 @@ impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode
         use NetworkStateChange::*;
         let res = match &entry.details {
             NewUser(_details) => Ok(()),
+            UserAwayChange(details) => self.handle_away_change(entry, details),
             UserNickChange(details) => self.handle_nick_change(entry, details),
             UserModeChange(details) => self.handle_umode_change(entry, details),
             UserQuit(details) => self.handle_user_quit(entry, details),

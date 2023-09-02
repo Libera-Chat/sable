@@ -3,6 +3,7 @@ use super::*;
 #[command_handler("PRIVMSG")]
 async fn handle_privmsg(
     server: &ClientServer,
+    response: &dyn CommandResponse,
     source: UserSource<'_>,
     cmd: &dyn Command,
     target: TargetParameter<'_>,
@@ -16,6 +17,10 @@ async fn handle_privmsg(
         if let Some(alias) = user.is_alias_user() {
             return super::services::dispatch_alias_command(cmd, &user, &alias.command_alias, msg)
                 .await;
+        }
+
+        if let Some(away_reason) = user.away_reason() {
+            response.numeric(make_numeric!(Away, &user, away_reason));
         }
     }
 

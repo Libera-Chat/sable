@@ -38,6 +38,7 @@ mod handlers {
     use std::ops::Deref;
 
     mod admin;
+    mod away;
     mod cap;
     mod chathistory;
     mod invite;

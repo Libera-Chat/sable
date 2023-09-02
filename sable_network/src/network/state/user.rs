@@ -30,6 +30,8 @@ pub struct User {
     pub visible_host: Hostname,
     pub realname: Realname,
 
+    /// Empty iff the user is not away
+    pub away_reason: Option<AwayReason>,
     pub mode: UserMode,
     pub oper_privileges: Option<UserPrivileges>,
 
@@ -88,6 +90,7 @@ impl User {
             user,
             visible_host,
             realname,
+            away_reason: None, // Initially not away
             mode,
             oper_privileges: None,
             account,

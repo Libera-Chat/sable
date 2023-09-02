@@ -46,6 +46,14 @@ const UPPER: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const DIGIT: &str = "0123456789";
 
 define_validated! {
+    AwayReason(ArrayString<{ AwayReason::LENGTH }>) {
+        if value.len() == 0 {
+            Self::error(value)
+        } else {
+            Ok(())
+        }
+    }
+
     Nickname(ArrayString<{ Nickname::LENGTH }> casefolded) {
         check_allowed_chars(value, &[LOWER, UPPER, DIGIT, "-_\\|[]{}^`"])?;
         if let Some(first) = value.chars().next() {
@@ -121,6 +129,13 @@ define_validated! {
         check_allowed_chars(value, &[UPPER, LOWER, DIGIT, "-_"])?;
         Ok(())
     }
+}
+
+impl AwayReason {
+    /// Maximum length, in bytes
+    ///
+    /// It is small enough to ensure ":n!u@h AWAY :<reason>" can't overflow LINELEN
+    pub const LENGTH: usize = 300;
 }
 
 impl Nickname {

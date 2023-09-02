@@ -37,8 +37,13 @@ fn make_who_reply(
     server: &wrapper::Server,
 ) -> UntargetedNumeric {
     let chname = channel.map(|c| c.name().value() as &str).unwrap_or("*");
+    let away_letter = match target.away_reason() {
+        None => 'H',    // Here
+        Some(_) => 'G', // Gone
+    };
     let status = format!(
-        "H{}",
+        "{}{}",
+        away_letter,
         membership
             .map(|m| m.permissions().to_prefixes())
             .unwrap_or_else(|| "".to_string())
