@@ -127,7 +127,7 @@ impl Username {
     pub fn new_coerce(s: &str) -> Self {
         let mut s = s.to_string();
         s.retain(|c| c != '[');
-        s.truncate(10);
+        s.truncate(s.floor_char_boundary(10));
         // expect() is safe here; we've already truncated to the max length
         Self(ArrayString::try_from(s.as_str()).expect("Failed to convert string"))
     }
@@ -138,7 +138,7 @@ impl ChannelKey {
         let mut s = s.to_string();
         s.retain(|c| c > ' ' && c <= '~' && c != ':' && c != ',');
         let mut val = <Self as Validated>::Underlying::new();
-        s.truncate(val.capacity());
+        s.truncate(s.floor_char_boundary(val.capacity()));
         val.push_str(&s);
         Self::validate(&val).map(|()| Self(val))
     }

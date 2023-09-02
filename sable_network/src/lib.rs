@@ -1,3 +1,5 @@
+#![feature(round_char_boundary)]
+
 pub mod prelude;
 
 pub mod id;
