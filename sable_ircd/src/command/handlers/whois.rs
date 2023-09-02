@@ -1,11 +1,21 @@
 use super::*;
 
 #[sable_macros::command_handler("WHOIS")]
+/// Syntax: WHOIS [<server|target>] <target>
 fn whois_handler(
     response: &dyn CommandResponse,
     _source: UserSource,
-    target: wrapper::User,
+    mut args: ArgList,
 ) -> CommandResult {
+    let target: wrapper::User = match args.len() {
+        0 => return Err(CommandError::NotEnoughParameters),
+        1 => args.next()?,
+        _ => {
+            args.next::<&str>()?; // Remote whois is not implemented yet, ignore server name
+            args.next()?
+        }
+    };
+
     response.numeric(make_numeric!(WhoisUser, &target));
 
     if let Ok(server) = target.server() {
