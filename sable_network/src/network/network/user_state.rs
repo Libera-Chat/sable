@@ -214,6 +214,30 @@ impl Network {
         }
     }
 
+    pub(super) fn user_away(
+        &mut self,
+        target: UserId,
+        event: &Event,
+        update: &UserAway,
+        updates: &dyn NetworkUpdateReceiver,
+    ) {
+        if let Some(user) = self.users.get_mut(&target) {
+            let new_reason = update.reason.clone();
+            let mut old_reason = new_reason.clone();
+            std::mem::swap(&mut user.away_reason, &mut old_reason);
+
+            let update_user = user.clone();
+
+            let update = update::UserAwayChange {
+                user: self.translate_historic_user(update_user),
+                old_reason,
+                new_reason,
+            };
+
+            updates.notify(update, event);
+        }
+    }
+
     pub(super) fn user_mode_change(
         &mut self,
         target: UserId,

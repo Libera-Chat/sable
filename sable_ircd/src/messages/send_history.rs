@@ -2,6 +2,7 @@ use crate::capability::ClientCapability;
 use crate::capability::WithSupportedTags;
 use crate::errors::HandleResult;
 use crate::messages::MessageSink;
+use crate::prelude::numeric;
 use sable_network::prelude::*;
 use sable_network::utils::*;
 
@@ -16,6 +17,7 @@ impl SendHistoryItem for HistoryLogEntry {
     fn send_to(&self, conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
         match &self.details {
             NetworkStateChange::NewUser(detail) => detail.send_to(conn, self),
+            NetworkStateChange::UserAwayChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserNickChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserModeChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserQuit(detail) => detail.send_to(conn, self),
@@ -43,6 +45,20 @@ impl SendHistoryItem for HistoryLogEntry {
 
 impl SendHistoryItem for update::NewUser {
     fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+        Ok(())
+    }
+}
+
+impl SendHistoryItem for update::UserAwayChange {
+    fn send_to(&self, conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+        if Some(self.user.user.id) == conn.user_id() {
+            let message = match self.new_reason {
+                None => numeric::Unaway::new(),
+                Some(_) => numeric::NowAway::new(),
+            };
+            conn.send(message.format_for(&self.user, &self.user));
+        }
+
         Ok(())
     }
 }

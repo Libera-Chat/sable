@@ -16,6 +16,7 @@ impl Network {
                     realname: user_config.realname.clone(),
                     mode: state::UserMode::new(UserModeSet::new()),
                     oper_privileges: None,
+                    away_reason: None, // Never away
                     account: None,
                     session_key: None,
                 },

@@ -165,6 +165,24 @@ impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for Option<T> {
     }
 }
 
+/// Either Some(non_empty_string) or None; as an empty away reason means a user
+/// is not away.
+impl<'a> PositionalArgument<'a> for Option<AwayReason> {
+    fn parse<'b>(
+        _ctx: &'a dyn Command,
+        arg_list: &'b mut ArgListIter<'a>,
+    ) -> Result<Self, CommandError>
+    where
+        'a: 'b,
+    {
+        Ok(arg_list.next().and_then(|s| AwayReason::convert(s).ok()))
+    }
+
+    fn parse_str(_ctx: &'a dyn Command, _value: &'a str) -> Result<Self, CommandError> {
+        unreachable!();
+    }
+}
+
 /// Either Ok(parsed_value) or Err(raw_value) if it cannot be parsed.
 /// Never actually returns a CommandError, because the correct reply varies
 /// (NotEnoughParameters for USER, 'FAIL SETNAME INVALID_REALNAME' for SETNAME)

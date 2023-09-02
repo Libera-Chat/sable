@@ -71,6 +71,15 @@ NetworkStateChange => {
         pub changed_by: HistoricMessageSource,
     }
 
+    /// A user's away reason/status has changed
+    struct UserAwayChange {
+        pub user: HistoricUser,
+        /// None iff the user was not away
+        pub old_reason: Option<AwayReason>,
+        /// None iff the user is no longer away
+        pub new_reason: Option<AwayReason>,
+    }
+
     /// A user has left the network
     struct UserQuit {
         pub user: HistoricUser,

@@ -225,6 +225,7 @@ impl Network {
             ChannelRegistrationUpdate => self.update_channel_registration,
             ChannelAccessUpdate => self.update_channel_access,
             ChannelRoleUpdate => self.update_channel_role,
+            UserAway => self.user_away,
             UserLogin => self.user_login,
         })?;
 
