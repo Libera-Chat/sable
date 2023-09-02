@@ -39,7 +39,7 @@ define_messages! {
                                                                 => "{is_pub} {chan} :{content}" },
     366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
 
-    256(AdminMe)                => { ()                         => ":Administrative Info"},
+    256(AdminMe)                => { (server_name: &ServerName) => "{server_name} :Administrative Info"},
     257(AdminLocation1)         => { (server_location: &str)    => ":{server_location}" },
     258(AdminLocation2)         => { (admin_info: &str)         => ":{admin_info}" },
     259(AdminEmail)             => { (admin_email: &str)        => ":{admin_email}" },

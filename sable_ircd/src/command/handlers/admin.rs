@@ -2,7 +2,7 @@ use super::*;
 
 #[command_handler("ADMIN")]
 fn handle_admin(server: &ClientServer, response: &dyn CommandResponse) -> CommandResult {
-    response.numeric(make_numeric!(AdminMe));
+    response.numeric(make_numeric!(AdminMe, server.name()));
     if let Some(admin_info) = &server.info_strings.admin_info {
         admin_info
             .server_location
