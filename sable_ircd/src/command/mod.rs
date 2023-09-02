@@ -37,6 +37,7 @@ mod handlers {
     use sable_macros::command_handler;
     use std::ops::Deref;
 
+    mod admin;
     mod cap;
     mod chathistory;
     mod invite;
