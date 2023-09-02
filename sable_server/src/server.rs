@@ -34,6 +34,7 @@ where
 
     pub tls_config: TlsConfig,
     pub node_config: NodeConfig,
+    pub event_log: EventLogConfig,
 
     pub log: LoggingConfig,
 }
@@ -105,6 +106,7 @@ where
             server_send,
             net_config,
             conf.node_config,
+            conf.event_log,
         ));
 
         let network = match bootstrap_config {

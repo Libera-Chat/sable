@@ -37,6 +37,7 @@ pub struct ReplicatedEventLogState {
     log_state: EventLogState,
     server_tombstones: HashMap<ServerId, (ServerName, EpochId)>,
     network_state: GossipNetworkState,
+    event_expiry: i64,
 }
 
 /// A replicated event log.
@@ -63,6 +64,7 @@ struct TaskState {
     log_recv: UnboundedReceiver<Event>,
     server_send: UnboundedSender<NetworkMessage>,
     shared_state: Arc<SharedState>,
+    event_expiry: i64,
 }
 
 #[derive(Debug)]
@@ -92,6 +94,7 @@ impl ReplicatedEventLog {
         server_send: UnboundedSender<NetworkMessage>,
         net_config: SyncConfig,
         node_config: NodeConfig,
+        eventlog_config: EventLogConfig,
     ) -> Self {
         let (log_send, log_recv) = unbounded_channel();
         let (net_send, net_recv) = unbounded_channel();
@@ -115,6 +118,7 @@ impl ReplicatedEventLog {
             log_recv,
             server_send,
             shared_state: Arc::clone(&shared_state),
+            event_expiry: eventlog_config.event_expiry,
         }));
 
         Self {
@@ -161,6 +165,7 @@ impl ReplicatedEventLog {
             log_recv,
             server_send,
             shared_state: Arc::clone(&shared_state),
+            event_expiry: state.event_expiry,
         }));
 
         Self {
@@ -352,6 +357,7 @@ impl ReplicatedEventLog {
             log_state: log.save_state(),
             server_tombstones,
             network_state: self.net.save_state(),
+            event_expiry: task_state.event_expiry,
         })
     }
 }
@@ -365,9 +371,17 @@ impl TaskState {
     ) -> Result<(), NetworkError> {
         let listen_task = self.net.spawn_listen_task().await?;
 
+        let mut log_prune_timer = tokio::time::interval(Duration::from_secs(60));
+
         loop {
             tracing::trace!("sync_task loop");
             select! {
+                _ = log_prune_timer.tick() => {
+                    tracing::trace!("...from log_prune_timer");
+                    let threshold_timestamp = crate::utils::now() - self.event_expiry;
+                    let mut log = self.shared_state.log.write().unwrap();
+                    log.prune_events_before(threshold_timestamp);
+                },
                 evt = self.log_recv.recv() => {
                     tracing::trace!("...from log_recv");
                     match evt {

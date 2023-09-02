@@ -33,6 +33,12 @@ pub struct NodeConfig {
     pub(crate) key_file: PathBuf,
 }
 
+/// Configuration for the server's event log
+#[derive(Debug, Deserialize)]
+pub struct EventLogConfig {
+    pub(crate) event_expiry: i64,
+}
+
 /// Errors that could happen when loading or processing a config
 #[derive(Debug, Error)]
 pub enum ConfigError {

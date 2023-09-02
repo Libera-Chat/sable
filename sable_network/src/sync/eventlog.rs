@@ -171,6 +171,13 @@ impl EventLog {
         }
     }
 
+    /// Remove events older than the provided timestamp
+    pub fn prune_events_before(&mut self, threshold_timestamp: i64) {
+        for (_server_id, server_events) in self.history.iter_mut() {
+            server_events.retain(|_id, event| event.timestamp < threshold_timestamp);
+        }
+    }
+
     fn do_add(&mut self, e: Event) {
         let s = e.id.server();
         let id = e.id;

@@ -9,6 +9,7 @@ mod network;
 mod replicated_log;
 
 pub use config::ConfigError;
+pub use config::EventLogConfig;
 pub use config::NodeConfig;
 pub use config::PeerConfig;
 pub use config::SyncConfig;
