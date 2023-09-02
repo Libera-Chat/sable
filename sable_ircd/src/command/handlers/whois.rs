@@ -1,6 +1,6 @@
 use super::*;
 
-#[sable_macros::command_handler("WHOIS")]
+#[command_handler("WHOIS")]
 fn whois_handler(
     response: &dyn CommandResponse,
     _source: UserSource,
@@ -14,6 +14,10 @@ fn whois_handler(
 
     if let Ok(Some(account)) = target.account() {
         response.numeric(make_numeric!(WhoisAccount, &target, &account.name()));
+    }
+
+    if target.away_reason() != "" {
+        response.numeric(make_numeric!(Away, &target, &target.away_reason()));
     }
 
     response.numeric(make_numeric!(EndOfWhois, &target));

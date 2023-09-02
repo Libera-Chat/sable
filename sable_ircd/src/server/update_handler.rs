@@ -18,6 +18,11 @@ impl ClientServer {
                             drop(history);
                             self.handle_new_user(&new_user)?;
                         }
+                        NetworkStateChange::UserAwayChange(detail) => {
+                            let away_change = detail.clone();
+                            drop(history);
+                            self.handle_away_change(&away_change)?;
+                        }
                         NetworkStateChange::ServicesUpdate(detail) => {
                             let update = detail.clone();
                             drop(history);
@@ -148,6 +153,19 @@ impl ClientServer {
 
             connection.send(message::Notice::new(&self.node.name().to_string(), &user,
                     "The network is currently running in debug mode. Do not send any sensitive information such as passwords."));
+        }
+        Ok(())
+    }
+
+    fn handle_away_change(&self, detail: &update::UserAwayChange) -> HandleResult {
+        let net = self.node.network();
+        let user = net.user(detail.user.user.id)?;
+        for connection in self.connections.read().get_user(user.id()) {
+            let message = match detail.new_reason.as_str() {
+                "" => numeric::Unaway::new(),
+                _ => numeric::NowAway::new(),
+            };
+            connection.send(message.format_for(self, &user));
         }
         Ok(())
     }

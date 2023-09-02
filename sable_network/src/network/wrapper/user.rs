@@ -82,6 +82,11 @@ impl<'a> User<'a> {
         self.data.oper_privileges.as_ref()
     }
 
+    /// Returns the user's reason for being away, or the empty string if they are not
+    pub fn away_reason(&self) -> &str {
+        self.data.away_reason.as_ref()
+    }
+
     /// The user's nick!user@host mask, as used in the IRC client protocol
     pub fn nuh(&self) -> String {
         format!(

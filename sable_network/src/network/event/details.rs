@@ -189,6 +189,12 @@ EventDetails => {
     }
 
     #[target_type(UserId)]
+    struct UserAway {
+        /// Empty iff the user is back from being away
+        pub reason: String,
+    }
+
+    #[target_type(UserId)]
     struct UserLogin {
         /// None means logout
         pub account: Option<AccountId>
