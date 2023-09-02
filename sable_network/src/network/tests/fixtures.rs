@@ -55,7 +55,7 @@ impl NetworkBuilder {
                 mode: state::UserMode::new(UserModeSet::default()),
                 nickname: nick,
                 username: Username::from_str("a").unwrap(),
-                realname: "user".to_string(),
+                realname: Realname::from_str("user").unwrap(),
                 visible_hostname: Hostname::from_str("host.name").unwrap(),
                 server: ServerId::new(1),
                 account: None,
