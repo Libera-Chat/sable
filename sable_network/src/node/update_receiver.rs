@@ -26,7 +26,22 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         entry: &HistoryLogEntry,
         detail: &update::UserAwayChange,
     ) -> HandleResult {
-        self.notify_user(detail.user.user.id, entry.id);
+        let net = self.network();
+        let source = net.user(detail.user.user.id)?;
+
+        let mut notified = HashSet::new();
+
+        // Notify the source user themselves, even if they are not in any channel
+        notified.insert(detail.user.user.id);
+
+        for m1 in source.channels() {
+            let chan = m1.channel()?;
+            for m2 in chan.members() {
+                notified.insert(m2.user_id());
+            }
+        }
+
+        self.notify_users(notified, entry.id);
         Ok(())
     }
 

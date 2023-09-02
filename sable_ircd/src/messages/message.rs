@@ -4,6 +4,8 @@ use super::*;
 use sable_macros::define_messages;
 
 define_messages! {
+    Away    => { (source, reason: &str)                     => ":{source} AWAY :{reason}" },
+    Unaway  => { (source)                                   => ":{source} AWAY" },
     Cap     => { (source, target, subcmd: &str, text: &str) => ":{source} CAP {target} {subcmd} :{text}" },
     Nick    => { (source, newnick: &Nickname)               => ":{source} NICK {newnick}" },
     Join    => { (source, chan: &ChannelName)               => ":{source} JOIN {chan}" },
