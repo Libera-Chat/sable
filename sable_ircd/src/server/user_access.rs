@@ -22,7 +22,7 @@ impl ClientServer {
                 ident: pre_client.user.get().map(Username::as_ref),
                 host: pre_client.hostname.get().map(Hostname::as_ref),
                 ip: Some(&ip),
-                realname: pre_client.realname.get().map(String::as_ref),
+                realname: pre_client.realname.get().map(Realname::as_ref),
             };
 
             if let Some(ban) = net.network_bans().find(&user_details) {

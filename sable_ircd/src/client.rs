@@ -71,8 +71,8 @@ pub struct PreClient {
     pub user: OnceCell<Username>,
     #[serde_as(as = "WrapOption<Nickname>")]
     pub nick: OnceCell<Nickname>,
-    #[serde_as(as = "WrapOption<String>")]
-    pub realname: OnceCell<String>,
+    #[serde_as(as = "WrapOption<Realname>")]
+    pub realname: OnceCell<Realname>,
     #[serde_as(as = "WrapOption<Hostname>")]
     pub hostname: OnceCell<Hostname>,
     #[serde_as(as = "WrapOption<SaslSessionId>")]

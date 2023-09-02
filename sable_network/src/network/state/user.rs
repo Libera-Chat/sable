@@ -28,7 +28,7 @@ pub struct User {
 
     pub user: Username,
     pub visible_host: Hostname,
-    pub realname: String,
+    pub realname: Realname,
 
     pub mode: UserMode,
     pub oper_privileges: Option<UserPrivileges>,
@@ -78,7 +78,7 @@ impl User {
         server: ServerId,
         user: Username,
         visible_host: Hostname,
-        realname: String,
+        realname: Realname,
         mode: UserMode,
         account: Option<AccountId>,
     ) -> Self {

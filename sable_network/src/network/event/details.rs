@@ -18,7 +18,7 @@ EventDetails => {
         pub nickname: Nickname,
         pub username: Username,
         pub visible_hostname: Hostname,
-        pub realname: String,
+        pub realname: Realname,
         pub mode: state::UserMode,
         pub server: ServerId,
         pub account: Option<AccountId>,

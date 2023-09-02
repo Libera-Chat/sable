@@ -21,7 +21,7 @@ pub struct AliasUser {
     pub nick: Nickname,
     pub user: Username,
     pub host: Hostname,
-    pub realname: String,
+    pub realname: Realname,
 
     pub command_alias: String,
 }
