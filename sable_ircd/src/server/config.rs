@@ -12,27 +12,30 @@ pub struct ListenerConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct InfoPaths {
+pub struct RawServerInfo {
     pub motd: Option<PathBuf>,
+    pub admin: Option<AdminInfo>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RawClientServerConfig {
     pub listeners: Vec<ListenerConfig>,
     #[serde(flatten)]
-    pub info_paths: InfoPaths,
+    pub info_paths: RawServerInfo,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ServerInfoStrings {
     pub motd: Option<Vec<String>>, // Linewise to not repeatedly split
+    pub admin_info: Option<AdminInfo>,
 }
 
 impl ServerInfoStrings {
-    pub fn load(paths: &InfoPaths) -> Result<ServerInfoStrings, ConfigProcessingError> {
+    pub fn load(raw_info: &RawServerInfo) -> Result<ServerInfoStrings, ConfigProcessingError> {
         Ok(Self {
-            motd: Self::get_info(&paths.motd, "motd")?
+            motd: Self::get_info(&raw_info.motd, "motd")?
                 .and_then(|file| Some(file.lines().map(|v| v.to_string()).collect())),
+            admin_info: raw_info.admin.clone(),
         })
     }
 
@@ -53,6 +56,14 @@ impl ServerInfoStrings {
             })
         })
     }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(deny_unknown_fields)] // Dont let typos into the config
+pub struct AdminInfo {
+    pub server_location: Option<String>,
+    pub description: Option<String>,
+    pub email: Option<String>,
 }
 
 pub struct ClientServerConfig {
