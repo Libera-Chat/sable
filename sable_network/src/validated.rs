@@ -59,7 +59,11 @@ define_validated! {
     }
 
     Username(ArrayString<{ Username::LENGTH }>) {
-        Ok(())
+        if value.len() == 0 {
+            Self::error(value)
+        } else {
+            Ok(())
+        }
     }
 
     Hostname(ArrayString<{ Hostname::LENGTH }>) {
@@ -129,13 +133,14 @@ impl Username {
     pub const LENGTH: usize = 10;
 
     /// Coerce the provided value into a valid `Username`, by truncating to the
-    /// permitted length and removing any invalid characters.
-    pub fn new_coerce(s: &str) -> Self {
+    /// permitted length, removing any invalid characters, and checking it is not empty.
+    pub fn new_coerce(s: &str) -> <Self as Validated>::Result {
         let mut s = s.to_string();
         s.retain(|c| c != '[');
         s.truncate(s.floor_char_boundary(Self::LENGTH));
         // expect() is safe here; we've already truncated to the max length
-        Self(ArrayString::try_from(s.as_str()).expect("Failed to convert string"))
+        let val = ArrayString::try_from(s.as_str()).expect("Failed to convert string");
+        Self::validate(&val).map(|()| Self(val))
     }
 }
 

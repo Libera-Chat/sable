@@ -225,7 +225,8 @@ impl ClientCommand {
                 LookupError::NoSuchChannelName(name) => Some(make_numeric!(NoSuchChannel, &name)),
                 _ => None,
             },
-            CommandError::InvalidNick(name) => Some(make_numeric!(ErroneousNickname, &name)),
+            CommandError::InvalidNickname(name) => Some(make_numeric!(ErroneousNickname, &name)),
+            CommandError::InvalidUsername(_name) => Some(make_numeric!(InvalidUsername)),
             CommandError::InvalidChannelName(name) => {
                 Some(make_numeric!(InvalidChannelName, &name))
             }

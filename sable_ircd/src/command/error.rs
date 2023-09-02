@@ -27,7 +27,9 @@ pub enum CommandError {
     /// A required object wasn't found in the network state
     LookupError(LookupError),
     /// A nickname parameter wasn't a valid nick
-    InvalidNick(String),
+    InvalidNickname(String),
+    /// A username parameter wasn't a valid username
+    InvalidUsername(String),
     /// A channel name parameter wasn't a valid channel name
     InvalidChannelName(String),
     /// A services command was executed, but services aren't currently running
@@ -120,7 +122,13 @@ impl From<LookupError> for CommandError {
 
 impl From<InvalidNicknameError> for CommandError {
     fn from(e: InvalidNicknameError) -> Self {
-        Self::InvalidNick(e.0)
+        Self::InvalidNickname(e.0)
+    }
+}
+
+impl From<InvalidUsernameError> for CommandError {
+    fn from(e: InvalidUsernameError) -> Self {
+        Self::InvalidUsername(e.0)
     }
 }
 
