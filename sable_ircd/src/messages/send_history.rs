@@ -2,6 +2,7 @@ use crate::capability::ClientCapability;
 use crate::capability::WithSupportedTags;
 use crate::errors::HandleResult;
 use crate::messages::MessageSink;
+use crate::prelude::numeric;
 use sable_network::prelude::*;
 use sable_network::utils::*;
 
@@ -49,8 +50,14 @@ impl SendHistoryItem for update::NewUser {
 }
 
 impl SendHistoryItem for update::UserAwayChange {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
-        // TODO: implement away-notify
+    fn send_to(&self, conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+        if Some(self.user.user.id) == conn.user_id() {
+            let message = match self.new_reason {
+                None => numeric::Unaway::new(),
+                Some(_) => numeric::NowAway::new(),
+            };
+            conn.send(message.format_for(&self.user, &self.user));
+        }
 
         Ok(())
     }
