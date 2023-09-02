@@ -39,6 +39,11 @@ define_messages! {
                                                                 => "{is_pub} {chan} :{content}" },
     366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
 
+    256(AdminMe)                => { ()                         => ":Administrative Info"},
+    257(AdminLocation1)         => { (server_location: &String)    => ":{server_location}" },
+    258(AdminLocation2)         => { (admin_info: &String)         => ":{admin_info}" },
+    259(AdminEmail)             => { (admin_email: &String)        => ":{admin_email}" },
+
     422(NoMotd)                 => { ()                         => ":MOTD File is missing"},
     375(MotdStart)              => { (server_name: &ServerName)        => ":- {server_name} message of the day -"},
     372(Motd)                   => { (line: &str)               => ":{line}"},
