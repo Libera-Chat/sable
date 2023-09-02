@@ -174,26 +174,22 @@ EventDetails => {
     }
 
     #[target_type(ChannelRegistrationId)]
-    struct ChannelRegistrationUpdate
-    {
+    struct ChannelRegistrationUpdate {
         pub data: Option<state::ChannelRegistration>,
     }
 
     #[target_type(ChannelAccessId)]
-    struct ChannelAccessUpdate
-    {
+    struct ChannelAccessUpdate {
         pub data: Option<state::ChannelAccess>,
     }
 
     #[target_type(ChannelRoleId)]
-    struct ChannelRoleUpdate
-    {
+    struct ChannelRoleUpdate {
         pub data: Option<state::ChannelRole>,
     }
 
     #[target_type(UserId)]
-    struct UserLogin
-    {
+    struct UserLogin {
         /// None means logout
         pub account: Option<AccountId>
     }
