@@ -153,6 +153,19 @@ impl ClientServer {
 
         ret.add(ISupportEntry::string("CASEMAPPING", "ascii"));
 
+        ret.add(ISupportEntry::int(
+            "HOSTLEN",
+            Hostname::LENGTH.try_into().unwrap(),
+        ));
+        ret.add(ISupportEntry::int(
+            "NICKLEN",
+            Nickname::LENGTH.try_into().unwrap(),
+        ));
+        ret.add(ISupportEntry::int(
+            "USERLEN",
+            Username::LENGTH.try_into().unwrap(),
+        ));
+
         let list_modes: String = ListModeType::iter().map(|t| t.mode_letter()).collect();
         let key_modes: String = KeyModeType::iter().map(|t| t.mode_letter()).collect();
         let param_modes = "";
@@ -248,6 +261,7 @@ impl ClientServer {
                             .await;
                         }
                     }
+                    conn.send(message::Error::new(&e.to_string()));
                 }
                 self.connections.write().remove(msg.source);
             }

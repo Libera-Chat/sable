@@ -46,7 +46,7 @@ const UPPER: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const DIGIT: &str = "0123456789";
 
 define_validated! {
-    Nickname(ArrayString<15> casefolded) {
+    Nickname(ArrayString<{ Nickname::LENGTH }> casefolded) {
         check_allowed_chars(value, &[LOWER, UPPER, DIGIT, "-_\\|[]{}^`"])?;
         if let Some(first) = value.chars().next() {
             if DIGIT.contains(first) || first == '-' {
@@ -58,11 +58,23 @@ define_validated! {
         Ok(())
     }
 
-    Username(ArrayString<10>) {
-        Ok(())
+    Username(ArrayString<{ Username::LENGTH }>) {
+        if value.len() == 0 {
+            Self::error(value)
+        } else {
+            Ok(())
+        }
     }
 
-    Hostname(ArrayString<64>) {
+    Realname(ArrayString<{ Realname::LENGTH }>) {
+        if value.len() == 0 {
+            Self::error(value)
+        } else {
+            Ok(())
+        }
+    }
+
+    Hostname(ArrayString<{ Hostname::LENGTH }>) {
         Ok(())
     }
 
@@ -112,6 +124,9 @@ define_validated! {
 }
 
 impl Nickname {
+    /// Maximum length, in bytes
+    pub const LENGTH: usize = 15;
+
     /// Create a new Nickname, bypassing normal validation. This is only for internal use, and only when created
     /// nicknames for collided users
     pub(crate) fn new_for_collision(
@@ -122,15 +137,40 @@ impl Nickname {
 }
 
 impl Username {
+    /// Maximum length, in bytes
+    pub const LENGTH: usize = 10;
+
     /// Coerce the provided value into a valid `Username`, by truncating to the
-    /// permitted length and removing any invalid characters.
-    pub fn new_coerce(s: &str) -> Self {
+    /// permitted length, removing any invalid characters, and checking it is not empty.
+    pub fn new_coerce(s: &str) -> <Self as Validated>::Result {
         let mut s = s.to_string();
         s.retain(|c| c != '[');
-        s.truncate(10);
+        s.truncate(s.floor_char_boundary(Self::LENGTH));
         // expect() is safe here; we've already truncated to the max length
-        Self(ArrayString::try_from(s.as_str()).expect("Failed to convert string"))
+        let val = ArrayString::try_from(s.as_str()).expect("Failed to convert string");
+        Self::validate(&val).map(|()| Self(val))
     }
+}
+
+impl Realname {
+    /// Maximum length, in bytes
+    pub const LENGTH: usize = 64;
+
+    /// Coerce the provided value into a valid `Realname`, by truncating to the
+    /// permitted length and checking it is not empty
+    pub fn new_coerce(s: &str) -> <Self as Validated>::Result {
+        let mut s = s.to_string();
+        s.retain(|c| c != '[');
+        s.truncate(s.floor_char_boundary(Self::LENGTH));
+        // expect() is safe here; we've already truncated to the max length
+        let val = ArrayString::try_from(s.as_str()).expect("Failed to convert string");
+        Self::validate(&val).map(|()| Self(val))
+    }
+}
+
+impl Hostname {
+    /// Maximum length, in bytes
+    pub const LENGTH: usize = 64;
 }
 
 impl ChannelKey {
@@ -138,7 +178,7 @@ impl ChannelKey {
         let mut s = s.to_string();
         s.retain(|c| c > ' ' && c <= '~' && c != ':' && c != ',');
         let mut val = <Self as Validated>::Underlying::new();
-        s.truncate(val.capacity());
+        s.truncate(s.floor_char_boundary(val.capacity()));
         val.push_str(&s);
         Self::validate(&val).map(|()| Self(val))
     }

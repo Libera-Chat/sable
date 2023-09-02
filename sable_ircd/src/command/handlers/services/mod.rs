@@ -105,8 +105,11 @@ impl<'a> Command for ServicesCommand<'a> {
                     }
                 }
             }
-            CommandError::InvalidNick(name) => {
+            CommandError::InvalidNickname(name) => {
                 self.notice(format_args!("Invalid nickname {}", name));
+            }
+            CommandError::InvalidUsername(name) => {
+                self.notice(format_args!("Invalid username {}", name));
             }
             CommandError::InvalidChannelName(name) => {
                 self.notice(format_args!("Invalid channel name {}", name));

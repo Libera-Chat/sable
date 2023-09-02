@@ -37,7 +37,7 @@ impl<'a> User<'a> {
     }
 
     /// The user's realname
-    pub fn realname(&self) -> &str {
+    pub fn realname(&self) -> &Realname {
         &self.data.realname
     }
 

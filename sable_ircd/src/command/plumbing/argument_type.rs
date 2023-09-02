@@ -52,6 +52,12 @@ impl<'a> PositionalArgument<'a> for Nickname {
     }
 }
 
+impl<'a> PositionalArgument<'a> for Username {
+    fn parse_str(_ctx: &'a dyn Command, value: &'a str) -> Result<Self, CommandError> {
+        Ok(Username::new_coerce(value)?)
+    }
+}
+
 impl<'a> PositionalArgument<'a> for state::ChannelRoleName {
     fn parse_str(_ctx: &'a dyn Command, value: &'a str) -> Result<Self, CommandError> {
         value
@@ -152,6 +158,26 @@ impl<'a, T: PositionalArgument<'a>> PositionalArgument<'a> for Option<T> {
         'a: 'b,
     {
         Ok(T::parse(ctx, arg_list).ok())
+    }
+
+    fn parse_str(_ctx: &'a dyn Command, _value: &'a str) -> Result<Self, CommandError> {
+        unreachable!();
+    }
+}
+
+/// Either Ok(parsed_value) or Err(raw_value) if it cannot be parsed.
+/// Never actually returns a CommandError, because the correct reply varies
+/// (NotEnoughParameters for USER, 'FAIL SETNAME INVALID_REALNAME' for SETNAME)
+impl<'a> PositionalArgument<'a> for Result<Realname, &'a str> {
+    fn parse<'b>(
+        _ctx: &'a dyn Command,
+        arg_list: &'b mut ArgListIter<'a>,
+    ) -> Result<Self, CommandError>
+    where
+        'a: 'b,
+    {
+        let s = arg_list.next().ok_or(CommandError::NotEnoughParameters)?;
+        Ok(Realname::new_coerce(s).map_err(|_| s))
     }
 
     fn parse_str(_ctx: &'a dyn Command, _value: &'a str) -> Result<Self, CommandError> {
