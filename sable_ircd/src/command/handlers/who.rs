@@ -41,9 +41,14 @@ fn make_who_reply(
         None => 'H',    // Here
         Some(_) => 'G', // Gone
     };
+    let oper_flag = match target.mode().has_mode(UserModeFlag::Oper) {
+        true => "*",
+        false => "",
+    };
     let status = format!(
-        "{}{}",
+        "{}{}{}",
         away_letter,
+        oper_flag,
         membership
             .map(|m| m.permissions().to_prefixes())
             .unwrap_or_else(|| "".to_string())
