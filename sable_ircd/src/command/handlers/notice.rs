@@ -36,16 +36,18 @@ async fn handle_notice(
         return Ok(());
     }
 
-    if let Some(user) = target.user() {
-        if user.is_alias_user().is_some() {
-            // This is a notice which doesn't expect a response; drop it
-            return Ok(());
+    match &target {
+        TargetParameter::User(user) => {
+            if user.is_alias_user().is_some() {
+                // This is a notice which doesn't expect a response; drop it
+                return Ok(());
+            }
         }
-    }
-    if let Some(channel) = target.channel() {
-        if server.policy().can_send(&source, &channel, msg).is_err() {
-            // Silent error, see above
-            return Ok(());
+        TargetParameter::Channel(channel) => {
+            if server.policy().can_send(&source, &channel, msg).is_err() {
+                // Silent error, see above
+                return Ok(());
+            }
         }
     }
 

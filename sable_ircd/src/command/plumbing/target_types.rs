@@ -8,20 +8,6 @@ pub enum TargetParameter<'a> {
 }
 
 impl TargetParameter<'_> {
-    pub fn user(&self) -> Option<&wrapper::User> {
-        match self {
-            Self::User(u) => Some(&u),
-            Self::Channel(_) => None,
-        }
-    }
-
-    pub fn channel(&self) -> Option<&wrapper::Channel> {
-        match self {
-            Self::User(_) => None,
-            Self::Channel(c) => Some(&c),
-        }
-    }
-
     pub fn object_id(&self) -> ObjectId {
         match self {
             Self::User(u) => u.id().into(),
