@@ -89,6 +89,12 @@ EventDetails => {
     }
 
     #[target_type(MembershipId)]
+    struct ChannelKick {
+        pub source: UserId,
+        pub message: String,
+    }
+
+    #[target_type(MembershipId)]
     struct ChannelPart {
         pub message: String,
     }

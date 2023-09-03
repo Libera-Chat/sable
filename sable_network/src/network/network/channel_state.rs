@@ -278,6 +278,38 @@ impl Network {
         }
     }
 
+    pub(super) fn user_kicked_from_channel(
+        &mut self,
+        target: MembershipId,
+        event: &Event,
+        details: &details::ChannelKick,
+        updates: &dyn NetworkUpdateReceiver,
+    ) {
+        if let Some(removed_membership) = self.memberships.remove(&target) {
+            let empty = !self
+                .memberships
+                .iter()
+                .any(|(_, v)| v.channel == removed_membership.channel);
+            if empty {
+                self.remove_channel(removed_membership.channel, updates);
+            }
+
+            if let (Some(channel), Some(user)) = (
+                self.channels.get(&target.channel()),
+                self.users.get(&target.user()),
+            ) {
+                let update = update::ChannelKick {
+                    membership: removed_membership,
+                    source: self.translate_state_change_source(details.source.into()),
+                    channel: channel.clone(),
+                    user: self.translate_historic_user(user.clone()),
+                    message: details.message.clone(),
+                };
+                updates.notify(update, event);
+            }
+        }
+    }
+
     pub(super) fn user_left_channel(
         &mut self,
         target: MembershipId,
@@ -313,10 +345,10 @@ impl Network {
         &mut self,
         target: InviteId,
         event: &Event,
-        detail: &details::ChannelInvite,
+        details: &details::ChannelInvite,
         updates: &dyn NetworkUpdateReceiver,
     ) {
-        let invite = state::ChannelInvite::new(target, detail.source, event.timestamp);
+        let invite = state::ChannelInvite::new(target, details.source, event.timestamp);
         self.channel_invites.insert(invite.id, invite.clone());
 
         if let (Some(channel), Some(user)) = (
@@ -325,7 +357,7 @@ impl Network {
         ) {
             let update = update::ChannelInvite {
                 invite,
-                source: self.translate_state_change_source(detail.source.into()),
+                source: self.translate_state_change_source(details.source.into()),
                 user: self.translate_historic_user(user.clone()),
                 channel: channel.clone(),
             };

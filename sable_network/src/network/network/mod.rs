@@ -208,6 +208,7 @@ impl Network {
             NewChannelTopic => self.new_channel_topic,
             MembershipFlagChange => self.channel_permission_change,
             ChannelJoin => self.user_joined_channel,
+            ChannelKick => self.user_kicked_from_channel,
             ChannelPart => self.user_left_channel,
             ChannelInvite => self.new_channel_invite,
             NewMessage => self.new_message,
