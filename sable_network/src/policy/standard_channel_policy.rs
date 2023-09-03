@@ -140,6 +140,13 @@ impl ChannelPolicyService for StandardChannelPolicy {
             ));
         }
 
+        if channel.mode().has_mode(ChannelModeFlag::Moderated) {
+            return Err(PermissionError::Channel(
+                *channel.name(),
+                CannotSendToChannel,
+            ));
+        }
+
         Ok(())
     }
 

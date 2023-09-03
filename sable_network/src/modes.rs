@@ -9,6 +9,7 @@ mode_flags!(
         TopicLock  (0x02, 't'),
         Secret     (0x04, 's'),
         InviteOnly (0x08, 'i'),
+        Moderated  (0x10, 'm'),
     }
 );
 
