@@ -144,6 +144,15 @@ NetworkStateChange => {
         pub channel: state::Channel,
     }
 
+    /// A user was kicked from a channel
+    struct ChannelKick {
+        pub membership: state::Membership,
+        pub source: HistoricMessageSource,
+        pub channel: state::Channel,
+        pub user: HistoricUser,
+        pub message: String,
+    }
+
     /// A user has left a channel
     struct ChannelPart {
         pub membership: state::Membership,

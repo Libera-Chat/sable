@@ -104,6 +104,16 @@ impl ChannelPolicyService for StandardChannelPolicy {
         Ok(())
     }
 
+    fn can_kick(
+        &self,
+        user: &User,
+        channel: &Channel,
+        _target: &User,
+        _msg: &str,
+    ) -> PermissionResult {
+        has_access(user, channel, ChannelAccessFlag::Kick)
+    }
+
     fn can_send(&self, user: &User, channel: &Channel, _msg: &str) -> PermissionResult {
         if channel.mode().has_mode(ChannelModeFlag::NoExternal)
             && user.is_in_channel(channel.id()).is_none()

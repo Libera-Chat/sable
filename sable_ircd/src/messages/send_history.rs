@@ -28,6 +28,7 @@ impl SendHistoryItem for HistoryLogEntry {
             NetworkStateChange::ListModeRemoved(detail) => detail.send_to(conn, self),
             NetworkStateChange::MembershipFlagChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::ChannelJoin(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ChannelKick(detail) => detail.send_to(conn, self),
             NetworkStateChange::ChannelPart(detail) => detail.send_to(conn, self),
             NetworkStateChange::ChannelInvite(detail) => detail.send_to(conn, self),
             NetworkStateChange::ChannelRename(detail) => detail.send_to(conn, self),
@@ -208,6 +209,18 @@ impl SendHistoryItem for update::ChannelJoin {
 
             conn.send(message.with_required_capabilities(ClientCapability::AwayNotify));
         }
+
+        Ok(())
+    }
+}
+
+impl SendHistoryItem for update::ChannelKick {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+        let message =
+            message::Kick::new(&self.source, &self.user, &self.channel.name, &self.message)
+                .with_tags_from(from_entry);
+
+        conn.send(message);
 
         Ok(())
     }

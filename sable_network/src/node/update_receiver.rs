@@ -192,6 +192,17 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         Ok(())
     }
 
+    fn handle_kick(&self, entry: &HistoryLogEntry, detail: &update::ChannelKick) -> HandleResult {
+        self.notify_user(detail.user.user.id, entry.id);
+
+        let network = self.network();
+        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+
+        self.notify_channel_members(&channel, entry);
+
+        Ok(())
+    }
+
     fn handle_part(&self, entry: &HistoryLogEntry, detail: &update::ChannelPart) -> HandleResult {
         self.notify_user(detail.user.user.id, entry.id);
 
@@ -346,6 +357,7 @@ impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode
             ListModeRemoved(details) => self.handle_list_mode_removed(entry, details),
             ChannelTopicChange(details) => self.handle_channel_topic(entry, details),
             ChannelJoin(details) => self.handle_join(entry, details),
+            ChannelKick(details) => self.handle_kick(entry, details),
             ChannelPart(details) => self.handle_part(entry, details),
             ChannelInvite(details) => self.handle_invite(entry, details),
             ChannelRename(details) => self.handle_channel_rename(entry, details),

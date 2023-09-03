@@ -6,6 +6,16 @@ pub trait ChannelPolicyService {
     /// Determine whether the given user can join the given channel
     fn can_join(&self, user: &User, channel: &Channel, key: Option<ChannelKey>)
         -> PermissionResult;
+
+    /// Determine whether the given user can kick the other given user to the given channel
+    fn can_kick(
+        &self,
+        user: &User,
+        channel: &Channel,
+        target: &User,
+        msg: &str,
+    ) -> PermissionResult;
+
     /// Determine whether the given user can send to the given channel
     fn can_send(&self, user: &User, channel: &Channel, msg: &str) -> PermissionResult;
 

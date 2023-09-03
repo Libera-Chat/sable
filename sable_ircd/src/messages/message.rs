@@ -9,6 +9,7 @@ define_messages! {
     Cap     => { (source, target, subcmd: &str, text: &str) => ":{source} CAP {target} {subcmd} :{text}" },
     Nick    => { (source, newnick: &Nickname)               => ":{source} NICK {newnick}" },
     Join    => { (source, chan: &ChannelName)               => ":{source} JOIN {chan}" },
+    Kick    => { (source, target, chan: &ChannelName, msg: &str)    => ":{source} KICK {chan} {target} :{msg}" },  // Mind the argument order; 'target' has to be before 'chan'
     Part    => { (source, chan: &ChannelName, msg: &str)    => ":{source} PART {chan} :{msg}" },
     Invite  => { (source, target, chan: &ChannelName)       => ":{source} INVITE {target} :{chan}" },
     Quit    => { (source, message: &str)                    => ":{source} QUIT :{message}" },

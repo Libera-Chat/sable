@@ -43,6 +43,7 @@ mod handlers {
     mod chathistory;
     mod invite;
     mod join;
+    mod kick;
     mod kill;
     mod kline;
     mod mode;
