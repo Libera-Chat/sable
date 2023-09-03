@@ -2,30 +2,45 @@ use super::*;
 use crate::utils::make_numeric;
 
 #[command_handler("WHO")]
-fn handle_user(
+fn handle_who(
     server: &ClientServer,
+    network: &Network,
     response: &dyn CommandResponse,
     source: UserSource,
-    channel: wrapper::Channel,
+    target: &str,
 ) -> CommandResult {
-    for member in channel.members() {
-        if server
-            .policy()
-            .can_see_user_on_channel(&source, &member)
-            .is_err()
-        {
-            continue;
-        }
+    if let Ok(chname) = ChannelName::from_str(target) {
+        if let Ok(channel) = network.channel_by_name(&chname) {
+            for member in channel.members() {
+                if server
+                    .policy()
+                    .can_see_user_on_channel(&source, &member)
+                    .is_err()
+                {
+                    continue;
+                }
 
-        response.numeric(make_who_reply(
-            &member.user()?,
-            Some(&channel),
-            Some(&member),
-            &member.user()?.server()?,
-        ));
+                response.numeric(make_who_reply(
+                    &member.user()?,
+                    Some(&channel),
+                    Some(&member),
+                    &member.user()?.server()?,
+                ));
+            }
+        }
+    } else if let Ok(nick) = Nickname::from_str(target) {
+        if let Ok(user) = network.user_by_nick(&nick) {
+            response.numeric(make_who_reply(
+                &user,
+                None, // channel
+                None, // membership
+                &user.server()?,
+            ));
+        }
     }
 
-    response.numeric(make_numeric!(EndOfWho, channel.name().value()));
+    // If nick/channel is not found, EndOfWho should be the only numeric we send
+    response.numeric(make_numeric!(EndOfWho, target));
 
     Ok(())
 }
