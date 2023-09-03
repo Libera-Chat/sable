@@ -53,6 +53,7 @@ mod handlers {
     mod oper;
     mod part;
     mod ping;
+    mod pong;
     mod privmsg;
     mod quit;
     pub mod register;
