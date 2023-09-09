@@ -327,18 +327,30 @@ impl GossipNetwork {
         }
     }
 
-    async fn connect(local_addr: &SocketAddr, addr: &str) -> Result<TcpStream, NetworkError> {
+    async fn connect(local_addr: &SocketAddr, host_addr: &str) -> Result<TcpStream, NetworkError> {
         // Default error if the loop does not run at all
-        let mut last_err = NetworkError::NoAddress(addr.to_string());
+        let mut last_err = NetworkError::NoAddress(host_addr.to_string());
 
-        for address in lookup_host(addr).await? {
+        for ip_addr in lookup_host(host_addr).await? {
             let socket = Self::get_socket_for_addr(local_addr)?;
             socket.bind(local_addr.clone())?;
-            match socket.connect(address).await {
-                Ok(conn) => return Ok(conn),
-                Err(err) => last_err = err.into(),
+            match socket.connect(ip_addr).await {
+                Ok(conn) => {
+                    tracing::info!("Connected to {} ({})", host_addr, ip_addr);
+                    return Ok(conn);
+                }
+                Err(err) => {
+                    tracing::trace!("Could not connect to {} ({}): {}", host_addr, ip_addr, err);
+                    last_err = err.into();
+                }
             }
         }
+
+        tracing::error!(
+            "Could not connect to {}. Last error: {}",
+            host_addr,
+            last_err
+        );
 
         Err(last_err)
     }
