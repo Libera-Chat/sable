@@ -14,7 +14,7 @@ use crate::validated::ServerName;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PeerConfig {
     pub(crate) name: ServerName,
-    pub(crate) address: SocketAddr,
+    pub(crate) address: String,
     pub(crate) fingerprint: String,
 }
 
