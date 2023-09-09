@@ -15,7 +15,7 @@ use std::{
 use tokio::{
     io,
     io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpSocket, TcpStream},
+    net::{lookup_host, TcpListener, TcpSocket, TcpStream},
     select,
     sync::{
         mpsc::{channel, UnboundedSender},
@@ -81,6 +81,8 @@ pub enum NetworkError {
     AuthzError(String),
     #[error("Operation timed out")]
     Timeout,
+    #[error("No address found when resolving {0}")]
+    NoAddress(String),
 }
 pub type NetworkResult = Result<(), NetworkError>;
 
@@ -325,6 +327,22 @@ impl GossipNetwork {
         }
     }
 
+    async fn connect(local_addr: &SocketAddr, addr: &str) -> Result<TcpStream, NetworkError> {
+        // Default error if the loop does not run at all
+        let mut last_err = NetworkError::NoAddress(addr.to_string());
+
+        for address in lookup_host(addr).await? {
+            let socket = Self::get_socket_for_addr(local_addr)?;
+            socket.bind(local_addr.clone())?;
+            match socket.connect(address).await {
+                Ok(conn) => return Ok(conn),
+                Err(err) => last_err = err.into(),
+            }
+        }
+
+        Err(last_err)
+    }
+
     #[instrument(skip(self, response_sender))]
     async fn do_send_to(
         &self,
@@ -334,10 +352,8 @@ impl GossipNetwork {
     ) -> Result<JoinHandle<NetworkResult>, NetworkError> {
         let mut local_addr = self.task_state.listen_addr;
         local_addr.set_port(0);
-        let socket = Self::get_socket_for_addr(&local_addr)?;
-        socket.bind(local_addr)?;
         let connector = TlsConnector::from(Arc::clone(&self.tls_client_config));
-        let conn = socket.connect(peer.address).await?;
+        let conn = Self::connect(&local_addr, &peer.address).await?;
         let server_name = (&peer.name.value() as &str)
             .try_into()
             .expect("Invalid server name");
@@ -492,11 +508,15 @@ impl NetworkTaskState {
         let peer_conf = &peer.conf;
 
         let remote_addr = tcp_stream.peer_addr()?;
-        if remote_addr.ip() != peer_conf.address.ip() {
+        let allowed_ip_addresses: Vec<_> = lookup_host(&peer_conf.address)
+            .await?
+            .map(|addr| addr.ip())
+            .collect();
+        if !allowed_ip_addresses.contains(&remote_addr.ip()) {
             return Err(NetworkError::AuthzError(format!(
-                "IP address doesn't match peer configuration ({}/{})",
+                "IP address doesn't match peer configuration ({} not in {:?})",
                 remote_addr.ip(),
-                peer_conf.address.ip()
+                allowed_ip_addresses,
             )));
         }
 
