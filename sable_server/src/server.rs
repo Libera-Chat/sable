@@ -102,6 +102,7 @@ where
 
         let log = Arc::new(ReplicatedEventLog::new(
             conf.server_id,
+            &conf.server_name,
             epoch,
             server_send,
             net_config,

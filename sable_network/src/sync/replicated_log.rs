@@ -79,6 +79,7 @@ impl ReplicatedEventLog {
     /// ## Arguments
     ///
     /// - `server_id`: Our server ID, for use in generating event IDs
+    /// - `server_name`: Our server name, to find ourselves in the network peer list
     /// - `epoch`: Our epoch ID, for use in generating event IDs
     /// - `server_send`: channel for [`NetworkMessage`]s to be processed
     /// - `net_config`: global configuration for the gossip network
@@ -90,6 +91,7 @@ impl ReplicatedEventLog {
     /// server for processing.
     pub fn new(
         server_id: ServerId,
+        server_name: &ServerName,
         epoch: EpochId,
         server_send: UnboundedSender<NetworkMessage>,
         net_config: SyncConfig,
@@ -100,7 +102,12 @@ impl ReplicatedEventLog {
         let (net_send, net_recv) = unbounded_channel();
         let (new_event_send, new_event_recv) = unbounded_channel();
 
-        let net = Arc::new(GossipNetwork::new(net_config, node_config, net_send));
+        let net = Arc::new(GossipNetwork::new(
+            server_name,
+            net_config,
+            node_config,
+            net_send,
+        ));
 
         let shared_state = Arc::new(SharedState {
             server: (server_id, epoch),
