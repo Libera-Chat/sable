@@ -59,6 +59,7 @@ struct Peer {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct GossipNetworkState {
+    server_name: ServerName,
     peer_states: Vec<(ServerName, bool)>,
 }
 
@@ -91,6 +92,7 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for NetworkError {
 
 impl GossipNetwork {
     pub fn new(
+        server_name: &ServerName,
         net_config: SyncConfig,
         node_config: NodeConfig,
         message_sender: UnboundedSender<Request>,
@@ -121,7 +123,7 @@ impl GossipNetwork {
         let mut peers = net_config.peers;
         let my_index = peers
             .iter()
-            .position(|p| p.address == node_config.listen_addr)
+            .position(|p| &p.name == server_name)
             .expect("Couldn't find myself in the network config");
         let me = peers.remove(my_index);
 
@@ -151,7 +153,7 @@ impl GossipNetwork {
         node_config: NodeConfig,
         message_sender: UnboundedSender<Request>,
     ) -> Self {
-        let ret = Self::new(net_config, node_config, message_sender);
+        let ret = Self::new(&state.server_name, net_config, node_config, message_sender);
 
         for (peer, enabled) in state.peer_states {
             if enabled {
@@ -164,6 +166,7 @@ impl GossipNetwork {
 
     pub fn save_state(&self) -> GossipNetworkState {
         GossipNetworkState {
+            server_name: self.me.name.clone(),
             peer_states: self
                 .task_state
                 .peers
