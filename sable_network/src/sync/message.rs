@@ -37,12 +37,12 @@ pub enum MessageDetail {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TargetedMessage {
     /// The server from which the message originated
-    pub source: String,
+    pub source: ServerName,
     /// The server to which the message is targeted
-    pub target: String,
+    pub target: ServerName,
     /// Servers that have already attempted to deliver this message, and shouldn't
     /// be used as intermediaries again
-    pub via: Vec<String>,
+    pub via: Vec<ServerName>,
     /// The content of the message
     pub content: rpc::RemoteServerRequestType,
 }
@@ -59,7 +59,7 @@ pub struct Message {
 /// A network protocol request
 #[derive(Debug)]
 pub struct Request {
-    pub received_from: String,
+    pub received_from: ServerName,
     pub response: Sender<Message>,
     pub message: Message,
 }

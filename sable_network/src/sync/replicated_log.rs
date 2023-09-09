@@ -208,7 +208,7 @@ impl ReplicatedEventLog {
             .write()
             .unwrap()
             .insert(id, (name, epoch));
-        self.net.disable_peer(name.as_ref());
+        self.net.disable_peer(&name);
     }
 
     /// Enable a server for sync purposes. This should be called when a server is
@@ -220,7 +220,7 @@ impl ReplicatedEventLog {
             .write()
             .unwrap()
             .remove(&id);
-        self.net.enable_peer(name.as_ref());
+        self.net.enable_peer(&name);
     }
 
     /// Send a request to another server in the network, and wait for the response
@@ -233,7 +233,7 @@ impl ReplicatedEventLog {
 
         let targeted_message = TargetedMessage {
             source: self.net.me().name.clone(),
-            target: target.to_string(),
+            target: target,
             via: Vec::new(),
             content: request,
         };
@@ -538,7 +538,7 @@ impl TaskState {
         let (sender, mut receiver) = unbounded_channel();
 
         // First, try to send directly to the target
-        if let Some(target) = self.net.find_peer(detail.target.as_ref()) {
+        if let Some(target) = self.net.find_peer(&detail.target) {
             tracing::debug!(?target, ?detail, "Found target peer, sending message");
 
             // If this succeeds, then we could connect successfully to the target server, so any error that occurs
@@ -712,7 +712,7 @@ impl TaskState {
 
                 // Then reset our list of active peers to those that are active in the incoming state
                 for server in net.servers() {
-                    self.net.enable_peer(server.name().as_ref());
+                    self.net.enable_peer(&server.name());
                 }
 
                 if let Err(e) = self
