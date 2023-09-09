@@ -7,7 +7,7 @@ use crate::validated::{ServerName, Validated};
 use futures::future;
 use std::{
     convert::TryInto,
-    net::SocketAddr,
+    net::{SocketAddr, SocketAddrV6},
     sync::atomic::{AtomicBool, Ordering},
     sync::Arc,
     sync::Mutex,
@@ -332,6 +332,14 @@ impl GossipNetwork {
         let mut last_err = NetworkError::NoAddress(host_addr.to_string());
 
         for ip_addr in lookup_host(host_addr).await? {
+            // Ensure ip_addr is an IPv6 address if the socket binds an IPv6 address
+            let ip_addr = match (local_addr, ip_addr) {
+                (SocketAddr::V6(_), SocketAddr::V4(ipv4_addr)) => SocketAddr::V6(
+                    SocketAddrV6::new(ipv4_addr.ip().to_ipv6_mapped(), ipv4_addr.port(), 0, 0),
+                ),
+                (_, ip_addr) => ip_addr,
+            };
+
             let socket = Self::get_socket_for_addr(local_addr)?;
             socket.bind(local_addr.clone())?;
             match socket.connect(ip_addr).await {
