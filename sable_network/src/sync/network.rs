@@ -7,7 +7,7 @@ use crate::validated::{ServerName, Validated};
 use futures::future;
 use std::{
     convert::TryInto,
-    net::{SocketAddr, SocketAddrV6},
+    net::{IpAddr, SocketAddr, SocketAddrV6},
     sync::atomic::{AtomicBool, Ordering},
     sync::Arc,
     sync::Mutex,
@@ -530,7 +530,14 @@ impl NetworkTaskState {
         let remote_addr = tcp_stream.peer_addr()?;
         let allowed_ip_addresses: Vec<_> = lookup_host(&peer_conf.address)
             .await?
-            .map(|addr| addr.ip())
+            .map(|addr| match (remote_addr.ip(), addr.ip()) {
+                (IpAddr::V6(_), IpAddr::V4(ipv4_addr)) => IpAddr::V6(ipv4_addr.to_ipv6_mapped()),
+                (IpAddr::V4(_), IpAddr::V6(ipv6_addr)) => ipv6_addr
+                    .to_ipv4_mapped()
+                    .map(IpAddr::V4)
+                    .unwrap_or(IpAddr::V6(ipv6_addr)),
+                (_, addr) => addr,
+            })
             .collect();
         if !allowed_ip_addresses.contains(&remote_addr.ip()) {
             return Err(NetworkError::AuthzError(format!(
