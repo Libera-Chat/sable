@@ -2,6 +2,7 @@
 
 use super::message::Message;
 use super::*;
+use crate::validated::{ServerName, Validated};
 
 use futures::future;
 use std::{
@@ -58,7 +59,7 @@ struct Peer {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct GossipNetworkState {
-    peer_states: Vec<(String, bool)>,
+    peer_states: Vec<(ServerName, bool)>,
 }
 
 #[derive(Debug, Error)]
@@ -184,20 +185,20 @@ impl GossipNetwork {
         &self.me
     }
 
-    pub fn enable_peer(&self, name: &str) {
-        tracing::debug!(name, "enabling peer");
+    pub fn enable_peer(&self, name: &ServerName) {
+        tracing::debug!("enabling peer {}", name);
         for p in self.task_state.peers.iter() {
-            if p.conf.name == name {
+            if &p.conf.name == name {
                 p.enabled.store(true, Ordering::SeqCst);
             }
         }
     }
 
-    pub fn disable_peer(&self, name: &str) {
-        tracing::debug!(name, "disabling peer");
+    pub fn disable_peer(&self, name: &ServerName) {
+        tracing::debug!("disabling peer {}", name);
 
         for p in self.task_state.peers.iter() {
-            if p.conf.name == name {
+            if &p.conf.name == name {
                 p.enabled.store(false, Ordering::SeqCst);
             }
         }
@@ -235,7 +236,7 @@ impl GossipNetwork {
     }
 
     /// Choose a peer at random that isn't in the provided list
-    pub fn choose_peer_except(&self, except: &Vec<String>) -> Option<&PeerConfig> {
+    pub fn choose_peer_except(&self, except: &Vec<ServerName>) -> Option<&PeerConfig> {
         let ret = self
             .task_state
             .peers
@@ -251,13 +252,13 @@ impl GossipNetwork {
     }
 
     /// Find a peer config with the given server name
-    pub fn find_peer(&self, name: &str) -> Option<&PeerConfig> {
+    pub fn find_peer(&self, name: &ServerName) -> Option<&PeerConfig> {
         let ret = self
             .task_state
             .peers
             .iter()
             .filter(|p| p.enabled.load(Ordering::Relaxed))
-            .find(|p| p.conf.name == name)
+            .find(|p| &p.conf.name == name)
             .map(|p| &p.conf);
 
         if ret.is_none() {
@@ -334,7 +335,7 @@ impl GossipNetwork {
         socket.bind(local_addr)?;
         let connector = TlsConnector::from(Arc::clone(&self.tls_client_config));
         let conn = socket.connect(peer.address).await?;
-        let server_name = (&peer.name as &str)
+        let server_name = (&peer.name.value() as &str)
             .try_into()
             .expect("Invalid server name");
         let stream = connector.connect(server_name, conn).await?;
@@ -471,6 +472,12 @@ impl NetworkTaskState {
             .and_then(|cn| cn.as_str().ok())
             .ok_or_else(|| NetworkError::InternalError("Couldn't parse peer CN".to_string()))?
             .to_string();
+        let peer_name = ServerName::convert(&peer_name).map_err(|_| {
+            NetworkError::InternalError(format!(
+                "Invalid server name in certificate: {}",
+                &peer_name
+            ))
+        })?;
 
         let peer = self
             .peers

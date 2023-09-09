@@ -8,10 +8,12 @@ use std::{fs::File, io::BufReader, io::Read, net::SocketAddr, path::Path, path::
 
 use rustls::{Certificate, PrivateKey};
 
+use crate::validated::ServerName;
+
 /// Configuration of a peer in the gossip network
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PeerConfig {
-    pub(crate) name: String,
+    pub(crate) name: ServerName,
     pub(crate) address: SocketAddr,
     pub(crate) fingerprint: String,
 }
