@@ -3,7 +3,8 @@
 use crate::prelude::*;
 use crate::rpc::*;
 
-use std::{collections::HashMap, sync::Arc, sync::RwLock, time::Duration};
+use backoff::ExponentialBackoff;
+use std::{cell::RefCell, collections::HashMap, sync::Arc, sync::RwLock, time::Duration};
 use tokio::{
     select,
     sync::{
@@ -12,7 +13,6 @@ use tokio::{
         oneshot, Mutex,
     },
     task::JoinHandle,
-    time::sleep,
 };
 
 use thiserror::Error;
@@ -300,16 +300,25 @@ impl ReplicatedEventLog {
         &self,
         sender: UnboundedSender<Request>,
     ) -> JoinHandle<NetworkResult> {
-        let mut attempts = 0;
-        while let Some(peer) = self.net.choose_any_peer() {
-            attempts += 1;
-            if attempts >= 3 {
+        let attempts = RefCell::new(0);
+        let backoff = ExponentialBackoff {
+            initial_interval: Duration::from_millis(100),
+            max_elapsed_time: None,
+            ..ExponentialBackoff::default()
+        };
+        backoff::future::retry(backoff, || async {
+            let Some(peer) = self.net.choose_any_peer() else {
+                panic!("No peer available to sync. This probably means you are running a single-node sable_ircd and did not pass the --bootstrap-network option.");
+            };
+            let mut attempts = attempts.borrow_mut();
+            *attempts += 1;
+            if *attempts >= 3 {
                 tracing::info!(
                     "Requesting network state from {:?} (attempt #{}).",
                     peer,
                     attempts
                 );
-                if attempts % 5 == 3 {
+                if *attempts % 5 == 3 {
                     tracing::warn!("Make sure at least one node in your network is started and reachable. If this is the first (or only) node, you must provide the --bootstrap-network option.");
                 }
             } else {
@@ -319,12 +328,8 @@ impl ReplicatedEventLog {
                 source_server: self.shared_state.server,
                 content: MessageDetail::GetNetworkState,
             };
-            match self.net.send_and_process(peer, msg, sender.clone()).await {
-                Ok(handle) => return handle,
-                Err(_) => sleep(Duration::from_secs(3)).await,
-            }
-        }
-        panic!("No peer available to sync. This probably means you are running a single-node sable_ircd and did not pass the --bootstrap-network option.");
+            Ok(self.net.send_and_process(peer, msg, sender.clone()).await?)
+        }).await.expect("start_sync_to_network returned an error")
     }
 
     pub fn start_sync(

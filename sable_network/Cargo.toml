@@ -42,6 +42,7 @@ concurrent_log = { version = "0.2.4", features = [ "serde" ] }
 once_cell = "1.13"
 ipnet = { version = "2", features = [ "serde" ] }
 anyhow = "1.0"
+backoff = { version = "0.4.0", features = ["tokio"] }
 
 [dependencies.serde]
 version = "1"
