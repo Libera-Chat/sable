@@ -13,7 +13,7 @@ use thiserror::Error;
 use std::collections::HashMap;
 use std::convert::TryInto;
 
-use once_cell::sync::OnceCell;
+use std::sync::OnceLock;
 
 /// Error enumeration defining possible problems to be returned from
 /// the [Network::validate] method.
@@ -115,10 +115,10 @@ pub struct Network {
 
     // Cached or constructed data that doesn't need to be serialised
     #[serde(skip)]
-    cache_default_channel_roles: OnceCell<HashMap<state::ChannelRoleName, state::ChannelRole>>,
+    cache_default_channel_roles: OnceLock<HashMap<state::ChannelRoleName, state::ChannelRole>>,
 
     #[serde(skip)]
-    alias_users: OnceCell<HashMap<Nickname, state::User>>,
+    alias_users: OnceLock<HashMap<Nickname, state::User>>,
 }
 
 impl Network {
@@ -151,8 +151,8 @@ impl Network {
 
             clock: EventClock::new(),
 
-            cache_default_channel_roles: OnceCell::new(),
-            alias_users: OnceCell::new(),
+            cache_default_channel_roles: OnceLock::new(),
+            alias_users: OnceLock::new(),
         };
 
         net.build_default_role_cache();

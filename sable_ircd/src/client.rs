@@ -16,9 +16,9 @@ use std::{
 };
 
 use arc_swap::ArcSwapOption;
-use once_cell::sync::OnceCell;
 use serde::*;
 use serde_with::serde_as;
+use std::sync::OnceLock;
 use tokio::time::Instant;
 
 /// A client protocol connection
@@ -27,7 +27,7 @@ pub struct ClientConnection {
     pub connection: Movable<Connection>,
 
     /// The user ID, if this connection has completed registration
-    user_id: OnceCell<UserId>,
+    user_id: OnceLock<UserId>,
 
     /// The registration information received so far, if this connection has not
     /// yet completed registration
@@ -68,17 +68,17 @@ pub struct PreClient {
     pub connected_at: Instant,
 
     #[serde_as(as = "WrapOption<Username>")]
-    pub user: OnceCell<Username>,
+    pub user: OnceLock<Username>,
     #[serde_as(as = "WrapOption<Nickname>")]
-    pub nick: OnceCell<Nickname>,
+    pub nick: OnceLock<Nickname>,
     #[serde_as(as = "WrapOption<Realname>")]
-    pub realname: OnceCell<Realname>,
+    pub realname: OnceLock<Realname>,
     #[serde_as(as = "WrapOption<Hostname>")]
-    pub hostname: OnceCell<Hostname>,
+    pub hostname: OnceLock<Hostname>,
     #[serde_as(as = "WrapOption<SaslSessionId>")]
-    pub sasl_session: OnceCell<SaslSessionId>,
+    pub sasl_session: OnceLock<SaslSessionId>,
     #[serde_as(as = "WrapOption<AccountId>")]
-    pub sasl_account: OnceCell<AccountId>,
+    pub sasl_account: OnceLock<AccountId>,
 
     progress_flags: AtomicU32,
 }
@@ -94,7 +94,7 @@ impl ClientConnection {
 
         Self {
             connection: Movable::new(conn),
-            user_id: OnceCell::new(),
+            user_id: OnceLock::new(),
             pre_client: ArcSwapOption::new(Some(Arc::new(PreClient::new()))),
             receive_queue: Movable::new(ThrottledQueue::new(throttle_settings, 16)),
             capabilities: AtomicCapabilitySet::new(),
@@ -125,8 +125,8 @@ impl ClientConnection {
         Self {
             connection: Movable::new(listener_collection.restore_connection(state.connection_data)),
             user_id: match state.user_id {
-                Some(v) => OnceCell::with_value(v),
-                None => OnceCell::new(),
+                Some(v) => OnceLock::from(v),
+                None => OnceLock::new(),
             },
             pre_client: ArcSwapOption::new(state.pre_client.map(Arc::new)),
             receive_queue: Movable::new(ThrottledQueue::restore_from(state.receive_queue)),
@@ -219,12 +219,12 @@ impl PreClient {
     pub fn new() -> Self {
         Self {
             connected_at: Instant::now(),
-            user: OnceCell::new(),
-            nick: OnceCell::new(),
-            realname: OnceCell::new(),
-            hostname: OnceCell::new(),
-            sasl_session: OnceCell::new(),
-            sasl_account: OnceCell::new(),
+            user: OnceLock::new(),
+            nick: OnceLock::new(),
+            realname: OnceLock::new(),
+            hostname: OnceLock::new(),
+            sasl_session: OnceLock::new(),
+            sasl_account: OnceLock::new(),
             progress_flags: AtomicU32::new(0),
         }
     }
