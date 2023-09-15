@@ -16,6 +16,15 @@ pub trait ChannelPolicyService {
         msg: &str,
     ) -> PermissionResult;
 
+    /// Determine whether the given user can change the name of the given channel
+    fn can_rename(
+        &self,
+        user: &User,
+        channel: &Channel,
+        new_name: &ChannelName,
+        msg: Option<&str>,
+    ) -> PermissionResult;
+
     /// Determine whether the given user can send to the given channel
     fn can_send(&self, user: &User, channel: &Channel, msg: &str) -> PermissionResult;
 

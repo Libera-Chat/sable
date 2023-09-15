@@ -23,22 +23,34 @@ impl Network {
     fn do_rename_channel(
         &mut self,
         channel_id: ChannelId,
+        source: HistoricMessageSource,
         new_name: ChannelName,
+        message: String,
         event: &Event,
         updates: &dyn NetworkUpdateReceiver,
     ) {
-        if let Some(channel) = self.channels.get_mut(&channel_id) {
-            let old_name = channel.name;
-            channel.name = new_name;
+        match self.channels.get_mut(&channel_id) {
+            Some(channel) => {
+                let old_name = channel.name;
+                channel.name = new_name;
 
-            updates.notify(
-                update::ChannelRename {
-                    channel: channel.clone(),
-                    old_name,
-                    new_name,
-                },
-                event,
-            );
+                updates.notify(
+                    update::ChannelRename {
+                        source,
+                        channel: channel.clone(),
+                        old_name,
+                        new_name,
+                        message,
+                    },
+                    event,
+                );
+            }
+            None => tracing::warn!(
+                "Attempted to rename unknown channel {:?} to {}: {}",
+                channel_id,
+                new_name,
+                message,
+            ),
         }
     }
 
@@ -60,7 +72,18 @@ impl Network {
                 // The new one wins. Rename the existing channel
                 let newname = state_utils::hashed_channel_name_for(existing_id);
 
-                self.do_rename_channel(existing_id, newname, event, updates);
+                self.do_rename_channel(
+                    existing_id,
+                    HistoricMessageSource::Unknown,
+                    newname,
+                    format!(
+                        "Name clash between {:?} and {:?}",
+                        existing_id.server(),
+                        target.server()
+                    ),
+                    event,
+                    updates,
+                );
             } else {
                 // The old one wins. Change the name of this one
                 details.name = state_utils::hashed_channel_name_for(target);
@@ -339,6 +362,23 @@ impl Network {
                 updates.notify(update, event);
             }
         }
+    }
+
+    pub(super) fn user_renamed_channel(
+        &mut self,
+        target: ChannelId,
+        event: &Event,
+        details: &details::ChannelRename,
+        updates: &dyn NetworkUpdateReceiver,
+    ) {
+        self.do_rename_channel(
+            target,
+            self.translate_state_change_source(details.source.into()),
+            details.new_name,
+            details.message.clone().unwrap_or("".to_string()),
+            event,
+            updates,
+        );
     }
 
     pub(super) fn new_channel_invite(

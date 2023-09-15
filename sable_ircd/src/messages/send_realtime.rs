@@ -1,6 +1,8 @@
 use crate::errors::HandleResult;
 use crate::messages::MessageSink;
 use crate::ClientServer;
+use sable_network::network::update::HistoricUser;
+use sable_network::prelude::wrapper::ObjectWrapper;
 use sable_network::prelude::*;
 
 use super::send_history::SendHistoryItem;
@@ -26,6 +28,7 @@ impl SendRealtimeItem for HistoryLogEntry {
     ) -> HandleResult {
         match &self.details {
             NetworkStateChange::ChannelJoin(detail) => detail.send_now(conn, self, server),
+            NetworkStateChange::ChannelRename(detail) => detail.send_now(conn, self, server),
             _ => self.send_to(conn, self),
         }
     }
@@ -64,5 +67,58 @@ impl SendRealtimeItem for update::ChannelJoin {
         crate::utils::send_channel_names(server, conn, &user, &channel)?;
 
         Ok(())
+    }
+}
+
+impl SendRealtimeItem for update::ChannelRename {
+    fn send_now(
+        &self,
+        conn: &impl MessageSink,
+        from_entry: &HistoryLogEntry,
+        server: &ClientServer,
+    ) -> HandleResult {
+        if conn.capabilities().has(ClientCapability::ChannelRename) {
+            conn.send(
+                message::Rename::new(&self.source, &self.old_name, &self.new_name, &self.message)
+                    .with_tags_from(from_entry)
+                    .with_required_capabilities(ClientCapability::ChannelRename),
+            );
+
+            Ok(())
+        } else {
+            // For clients which don't support draft/channel-rename, emulate by making
+            // them PART + JOIN:
+
+            let Some(user_id) = conn.user_id() else {
+                return Ok(());
+            };
+
+            let network = server.network();
+            let channel = network.channel(self.channel.id)?;
+            let Some(membership) = channel.has_member(user_id) else {
+                tracing::warn!("Cannot send ChannelRename to non-member {:?}", user_id);
+                return Ok(());
+            };
+            let user = network.user(user_id)?;
+
+            conn.send(
+                message::Part::new(
+                    &user,
+                    &self.old_name,
+                    &format!("Channel renamed to {}: {}", &self.new_name, &self.message),
+                )
+                .except_capability(ClientCapability::ChannelRename),
+            );
+
+            update::ChannelJoin {
+                channel: self.channel.clone(),
+                membership: membership.raw().clone(),
+                user: HistoricUser {
+                    user: user.raw().clone(),
+                    nickname: user.nick(),
+                },
+            }
+            .send_now(conn, from_entry, server)
+        }
     }
 }

@@ -17,7 +17,7 @@ macro_rules! define_capabilities {
     (
         $typename:ident
         {
-            $( $cap:ident : $val:literal => ($name:literal, $def:literal) ),*
+            $( $cap:ident : $val:literal => ($name:literal, $def:literal) ),* $(,)?
         }
     ) => {
         #[derive(Clone,Copy,Debug,PartialEq,Eq,Serialize,Deserialize)]
@@ -74,7 +74,8 @@ define_capabilities! (
 
         ChatHistory:            0x100 => ("draft/chathistory", true),
         PersistentSession:      0x200 => ("sable.libera.chat/persistent-session", true),
-        AccountRegistration:    0x400 => ("sable.libera.chat/account-registration", true)
+        AccountRegistration:    0x400 => ("sable.libera.chat/account-registration", true),
+        ChannelRename:          0x800 => ("draft/channel-rename", true),
     }
 );
 
