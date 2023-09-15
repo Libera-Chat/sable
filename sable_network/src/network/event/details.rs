@@ -99,6 +99,13 @@ EventDetails => {
         pub message: String,
     }
 
+    #[target_type(ChannelId)]
+    struct ChannelRename {
+        pub source: UserId,
+        pub new_name: ChannelName,
+        pub message: Option<String>,
+    }
+
     #[target_type(InviteId)]
     struct ChannelInvite {
         pub source: UserId,

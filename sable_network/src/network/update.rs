@@ -171,9 +171,11 @@ NetworkStateChange => {
 
     /// A channel's name has changed
     struct ChannelRename {
+        pub source: HistoricMessageSource,
         pub channel: state::Channel,
         pub old_name: ChannelName,
         pub new_name: ChannelName,
+        pub message: String,
     }
 
     /// A message has been sent to a user or channel

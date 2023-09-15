@@ -114,6 +114,16 @@ impl ChannelPolicyService for StandardChannelPolicy {
         has_access(user, channel, ChannelAccessFlag::Kick)
     }
 
+    fn can_rename(
+        &self,
+        user: &User,
+        channel: &Channel,
+        _new_name: &ChannelName,
+        _msg: Option<&str>,
+    ) -> PermissionResult {
+        has_access(user, channel, ChannelAccessFlag::Rename)
+    }
+
     fn can_send(&self, user: &User, channel: &Channel, _msg: &str) -> PermissionResult {
         if channel.mode().has_mode(ChannelModeFlag::NoExternal)
             && user.is_in_channel(channel.id()).is_none()

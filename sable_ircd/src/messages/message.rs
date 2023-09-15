@@ -13,6 +13,7 @@ define_messages! {
     Part    => { (source, chan: &ChannelName, msg: &str)    => ":{source} PART {chan} :{msg}" },
     Invite  => { (source, target, chan: &ChannelName)       => ":{source} INVITE {target} :{chan}" },
     Quit    => { (source, message: &str)                    => ":{source} QUIT :{message}" },
+    Rename  => { (source, old_name: &ChannelName, new_name: &ChannelName, reason: &str) => ":{source} RENAME {old_name} {new_name} :{reason}" },
     Topic   => { (source, chan: &ChannelName, text: &str)   => ":{source} TOPIC {chan} :{text}" },
 
     Mode    => { (source, target, changes: &str)            => ":{source} MODE {target} {changes}" },

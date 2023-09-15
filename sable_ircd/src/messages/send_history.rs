@@ -250,7 +250,9 @@ impl SendHistoryItem for update::ChannelInvite {
 
 impl SendHistoryItem for update::ChannelRename {
     fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
-        todo!();
+        // Not part of history, so it is handled entirely in send_realtime.rs.
+        // See https://github.com/ircv3/ircv3-specifications/issues/532
+        Ok(())
     }
 }
 

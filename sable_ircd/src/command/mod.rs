@@ -58,6 +58,7 @@ mod handlers {
     mod privmsg;
     mod quit;
     pub mod register;
+    mod rename;
     mod topic;
     mod user;
     mod who;

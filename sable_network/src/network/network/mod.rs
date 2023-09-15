@@ -210,6 +210,7 @@ impl Network {
             ChannelJoin => self.user_joined_channel,
             ChannelKick => self.user_kicked_from_channel,
             ChannelPart => self.user_left_channel,
+            ChannelRename => self.user_renamed_channel,
             ChannelInvite => self.new_channel_invite,
             NewMessage => self.new_message,
             NewNetworkBan => self.new_ban,
