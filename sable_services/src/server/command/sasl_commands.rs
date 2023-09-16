@@ -5,11 +5,11 @@ use RemoteServerResponse::Authenticate;
 impl<DB: DatabaseConnection> ServicesServer<DB> {
     pub fn begin_authenticate(&self, session: SaslSessionId, mechanism: String) -> CommandResult {
         if self.sasl_sessions.contains_key(&session) {
-            return Ok(Authenticate(Aborted));
+            return Ok(Authenticate(Fail));
         }
 
         if !self.sasl_mechanisms.contains_key(&mechanism) {
-            return Ok(Authenticate(Aborted));
+            return Ok(Authenticate(Fail));
         }
 
         self.sasl_sessions.insert(
@@ -24,12 +24,12 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
 
     pub fn authenticate(&self, session_id: SaslSessionId, data: Vec<u8>) -> CommandResult {
         let Some(session) = self.sasl_sessions.get(&session_id) else {
-            return Ok(Authenticate(Aborted));
+            return Ok(Authenticate(Fail));
         };
 
         let Some(mechanism) = self.sasl_mechanisms.get(&session.mechanism) else {
             self.sasl_sessions.remove(&session_id);
-            return Ok(Authenticate(Aborted));
+            return Ok(Authenticate(Fail));
         };
 
         let response = mechanism.step(self, &session, data)?;
