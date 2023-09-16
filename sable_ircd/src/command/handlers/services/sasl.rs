@@ -58,9 +58,17 @@ async fn handle_authenticate(
                     };
                     response.send(message::Authenticate::new(&client_data));
                 }
-                Success(account) => {
-                    source.sasl_account.set(account).ok();
+                Success(account_id) => {
+                    source.sasl_account.set(account_id).ok();
 
+                    match net.account(account_id) {
+                        Ok(account) => response.numeric(make_numeric!(LoggedIn, &account.name())),
+                        Err(err) => tracing::error!(
+                            "Successfully logged in to non-existant account {:?}: {:?}",
+                            account_id,
+                            err
+                        ),
+                    }
                     response.numeric(make_numeric!(SaslSuccess));
                 }
                 Fail => {
