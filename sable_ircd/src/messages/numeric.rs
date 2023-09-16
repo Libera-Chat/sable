@@ -108,6 +108,7 @@ define_messages! {
 
     440(ServicesNotAvailable) => { () => ":Services are not available"},
 
+    900(LoggedIn)           => { (account: &Nickname) => "* {account} :You are now logged in as {account}" },  // TODO: <nick>!<ident>@<host> instead of *
     903(SaslSuccess)        => { () => ":SASL authentication successful" },
     904(SaslFail)           => { () => ":SASL authentication failed" },
     906(SaslAborted)        => { () => ":SASL authentication aborted" }
