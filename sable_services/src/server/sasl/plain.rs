@@ -14,22 +14,19 @@ impl<DB: DatabaseConnection> SaslMechanism<DB> for SaslPlain {
     ) -> SaslResult {
         let elements = data.split(|e| *e == 0).collect::<Vec<_>>();
 
-        if elements.len() != 3 {
-            return Ok(Fail);
-        }
+        let (account_name, password) = match elements.as_slice() {
+            // Derive authzid if not provided
+            [&[], authcid, passwd] => (authcid, passwd),
+            // PLAIN specifies both authzid and authcid; we don't support those two being different
+            [authzid, authcid, passwd] if authzid == authcid => (authcid, passwd),
+            _ => return Ok(Fail),
+        };
 
-        // PLAIN specifies both authzid and authcid; we don't support those two being different
-        if elements[0] != elements[1] {
-            return Ok(Fail);
-        }
-
-        let account_name = std::str::from_utf8(&elements[0])?;
+        let account_name = std::str::from_utf8(&account_name)?;
         let account_name = Nickname::from_str(account_name)?;
         let account = server.db.account_named(&account_name)?;
 
         let auth = server.db.auth_for_account(account.id)?;
-
-        let password = elements[2];
 
         match bcrypt::verify(password, &auth.password_hash) {
             Ok(true) => {
