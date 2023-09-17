@@ -99,18 +99,12 @@ impl SendRealtimeItem for update::ChannelRename {
                 tracing::warn!("Cannot send ChannelRename to non-member {:?}", user_id);
                 return Ok(());
             };
+
             let user = network.user(user_id)?;
 
-            conn.send(
-                message::Part::new(
-                    &user,
-                    &self.old_name,
-                    &format!("Channel renamed to {}: {}", &self.new_name, &self.message),
-                )
-                .except_capability(ClientCapability::ChannelRename),
-            );
+            // Construct fake join/part updates so that we can fake the log entry as well
 
-            update::ChannelJoin {
+            let fake_part = update::ChannelPart {
                 channel: self.channel.clone(),
                 membership: membership.raw().clone(),
                 user: HistoricUser {
@@ -118,8 +112,29 @@ impl SendRealtimeItem for update::ChannelRename {
                     account: user.account().ok().flatten().map(|acc| acc.name()),
                     nickname: user.nick(),
                 },
-            }
-            .send_now(conn, from_entry, server)
+                message: format!("Channel renamed to {}: {}", &self.new_name, &self.message),
+            };
+
+            let fake_join = update::ChannelJoin {
+                channel: self.channel.clone(),
+                membership: membership.raw().clone(),
+                user: HistoricUser {
+                    user: user.raw().clone(),
+                    account: user.account().ok().flatten().map(|acc| acc.name()),
+                    nickname: user.nick(),
+                },
+            };
+
+            let fake_log_entry = HistoryLogEntry {
+                id: from_entry.id,
+                timestamp: from_entry.timestamp,
+                source_event: from_entry.source_event,
+                details: NetworkStateChange::ChannelJoin(fake_join),
+            };
+
+            fake_part.send_to(conn, &fake_log_entry)?;
+            // fake_join was moved into fake_log_entry
+            fake_log_entry.send_now(conn, &fake_log_entry, server)
         }
     }
 }

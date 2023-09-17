@@ -12,6 +12,7 @@ fn account_for_tag(update: &NetworkStateChange) -> Option<String> {
         NetworkStateChange::ChannelPart(detail) => detail.user.account,
         NetworkStateChange::UserLoginChange(detail) => detail.user.account,
 
+        NetworkStateChange::ChannelRename(detail) => detail.source.user().and_then(|u| u.account),
         NetworkStateChange::ChannelInvite(detail) => detail.source.user().and_then(|u| u.account),
         NetworkStateChange::NewMessage(detail) => detail.source.user().and_then(|u| u.account),
         NetworkStateChange::ChannelKick(detail) => detail.source.user().and_then(|u| u.account),
