@@ -32,12 +32,13 @@ pub enum ChannelAccessFlag {
     ReceiveOp = 0x0000_0010,
     ReceiveVoice = 0x0000_0020,
     ReceiveOpmod = 0x0000_0040,
-    Rename = 0x0000_0080,
 
     Topic = 0x0000_0100,
     Kick = 0x0000_0200,
     SetSimpleMode = 0x0000_0400,
     SetKey = 0x0000_0800,
+
+    Rename = 0x0000_1000,
 
     BanView = 0x0001_0000,
     BanAdd = 0x0002_0000,
