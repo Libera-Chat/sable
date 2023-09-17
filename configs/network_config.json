@@ -30,11 +30,11 @@
             "op_self", "op_grant", "voice_self", "voice_grant",
             "receive_op", "receive_voice", "receive_opmod",
             "topic", "kick", "set_simple_mode", "set_key",
+            "rename",
             "ban_view", "ban_add", "ban_remove_any",
             "quiet_view", "quiet_add", "quiet_remove_any",
             "exempt_view", "exempt_add", "exempt_remove_any",
             "invite_self", "invite_other",
-            "rename",
             "invex_view", "invex_add", "invex_remove_any"
         ],
         "builtin:voice": [
