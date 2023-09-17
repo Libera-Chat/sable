@@ -26,8 +26,14 @@ fn account_for_tag(update: &NetworkStateChange) -> Option<String> {
         NetworkStateChange::ListModeRemoved(detail) => {
             detail.removed_by.user().and_then(|u| u.account)
         }
-
-        _ => None,
+        NetworkStateChange::NewUser(_) => None,
+        NetworkStateChange::UserModeChange(_) => None,
+        NetworkStateChange::BulkUserQuit(_) => None,
+        NetworkStateChange::NewServer(_) => None,
+        NetworkStateChange::ServerQuit(_) => None,
+        NetworkStateChange::NewAuditLogEntry(_) => None,
+        NetworkStateChange::ServicesUpdate(_) => None,
+        NetworkStateChange::EventComplete(_) => None,
     }
     .map(|n| n.to_string())
 }
