@@ -53,7 +53,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         // This fires after the nick change is applied to the network state, so we
         // have to construct the n!u@h string explicitly
         let net = self.network();
-        let source = net.user(detail.user.id)?;
+        let source = net.user(detail.user.user.id)?;
         let mut notified = HashSet::new();
 
         notified.insert(source.id());

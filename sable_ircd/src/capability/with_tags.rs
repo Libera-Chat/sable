@@ -11,6 +11,11 @@ impl WithSupportedTags for OutboundClientMessage {
     fn with_tags_from(self, history_entry: &HistoryLogEntry) -> Self {
         let server_time_tag = server_time::server_time_tag(history_entry.timestamp);
 
-        self.with_tag(server_time_tag)
+        let mut result = self.with_tag(server_time_tag);
+        if let Some(account_tag) = account_tag::account_tag(&history_entry.details) {
+            result = result.with_tag(account_tag);
+        }
+
+        result
     }
 }

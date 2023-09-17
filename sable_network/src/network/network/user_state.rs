@@ -28,6 +28,9 @@ impl Network {
             Some(update::UserQuit {
                 // We can't use `translate_historic_user` because we've already removed the nick binding
                 user: HistoricUser {
+                    account: user
+                        .account
+                        .and_then(|id| self.account(id).ok().map(|acc| acc.name())),
                     user,
                     nickname: removed_nickname,
                 },
@@ -79,9 +82,12 @@ impl Network {
                 // The ID-based nick isn't bound. Do so.
                 let new_binding =
                     state::NickBinding::new(new_nick, user_id, trigger.timestamp, trigger.id);
+                // Let translate_historic_user do the work of mapping the account name, then manually fill in
+                // the old (collided) nick
+                let mut historic_user = self.translate_historic_user(user.clone());
+                historic_user.nickname = from;
                 let update = UserNickChange {
-                    user: user.clone(),
-                    old_nick: from,
+                    user: historic_user,
                     new_nick: new_binding.nick,
                 };
                 self.nick_bindings.insert(new_nick, new_binding);
@@ -132,9 +138,10 @@ impl Network {
 
             // Emit UserNickChange update if a nick change happens as a result of this rebinding.
             if old_nick.value() != new_nick.value() {
+                let mut historic_user = self.translate_historic_user(user_object.clone());
+                historic_user.nickname = old_nick;
                 let update = UserNickChange {
-                    user: user_object.clone(),
-                    old_nick,
+                    user: historic_user,
                     new_nick,
                 };
                 updates.notify(update, event);

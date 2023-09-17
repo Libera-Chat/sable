@@ -13,6 +13,7 @@ pub struct WrongEventTypeError;
 pub struct HistoricUser {
     pub user: state::User,
     pub nickname: Nickname,
+    pub account: Option<Nickname>,
 }
 
 /// Some state changes can originate from either users or servers; this enum is used in the
@@ -25,6 +26,16 @@ pub enum HistoricMessageSource {
     Server(state::Server),
     User(HistoricUser),
     Unknown,
+}
+
+impl HistoricMessageSource {
+    /// Return the [`HistoricUser`] if it's a user source
+    pub fn user(&self) -> Option<&HistoricUser> {
+        match self {
+            Self::User(user) => Some(user),
+            _ => None,
+        }
+    }
 }
 
 /// Some messages can be targeted at either a user or a channel; this enum is used in the
@@ -58,8 +69,7 @@ NetworkStateChange => {
 
     ///  A user has changed nickname
     struct UserNickChange {
-        pub user: state::User,
-        pub old_nick: Nickname,
+        pub user: HistoricUser,
         pub new_nick: Nickname,
     }
 

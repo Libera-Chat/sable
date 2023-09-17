@@ -75,11 +75,7 @@ impl SendHistoryItem for update::UserAwayChange {
 
 impl SendHistoryItem for update::UserNickChange {
     fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
-        let source_str = format!(
-            "{}!{}@{}",
-            self.old_nick, self.user.user, self.user.visible_host
-        );
-        let message = message::Nick::new(&source_str, &self.new_nick).with_tags_from(from_entry);
+        let message = message::Nick::new(&self.user, &self.new_nick).with_tags_from(from_entry);
 
         conn.send(message);
 

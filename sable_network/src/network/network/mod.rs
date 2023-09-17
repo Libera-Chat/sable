@@ -277,7 +277,15 @@ impl Network {
     /// Translate a [`state::User`] to a [`HistoricUser`] based on the current network state
     pub(crate) fn translate_historic_user(&self, user: state::User) -> update::HistoricUser {
         let nickname = self.infallible_nick_for_user(user.id);
-        update::HistoricUser { nickname, user }
+        let account = user
+            .account
+            .and_then(|id| self.account(id).ok())
+            .map(|acc| acc.name());
+        update::HistoricUser {
+            nickname,
+            account,
+            user,
+        }
     }
 
     /// Translate an [`ObjectId`] into a [`HistoricMessageTarget`] for storage in history log

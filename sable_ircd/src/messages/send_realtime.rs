@@ -115,6 +115,7 @@ impl SendRealtimeItem for update::ChannelRename {
                 membership: membership.raw().clone(),
                 user: HistoricUser {
                     user: user.raw().clone(),
+                    account: user.account().ok().flatten().map(|acc| acc.name()),
                     nickname: user.nick(),
                 },
             }

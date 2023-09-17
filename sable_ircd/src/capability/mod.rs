@@ -11,6 +11,7 @@ pub(crate) use with_tags::WithSupportedTags;
 mod capability_condition;
 pub use capability_condition::*;
 
+pub mod account_tag;
 pub mod server_time;
 
 macro_rules! define_capabilities {
@@ -64,6 +65,7 @@ macro_rules! define_capabilities {
 define_capabilities! (
     ClientCapability
     {
+        // Stable caps
         ServerTime:             0x02 => ("server-time", true),
         EchoMessage:            0x04 => ("echo-message", true),
         Sasl:                   0x08 => ("sasl", false),
@@ -71,11 +73,13 @@ define_capabilities! (
         LabeledResponse:        0x20 => ("labeled-response", true),
         UserhostInNames:        0x40 => ("userhost-in-names", true),
         AwayNotify:             0x80 => ("away-notify", true),
+        AccountTag:             0x100 => ("account-tag", true),
 
-        ChatHistory:            0x100 => ("draft/chathistory", true),
-        PersistentSession:      0x200 => ("sable.libera.chat/persistent-session", true),
-        AccountRegistration:    0x400 => ("sable.libera.chat/account-registration", true),
-        ChannelRename:          0x800 => ("draft/channel-rename", true),
+        // Draft and experimental caps
+        ChatHistory:            0x1_0000 => ("draft/chathistory", true),
+        PersistentSession:      0x2_0000 => ("sable.libera.chat/persistent-session", true),
+        AccountRegistration:    0x4_0000 => ("sable.libera.chat/account-registration", true),
+        ChannelRename:          0x8_0000 => ("draft/channel-rename", true),
     }
 );
 
