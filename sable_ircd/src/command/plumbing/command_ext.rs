@@ -42,15 +42,15 @@ impl<T: Command + ?Sized> CommandExt for T {
         target: impl Into<ObjectId>,
         detail: impl Into<EventDetails>,
     ) {
-        let new_event_id = self
-            .server()
+        self.server()
             .node()
-            .submit_event_with_id(target, detail)
+            .submit_event_and(target, detail, |id| {
+                self.server().store_response_sink(
+                    id,
+                    self.connection_id(),
+                    self.response_sink_arc(),
+                )
+            })
             .await;
-        self.server().store_response_sink(
-            new_event_id,
-            self.connection_id(),
-            self.response_sink_arc(),
-        )
     }
 }

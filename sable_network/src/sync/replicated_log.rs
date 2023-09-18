@@ -5,6 +5,7 @@ use crate::rpc::*;
 
 use backoff::ExponentialBackoff;
 use std::{cell::RefCell, collections::HashMap, sync::Arc, sync::RwLock, time::Duration};
+use tokio::sync::Notify;
 use tokio::{
     select,
     sync::{
@@ -69,7 +70,12 @@ struct TaskState {
 
 #[derive(Debug)]
 enum EventLogMessage {
-    NewEvent(ObjectId, EventDetails, Option<oneshot::Sender<EventId>>),
+    NewEvent(
+        ObjectId,
+        EventDetails,
+        Option<oneshot::Sender<EventId>>,
+        Option<Arc<Notify>>,
+    ),
     TargetedMessage(TargetedMessage, oneshot::Sender<RemoteServerResponse>),
 }
 
@@ -188,7 +194,7 @@ impl ReplicatedEventLog {
     /// Arguments are the target object ID, and the event detail.
     pub fn create_event(&self, target: ObjectId, detail: EventDetails) {
         self.new_event_send
-            .send(EventLogMessage::NewEvent(target, detail, None))
+            .send(EventLogMessage::NewEvent(target, detail, None, None))
             .expect("Failed to submit new event for creation");
     }
 
@@ -199,10 +205,41 @@ impl ReplicatedEventLog {
         let (sender, receiver) = oneshot::channel();
 
         self.new_event_send
-            .send(EventLogMessage::NewEvent(target, detail, Some(sender)))
+            .send(EventLogMessage::NewEvent(
+                target,
+                detail,
+                Some(sender),
+                None,
+            ))
             .expect("Failed to submit new event for creation");
 
         receiver.await.expect("Failed to read new event ID")
+    }
+
+    // Create a new event, returning its ID. Run the provided function before propagating the event.
+    pub async fn create_event_and(
+        &self,
+        target: ObjectId,
+        detail: EventDetails,
+        f: impl Fn(EventId),
+    ) {
+        let (sender, receiver) = oneshot::channel();
+        let notifier = Arc::new(Notify::new());
+
+        self.new_event_send
+            .send(EventLogMessage::NewEvent(
+                target,
+                detail,
+                Some(sender),
+                Some(notifier.clone()),
+            ))
+            .expect("Failed to submit new event for creation");
+
+        let id = receiver.await.expect("Failed to read new event ID");
+
+        f(id);
+
+        notifier.notify_one();
     }
 
     /// Disable a given server for sync purposes. This should be called when
@@ -411,7 +448,7 @@ impl TaskState {
                 update = self.new_event_recv.recv() => {
                     tracing::trace!("...from update_recv");
                     match update {
-                        Some(EventLogMessage::NewEvent(id, detail, id_sender)) =>
+                        Some(EventLogMessage::NewEvent(id, detail, id_sender, notifier)) =>
                         {
                             let event = {
                                 let mut log = self.shared_state.log.write().unwrap();
@@ -424,6 +461,11 @@ impl TaskState {
                                 // Discard the result here; we shouldn't kill the sync task if a caller
                                 // hung up the channel.
                                 let _ = id_sender.send(event.id);
+                            }
+                            if let Some(notifier) = notifier {
+                                // The submitter has asked that we wait before processing the event
+                                // so that they can do something with the ID
+                                notifier.notified().await;
                             }
                             self.net.propagate(&self.message(MessageDetail::NewEvent(event))).await
                         },
