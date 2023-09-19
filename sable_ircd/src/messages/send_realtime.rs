@@ -1,6 +1,7 @@
 use crate::errors::HandleResult;
 use crate::messages::MessageSink;
 use crate::ClientServer;
+use sable_network::network::state;
 use sable_network::network::update::HistoricUser;
 use sable_network::prelude::wrapper::ObjectWrapper;
 use sable_network::prelude::*;
@@ -105,7 +106,10 @@ impl SendRealtimeItem for update::ChannelRename {
             // Construct fake join/part updates so that we can fake the log entry as well
 
             let fake_part = update::ChannelPart {
-                channel: self.channel.clone(),
+                channel: state::Channel {
+                    name: self.old_name.clone(),
+                    ..self.channel.clone()
+                },
                 membership: membership.raw().clone(),
                 user: HistoricUser {
                     user: user.raw().clone(),
@@ -116,7 +120,10 @@ impl SendRealtimeItem for update::ChannelRename {
             };
 
             let fake_join = update::ChannelJoin {
-                channel: self.channel.clone(),
+                channel: state::Channel {
+                    name: self.new_name.clone(),
+                    ..self.channel.clone()
+                },
                 membership: membership.raw().clone(),
                 user: HistoricUser {
                     user: user.raw().clone(),
