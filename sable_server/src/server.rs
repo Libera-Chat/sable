@@ -150,17 +150,19 @@ where
     pub async fn run(&self) -> ShutdownAction {
         let (shutdown_send, shutdown_recv) = broadcast::channel(1);
 
-        let log_task = self.log.start_sync(shutdown_send.subscribe());
+        tracing::trace!("server run 1");
+        let mut log_task = self.log.start_sync(shutdown_send.subscribe());
 
         let node = Arc::clone(&self.node);
-        let node_task = tokio::spawn(async move {
+        let mut node_task = tokio::spawn(async move {
             node.run(shutdown_recv).await;
         });
 
         let server = Arc::clone(&self.server);
+        tracing::trace!("server run 2");
 
         let shutdown_recv = shutdown_send.subscribe();
-        let server_task = tokio::spawn(async move { server.run(shutdown_recv).await });
+        let mut server_task = tokio::spawn(async move { server.run(shutdown_recv).await });
 
         let shutdown_recv = shutdown_send.subscribe();
         let remote_command_recv = self
@@ -169,27 +171,48 @@ where
             .take()
             .expect("Remote command channel already taken?");
         let server = Arc::clone(&self.server);
-        let event_pump_task = tokio::spawn(async move {
+        let mut event_pump_task = tokio::spawn(async move {
             Self::run_event_pump(shutdown_recv, remote_command_recv, server).await
         });
+        tracing::trace!("server run 3");
 
-        // The management task will exit on receiving a shutdown command, so just wait for it to finish
-        // then propagate the shutdown action
-        let action = self.run_management().await;
+        tokio::select! {
+            // The management task will exit on receiving a shutdown command, so just wait for it to finish
+            // then propagate the shutdown action
+            action = self.run_management() => {
+                shutdown_send
+                    .send(action.clone())
+                    .expect("Couldn't signal shutdown");
 
-        shutdown_send
-            .send(action.clone())
-            .expect("Couldn't signal shutdown");
+                event_pump_task.await.expect("Event pump panicked during shutdown");
+                node_task.await.expect("Node task panicked during shutdown");
+                server_task.await.expect("Server task panicked during shutdown");
+                log_task
+                    .await
+                    .expect("Log task panicked during shutdown?")
+                    .expect("Log task returned error during shutdown");
 
-        event_pump_task.await.expect("Event pump panicked");
-        node_task.await.expect("Node task panicked");
-        server_task.await.expect("Server task panicked");
-        log_task
-            .await
-            .expect("Log task panicked?")
-            .expect("Log task returned error");
-
-        action
+                action
+            }
+            res = &mut event_pump_task => {
+                res.expect("Event pump panicked");
+                panic!("Event pump exited early");
+            }
+            res = &mut node_task => {
+                res.expect("Node task panicked");
+                panic!("Node task exited early");
+            }
+            res = &mut server_task => {
+                res.expect("Server task panicked");
+                panic!("Server task exited early");
+            }
+            res = &mut log_task => {
+                res
+                .expect("Log task panicked?")
+                .expect("Log task returned error");
+                panic!("Log task exited early");
+            }
+        }
     }
 
     /// Shut down the server, if it is not going to be resumed.
