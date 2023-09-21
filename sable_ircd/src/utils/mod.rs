@@ -1,6 +1,9 @@
 mod channel_names;
 pub use channel_names::*;
 
+mod motd;
+pub use motd::*;
+
 mod numeric_utils;
 pub use numeric_utils::*;
 

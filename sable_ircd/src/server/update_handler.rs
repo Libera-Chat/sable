@@ -144,6 +144,8 @@ impl ClientServer {
                 ));
             }
 
+            crate::utils::send_motd(self, &connection, &user)?;
+
             connection.send(message::Mode::new(&user, &user, &user.mode().format()));
 
             connection.send(message::Notice::new(&self.node.name().to_string(), &user,
