@@ -136,6 +136,20 @@ impl ClientServer {
                 self.node.name(),
                 self.node.version(),
             ));
+            connection.send(numeric::Numeric003::new_for(
+                &self.node.name().to_string(),
+                &user.nick(),
+                &chrono::offset::Utc::now(),
+            ));
+            connection.send(numeric::Numeric004::new_for(
+                &self.node.name().to_string(),
+                &user.nick(),
+                self.node.name(),
+                self.node.version(),
+                &self.myinfo.user_modes,
+                &self.myinfo.chan_modes,
+                &self.myinfo.chan_modes_with_a_parameter,
+            ));
             for line in self.isupport.data().iter() {
                 connection.send(numeric::ISupport::new_for(
                     &self.node.name().to_string(),

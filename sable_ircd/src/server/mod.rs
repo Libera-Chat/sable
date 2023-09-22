@@ -50,6 +50,13 @@ mod user_access;
 
 const PREREG_TIMEOUT: time::Duration = time::Duration::from_secs(120);
 
+/// Last parameters of the RPL_MYINFO (004) numeric
+struct MyInfo {
+    user_modes: String,
+    chan_modes: String,
+    chan_modes_with_a_parameter: String,
+}
+
 /// A client server.
 ///
 /// This type uses the [`NetworkNode`] struct to link to the network
@@ -74,6 +81,7 @@ pub struct ClientServer {
     prereg_connections: Mutex<VecDeque<Weak<ClientConnection>>>,
 
     auth_client: AuthClient,
+    myinfo: MyInfo,
     isupport: ISupportBuilder,
     client_caps: CapabilityRepository,
 
@@ -142,6 +150,19 @@ impl ClientServer {
         self.stored_response_sinks
             .write()
             .store(event_id, connection_id, sink);
+    }
+
+    #[tracing::instrument]
+    fn build_myinfo() -> MyInfo {
+        MyInfo {
+            user_modes: UserModeSet::all().map(|m| m.1).iter().collect(),
+            chan_modes: ChannelModeSet::all().map(|m| m.1).iter().collect(),
+            chan_modes_with_a_parameter: ListModeType::iter()
+                .map(|t| t.mode_letter())
+                .chain(KeyModeType::iter().map(|t| t.mode_letter()))
+                .chain(MembershipFlagSet::all().map(|m| m.1).into_iter())
+                .collect(),
+        }
     }
 
     #[tracing::instrument]
