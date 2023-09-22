@@ -4,7 +4,10 @@ use sable_network::network::wrapper::{Channel, ChannelMode, ListModeEntry, Serve
 
 define_messages! {
     001(Welcome)    => { (network_name: &str, nick: &Nickname)  => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
-    002(YourHostIs) => { (server_name: &ServerName, version: &str)     => ":Your host is {server_name}, running version {version}" },
+    002(YourHostIs) => { (server_name: &ServerName, version: &str)      => ":Your host is {server_name}, running version {version}" },
+    003(Created)    => { (when: &chrono::DateTime<chrono::offset::Utc>) => ":This server was created {when}" },
+    004(MyInfo)     => { (server_name: &ServerName, version: &str, user_modes: &str, chan_modes: &str, chan_modes_with_a_parameter: &str)
+                                                => "{server_name} {version} {user_modes} {chan_modes} {chan_modes_with_a_parameter}" },
     005(ISupport)   => { (data: &str)                           => "{data} :are supported by this server" },
 
     221(UserModeIs)             => { (modestring: &str)         => ":{modestring}" },
