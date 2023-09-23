@@ -1,5 +1,6 @@
 use crate::{
     database::{DatabaseConnection, DatabaseError},
+    hashing::HashConfig,
     model::*,
 };
 use command::CommandError;
@@ -37,6 +38,8 @@ mod sync;
 pub struct ServicesConfig {
     pub database: String,
     pub default_roles: HashMap<ChannelRoleName, Vec<ChannelAccessFlag>>,
+    #[serde(default)]
+    pub password_hash: HashConfig,
 }
 
 pub struct ServicesServer<DB> {
