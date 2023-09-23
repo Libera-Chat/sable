@@ -6,6 +6,7 @@
 #![allow(incomplete_features)]
 
 pub mod database;
+mod hashing;
 mod model;
 
 mod server;
