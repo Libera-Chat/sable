@@ -78,7 +78,7 @@ define_capabilities! (
         // Draft and experimental caps
         ChatHistory:            0x1_0000 => ("draft/chathistory", true),
         PersistentSession:      0x2_0000 => ("sable.libera.chat/persistent-session", true),
-        AccountRegistration:    0x4_0000 => ("sable.libera.chat/account-registration", true),
+        AccountRegistration:    0x4_0000 => ("draft/account-registration", true),
         ChannelRename:          0x8_0000 => ("draft/channel-rename", true),
     }
 );
