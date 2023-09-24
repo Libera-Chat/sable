@@ -74,7 +74,7 @@ pub struct ClientServer {
     prereg_connections: Mutex<VecDeque<Weak<ClientConnection>>>,
 
     auth_client: AuthClient,
-    isupport: ISupportBuilder,
+    pub isupport: ISupportBuilder,
     client_caps: CapabilityRepository,
 
     node: Arc<NetworkNode>,
