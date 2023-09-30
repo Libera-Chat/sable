@@ -18,7 +18,7 @@ macro_rules! define_capabilities {
     (
         $typename:ident
         {
-            $( $cap:ident : $val:literal => ($name:literal, $def:literal) ),* $(,)?
+            $( $cap:ident : $bitmask:literal => ($name:literal, $value:expr, $def:literal) ),* $(,)?
         }
     ) => {
         #[derive(Clone,Copy,Debug,PartialEq,Eq,Serialize,Deserialize)]
@@ -26,13 +26,13 @@ macro_rules! define_capabilities {
         #[repr(u64)]
         pub enum $typename
         {
-            $( $cap = $val ),*
+            $( $cap = $bitmask ),*
         }
 
         impl $typename
         {
-            /// Exhaustive list of all known capabilities
-            const ALL: &'static [ClientCapability] = &[ $(Self::$cap),* ];
+            /// Exhaustive list of all known capabilities and their IRCv3.2 value
+            const ALL: &'static [(ClientCapability, &'static [&'static str])] = &[ $((Self::$cap, $value)),* ];
 
             /// On-the-wire name of the capability
             pub fn name(self) -> &'static str
@@ -58,6 +58,10 @@ macro_rules! define_capabilities {
             {
                 *self as u64
             }
+
+            pub fn all() -> &'static [(ClientCapability, &'static [&'static str])] {
+                Self::ALL
+            }
         }
     };
 }
@@ -66,20 +70,20 @@ define_capabilities! (
     ClientCapability
     {
         // Stable caps
-        ServerTime:             0x02 => ("server-time", true),
-        EchoMessage:            0x04 => ("echo-message", true),
-        Sasl:                   0x08 => ("sasl", false),
-        Batch:                  0x10 => ("batch", true),
-        LabeledResponse:        0x20 => ("labeled-response", true),
-        UserhostInNames:        0x40 => ("userhost-in-names", true),
-        AwayNotify:             0x80 => ("away-notify", true),
-        AccountTag:             0x100 => ("account-tag", true),
+        ServerTime:             0x02 => ("server-time", &[], true),
+        EchoMessage:            0x04 => ("echo-message", &[], true),
+        Sasl:                   0x08 => ("sasl", &[], false),
+        Batch:                  0x10 => ("batch", &[], true),
+        LabeledResponse:        0x20 => ("labeled-response", &[], true),
+        UserhostInNames:        0x40 => ("userhost-in-names", &[], true),
+        AwayNotify:             0x80 => ("away-notify", &[], true),
+        AccountTag:             0x100 => ("account-tag", &[], true),
 
         // Draft and experimental caps
-        ChatHistory:            0x1_0000 => ("draft/chathistory", true),
-        PersistentSession:      0x2_0000 => ("sable.libera.chat/persistent-session", true),
-        AccountRegistration:    0x4_0000 => ("draft/account-registration", true),
-        ChannelRename:          0x8_0000 => ("draft/channel-rename", true),
+        ChatHistory:            0x1_0000 => ("draft/chathistory", &[], true),
+        PersistentSession:      0x2_0000 => ("sable.libera.chat/persistent-session", &[], true),
+        AccountRegistration:    0x4_0000 => ("draft/account-registration", &[], true),
+        ChannelRename:          0x8_0000 => ("draft/channel-rename", &[], true),
     }
 );
 
@@ -118,6 +122,7 @@ impl ClientCapabilitySet {
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = ClientCapability> + 'a {
         ClientCapability::ALL
             .iter()
+            .map(|(cap, _value)| cap)
             .cloned()
             .filter(|cap| self.has(*cap))
     }
@@ -157,6 +162,7 @@ impl AtomicCapabilitySet {
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = ClientCapability> + 'a {
         ClientCapability::ALL
             .iter()
+            .map(|(cap, _value)| cap)
             .cloned()
             .filter(|cap| self.has(*cap))
     }
