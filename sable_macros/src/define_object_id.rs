@@ -204,8 +204,10 @@ pub fn object_ids(input: TokenStream) -> TokenStream {
                     &format!("next_{}", &typename).to_case(Case::Snake),
                     Span::call_site(),
                 );
-                let generator_field_name =
-                    Ident::new(&format!("{}_generator_field", &typename), Span::call_site());
+                let generator_field_name = Ident::new(
+                    &format!("{}_generator_field", &typename).to_case(Case::Snake),
+                    Span::call_site(),
+                );
 
                 generator_methods.push(quote!(
                     pub fn #generator_method_name (&self) -> #id_typename {
