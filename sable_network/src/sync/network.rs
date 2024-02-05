@@ -363,7 +363,7 @@ impl GossipNetwork {
         Err(last_err)
     }
 
-    #[instrument(skip(self, response_sender))]
+    #[instrument(err, skip(self, response_sender))]
     async fn do_send_to(
         &self,
         peer: &PeerConfig,

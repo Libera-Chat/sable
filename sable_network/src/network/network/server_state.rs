@@ -70,22 +70,26 @@ impl Network {
                 }
             }
 
-            let mut users_to_remove = Vec::new();
+            // Collect all the user connections that were on the departing server
+            let removed_connections: Vec<_> = self
+                .user_connections
+                .extract_if(|id, _conn| id.server() == target)
+                .map(|(_, conn)| conn)
+                .collect();
 
-            for u in self
-                .users
-                .iter()
-                .filter(|&(_, v)| v.server == target)
-                .map(|(k, _)| *k)
-            {
-                users_to_remove.push(u);
-            }
+            // Identify the set of users associated with those connections
+            let users_to_test: Vec<_> = removed_connections.iter().map(|conn| conn.user).collect();
 
+            // Check which of those users aren't persistent, and quit them
             let mut quit_updates = Vec::new();
 
-            for u in users_to_remove {
-                if let Some(update) = self.remove_user(u, "Server disconnecting".to_string()) {
-                    quit_updates.push(update);
+            for user_id in users_to_test {
+                if matches!(self.users.get(&user_id), Some(user) if user.session_key.is_none()) {
+                    if let Some(update) =
+                        self.remove_user(user_id, "Server disconnecting".to_string())
+                    {
+                        quit_updates.push(update);
+                    }
                 }
             }
 

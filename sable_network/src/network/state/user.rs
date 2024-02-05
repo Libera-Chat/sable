@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::net::IpAddr;
 
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +18,21 @@ pub struct NickBinding {
     pub created: EventId,
 }
 
+/// A user connection.
+///
+/// Describes an individual connection associated with a user. Note that there
+/// is no `server` field; this information can be extracted from the server
+/// component of the object ID.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserConnection {
+    pub id: UserConnectionId,
+    pub user: UserId,
+
+    pub hostname: Hostname,
+    pub ip: IpAddr,
+    pub connection_time: i64,
+}
+
 /// A user.
 ///
 /// Note that the user's nickname is not included here; that is stored in a
@@ -24,7 +40,6 @@ pub struct NickBinding {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub id: UserId,
-    pub server: ServerId,
 
     pub user: Username,
     pub visible_host: Hostname,
@@ -77,7 +92,6 @@ impl NickBinding {
 impl User {
     pub fn new(
         id: UserId,
-        server: ServerId,
         user: Username,
         visible_host: Hostname,
         realname: Realname,
@@ -86,7 +100,6 @@ impl User {
     ) -> Self {
         Self {
             id,
-            server,
             user,
             visible_host,
             realname,

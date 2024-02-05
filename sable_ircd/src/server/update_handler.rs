@@ -13,10 +13,10 @@ impl ClientServer {
                 let history = self.node.history();
                 if let Some(entry) = history.get(entry_id) {
                     match &entry.details {
-                        NetworkStateChange::NewUser(detail) => {
-                            let new_user = detail.clone();
+                        NetworkStateChange::NewUserConnection(detail) => {
+                            let new_user_connection = detail.clone();
                             drop(history);
-                            self.handle_new_user(&new_user)?;
+                            self.handle_new_user_connection(&new_user_connection)?;
                         }
                         NetworkStateChange::ServicesUpdate(detail) => {
                             let update = detail.clone();
@@ -118,11 +118,18 @@ impl ClientServer {
         entry.send_now(&sink, entry, self)
     }
 
-    fn handle_new_user(&self, detail: &update::NewUser) -> HandleResult {
+    fn handle_new_user_connection(&self, detail: &update::NewUserConnection) -> HandleResult {
         let net = self.node.network();
         let user = net.user(detail.user.user.id)?;
-        for connection in self.connections.read().get_user(user.id()) {
-            connection.set_user_id(user.id());
+
+        if let Ok(connection) = self
+            .connections
+            .read()
+            .get_user_connection(detail.connection.id)
+        {
+            // `register_new_user` doesn't set the user ID on the connection; it remains a pre-client until
+            // we see the registration events come back through (i.e. here)
+            connection.set_user(user.id(), detail.connection.id);
 
             connection.send(numeric::Numeric001::new_for(
                 &self.node.name().to_string(),

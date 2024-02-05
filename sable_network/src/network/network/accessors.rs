@@ -29,6 +29,26 @@ impl Network {
         self.users.values()
     }
 
+    /// Look up a user connection by ID
+    pub fn user_connection(&self, id: UserConnectionId) -> LookupResult<wrapper::UserConnection> {
+        self.user_connections
+            .get(&id)
+            .ok_or(NoSuchConnection(id))
+            .wrap(self)
+    }
+
+    /// Return an iterator over all user connections.
+    pub fn user_connections(
+        &self,
+    ) -> impl std::iter::Iterator<Item = wrapper::UserConnection> + '_ {
+        self.raw_user_connections().wrap(self)
+    }
+
+    /// Return an iterator over the raw `state::UserConnection` objects.
+    pub fn raw_user_connections(&self) -> impl std::iter::Iterator<Item = &state::UserConnection> {
+        self.user_connections.values()
+    }
+
     /// Return a nickname binding for the given nick.
     pub fn nick_binding(&self, nick: &Nickname) -> LookupResult<wrapper::NickBinding> {
         self.nick_bindings

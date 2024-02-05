@@ -263,7 +263,12 @@ impl ClientServer {
             }
             ConnectionEventDetail::Error(e) => {
                 if let Ok(conn) = self.connections.get(msg.source) {
-                    if let Some(userid) = conn.user_id() {
+                    if let Some((userid, user_conn_id)) = conn.user_ids() {
+                        // Tell the network that this connection has gone away, regardless of whether the
+                        // user itself is sticking around
+                        self.node
+                            .submit_event(user_conn_id, details::UserDisconnect {});
+
                         // If the user has a session key set, then they're in persistent session mode
                         // and shouldn't be quit just because one of their connections closed
                         let should_quit = if let Ok(user) = self.network().user(userid) {

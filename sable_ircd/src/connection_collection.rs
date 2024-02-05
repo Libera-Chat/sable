@@ -11,6 +11,7 @@ use std::{
 /// either connection ID or user ID
 pub(super) struct ConnectionCollection {
     client_connections: HashMap<ConnectionId, Arc<ClientConnection>>,
+    user_conn_to_connid: HashMap<UserConnectionId, ConnectionId>,
     user_to_connid: HashMap<UserId, Vec<ConnectionId>>,
     flooded_connections: Vec<Arc<ClientConnection>>,
 }
@@ -33,6 +34,7 @@ impl ConnectionCollection {
     pub fn new() -> Self {
         Self {
             client_connections: HashMap::new(),
+            user_conn_to_connid: HashMap::new(),
             user_to_connid: HashMap::new(),
             flooded_connections: Vec::new(),
         }
@@ -69,8 +71,11 @@ impl ConnectionCollection {
         weak_conn
     }
 
-    /// Associate a user ID with an existing connection ID
-    pub fn add_user(&mut self, user: UserId, to: ConnectionId) {
+    /// Associate an existing connection with a user
+    ///
+    /// A UserId and UserConnectionId are both required - if the user has a client connection
+    /// on this server, it must have an associated UserConnection also on this server
+    pub fn add_user(&mut self, user: UserId, user_connection: UserConnectionId, to: ConnectionId) {
         let user_conns = self.user_to_connid.entry(user).or_default();
 
         // Important: this vec cannot contain duplicate IDs; not only will it
@@ -81,6 +86,8 @@ impl ConnectionCollection {
         if !user_conns.contains(&to) {
             user_conns.push(to);
         }
+
+        self.user_conn_to_connid.insert(user_connection, to);
     }
 
     /// Remove a connection, by connection ID
@@ -89,6 +96,9 @@ impl ConnectionCollection {
             tracing::trace!("Removing connection {:?}", id);
             if let Some(userid) = conn.user_id() {
                 self.user_to_connid.remove(&userid);
+            }
+            if let Some(user_conn_id) = conn.user_connection_id() {
+                self.user_conn_to_connid.remove(&user_conn_id);
             }
         }
         self.client_connections.remove(&id);
@@ -117,6 +127,18 @@ impl ConnectionCollection {
             connections: &self.client_connections,
             iter: self.user_to_connid.get(&id).map(|c| c.iter()),
         }
+    }
+
+    /// Lookup a local client connection by its network-wide UserConnectionId
+    pub fn get_user_connection(
+        &self,
+        id: UserConnectionId,
+    ) -> Result<Arc<ClientConnection>, LookupError> {
+        let conn_id = self
+            .user_conn_to_connid
+            .get(&id)
+            .ok_or(LookupError::NoSuchConnectionId)?;
+        self.get(*conn_id)
     }
 
     /// Iterate over connections
@@ -175,8 +197,8 @@ impl ConnectionCollection {
 
         for (conn_id, conn_data) in state.clients.into_iter() {
             let cli_conn = ClientConnection::restore(conn_data, listener_collection);
-            if let Some(user_id) = &cli_conn.user_id() {
-                ret.add_user(*user_id, conn_id);
+            if let Some((user_id, user_conn_id)) = cli_conn.user_ids() {
+                ret.add_user(user_id, user_conn_id, conn_id);
             }
             ret.client_connections.insert(conn_id, Arc::new(cli_conn));
         }

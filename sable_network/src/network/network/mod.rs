@@ -69,6 +69,8 @@ pub struct Network {
     nick_bindings: HashMap<Nickname, state::NickBinding>,
     #[serde_as(as = "Vec<(_,_)>")]
     users: HashMap<UserId, state::User>,
+    #[serde_as(as = "Vec<(_,_)>")]
+    user_connections: HashMap<UserConnectionId, state::UserConnection>,
 
     #[serde_as(as = "Vec<(_,_)>")]
     channels: HashMap<ChannelId, state::Channel>,
@@ -127,6 +129,7 @@ impl Network {
         let net = Network {
             nick_bindings: HashMap::new(),
             users: HashMap::new(),
+            user_connections: HashMap::new(),
 
             channels: HashMap::new(),
             channel_topics: HashMap::new(),
@@ -198,6 +201,8 @@ impl Network {
         dispatch_event!(event(updates) => {
             BindNickname => self.bind_nickname,
             NewUser => self.new_user,
+            NewUserConnection => self.new_user_connection,
+            UserDisconnect => self.user_disconnect,
             UserQuit => self.user_quit,
             UserModeChange => self.user_mode_change,
             OperUp => self.oper_up,

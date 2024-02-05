@@ -309,6 +309,22 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         Ok(())
     }
 
+    fn handle_new_user_connection(
+        &self,
+        _entry: &HistoryLogEntry,
+        _detail: &update::NewUserConnection,
+    ) -> HandleResult {
+        Ok(())
+    }
+
+    fn handle_user_connection_disconnected(
+        &self,
+        _entry: &HistoryLogEntry,
+        _detail: &update::UserConnectionDisconnected,
+    ) -> HandleResult {
+        Ok(())
+    }
+
     fn handle_user_login(
         &self,
         _entry: &HistoryLogEntry,
@@ -350,6 +366,10 @@ impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode
             UserAwayChange(details) => self.handle_away_change(entry, details),
             UserNickChange(details) => self.handle_nick_change(entry, details),
             UserModeChange(details) => self.handle_umode_change(entry, details),
+            NewUserConnection(details) => self.handle_new_user_connection(entry, details),
+            UserConnectionDisconnected(details) => {
+                self.handle_user_connection_disconnected(entry, details)
+            }
             UserQuit(details) => self.handle_user_quit(entry, details),
             BulkUserQuit(details) => self.handle_bulk_quit(&history_guard, entry, details),
             ChannelModeChange(details) => self.handle_channel_mode_change(entry, details),

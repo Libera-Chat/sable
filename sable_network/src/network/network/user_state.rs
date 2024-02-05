@@ -1,5 +1,8 @@
 use super::*;
-use crate::{network::state_utils, prelude::state::UserSessionKey};
+use crate::{
+    network::{state::UserConnection, state_utils},
+    prelude::state::UserSessionKey,
+};
 
 impl Network {
     pub(super) fn remove_user(&mut self, id: UserId, message: String) -> Option<update::UserQuit> {
@@ -180,7 +183,6 @@ impl Network {
     ) {
         let user = state::User::new(
             target,
-            detail.server,
             detail.username,
             detail.visible_hostname,
             detail.realname.clone(),
@@ -207,6 +209,17 @@ impl Network {
             user: self.translate_historic_user(user),
         };
         updates.notify(update, event);
+
+        // If there was an initial connection detail provided, add that now that the user is fully created
+        if let Some((initial_connection_id, initial_connection_detail)) = &detail.initial_connection
+        {
+            self.new_user_connection(
+                *initial_connection_id,
+                event,
+                initial_connection_detail,
+                updates,
+            )
+        }
     }
 
     pub(super) fn validate_new_user(
@@ -309,5 +322,47 @@ impl Network {
                 key_hash: detail.key_hash.clone(),
             });
         }
+    }
+
+    pub(super) fn new_user_connection(
+        &mut self,
+        target: UserConnectionId,
+        event: &Event,
+        detail: &details::NewUserConnection,
+        updates: &dyn NetworkUpdateReceiver,
+    ) {
+        self.user_connections.insert(
+            target,
+            UserConnection {
+                id: target,
+                user: detail.user,
+                hostname: detail.hostname,
+                ip: detail.ip,
+                connection_time: detail.connection_time,
+            },
+        );
+
+        // unwrap is ok because we just inserted that key
+        let connection = self.user_connections.get(&target).unwrap();
+
+        if let Some(user) = self.users.get(&detail.user) {
+            updates.notify(
+                update::NewUserConnection {
+                    user: self.translate_historic_user(user.clone()),
+                    connection: connection.clone(),
+                },
+                event,
+            );
+        }
+    }
+
+    pub(super) fn user_disconnect(
+        &mut self,
+        target: UserConnectionId,
+        _event: &Event,
+        _detail: &details::UserDisconnect,
+        _updates: &dyn NetworkUpdateReceiver,
+    ) {
+        self.user_connections.remove(&target);
     }
 }

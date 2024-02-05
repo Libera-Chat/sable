@@ -1,4 +1,5 @@
 #![feature(round_char_boundary)]
+#![feature(hash_extract_if)]
 
 pub mod prelude;
 

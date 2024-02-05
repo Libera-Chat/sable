@@ -17,6 +17,8 @@ impl SendHistoryItem for HistoryLogEntry {
     fn send_to(&self, conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
         match &self.details {
             NetworkStateChange::NewUser(detail) => detail.send_to(conn, self),
+            NetworkStateChange::NewUserConnection(detail) => detail.send_to(conn, self),
+            NetworkStateChange::UserConnectionDisconnected(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserAwayChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserNickChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserModeChange(detail) => detail.send_to(conn, self),
@@ -45,6 +47,18 @@ impl SendHistoryItem for HistoryLogEntry {
 }
 
 impl SendHistoryItem for update::NewUser {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+        Ok(())
+    }
+}
+
+impl SendHistoryItem for update::NewUserConnection {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+        Ok(())
+    }
+}
+
+impl SendHistoryItem for update::UserConnectionDisconnected {
     fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
         Ok(())
     }

@@ -22,6 +22,8 @@ define_messages! {
     318(EndOfWhois)             => { (user: &User.nick())       => "{user} :End of /WHOIS" },
     319(WhoisChannels)          => { (user: &User.nick(), chanlist: &str)
                                                                 => "{user} :{chanlist}" },
+    378(WhoisHost)              => { (user: &User.nick(), username=user.user(), host: &Hostname, ip: &std::net::IpAddr)
+                                                                => "{user} :is connecting from {username}@{host} {ip}" },
 
     324(ChannelModeIs)          => { (chan: &Channel.name(), modes: &ChannelMode.format())
                                                                 => "{chan} {modes}" },
@@ -38,9 +40,9 @@ define_messages! {
     341(Inviting)               => { (nick: &User.nick(), chan: &Channel.name())
                                                                 => "{nick} {chan}" },
 
-    352(WhoReply)               => { (chname: &str, user: &User.user(), host=user.visible_host(), server: &Server.name(),
+    352(WhoReply)               => { (chname: &str, user: &User.user(), host=user.visible_host(),
                                       nick=user.nick(), status: &str, hopcount: usize, realname=&user.realname())
-                                                => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },
+                                                => "{chname} {user} {host} * {nick} {status} :{hopcount} {realname}" },
     353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)
                                                                 => "{is_pub} {chan} :{content}" },
     366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },

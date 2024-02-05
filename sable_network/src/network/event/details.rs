@@ -22,6 +22,19 @@ EventDetails => {
         pub mode: state::UserMode,
         pub server: ServerId,
         pub account: Option<AccountId>,
+        pub initial_connection: Option<(UserConnectionId, NewUserConnection)>,
+    }
+
+    #[target_type(UserConnectionId)]
+    struct NewUserConnection {
+        pub user: UserId,
+        pub hostname: Hostname,
+        pub ip: std::net::IpAddr,
+        pub connection_time: i64,
+    }
+
+    #[target_type(UserConnectionId)]
+    struct UserDisconnect {
     }
 
     #[target_type(UserId)]

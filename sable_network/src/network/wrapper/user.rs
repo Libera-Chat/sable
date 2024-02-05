@@ -46,9 +46,13 @@ impl<'a> User<'a> {
         UserMode::wrap(self.network, &self.data.mode)
     }
 
-    /// The server through which the user is connected
-    pub fn server(&self) -> LookupResult<super::Server> {
-        self.network.server(self.data.server)
+    /// Iterate over the user's connections
+    pub fn connections(&self) -> impl Iterator<Item = UserConnection> + '_ {
+        let my_id = self.data.id;
+        self.network
+            .raw_user_connections()
+            .filter(move |c| c.user == my_id)
+            .wrap(self.network)
     }
 
     /// Iterate over the user's channel memberships

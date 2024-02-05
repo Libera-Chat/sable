@@ -24,7 +24,7 @@ fn handle_session(
 
             Ok(())
         }
-        (CommandSource::PreClient(_), "ATTACH") => {
+        (CommandSource::PreClient(pre_client), "ATTACH") => {
             let key = key.require()?;
 
             if let Some(target_user) = server
@@ -32,10 +32,12 @@ fn handle_session(
                 .raw_users()
                 .find(|u| matches!(&u.session_key, Some(sk) if &sk.key_hash == key))
             {
-                server.add_action(CommandAction::AttachToUser(
-                    cmd.connection_id(),
-                    target_user.id,
-                ));
+                // Ok to ignore an error here, as that'll only happen if the command is run twice
+                let _ = pre_client.attach_user_id.set(target_user.id);
+
+                if pre_client.can_register() {
+                    server.add_action(CommandAction::RegisterClient(cmd.connection_id()));
+                }
             }
 
             Ok(())

@@ -26,8 +26,8 @@ pub struct ClientConnection {
     /// The underlying network connection
     pub connection: Movable<Connection>,
 
-    /// The user ID, if this connection has completed registration
-    user_id: OnceLock<UserId>,
+    /// The user and user connection IDs, if this connection has completed registration
+    user: OnceLock<(UserId, UserConnectionId)>,
 
     /// The registration information received so far, if this connection has not
     /// yet completed registration
@@ -44,7 +44,7 @@ pub struct ClientConnection {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(super) struct ClientConnectionState {
     connection_data: ConnectionData,
-    user_id: Option<UserId>,
+    user: Option<(UserId, UserConnectionId)>,
     pre_client: Option<PreClient>,
     receive_queue: SavedThrottledQueue<String>,
     capabilities: ClientCapabilitySet,
@@ -67,6 +67,8 @@ pub struct PreClient {
     /// time to restart.
     pub connected_at: Instant,
 
+    #[serde_as(as = "WrapOption<UserId>")]
+    pub attach_user_id: OnceLock<UserId>,
     #[serde_as(as = "WrapOption<Username>")]
     pub user: OnceLock<Username>,
     #[serde_as(as = "WrapOption<Nickname>")]
@@ -94,7 +96,7 @@ impl ClientConnection {
 
         Self {
             connection: Movable::new(conn),
-            user_id: OnceLock::new(),
+            user: OnceLock::new(),
             pre_client: ArcSwapOption::new(Some(Arc::new(PreClient::new()))),
             receive_queue: Movable::new(ThrottledQueue::new(throttle_settings, 16)),
             capabilities: AtomicCapabilitySet::new(),
@@ -105,7 +107,7 @@ impl ClientConnection {
     pub(crate) fn save(mut self) -> ClientConnectionState {
         ClientConnectionState {
             connection_data: self.connection.unwrap().save(),
-            user_id: self.user_id.get().copied(),
+            user: self.user.get().copied(),
             pre_client: self.pre_client.load_full().map(|a| {
                 Arc::try_unwrap(a).unwrap_or_else(|_| {
                     panic!("Outstanding reference to preclient while upgrading?")
@@ -124,7 +126,7 @@ impl ClientConnection {
     ) -> Self {
         Self {
             connection: Movable::new(listener_collection.restore_connection(state.connection_data)),
-            user_id: match state.user_id {
+            user: match state.user {
                 Some(v) => OnceLock::from(v),
                 None => OnceLock::new(),
             },
@@ -157,7 +159,17 @@ impl ClientConnection {
 
     /// Return the associated user ID, if any
     pub fn user_id(&self) -> Option<UserId> {
-        self.user_id.get().copied()
+        self.user.get().map(|v| v.0)
+    }
+
+    /// Return the associated UserConnection ID, if any
+    pub fn user_connection_id(&self) -> Option<UserConnectionId> {
+        self.user.get().map(|v| v.1)
+    }
+
+    /// Return the associated User and UserConnection IDs, if present
+    pub(super) fn user_ids(&self) -> Option<(UserId, UserConnectionId)> {
+        self.user.get().copied()
     }
 
     /// Return the associated pre-client data, if any
@@ -166,8 +178,8 @@ impl ClientConnection {
     }
 
     /// Set the associated user ID
-    pub fn set_user_id(&self, user_id: UserId) {
-        let _ = self.user_id.set(user_id);
+    pub fn set_user(&self, user_id: UserId, user_connection_id: UserConnectionId) {
+        let _ = self.user.set((user_id, user_connection_id));
         self.pre_client.swap(None);
     }
 
@@ -219,6 +231,7 @@ impl PreClient {
     pub fn new() -> Self {
         Self {
             connected_at: Instant::now(),
+            attach_user_id: OnceLock::new(),
             user: OnceLock::new(),
             nick: OnceLock::new(),
             realname: OnceLock::new(),
@@ -229,15 +242,34 @@ impl PreClient {
         }
     }
 
-    /// Determine whether this connection is ready to complete registration
+    /// Determine whether this connection is ready to complete registration.
+    ///
+    /// This will return true if the connection is ready to either register as a new user,
+    /// or attach as a new connection to an existing user.
     pub fn can_register(&self) -> bool {
-        let result = self.user.get().is_some()
+        let can_register_new = self.can_register_new_user();
+        let can_attach = self.can_attach_to_user().is_some();
+
+        tracing::trace!(
+            ?self,
+            can_register_new,
+            can_attach,
+            "PreClient::can_register"
+        );
+        can_register_new || can_attach
+    }
+
+    /// Determine whether this connection is ready to register as a new user
+    pub fn can_register_new_user(&self) -> bool {
+        self.user.get().is_some()
             && self.nick.get().is_some()
             && self.hostname.get().is_some()
-            && self.progress_flags.load(Ordering::Relaxed) == 0;
+            && self.progress_flags.load(Ordering::Relaxed) == 0
+    }
 
-        tracing::trace!(?self, result, "PreClient::can_register");
-        result
+    /// Determine whether this connection is ready to attach to an existing user
+    pub fn can_attach_to_user(&self) -> Option<UserId> {
+        self.hostname.get().and(self.attach_user_id.get()).copied()
     }
 
     /// Set a progress flag, indicating that the given operation is beginning

@@ -24,17 +24,14 @@ fn handle_who(
                     &member.user()?,
                     Some(&channel),
                     Some(&member),
-                    &member.user()?.server()?,
                 ));
             }
         }
     } else if let Ok(nick) = Nickname::from_str(target) {
         if let Ok(user) = network.user_by_nick(&nick) {
             response.numeric(make_who_reply(
-                &user,
-                None, // channel
+                &user, None, // channel
                 None, // membership
-                &user.server()?,
             ));
         }
     }
@@ -49,7 +46,6 @@ fn make_who_reply(
     target: &wrapper::User,
     channel: Option<&wrapper::Channel>,
     membership: Option<&wrapper::Membership>,
-    server: &wrapper::Server,
 ) -> UntargetedNumeric {
     let chname = channel.map(|c| c.name().value() as &str).unwrap_or("*");
     let away_letter = match target.away_reason() {
@@ -63,5 +59,5 @@ fn make_who_reply(
             .map(|m| m.permissions().to_prefixes())
             .unwrap_or_else(|| "".to_string())
     );
-    make_numeric!(WhoReply, chname, target, server, &status, 0)
+    make_numeric!(WhoReply, chname, target, &status, 0)
 }

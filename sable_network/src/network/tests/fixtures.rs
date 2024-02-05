@@ -59,6 +59,7 @@ impl NetworkBuilder {
                 visible_hostname: Hostname::from_str("host.name").unwrap(),
                 server: ServerId::new(1),
                 account: None,
+                initial_connection: None,
             },
         );
     }

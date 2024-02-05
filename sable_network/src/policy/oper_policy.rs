@@ -28,6 +28,10 @@ pub trait OperPolicyService {
         host: &Pattern,
         duration: i64,
     ) -> PermissionResult;
+
     /// Determine whether the given oper can disconnect the given target user
     fn can_kill(&self, oper: &wrapper::User, target: &wrapper::User) -> PermissionResult;
+
+    /// Determine whether the given user can see detailed connection information about the target user
+    fn can_see_connection_info(&self, source: &wrapper::User, target: &wrapper::User) -> bool;
 }

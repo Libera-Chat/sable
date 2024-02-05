@@ -1,4 +1,4 @@
-use super::*;
+//use super::*;
 use crate::prelude::*;
 
 /// A wrapper around a [`state::Server`]
@@ -26,15 +26,6 @@ impl Server<'_> {
     /// The timestamp of the last ping received from this server
     pub fn last_ping(&self) -> i64 {
         self.data.last_ping
-    }
-
-    /// Iterate over the users connecting via this server
-    pub fn users(&self) -> impl Iterator<Item = User> {
-        let id = self.data.id;
-        self.network
-            .raw_users()
-            .filter(move |u| u.server == id)
-            .wrap(self.network)
     }
 }
 

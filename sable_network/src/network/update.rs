@@ -103,6 +103,18 @@ NetworkStateChange => {
         pub items: Vec<UserQuit>,
     }
 
+    /// A new connection has attached to an existing user
+    struct NewUserConnection {
+        pub user: HistoricUser,
+        pub connection: state::UserConnection,
+    }
+
+    /// A client has disconnected, without the user quitting
+    struct UserConnectionDisconnected {
+        pub user: HistoricUser,
+        pub connection: state::UserConnection,
+    }
+
     /// A channel's mode has changed
     struct ChannelModeChange {
         pub channel: state::Channel,
