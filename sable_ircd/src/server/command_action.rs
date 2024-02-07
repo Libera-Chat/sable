@@ -4,9 +4,14 @@ use parking_lot::RwLockUpgradableReadGuard;
 
 impl ClientServer {
     fn notify_access_error(&self, err: &user_access::AccessError, conn: &ClientConnection) {
+        use user_access::AccessError::*;
         match err {
-            user_access::AccessError::Banned(reason) => {
+            Banned(reason) => {
                 conn.send(make_numeric!(YoureBanned, &reason).format_for(self, &UnknownTarget));
+            }
+            InternalError => {
+                tracing::error!(?conn, "Internal error checking access");
+                conn.send(message::Error::new("Internal error"));
             }
         }
     }

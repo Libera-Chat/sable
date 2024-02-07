@@ -154,3 +154,21 @@ impl MessageTarget for crate::command::CommandSource<'_> {
         }
     }
 }
+
+impl MessageTarget for crate::command::UserSource<'_> {
+    fn format(&self) -> String {
+        <wrapper::User as MessageTarget>::format(&self.0)
+    }
+}
+
+impl MessageTarget for crate::command::LoggedInUserSource<'_> {
+    fn format(&self) -> String {
+        <wrapper::User as MessageTarget>::format(&self.user)
+    }
+}
+
+impl MessageTarget for crate::command::PreClientSource {
+    fn format(&self) -> String {
+        "*".to_string()
+    }
+}

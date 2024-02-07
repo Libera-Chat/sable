@@ -22,6 +22,7 @@ use std::sync::OnceLock;
 use tokio::time::Instant;
 
 /// A client protocol connection
+#[derive(Debug)]
 pub struct ClientConnection {
     /// The underlying network connection
     pub connection: Movable<Connection>,
@@ -71,6 +72,8 @@ pub struct PreClient {
     pub attach_user_id: OnceLock<UserId>,
     #[serde_as(as = "WrapOption<Username>")]
     pub user: OnceLock<Username>,
+    #[serde_as(as = "WrapOption<(String,String)>")]
+    pub extra_user_params: OnceLock<(String, String)>,
     #[serde_as(as = "WrapOption<Nickname>")]
     pub nick: OnceLock<Nickname>,
     #[serde_as(as = "WrapOption<Realname>")]
@@ -233,6 +236,7 @@ impl PreClient {
             connected_at: Instant::now(),
             attach_user_id: OnceLock::new(),
             user: OnceLock::new(),
+            extra_user_params: OnceLock::new(),
             nick: OnceLock::new(),
             realname: OnceLock::new(),
             hostname: OnceLock::new(),

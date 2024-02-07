@@ -1,4 +1,4 @@
-use crate::{network::ban::*, prelude::*};
+use crate::prelude::*;
 
 /// A wrapper around a [`state::NetworkBan`]
 pub struct NetworkBan<'a> {
@@ -12,14 +12,9 @@ impl NetworkBan<'_> {
         self.data.id
     }
 
-    /// The ban match criteria
-    pub fn matcher(&self) -> &NetworkBanMatch {
-        &self.data.matcher
-    }
-
-    /// The action to be applied by the ban
-    pub fn action(&self) -> &NetworkBanAction {
-        &self.data.action
+    /// Return the pattern expression which matches
+    pub fn pattern(&self) -> &crate::chert::NodeBoolean {
+        &self.data.pattern
     }
 
     /// Details of who set this ban

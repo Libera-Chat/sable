@@ -123,6 +123,7 @@ impl ClientCapabilitySet {
     }
 }
 
+#[derive(Debug)]
 pub struct AtomicCapabilitySet(AtomicU64);
 
 impl AtomicCapabilitySet {

@@ -134,8 +134,7 @@ EventDetails => {
 
     #[target_type(NetworkBanId)]
     struct NewNetworkBan {
-        pub matcher: ban::NetworkBanMatch,
-        pub action: ban::NetworkBanAction,
+        pub pattern: crate::chert::NodeBoolean,
 
         pub timestamp: i64,
         pub expires: i64,

@@ -1,4 +1,3 @@
-use crate::network::ban::*;
 use crate::prelude::*;
 
 use serde::{Deserialize, Serialize};
@@ -9,8 +8,7 @@ pub struct NetworkBan {
     pub id: NetworkBanId,
     pub created_by: EventId,
 
-    pub matcher: NetworkBanMatch,
-    pub action: NetworkBanAction,
+    pub pattern: crate::chert::NodeBoolean,
 
     pub timestamp: i64,
     pub expires: i64,

@@ -22,7 +22,7 @@ mod dispatcher;
 pub use dispatcher::*;
 
 mod plumbing;
-pub use plumbing::{ArgListIter, Command};
+pub use plumbing::{ArgListIter, Command, LoggedInUserSource, PreClientSource, UserSource};
 
 /// A convenience definition for the result type returned from command handlers
 pub type CommandResult = Result<(), CommandError>;

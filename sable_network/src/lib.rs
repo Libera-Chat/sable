@@ -32,6 +32,12 @@ pub mod types {
 
 pub mod utils;
 
+pub mod chert {
+    pub use chert::compile::Engine;
+    pub use chert::parse::nodes::boolean::NodeBoolean;
+    pub use chert::*;
+}
+
 mod build_data {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }

@@ -42,6 +42,7 @@ concurrent_log = { version = "0.2.4", features = [ "serde" ] }
 ipnet = { version = "2", features = [ "serde" ] }
 anyhow = "1.0"
 backoff = { version = "0.4.0", features = ["tokio"] }
+chert = { git = "https://github.com/jesopo/chert", branch = "spb/compile-node-references" }
 
 [dependencies.serde]
 version = "1"
