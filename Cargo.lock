@@ -402,7 +402,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chert"
 version = "0.2.1"
-source = "git+https://github.com/jesopo/chert?branch=spb/compile-node-references#473be24f7bb7dbadfc9e988cdec2ecba18536d7f"
+source = "git+https://github.com/jesopo/chert#8fd3090f9b47eabf2dd4e97df9e2a7f2fd64d8fb"
 dependencies = [
  "chert_accessor",
  "chert_derive",
@@ -416,7 +416,7 @@ dependencies = [
 [[package]]
 name = "chert_accessor"
 version = "0.2.0"
-source = "git+https://github.com/jesopo/chert?branch=spb/compile-node-references#473be24f7bb7dbadfc9e988cdec2ecba18536d7f"
+source = "git+https://github.com/jesopo/chert#8fd3090f9b47eabf2dd4e97df9e2a7f2fd64d8fb"
 dependencies = [
  "cidr",
  "regex",
@@ -425,7 +425,7 @@ dependencies = [
 [[package]]
 name = "chert_derive"
 version = "0.2.0"
-source = "git+https://github.com/jesopo/chert?branch=spb/compile-node-references#473be24f7bb7dbadfc9e988cdec2ecba18536d7f"
+source = "git+https://github.com/jesopo/chert#8fd3090f9b47eabf2dd4e97df9e2a7f2fd64d8fb"
 dependencies = [
  "proc-macro2",
  "quote",

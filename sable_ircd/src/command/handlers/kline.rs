@@ -59,7 +59,7 @@ fn handle_kline(
                 ));
                 return Ok(());
             }
-            Ok(parsed) => parsed.get_root().clone(),
+            Ok(parsed) => parsed.into_root(),
         };
 
         audit

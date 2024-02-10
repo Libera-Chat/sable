@@ -61,14 +61,15 @@ fn handle_ban(
     let pattern_parsed = match match_type {
         BanMatchType::PreRegistration => {
             chert::parse::<PreRegistrationBanSettings>(&new_ban_details.pattern)
-                .map(|ast| ast.get_root().clone())
+                .map(|ast| ast.into_root())
         }
         BanMatchType::NewConnection => {
             chert::parse::<NewConnectionBanSettings>(&new_ban_details.pattern)
-                .map(|ast| ast.get_root().clone())
+                .map(|ast| ast.into_root())
         }
-        BanMatchType::PreSasl => chert::parse::<PreSaslBanSettings>(&new_ban_details.pattern)
-            .map(|ast| ast.get_root().clone()),
+        BanMatchType::PreSasl => {
+            chert::parse::<PreSaslBanSettings>(&new_ban_details.pattern).map(|ast| ast.into_root())
+        }
     };
 
     let pattern = match pattern_parsed {
