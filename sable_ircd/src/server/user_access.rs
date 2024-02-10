@@ -7,6 +7,8 @@ use super::*;
 pub enum AccessError {
     /// User matched a network ban, with provided reason
     Banned(String),
+    /// User requires SASL but didn't use it
+    SaslRequired(String),
     /// An internal error occurred while attempting to verify access
     InternalError,
 }
@@ -55,8 +57,20 @@ impl ClientServer {
                 tls,
             };
 
-            if let Some(ban) = net.network_bans().find(&user_details) {
-                return Err(AccessError::Banned(ban.reason.clone()));
+            for ban in net.network_bans().find_pre_registration(&user_details) {
+                match ban.action {
+                    NetworkBanAction::RefuseConnection(_) => {
+                        return Err(AccessError::Banned(ban.reason.clone()));
+                    }
+                    NetworkBanAction::RequireSasl(_) => {
+                        if pre_client.sasl_account.get().is_none() {
+                            return Err(AccessError::SaslRequired(ban.reason.clone()));
+                        }
+                    }
+                    NetworkBanAction::DenySasl => {
+                        // Doesn't make sense here and should have been rejected
+                    }
+                }
             }
         }
         Ok(())

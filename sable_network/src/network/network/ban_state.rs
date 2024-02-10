@@ -14,7 +14,9 @@ impl Network {
         let ban = state::NetworkBan {
             id: target,
             created_by: event.id,
+            match_type: details.match_type,
             pattern: details.pattern.clone(),
+            action: details.action,
             timestamp: details.timestamp,
             expires: details.expires,
             reason: details.reason.clone(),

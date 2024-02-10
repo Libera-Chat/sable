@@ -2066,6 +2066,7 @@ dependencies = [
  "sable_network",
  "sable_server",
  "serde",
+ "serde_json",
  "serde_with 2.3.3",
  "sha256",
  "structopt",

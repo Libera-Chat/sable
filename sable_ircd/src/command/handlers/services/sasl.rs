@@ -1,4 +1,7 @@
-use sable_network::rpc::{RemoteServerRequestType, RemoteServerResponse};
+use sable_network::{
+    network::ban::*,
+    rpc::{RemoteServerRequestType, RemoteServerResponse},
+};
 
 use super::*;
 use base64::prelude::*;
@@ -27,6 +30,19 @@ async fn handle_authenticate(
         }
     } else {
         // No session, so the argument is the mechanism name
+        // First check whether they're allowed to use SASL
+        let user_details = PreSaslBanSettings {
+            ip: cmd.connection().remote_addr(),
+            tls: cmd.connection().connection.is_tls(),
+            mechanism: text.to_owned(),
+        };
+
+        for ban in net.network_bans().find_pre_sasl(&user_details) {
+            if let NetworkBanAction::DenySasl = ban.action {
+                response.numeric(make_numeric!(SaslFail));
+                return Ok(());
+            }
+        }
 
         // Special case for EXTERNAL, which we can handle without going to services
         if text == "EXTERNAL" {

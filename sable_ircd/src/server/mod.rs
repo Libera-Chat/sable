@@ -5,7 +5,7 @@ use messages::*;
 
 use event::*;
 use rpc::*;
-use sable_network::{config::TlsData, prelude::*};
+use sable_network::{config::TlsData, network::ban::NetworkBanAction, prelude::*};
 
 use auth_client::*;
 use client_listener::*;
@@ -244,6 +244,23 @@ impl ClientServer {
         match msg.detail {
             ConnectionEventDetail::NewConnection(conn) => {
                 tracing::trace!("Got new connection");
+
+                let conn_details = ban::NewConnectionBanSettings {
+                    ip: conn.remote_addr,
+                    tls: conn.is_tls(),
+                };
+                for ban in self
+                    .network()
+                    .network_bans()
+                    .find_new_connection(&conn_details)
+                {
+                    if let NetworkBanAction::RefuseConnection(_) = ban.action {
+                        conn.send(format!("ERROR :*** Banned: {}\r\n", ban.reason));
+                        conn.close();
+                        return;
+                    }
+                }
+
                 let conn = ClientConnection::new(conn);
 
                 conn.send(message::Notice::new(

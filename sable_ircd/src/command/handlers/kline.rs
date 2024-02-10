@@ -70,7 +70,9 @@ fn handle_kline(
             .log();
 
         let new_kline = event::NewNetworkBan {
+            match_type: BanMatchType::PreRegistration,
             pattern,
+            action: NetworkBanAction::RefuseConnection(true),
             setter_info: source.0.nuh(),
             timestamp: sable_network::utils::now(),
             expires: sable_network::utils::now() + (duration * 60),

@@ -9,6 +9,24 @@ impl ClientServer {
             Banned(reason) => {
                 conn.send(make_numeric!(YoureBanned, &reason).format_for(self, &UnknownTarget));
             }
+            SaslRequired(reason) => {
+                if reason.len() > 0 {
+                    conn.send(message::Notice::new(
+                        self,
+                        &UnknownTarget,
+                        &format!(
+                            "You must authenticate via SASL to use this server ({})",
+                            reason
+                        ),
+                    ));
+                } else {
+                    conn.send(message::Notice::new(
+                        self,
+                        &UnknownTarget,
+                        "You must authenticate via SASL to use this server",
+                    ));
+                }
+            }
             InternalError => {
                 tracing::error!(?conn, "Internal error checking access");
                 conn.send(message::Error::new("Internal error"));
