@@ -18,6 +18,11 @@ impl ClientServer {
                             drop(history);
                             self.handle_new_user_connection(&new_user_connection)?;
                         }
+                        NetworkStateChange::UserConnectionDisconnected(detail) => {
+                            let user_disconnect = detail.clone();
+                            drop(history);
+                            self.handle_user_disconnect(&user_disconnect)?;
+                        }
                         NetworkStateChange::ServicesUpdate(detail) => {
                             let update = detail.clone();
                             drop(history);
@@ -172,6 +177,13 @@ impl ClientServer {
             connection.send(message::Notice::new(&self.node.name().to_string(), &user,
                     "The network is currently running in debug mode. Do not send any sensitive information such as passwords."));
         }
+        Ok(())
+    }
+
+    fn handle_user_disconnect(&self, detail: &update::UserConnectionDisconnected) -> HandleResult {
+        self.connections
+            .write()
+            .remove_user_connection(detail.connection.id);
         Ok(())
     }
 

@@ -80,27 +80,13 @@ impl Network {
             // Identify the set of users associated with those connections
             let users_to_test: Vec<_> = removed_connections.iter().map(|conn| conn.user).collect();
 
-            // Check which of those users aren't persistent, and quit them
-            let mut quit_updates = Vec::new();
-
             for user_id in users_to_test {
                 if matches!(self.users.get(&user_id), Some(user) if user.session_key.is_none()) {
-                    if let Some(update) =
-                        self.remove_user(user_id, "Server disconnecting".to_string())
-                    {
-                        quit_updates.push(update);
-                    }
+                    self.remove_user(user_id, "Server disconnecting".to_string(), event, updates);
                 }
             }
 
             updates.notify(update::ServerQuit { server: removed }, event);
-
-            updates.notify(
-                update::BulkUserQuit {
-                    items: quit_updates,
-                },
-                event,
-            );
         }
     }
 }

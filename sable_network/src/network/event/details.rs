@@ -185,6 +185,10 @@ EventDetails => {
         pub key_hash: String
     }
 
+    #[target_type(UserId)]
+    struct DisablePersistentSession {
+    }
+
     #[target_type(ServerId)]
     struct IntroduceServices {
         pub sasl_mechanisms: Vec<String>,

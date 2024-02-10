@@ -113,6 +113,13 @@ impl ConnectionCollection {
         }
     }
 
+    /// Remove a connection, by its UserConnectionId
+    pub fn remove_user_connection(&mut self, id: UserConnectionId) {
+        if let Some(conn_id) = self.user_conn_to_connid.remove(&id) {
+            self.client_connections.remove(&conn_id);
+        }
+    }
+
     /// Look up a connection by ID
     pub fn get(&self, id: ConnectionId) -> Result<Arc<ClientConnection>, LookupError> {
         self.client_connections

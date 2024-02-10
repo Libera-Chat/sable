@@ -226,6 +226,7 @@ impl Network {
             LoadConfig => self.load_config,
             NewAuditLogEntry => self.new_audit_log,
             EnablePersistentSession => self.enable_persistent_session,
+            DisablePersistentSession => self.disable_persistent_session,
             IntroduceServices => self.introduce_services,
             AccountUpdate => self.update_account,
             NickRegistrationUpdate => self.update_nick_registration,

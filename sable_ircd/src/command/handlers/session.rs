@@ -17,10 +17,17 @@ fn handle_session(
 
             response.notice(&format!("Your session resumption token is {}", key_hash));
 
-            server.add_action(CommandAction::state_change(
+            server.node().submit_event(
                 user.id(),
                 event::details::EnablePersistentSession { key_hash },
-            ));
+            );
+
+            Ok(())
+        }
+        (CommandSource::User(user, _), "DISABLE") => {
+            server
+                .node()
+                .submit_event(user.id(), event::details::DisablePersistentSession {});
 
             Ok(())
         }
