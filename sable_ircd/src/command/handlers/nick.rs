@@ -10,7 +10,7 @@ async fn handle_nick(
     new_nick: Nickname,
 ) -> CommandResult {
     match source {
-        CommandSource::User(user) => handle_user(net, cmd, user, new_nick).await,
+        CommandSource::User(user, _) => handle_user(net, cmd, user, new_nick).await,
         CommandSource::PreClient(pc) => handle_preclient(server, net, cmd, &pc, new_nick),
     }
 }

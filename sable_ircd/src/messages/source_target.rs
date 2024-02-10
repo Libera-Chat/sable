@@ -149,7 +149,7 @@ impl MessageTarget for wrapper::MessageTarget<'_> {
 impl MessageTarget for crate::command::CommandSource<'_> {
     fn format(&self) -> String {
         match self {
-            Self::User(u) => <wrapper::User as MessageTarget>::format(u),
+            Self::User(u, _) => <wrapper::User as MessageTarget>::format(u),
             Self::PreClient(_) => "*".to_string(),
         }
     }
@@ -157,7 +157,7 @@ impl MessageTarget for crate::command::CommandSource<'_> {
 
 impl MessageTarget for crate::command::UserSource<'_> {
     fn format(&self) -> String {
-        <wrapper::User as MessageTarget>::format(&self.0)
+        <wrapper::User as MessageTarget>::format(&self.user)
     }
 }
 

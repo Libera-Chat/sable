@@ -12,10 +12,8 @@ fn handle_cap(
     subcommand: &str,
     cap_list: Option<&str>,
 ) -> CommandResult {
-    let pre_client: Option<Arc<PreClient>> = match source {
-        CommandSource::User(_) => None,
-        CommandSource::PreClient(pre_client) => Some(pre_client),
-    };
+    let pre_client = source.pre_client();
+
     match subcommand.to_ascii_uppercase().as_str() {
         "LS" => {
             if let Some(pre_client) = pre_client {

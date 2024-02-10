@@ -73,7 +73,7 @@ fn handle_kline(
             match_type: BanMatchType::PreRegistration,
             pattern,
             action: NetworkBanAction::RefuseConnection(true),
-            setter_info: source.0.nuh(),
+            setter_info: source.nuh(),
             timestamp: sable_network::utils::now(),
             expires: sable_network::utils::now() + (duration * 60),
             reason: user_reason.to_string(),

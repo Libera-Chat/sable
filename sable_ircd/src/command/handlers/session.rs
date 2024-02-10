@@ -11,7 +11,7 @@ fn handle_session(
     key: Conditional<&str>,
 ) -> CommandResult {
     match (source, subcommand.to_ascii_uppercase().as_str()) {
-        (CommandSource::User(user), "ENABLE") => {
+        (CommandSource::User(user, _), "ENABLE") => {
             let key_input = format!("{:?}{}", user.id(), rand::random::<u64>());
             let key_hash = sha256::digest(key_input);
 

@@ -98,7 +98,7 @@ fn handle_ban(
         expires,
         reason: new_ban_details.reason,
         oper_reason: new_ban_details.oper_reason,
-        setter_info: source.0.nuh(),
+        setter_info: source.nuh(),
     };
 
     server.node().submit_event(new_ban_id, new_ban);
