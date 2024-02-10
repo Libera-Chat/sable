@@ -37,14 +37,6 @@ impl ClientServer {
     fn register_new_user(&self, connection_id: ConnectionId) {
         let connections = self.connections.upgradable_read();
         if let Ok(conn) = connections.get(connection_id) {
-            {
-                if let Err(e) = self.check_user_access(&*self.network(), &*conn) {
-                    self.notify_access_error(&e, conn.as_ref());
-                    RwLockUpgradableReadGuard::upgrade(connections).remove(connection_id);
-                    return;
-                }
-            }
-
             if let Some(pre_client) = conn.pre_client() {
                 // First check whether they're attaching, as that's an easier operation
                 if let Some(user_id) = pre_client.can_attach_to_user() {
@@ -64,6 +56,12 @@ impl ClientServer {
                 }
 
                 // If we get this far, we're registering a new user
+                if let Err(e) = self.check_user_access(&*self.network(), &*conn) {
+                    self.notify_access_error(&e, conn.as_ref());
+                    RwLockUpgradableReadGuard::upgrade(connections).remove(connection_id);
+                    return;
+                }
+
                 let new_user_id = self.ids().next_user();
 
                 if pre_client.can_register_new_user() {
