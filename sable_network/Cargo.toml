@@ -12,6 +12,10 @@ debug = []
 [build-dependencies]
 built = { version = "0.5", features = [ "git2" ] }
 
+[dev-dependencies]
+tracing-subscriber = "0.3"
+pretty_assertions = "1.4"
+
 [dependencies]
 sable_macros = { path = "../sable_macros" }
 
