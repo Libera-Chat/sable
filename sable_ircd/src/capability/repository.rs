@@ -4,7 +4,6 @@ use itertools::Itertools;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::sync::{atomic::AtomicBool, Arc};
-use strum::IntoEnumIterator;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CapabilityEntry {
@@ -24,10 +23,10 @@ impl CapabilityRepository {
     pub fn new() -> Self {
         let mut supported_caps = Vec::new();
 
-        for cap in ClientCapability::iter() {
+        for &(cap, values) in ClientCapability::all().iter() {
             supported_caps.push(CapabilityEntry {
                 cap,
-                values: RwLock::new(Vec::new()),
+                values: RwLock::new(values.iter().map(|v| v.to_string()).collect()),
                 available: AtomicBool::new(cap.is_default()),
             });
         }
