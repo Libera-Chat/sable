@@ -27,6 +27,7 @@ pub fn send_channel_names(
     let user_is_on_chan = to_user.is_in_channel(channel.id()).is_some();
 
     let with_userhost = to.capabilities().has(ClientCapability::UserhostInNames);
+    let with_multiprefix = to.capabilities().has(ClientCapability::MultiPrefix);
 
     for member in channel.members() {
         if !user_is_on_chan
@@ -38,7 +39,16 @@ pub fn send_channel_names(
             continue;
         }
 
-        let p = member.permissions().to_prefixes();
+        let p = if with_multiprefix {
+            member.permissions().to_prefixes()
+        } else {
+            member
+                .permissions()
+                .to_highest_prefix()
+                .as_ref()
+                .map(char::to_string)
+                .unwrap_or_else(|| "".to_string())
+        };
         let user = member.user()?;
         let n = if with_userhost {
             format!("{}!{}@{}", user.nick(), user.user(), user.visible_host())

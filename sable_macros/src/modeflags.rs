@@ -236,6 +236,20 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
                     return s;
                 }
 
+                /// [`to_prefixes`] fallback for clients without
+                /// [`multi-prefix`](https://ircv3.net/specs/extensions/multi-prefix)
+                pub fn to_highest_prefix(&self) -> Option<char>
+                {
+                    for v in Self::ALL
+                    {
+                        if (self.is_set(v.0))
+                        {
+                            return Some(v.2)
+                        }
+                    }
+                    return None;
+                }
+
                 pub fn prefix_for(flag: #name_one) -> char
                 {
                     for v in Self::ALL
