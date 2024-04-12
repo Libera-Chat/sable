@@ -51,6 +51,7 @@ pub fn send_channel_names(
         }
         current_line.write_fmt(format_args!("{}{} ", p, n))?;
     }
+    current_line.pop(); // Remove trailing space
     lines.push(current_line);
 
     for line in lines {
