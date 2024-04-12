@@ -12,6 +12,7 @@ define_messages! {
 
     221(UserModeIs)             => { (modestring: &str)         => ":{modestring}" },
     301(Away)                   => { (nick: &User.nick(), reason: &AwayReason)  => "{nick} :{reason}" },
+    302(Userhost)               => { (reply: &str)              => ":{reply}" },
     305(Unaway)                 => { ()                         => ":You are no longer marked as being away" },
     306(NowAway)                => { ()                         => ":You have been marked as being away" },
     311(WhoisUser)              => { (nick: &User.nick(), user=nick.user(), host=nick.visible_host(), realname=nick.realname())
