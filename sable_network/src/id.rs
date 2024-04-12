@@ -44,6 +44,18 @@ object_ids!(ObjectId (ObjectIdGenerator) {
     SaslSession: sequential;
 });
 
+impl ServerId {
+    pub fn local(&self) -> LocalId {
+        self.0
+    }
+}
+
+impl EpochId {
+    pub fn local(&self) -> LocalId {
+        self.0
+    }
+}
+
 impl NicknameId {
     pub fn nick(&self) -> &Nickname {
         &self.0

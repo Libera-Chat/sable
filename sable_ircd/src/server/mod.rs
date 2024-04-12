@@ -174,6 +174,10 @@ impl ClientServer {
 
         ret.add(ISupportEntry::string("CASEMAPPING", "ascii"));
 
+        // https://ircv3.net/specs/extensions/message-tags#rpl_isupport-tokens
+        // Ignore all client tags, for now.
+        ret.add(ISupportEntry::string("CLIENTTAGDENY", "*"));
+
         ret.add(ISupportEntry::int(
             "HOSTLEN",
             Hostname::LENGTH.try_into().unwrap(),
