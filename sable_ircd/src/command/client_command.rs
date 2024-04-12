@@ -179,9 +179,7 @@ impl Command for ClientCommand {
     }
 
     fn notify_error(&self, err: CommandError) {
-        if let Some(n) = self.translate_command_error(err) {
-            let _ = self.response_sink().numeric(n);
-        }
+        self.send_command_error(err)
     }
 
     fn response_sink(&self) -> &dyn CommandResponse {
@@ -206,8 +204,8 @@ impl Command for ClientCommand {
 }
 
 impl ClientCommand {
-    fn translate_command_error(&self, err: CommandError) -> Option<UntargetedNumeric> {
-        match err {
+    fn send_command_error(&self, err: CommandError) {
+        let numeric = match err {
             CommandError::UnderlyingError(_) => {
                 todo!()
             }
@@ -277,6 +275,19 @@ impl ClientCommand {
                 }
             }
             CommandError::Numeric(n) => Some(n),
+            CommandError::Fail {
+                command,
+                code,
+                context,
+                description,
+            } => {
+                self.response_sink
+                    .send(message::Fail::new(command, code, &context, &description));
+                None
+            }
+        };
+        if let Some(numeric) = numeric {
+            self.response_sink.numeric(numeric)
         }
     }
 }
