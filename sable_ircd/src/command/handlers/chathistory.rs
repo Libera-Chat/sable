@@ -370,7 +370,7 @@ fn send_history_for_target_forward(
         }
     }
 
-    send_history_entries(into, subcommand, target, entries)
+    send_history_entries(into, subcommand, target, entries.into_iter())
 }
 
 // As above, but work backwards
@@ -408,16 +408,19 @@ fn send_history_for_target_reverse(
         }
     }
 
-    send_history_entries(into, subcommand, target, entries)
+    // "The order of returned messages within the batch is implementation-defined, but SHOULD be
+    // ascending time order or some approximation thereof, regardless of the subcommand used."
+    // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
+    send_history_entries(into, subcommand, target, entries.into_iter().rev())
 }
 
-fn send_history_entries(
+fn send_history_entries<'a>(
     into: impl MessageSink,
     subcommand: &str,
     target: &str,
-    entries: Vec<&HistoryLogEntry>,
+    entries: impl ExactSizeIterator<Item = &'a HistoryLogEntry>,
 ) -> CommandResult {
-    if entries.is_empty() {
+    if entries.len() == 0 {
         into.send(message::Fail::new(
             "CHATHISTORY",
             "INVALID_TARGET",
