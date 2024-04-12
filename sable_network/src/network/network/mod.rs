@@ -1,6 +1,7 @@
 //! Defines the [Network] object.
 
 use crate::network::event::*;
+use crate::network::network::HistoricUser;
 use crate::network::update::*;
 use crate::prelude::*;
 
@@ -10,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use thiserror::Error;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::convert::TryInto;
 
 use std::sync::OnceLock;
@@ -67,6 +68,8 @@ pub struct Network {
     // used as a JSON object key.
     #[serde_as(as = "Vec<(_,_)>")]
     nick_bindings: HashMap<Nickname, state::NickBinding>,
+    #[serde_as(as = "Vec<(_,_)>")]
+    historic_nick_users: HashMap<Nickname, VecDeque<HistoricUser>>,
     #[serde_as(as = "Vec<(_,_)>")]
     users: HashMap<UserId, state::User>,
     #[serde_as(as = "Vec<(_,_)>")]
@@ -128,6 +131,7 @@ impl Network {
     pub fn new(config: config::NetworkConfig) -> Network {
         let net = Network {
             nick_bindings: HashMap::new(),
+            historic_nick_users: HashMap::new(),
             users: HashMap::new(),
             user_connections: HashMap::new(),
 

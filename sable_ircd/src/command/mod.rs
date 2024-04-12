@@ -64,6 +64,7 @@ mod handlers {
     mod user;
     mod who;
     mod whois;
+    mod whowas;
 
     // Interim solutions that need refinement
     mod session;

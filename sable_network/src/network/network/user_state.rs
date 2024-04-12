@@ -13,6 +13,8 @@ impl Network {
         updates: &dyn NetworkUpdateReceiver,
     ) {
         if let Some(user) = self.users.remove(&id) {
+            let mut historic_user = self.translate_historic_user(user.clone());
+
             // First remove the user's memberships and connections
             let removed_memberships = self
                 .memberships
@@ -28,6 +30,14 @@ impl Network {
             let removed_nickname = if let Ok(binding) = self.nick_binding_for_user(user.id) {
                 let nick = binding.nick();
                 self.nick_bindings.remove(&nick);
+                let historic_nick_users =
+                    self.historic_nick_users.entry(nick.clone()).or_insert_with(
+                        || VecDeque::with_capacity(8), // arbitrary power of two
+                    );
+                if historic_nick_users.len() == historic_nick_users.capacity() {
+                    historic_nick_users.pop_back();
+                }
+                historic_nick_users.push_front(historic_user.clone());
                 nick
             } else {
                 state_utils::hashed_nick_for(user.id)
@@ -43,16 +53,11 @@ impl Network {
                 );
             }
 
+            historic_user.nickname = removed_nickname;
             updates.notify(
                 update::UserQuit {
                     // We can't use `translate_historic_user` because we've already removed the nick binding
-                    user: HistoricUser {
-                        account: user
-                            .account
-                            .and_then(|id| self.account(id).ok().map(|acc| acc.name())),
-                        user,
-                        nickname: removed_nickname,
-                    },
+                    user: historic_user,
                     nickname: removed_nickname,
                     message,
                     memberships: removed_memberships,
