@@ -47,6 +47,17 @@ pub enum CommandError {
     /// The command couldn't be processed successfully; the provided
     /// numeric(messages::UntargetedNumeric) will be sent to the client to notify them
     Numeric(messages::UntargetedNumeric),
+
+    /// The command couldn't be processed successfully; the provided parameters will
+    /// be turned into a [`FAIL` standard
+    /// reply](https://ircv3.net/specs/extensions/standard-replies) and sent to the client
+    /// to notify them
+    Fail {
+        command: &'static str,
+        code: &'static str,
+        context: String,
+        description: String,
+    },
 }
 
 impl From<ValidationError> for CommandError {
