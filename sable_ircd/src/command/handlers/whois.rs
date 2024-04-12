@@ -20,7 +20,7 @@ fn whois_handler(
     response.numeric(make_numeric!(WhoisUser, &target));
 
     if let Ok(Some(account)) = target.account() {
-        response.numeric(make_numeric!(WhoisAccount, &target, &account.name()));
+        response.numeric(make_numeric!(WhoisAccount, &target.nick(), &account.name()));
     }
 
     if let Some(away_reason) = target.away_reason() {

@@ -1,5 +1,6 @@
 use super::*;
 use sable_macros::define_messages;
+use sable_network::network::update::HistoricUser;
 use sable_network::network::wrapper::{Channel, ChannelMode, ListModeEntry, Server, User};
 
 define_messages! {
@@ -19,6 +20,8 @@ define_messages! {
                                                                 => "{nick} {user} {host} * :{realname}" },
     312(WhoisServer)            => { (nick: &User.nick(), server: &Server.name(), info=server.id())
                                                                 => "{nick} {server} :{info:?}"},
+    314(WhowasUser)             => { (nick: &HistoricUser.nickname, user=nick.user.user, host=nick.user.visible_host, realname=nick.user.realname)
+                                                                => "{nick} {user} {host} * :{realname}" },
     315(EndOfWho)               => { (arg: &str)                => "{arg} :End of /WHO list" },
     318(EndOfWhois)             => { (user: &User.nick())       => "{user} :End of /WHOIS" },
     319(WhoisChannels)          => { (user: &User.nick(), chanlist: &str)
@@ -29,7 +32,7 @@ define_messages! {
     324(ChannelModeIs)          => { (chan: &Channel.name(), modes: &ChannelMode.format())
                                                                 => "{chan} {modes}" },
 
-    330(WhoisAccount)           => { (nick: &User.nick(), account: &Nickname)
+    330(WhoisAccount)           => { (nick: &Nickname, account: &Nickname)
                                                                 => "{nick} {account} :is logged in as" },
 
     331(NoTopic)                => { (chan: &Channel.name())    => "{chan} :No topic is set"},
@@ -48,6 +51,8 @@ define_messages! {
                                                                 => "{is_pub} {chan} :{content}" },
     366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
 
+    369(EndOfWhowas)            => { (nick: &Nickname)          => "{nick} :End of /WHOWAS" },
+
     256(AdminMe)                => { (server_name: &ServerName) => "{server_name} :Administrative Info"},
     257(AdminLocation1)         => { (server_location: &str)    => ":{server_location}" },
     258(AdminLocation2)         => { (admin_info: &str)         => ":{admin_info}" },
@@ -65,6 +70,7 @@ define_messages! {
     402(NoSuchServer)           => { (server_name: &ServerName) => "{server_name} :No such server" },
     403(NoSuchChannel)          => { (chname: &ChannelName)     => "{chname} :No such channel" },
     404(CannotSendToChannel)    => { (chan: &ChannelName)       => "{chan} :Cannot send to channel" },
+    406(WasNoSuchNick)          => { (nick: &Nickname)          => "{nick} :There was no such nickname" },
     410(InvalidCapCmd)          => { (subcommand: &str)         => "{subcommand} :Invalid CAP command" },
     412(NoTextToSend)           => { ()                         => ":No text to send" },
     421(UnknownCommand)         => { (command: &str)            => "{command} :Unknown command" },
