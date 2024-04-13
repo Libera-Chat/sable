@@ -318,10 +318,13 @@ where
         state: ServerState<ST>,
         net_config: SyncConfig,
         server_config: ServerConfig<ST>,
-    ) -> std::io::Result<Self> {
+    ) -> Result<Self, anyhow::Error> {
         let (server_send, server_recv) = unbounded_channel();
         let (history_send, history_recv) = unbounded_channel();
         let (remote_send, remote_recv) = unbounded_channel();
+
+        let processed_server_config = ST::validate_config(&server_config.server)
+            .context("Could not load server configuration")?;
 
         let log = Arc::new(ReplicatedEventLog::restore(
             state.log_state,
@@ -342,6 +345,7 @@ where
             state.server_state,
             Arc::clone(&node),
             history_recv,
+            &processed_server_config,
         )?);
 
         Ok(Self {
