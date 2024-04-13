@@ -91,8 +91,16 @@ fn handle_chathistory(
                 return Ok(());
             }
 
-            send_history_for_target_reverse(
-                server, &response, source, subcommand, &target, from_ts, None, limit,
+            send_history_for_target(
+                server,
+                &response,
+                source,
+                subcommand,
+                &target,
+                from_ts,
+                None,
+                limit,
+                Some(0), // forward limit
             )?;
         }
         "BEFORE" => {
@@ -110,7 +118,7 @@ fn handle_chathistory(
                 return Ok(());
             }
 
-            send_history_for_target_reverse(
+            send_history_for_target(
                 server,
                 &response,
                 source,
@@ -119,6 +127,7 @@ fn handle_chathistory(
                 None,
                 Some(end_ts),
                 limit,
+                Some(0), // forward limit
             )?;
         }
         "AFTER" => {
@@ -136,7 +145,7 @@ fn handle_chathistory(
                 return Ok(());
             }
 
-            send_history_for_target_forward(
+            send_history_for_target(
                 server,
                 &response,
                 source,
@@ -144,6 +153,7 @@ fn handle_chathistory(
                 &target,
                 Some(start_ts),
                 None,
+                Some(0), // backward limit
                 limit,
             )?;
         }
@@ -164,7 +174,7 @@ fn handle_chathistory(
                 }
             };
 
-            send_history_for_target_reverse(
+            send_history_for_target(
                 server,
                 &response,
                 source,
@@ -172,17 +182,8 @@ fn handle_chathistory(
                 &target,
                 Some(around_ts),
                 None,
-                Some(limit / 2),
-            )?;
-            send_history_for_target_forward(
-                server,
-                &response,
-                source,
-                subcommand,
-                &target,
-                Some(around_ts),
-                None,
-                Some(limit / 2),
+                Some(limit / 2), // backward limit
+                Some(limit / 2), // forward limit
             )?;
         }
         "BETWEEN" => {
@@ -201,7 +202,7 @@ fn handle_chathistory(
                 return Ok(());
             }
 
-            send_history_for_target_forward(
+            send_history_for_target(
                 server,
                 &response,
                 source,
@@ -209,6 +210,7 @@ fn handle_chathistory(
                 &target,
                 Some(start_ts),
                 Some(end_ts),
+                Some(0), // backward limit
                 limit,
             )?;
         }
@@ -290,7 +292,7 @@ fn list_targets(
     }
 }
 
-fn send_history_for_target_forward(
+fn send_history_for_target(
     server: &ClientServer,
     into: impl MessageSink,
     source: &wrapper::User,
@@ -298,83 +300,70 @@ fn send_history_for_target_forward(
     target: &str,
     from_ts: Option<i64>,
     to_ts: Option<i64>,
-    limit: Option<usize>,
+    backward_limit: Option<usize>,
+    forward_limit: Option<usize>,
 ) -> CommandResult {
     let log = server.node().history();
-    let mut entries = Vec::new();
+    let mut backward_entries = Vec::new();
+    let mut forward_entries = Vec::new();
 
-    for entry in log.entries_for_user(source.id()) {
-        if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
-            // Skip over until we hit the timestamp window we're interested in
-            continue;
-        }
-        if matches!(to_ts, Some(ts) if entry.timestamp >= ts) {
-            // If we hit this then we've passed the requested window and should stop
-            break;
-        }
-
-        if let Some(event_target) = target_name_for_entry(source.id(), entry) {
-            if event_target == target {
-                entries.push(entry);
+    if backward_limit != Some(0) {
+        for entry in log.entries_for_user_reverse(source.id()) {
+            if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
+                // Skip over until we hit the timestamp window we're interested in
+                continue;
             }
-        }
+            if matches!(to_ts, Some(ts) if entry.timestamp >= ts) {
+                // If we hit this then we've passed the requested window and should stop
+                break;
+            }
 
-        if matches!(limit, Some(limit) if limit <= entries.len()) {
-            break;
+            if let Some(event_target) = target_name_for_entry(source.id(), entry) {
+                if event_target == target {
+                    backward_entries.push(entry);
+                }
+            }
+
+            if matches!(backward_limit, Some(limit) if limit <= backward_entries.len()) {
+                break;
+            }
         }
     }
 
-    send_history_entries(into, subcommand, target, entries.into_iter())
-}
-
-// As above, but work backwards
-fn send_history_for_target_reverse(
-    server: &ClientServer,
-    into: impl MessageSink,
-    source: &wrapper::User,
-    subcommand: &str,
-    target: &str,
-    from_ts: Option<i64>,
-    to_ts: Option<i64>,
-    limit: Option<usize>,
-) -> CommandResult {
-    let log = server.node().history();
-    let mut entries = Vec::new();
-
-    for entry in log.entries_for_user_reverse(source.id()) {
-        if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
-            // Skip over until we hit the timestamp window we're interested in
-            continue;
-        }
-        if matches!(to_ts, Some(ts) if entry.timestamp >= ts) {
-            // If we hit this then we've passed the requested window and should stop
-            break;
-        }
-
-        if let Some(event_target) = target_name_for_entry(source.id(), entry) {
-            if event_target == target {
-                entries.push(entry);
+    if forward_limit != Some(0) {
+        for entry in log.entries_for_user(source.id()) {
+            if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
+                // Skip over until we hit the timestamp window we're interested in
+                continue;
             }
-        }
+            if matches!(to_ts, Some(ts) if entry.timestamp >= ts) {
+                // If we hit this then we've passed the requested window and should stop
+                break;
+            }
 
-        if matches!(limit, Some(limit) if limit <= entries.len()) {
-            break;
+            if let Some(event_target) = target_name_for_entry(source.id(), entry) {
+                if event_target == target {
+                    forward_entries.push(entry);
+                }
+            }
+
+            if matches!(forward_limit, Some(limit) if limit <= forward_entries.len()) {
+                break;
+            }
         }
     }
 
-    // "The order of returned messages within the batch is implementation-defined, but SHOULD be
-    // ascending time order or some approximation thereof, regardless of the subcommand used."
-    // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
-    send_history_entries(into, subcommand, target, entries.into_iter().rev())
+    send_history_entries(into, subcommand, target, backward_entries, forward_entries)
 }
 
 fn send_history_entries<'a>(
     into: impl MessageSink,
     subcommand: &str,
     target: &str,
-    entries: impl ExactSizeIterator<Item = &'a HistoryLogEntry>,
+    backward_entries: Vec<&'a HistoryLogEntry>,
+    forward_entries: Vec<&'a HistoryLogEntry>,
 ) -> CommandResult {
-    if entries.len() == 0 {
+    if backward_entries.len() == 0 && forward_entries.len() == 0 {
         into.send(message::Fail::new(
             "CHATHISTORY",
             "INVALID_TARGET",
@@ -387,7 +376,14 @@ fn send_history_entries<'a>(
             .with_arguments(&[target])
             .start();
 
-        for entry in entries {
+        // "The order of returned messages within the batch is implementation-defined, but SHOULD be
+        // ascending time order or some approximation thereof, regardless of the subcommand used."
+        // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
+        for entry in backward_entries
+            .into_iter()
+            .rev()
+            .chain(forward_entries.into_iter())
+        {
             entry.send_to(&batch, entry)?;
         }
     }
