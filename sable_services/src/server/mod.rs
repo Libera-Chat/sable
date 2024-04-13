@@ -147,6 +147,7 @@ where
         _state: Self::Saved,
         _node: Arc<NetworkNode>,
         _history_receiver: UnboundedReceiver<sable_network::rpc::NetworkHistoryUpdate>,
+        _config: &Self::ProcessedConfig,
     ) -> std::io::Result<Self> {
         unimplemented!("services can't hot-upgrade");
     }

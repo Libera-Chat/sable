@@ -12,7 +12,6 @@ pub struct ClientServerState {
     auth_state: AuthClientState,
     client_caps: CapabilityRepository,
     listener_state: SavedListenerCollection,
-    info_strings: config::ServerInfoStrings,
 }
 
 #[async_trait]
@@ -107,7 +106,6 @@ impl sable_server::ServerType for ClientServer {
                 .save()
                 .await
                 .map_err(ServerSaveError::IoError)?,
-            info_strings: self.info_strings,
         })
     }
 
@@ -116,6 +114,7 @@ impl sable_server::ServerType for ClientServer {
         state: ClientServerState,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
+        config: &Self::ProcessedConfig,
     ) -> std::io::Result<Self> {
         let (auth_send, auth_recv) = unbounded_channel();
         let (action_send, action_recv) = unbounded_channel();
@@ -148,7 +147,7 @@ impl sable_server::ServerType for ClientServer {
             client_caps: state.client_caps,
             history_receiver: Mutex::new(history_receiver),
             listeners: Movable::new(listeners),
-            info_strings: state.info_strings,
+            info_strings: config.info_strings.clone(),
         })
     }
 
