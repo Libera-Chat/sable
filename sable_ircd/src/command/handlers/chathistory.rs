@@ -75,7 +75,7 @@ fn handle_chathistory(
         }
         "LATEST" => {
             let target = arg_1;
-            let from_ts = match arg_2 {
+            let to_ts = match arg_2 {
                 "*" => None,
                 _ => Some(parse_msgref(subcommand, Some(target), arg_2)?),
             };
@@ -97,15 +97,15 @@ fn handle_chathistory(
                 source,
                 subcommand,
                 &target,
-                from_ts,
                 None,
+                to_ts,
                 limit,
                 Some(0), // forward limit
             )?;
         }
         "BEFORE" => {
             let target = arg_1;
-            let end_ts = parse_msgref(subcommand, Some(target), arg_2)?;
+            let from_ts = parse_msgref(subcommand, Some(target), arg_2)?;
 
             let limit = arg_3.parse().ok();
             if limit.is_none() {
@@ -123,9 +123,9 @@ fn handle_chathistory(
                 &response,
                 source,
                 subcommand,
-                &target,
+                target,
+                Some(from_ts),
                 None,
-                Some(end_ts),
                 limit,
                 Some(0), // forward limit
             )?;
@@ -308,12 +308,20 @@ fn send_history_for_target(
     let mut forward_entries = Vec::new();
 
     if backward_limit != Some(0) {
+        let from_ts = if forward_limit == Some(0) {
+            from_ts
+        } else {
+            // HACK: This is AROUND so we want to capture messages whose timestamp matches exactly
+            // (it's a message in the middle of the range)
+            from_ts.map(|from_ts| from_ts + 1)
+        };
+
         for entry in log.entries_for_user_reverse(source.id()) {
-            if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
+            if matches!(from_ts, Some(ts) if entry.timestamp >= ts) {
                 // Skip over until we hit the timestamp window we're interested in
                 continue;
             }
-            if matches!(to_ts, Some(ts) if entry.timestamp >= ts) {
+            if matches!(to_ts, Some(ts) if entry.timestamp <= ts) {
                 // If we hit this then we've passed the requested window and should stop
                 break;
             }
