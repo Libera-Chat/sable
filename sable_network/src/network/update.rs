@@ -16,6 +16,15 @@ pub struct HistoricUser {
     pub account: Option<Nickname>,
 }
 
+impl HistoricUser {
+    pub fn nuh(&self) -> String {
+        format!(
+            "{}!{}@{}",
+            self.nickname, self.user.user, self.user.visible_host
+        )
+    }
+}
+
 /// Some state changes can originate from either users or servers; this enum is used in the
 /// [`NetworkStateChange`] for those changes to describe the source of the change.
 ///

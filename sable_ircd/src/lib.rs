@@ -70,6 +70,7 @@ use connection_collection::ConnectionCollectionLockHelper;
 mod isupport;
 use isupport::*;
 
+mod monitor;
 mod movable;
 
 pub mod server;

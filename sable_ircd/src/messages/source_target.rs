@@ -58,10 +58,7 @@ impl MessageSource for update::HistoricMessageSource {
 
 impl MessageSource for update::HistoricUser {
     fn format(&self) -> String {
-        format!(
-            "{}!{}@{}",
-            self.nickname, self.user.user, self.user.visible_host
-        )
+        self.nuh()
     }
 }
 
