@@ -14,8 +14,12 @@ impl<'a> ArgListIter<'a> {
     pub fn peek(&self) -> Option<&'a str> {
         self.list.get(self.index).map(AsRef::as_ref)
     }
+}
 
-    pub fn next(&mut self) -> Option<&'a str> {
+impl<'a> Iterator for ArgListIter<'a> {
+    type Item = &'a str;
+
+    fn next(&mut self) -> Option<&'a str> {
         let idx = self.index;
         self.index += 1;
         self.list.get(idx).map(AsRef::as_ref)

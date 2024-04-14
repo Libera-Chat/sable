@@ -198,6 +198,10 @@ impl ClientServer {
 
         ret.add(ISupportEntry::string("CHANMODES", &chanmodes));
 
+        // https://ircv3.net/specs/extensions/chathistory#isupport-tokens
+        // 'msgid' not supported yet
+        ret.add(ISupportEntry::string("MSGREFTYPES", "timestamp"));
+
         let prefix_modes: String = MembershipFlagSet::all().map(|m| m.1).iter().collect();
         let prefix_chars: String = MembershipFlagSet::all().map(|m| m.2).iter().collect();
 

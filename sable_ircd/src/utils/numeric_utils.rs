@@ -16,4 +16,3 @@ macro_rules! numeric_error {
 }
 
 pub use make_numeric;
-pub use numeric_error;

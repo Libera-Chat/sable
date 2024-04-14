@@ -92,7 +92,7 @@ fn handle_chathistory(
             }
 
             send_history_for_target_reverse(
-                server, &response, source, &target, from_ts, None, limit,
+                server, &response, source, subcommand, &target, from_ts, None, limit,
             )?;
         }
         "BEFORE" => {
@@ -114,6 +114,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 target,
                 None,
                 Some(end_ts),
@@ -139,6 +140,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 &target,
                 Some(start_ts),
                 None,
@@ -166,6 +168,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 &target,
                 Some(around_ts),
                 None,
@@ -175,6 +178,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 &target,
                 Some(around_ts),
                 None,
@@ -201,6 +205,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 &target,
                 Some(start_ts),
                 Some(end_ts),
@@ -289,6 +294,7 @@ fn send_history_for_target_forward(
     server: &ClientServer,
     into: impl MessageSink,
     source: &wrapper::User,
+    subcommand: &str,
     target: &str,
     from_ts: Option<i64>,
     to_ts: Option<i64>,
@@ -318,16 +324,7 @@ fn send_history_for_target_forward(
         }
     }
 
-    let batch = into
-        .batch("chathistory", ClientCapability::Batch)
-        .with_arguments(&[target])
-        .start();
-
-    for entry in entries {
-        entry.send_to(&batch, entry)?;
-    }
-
-    Ok(())
+    send_history_entries(into, subcommand, target, entries)
 }
 
 // As above, but work backwards
@@ -335,6 +332,7 @@ fn send_history_for_target_reverse(
     server: &ClientServer,
     into: impl MessageSink,
     source: &wrapper::User,
+    subcommand: &str,
     target: &str,
     from_ts: Option<i64>,
     to_ts: Option<i64>,
@@ -364,13 +362,31 @@ fn send_history_for_target_reverse(
         }
     }
 
-    let batch = into
-        .batch("chathistory", ClientCapability::Batch)
-        .with_arguments(&[target])
-        .start();
+    send_history_entries(into, subcommand, target, entries)
+}
 
-    for entry in entries.into_iter().rev() {
-        entry.send_to(&batch, entry)?;
+fn send_history_entries(
+    into: impl MessageSink,
+    subcommand: &str,
+    target: &str,
+    entries: Vec<&HistoryLogEntry>,
+) -> CommandResult {
+    if entries.is_empty() {
+        into.send(message::Fail::new(
+            "CHATHISTORY",
+            "INVALID_TARGET",
+            &format!("{} {}", subcommand, target),
+            &format!("Cannot fetch history from {}", target),
+        ));
+    } else {
+        let batch = into
+            .batch("chathistory", ClientCapability::Batch)
+            .with_arguments(&[target])
+            .start();
+
+        for entry in entries {
+            entry.send_to(&batch, entry)?;
+        }
     }
 
     Ok(())
