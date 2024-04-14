@@ -3,6 +3,7 @@ use sable_network::prelude::update::{HistoricMessageSource, HistoricMessageTarge
 
 use super::*;
 use crate::errors::HandleResult;
+use crate::monitor::MonitoredItem;
 
 impl ClientServer {
     pub(super) fn handle_history_update(&self, update: NetworkHistoryUpdate) -> HandleResult {
@@ -13,6 +14,18 @@ impl ClientServer {
                 let history = self.node.history();
                 if let Some(entry) = history.get(entry_id) {
                     match &entry.details {
+                        NetworkStateChange::NewUser(detail) => {
+                            detail.notify_monitors(&self);
+                        }
+                        NetworkStateChange::UserNickChange(detail) => {
+                            detail.notify_monitors(&self);
+                        }
+                        NetworkStateChange::UserQuit(detail) => {
+                            detail.notify_monitors(&self);
+                        }
+                        NetworkStateChange::BulkUserQuit(detail) => {
+                            detail.notify_monitors(&self);
+                        }
                         NetworkStateChange::NewUserConnection(detail) => {
                             let new_user_connection = detail.clone();
                             drop(history);

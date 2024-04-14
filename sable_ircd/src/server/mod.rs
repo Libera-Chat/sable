@@ -36,9 +36,10 @@ pub use async_handler_collection::*;
 mod upgrade;
 
 use self::{
-    config::{RawClientServerConfig, ServerInfoStrings},
+    config::{ClientServerConfig, RawClientServerConfig, ServerInfoStrings},
     message_sink_repository::MessageSinkRepository,
 };
+use crate::monitor::MonitorSet;
 
 pub mod config;
 
@@ -90,6 +91,8 @@ pub struct ClientServer {
 
     // Any general static info (responses for MOTD, ADMIN, and so on)
     pub info_strings: ServerInfoStrings,
+
+    pub monitors: RwLock<MonitorSet>,
 }
 
 impl ClientServer {
@@ -166,11 +169,16 @@ impl ClientServer {
     }
 
     #[tracing::instrument]
-    fn build_basic_isupport() -> ISupportBuilder {
+    fn build_basic_isupport(config: &ClientServerConfig) -> ISupportBuilder {
         let mut ret = ISupportBuilder::new();
         ret.add(ISupportEntry::simple("EXCEPTS"));
         ret.add(ISupportEntry::simple("INVEX"));
         ret.add(ISupportEntry::simple("FNC"));
+
+        ret.add(ISupportEntry::int(
+            "MONITOR",
+            config.monitor.max_per_connection.into(),
+        ));
 
         ret.add(ISupportEntry::string("CASEMAPPING", "ascii"));
 

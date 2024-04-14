@@ -5,6 +5,8 @@ use async_trait::async_trait;
 use client_listener::SavedListenerCollection;
 use sable_server::ServerSaveError;
 
+use crate::monitor::MonitorSet;
+
 /// Saved state of a [`ClientServer`] for later resumption
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ClientServerState {
@@ -12,6 +14,7 @@ pub struct ClientServerState {
     auth_state: AuthClientState,
     client_caps: CapabilityRepository,
     listener_state: SavedListenerCollection,
+    monitors: MonitorSet,
 }
 
 #[async_trait]
@@ -28,6 +31,7 @@ impl sable_server::ServerType for ClientServer {
         Ok(Self::ProcessedConfig {
             listeners: config.listeners.clone(),
             info_strings: ServerInfoStrings::load(&config.info_paths)?,
+            monitor: config.monitor.clone(),
         })
     }
 
@@ -81,11 +85,12 @@ impl sable_server::ServerType for ClientServer {
             connections: RwLock::new(ConnectionCollection::new()),
             prereg_connections: Mutex::new(VecDeque::new()),
             myinfo: Self::build_myinfo(),
-            isupport: Self::build_basic_isupport(),
+            isupport: Self::build_basic_isupport(&config),
             client_caps: CapabilityRepository::new(),
             node: node,
             listeners: Movable::new(client_listeners),
             info_strings: config.info_strings,
+            monitors: MonitorSet::new(config.monitor.max_per_connection.into()).into(),
         })
     }
 
@@ -106,12 +111,13 @@ impl sable_server::ServerType for ClientServer {
                 .save()
                 .await
                 .map_err(ServerSaveError::IoError)?,
+            monitors: self.monitors.into_inner(),
         })
     }
 
     /// Restore from a previously saved state.
     fn restore(
-        state: ClientServerState,
+        mut state: ClientServerState,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
         config: &Self::ProcessedConfig,
@@ -123,6 +129,8 @@ impl sable_server::ServerType for ClientServer {
         let listeners = ListenerCollection::resume(state.listener_state, client_send)?;
 
         let connections = ConnectionCollection::restore_from(state.connections, &listeners);
+
+        state.monitors.max_per_connection = config.monitor.max_per_connection.into();
         Ok(Self {
             node,
             action_receiver: Mutex::new(action_recv),
@@ -143,11 +151,12 @@ impl sable_server::ServerType for ClientServer {
             auth_client: AuthClient::resume(state.auth_state, auth_send)?,
             auth_events: Mutex::new(auth_recv),
             myinfo: Self::build_myinfo(),
-            isupport: Self::build_basic_isupport(),
+            isupport: Self::build_basic_isupport(config),
             client_caps: state.client_caps,
             history_receiver: Mutex::new(history_receiver),
             listeners: Movable::new(listeners),
             info_strings: config.info_strings.clone(),
+            monitors: state.monitors.into(),
         })
     }
 
