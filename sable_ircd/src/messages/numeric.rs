@@ -11,6 +11,8 @@ define_messages! {
                                                 => "{server_name} {version} {user_modes} {chan_modes} {chan_modes_with_a_parameter}" },
     005(ISupport)   => { (data: &str)                           => "{data} :are supported by this server" },
 
+    351(Version)    => { (server_name: &ServerName, version: &str) => "{server_name} {version}: Sable IRCd"},
+
     221(UserModeIs)             => { (modestring: &str)         => ":{modestring}" },
     301(Away)                   => { (nick: &User.nick(), reason: &AwayReason)  => "{nick} :{reason}" },
     302(Userhost)               => { (reply: &str)              => ":{reply}" },

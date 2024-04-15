@@ -63,6 +63,7 @@ mod handlers {
     mod rename;
     mod topic;
     mod user;
+    mod version;
     mod userhost;
     mod who;
     mod whois;

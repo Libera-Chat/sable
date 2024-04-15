@@ -83,7 +83,7 @@ pub struct ClientServer {
 
     auth_client: AuthClient,
     myinfo: MyInfo,
-    isupport: ISupportBuilder,
+    pub isupport: ISupportBuilder,
     client_caps: CapabilityRepository,
 
     node: Arc<NetworkNode>,
