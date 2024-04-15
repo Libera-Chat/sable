@@ -153,11 +153,6 @@ impl ConnectionCollection {
         self.client_connections.values()
     }
 
-    /// Get the number of managed connections
-    pub fn len(&self) -> usize {
-        self.client_connections.len()
-    }
-
     /// Drain the list of flooded-off connections for processing
     pub fn flooded_connections(&mut self) -> impl Iterator<Item = Arc<ClientConnection>> + '_ {
         self.flooded_connections.drain(..)
@@ -233,15 +228,10 @@ impl<'a> Iterator for UserConnectionIter<'a> {
 /// Helper trait to allow calling read methods of [`ConnectionCollection`] directly on an RwLock
 pub trait ConnectionCollectionLockHelper {
     fn get(&self, id: ConnectionId) -> LookupResult<Arc<ClientConnection>>;
-    fn len(&self) -> usize;
 }
 
 impl ConnectionCollectionLockHelper for parking_lot::RwLock<ConnectionCollection> {
     fn get(&self, id: ConnectionId) -> LookupResult<Arc<ClientConnection>> {
         self.read().get(id)
-    }
-
-    fn len(&self) -> usize {
-        self.read().len()
     }
 }

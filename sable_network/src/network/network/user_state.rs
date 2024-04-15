@@ -242,18 +242,6 @@ impl Network {
         }
     }
 
-    pub(super) fn validate_new_user(
-        &self,
-        _target: UserId,
-        user: &details::NewUser,
-    ) -> ValidationResult {
-        if self.nick_bindings.contains_key(&user.nickname) {
-            Err(ValidationError::NickInUse(user.nickname))
-        } else {
-            Ok(())
-        }
-    }
-
     pub(super) fn user_away(
         &mut self,
         target: UserId,

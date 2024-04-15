@@ -13,6 +13,7 @@ define_messages! {
 
     221(UserModeIs)             => { (modestring: &str)         => ":{modestring}" },
     301(Away)                   => { (nick: &User.nick(), reason: &AwayReason)  => "{nick} :{reason}" },
+    302(Userhost)               => { (reply: &str)              => ":{reply}" },
     305(Unaway)                 => { ()                         => ":You are no longer marked as being away" },
     306(NowAway)                => { ()                         => ":You have been marked as being away" },
     311(WhoisUser)              => { (nick: &User.nick(), user=nick.user(), host=nick.visible_host(), realname=nick.realname())
@@ -118,6 +119,13 @@ define_messages! {
     491(NoOperConf)         => { ()     => ":No oper configuration found" },
 
     440(ServicesNotAvailable) => { () => ":Services are not available"},
+
+    // https://ircv3.net/specs/extensions/monitor
+    730(MonOnline)          => { (content: &str )               => ":{content}" },
+    731(MonOffline)         => { (content: &str )               => ":{content}" },
+    732(MonList)            => { (targets: &str)                => ":{targets}" },
+    733(EndOfMonList)       => { ()                             => ":End of MONITOR list" },
+    734(MonListFull)        => { (limit: usize, targets: usize) => "{limit} {targets} :Monitor list is full." },
 
     900(LoggedIn)           => { (account: &Nickname) => "* {account} :You are now logged in as {account}" },  // TODO: <nick>!<ident>@<host> instead of *
     903(SaslSuccess)        => { () => ":SASL authentication successful" },

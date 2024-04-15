@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 /// A wrapper around a [`state::Server`]
 pub struct Server<'a> {
-    network: &'a Network,
+    _network: &'a Network,
     data: &'a state::Server,
 }
 
@@ -33,7 +33,10 @@ impl<'a> super::ObjectWrapper<'a> for Server<'a> {
     type Underlying = state::Server;
 
     fn wrap(network: &'a Network, data: &'a state::Server) -> Self {
-        Self { network, data }
+        Self {
+            _network: network,
+            data,
+        }
     }
 
     fn raw(&self) -> &'a Self::Underlying {

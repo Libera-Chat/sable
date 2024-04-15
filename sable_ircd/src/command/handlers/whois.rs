@@ -1,7 +1,7 @@
 use super::*;
 
 #[command_handler("WHOIS")]
-/// Syntax: WHOIS [<server|target>] <target>
+/// Syntax: WHOIS [&lt;server|target&gt;] &lt;target&gt;
 fn whois_handler(
     response: &dyn CommandResponse,
     source: UserSource,

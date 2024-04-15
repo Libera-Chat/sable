@@ -134,7 +134,7 @@ define_validated! {
 impl AwayReason {
     /// Maximum length, in bytes
     ///
-    /// It is small enough to ensure ":n!u@h AWAY :<reason>" can't overflow LINELEN
+    /// It is small enough to ensure ":n!u@h AWAY :&lt;reason&gt;" can't overflow LINELEN
     pub const LENGTH: usize = 300;
 }
 

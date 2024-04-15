@@ -48,6 +48,7 @@ mod handlers {
     mod kill;
     mod kline;
     mod mode;
+    mod monitor;
     mod motd;
     mod names;
     mod nick;
@@ -62,6 +63,7 @@ mod handlers {
     mod rename;
     mod topic;
     mod user;
+    mod userhost;
     mod who;
     mod whois;
     mod whowas;

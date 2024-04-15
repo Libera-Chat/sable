@@ -74,6 +74,7 @@ define_capabilities! (
         UserhostInNames:        0x40 => ("userhost-in-names", true),
         AwayNotify:             0x80 => ("away-notify", true),
         AccountTag:             0x100 => ("account-tag", true),
+        MultiPrefix:            0x200 => ("multi-prefix", true),
 
         // Draft and experimental caps
         ChatHistory:            0x1_0000 => ("draft/chathistory", true),
