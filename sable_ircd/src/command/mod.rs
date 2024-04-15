@@ -22,7 +22,7 @@ mod dispatcher;
 pub use dispatcher::*;
 
 mod plumbing;
-pub use plumbing::{ArgListIter, Command};
+pub use plumbing::{ArgListIter, Command, LoggedInUserSource, PreClientSource, UserSource};
 
 /// A convenience definition for the result type returned from command handlers
 pub type CommandResult = Result<(), CommandError>;
@@ -39,6 +39,7 @@ mod handlers {
 
     mod admin;
     mod away;
+    mod ban;
     mod cap;
     mod chathistory;
     mod invite;
@@ -47,6 +48,7 @@ mod handlers {
     mod kill;
     mod kline;
     mod mode;
+    mod monitor;
     mod motd;
     mod names;
     mod nick;
@@ -62,8 +64,10 @@ mod handlers {
     mod topic;
     mod user;
     mod version;
+    mod userhost;
     mod who;
     mod whois;
+    mod whowas;
 
     // Interim solutions that need refinement
     mod session;

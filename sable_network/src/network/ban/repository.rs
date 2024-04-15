@@ -1,166 +1,139 @@
+use chert::ChertStructTrait;
+
 use super::*;
 use crate::network::*;
 
 use std::collections::HashMap;
-use std::net::IpAddr;
+
+// Convenience alias for the engine type
+type Engine<V> = chert::compile::Engine<V, NetworkBanId>;
 
 /// A collection of network bans, supporting efficient lookup based on
 /// (partial) user details
 #[derive(Debug, Clone)]
 pub struct BanRepository {
-    all_bans: HashMap<NetworkBanId, state::NetworkBan>,
+    pre_registration_bans: HashMap<NetworkBanId, state::NetworkBan>,
+    new_connection_bans: HashMap<NetworkBanId, state::NetworkBan>,
+    pre_sasl_bans: HashMap<NetworkBanId, state::NetworkBan>,
 
-    exact_host_bans: HashMap<Hostname, Vec<NetworkBanId>>,
-    exact_ip_bans: HashMap<IpAddr, Vec<NetworkBanId>>,
-
-    host_range_bans: HashMap<String, Vec<NetworkBanId>>,
-    ip_net_bans: HashMap<IpAddr, Vec<NetworkBanId>>,
-
-    // Freeform host bans aren't indexable and just have to all be tested
-    freeform_hostmask_bans: Vec<NetworkBanId>,
+    pre_registration_engine: Engine<PreRegistrationBanSettings>,
+    new_connection_engine: Engine<NewConnectionBanSettings>,
+    pre_sasl_engine: Engine<PreSaslBanSettings>,
 }
 
 impl BanRepository {
     pub fn new() -> Self {
+        let pre_registration_bans = HashMap::new();
+        let new_connection_bans = HashMap::new();
+        let pre_sasl_bans = HashMap::new();
         Self {
-            all_bans: HashMap::new(),
-            exact_host_bans: HashMap::new(),
-            exact_ip_bans: HashMap::new(),
-            host_range_bans: HashMap::new(),
-            ip_net_bans: HashMap::new(),
-            freeform_hostmask_bans: Vec::new(),
+            pre_registration_engine: Self::compile_engine(&pre_registration_bans),
+            new_connection_engine: Self::compile_engine(&new_connection_bans),
+            pre_sasl_engine: Self::compile_engine(&pre_sasl_bans),
+            pre_registration_bans,
+            new_connection_bans,
+            pre_sasl_bans,
         }
     }
 
-    pub fn from_ban_set(bans: Vec<state::NetworkBan>) -> Result<Self, DuplicateNetworkBan> {
-        let mut ret = Self::new();
+    pub fn from_ban_set(bans: Vec<state::NetworkBan>) -> Self {
+        let mut pre_registration_bans = HashMap::new();
+        let mut new_connection_bans = HashMap::new();
+        let mut pre_sasl_bans = HashMap::new();
 
         for ban in bans {
-            ret.add(ban)?;
+            use BanMatchType::*;
+            match ban.match_type {
+                PreRegistration => pre_registration_bans.insert(ban.id, ban),
+                NewConnection => new_connection_bans.insert(ban.id, ban),
+                PreSasl => pre_sasl_bans.insert(ban.id, ban),
+            };
         }
 
-        Ok(ret)
+        Self {
+            pre_registration_engine: Self::compile_engine(&pre_registration_bans),
+            new_connection_engine: Self::compile_engine(&new_connection_bans),
+            pre_sasl_engine: Self::compile_engine(&pre_sasl_bans),
+            pre_registration_bans,
+            new_connection_bans,
+            pre_sasl_bans,
+        }
     }
 
-    fn add_index_for(&mut self, ban: &state::NetworkBan) -> Result<(), NetworkBanId> {
-        let ban_vec = match &ban.matcher.host {
-            NetworkBanHostMatch::ExactIp(ip) => self.exact_ip_bans.entry(*ip).or_default(),
-            NetworkBanHostMatch::IpRange(ip_net) => {
-                self.ip_net_bans.entry(ip_net.network()).or_default()
+    pub fn add(&mut self, ban: state::NetworkBan) {
+        use BanMatchType::*;
+        match ban.match_type {
+            PreRegistration => {
+                self.pre_registration_bans.insert(ban.id, ban);
+                self.pre_registration_engine = Self::compile_engine(&self.pre_registration_bans);
             }
-            NetworkBanHostMatch::ExactHostname(host) => {
-                self.exact_host_bans.entry(*host).or_default()
+            NewConnection => {
+                self.new_connection_bans.insert(ban.id, ban);
+                self.new_connection_engine = Self::compile_engine(&self.new_connection_bans);
             }
-            NetworkBanHostMatch::HostnameRange(host_suffix) => {
-                self.host_range_bans.entry(host_suffix.clone()).or_default()
+            PreSasl => {
+                self.pre_sasl_bans.insert(ban.id, ban);
+                self.pre_sasl_engine = Self::compile_engine(&self.pre_sasl_bans);
             }
-            NetworkBanHostMatch::HostnameMask(_) => &mut self.freeform_hostmask_bans,
         };
-
-        // We don't strictly need to do this if we just created the vec, but it won't take
-        // long to iterate an empty vector and the code's clearer this way.
-
-        // We can't use `self` in the closure because it's already borrowed mutably; declaring this
-        // here lets the closure access a single field
-        let all_bans = &self.all_bans;
-        if let Some(existing) = ban_vec.iter().find(|id| {
-            if let Some(other_ban) = all_bans.get(id) {
-                ban.matcher == other_ban.matcher
-            } else {
-                false
-            }
-        }) {
-            Err(*existing)
-        } else {
-            ban_vec.push(ban.id);
-            Ok(())
-        }
-    }
-
-    pub fn add(&mut self, ban: state::NetworkBan) -> Result<(), DuplicateNetworkBan> {
-        if let Err(existing_id) = self.add_index_for(&ban) {
-            Err(DuplicateNetworkBan { existing_id, ban })
-        } else {
-            self.all_bans.insert(ban.id, ban);
-            Ok(())
-        }
     }
 
     pub fn remove(&mut self, id: NetworkBanId) {
-        if let Some(ban) = self.all_bans.remove(&id) {
-            let search_vec = match &ban.matcher.host {
-                NetworkBanHostMatch::ExactIp(ip) => self.exact_ip_bans.get_mut(&ip),
-                NetworkBanHostMatch::IpRange(ip_net) => self.ip_net_bans.get_mut(&ip_net.network()),
-                NetworkBanHostMatch::ExactHostname(host) => self.exact_host_bans.get_mut(host),
-                NetworkBanHostMatch::HostnameRange(host) => self.host_range_bans.get_mut(host),
-                NetworkBanHostMatch::HostnameMask(_) => Some(&mut self.freeform_hostmask_bans),
-            };
-            if let Some(search_vec) = search_vec {
-                search_vec.retain(|id| id != &ban.id)
-            }
+        if self.pre_registration_bans.remove(&id).is_some() {
+            self.pre_registration_engine = Self::compile_engine(&self.pre_registration_bans);
+        }
+        if self.new_connection_bans.remove(&id).is_some() {
+            self.new_connection_engine = Self::compile_engine(&self.new_connection_bans);
+        }
+        if self.pre_sasl_bans.remove(&id).is_some() {
+            self.pre_sasl_engine = Self::compile_engine(&self.pre_sasl_bans);
         }
     }
 
     pub fn get(&self, id: &NetworkBanId) -> Option<&state::NetworkBan> {
-        self.all_bans.get(id)
+        self.pre_registration_bans
+            .get(id)
+            .or_else(|| self.new_connection_bans.get(id))
+            .or_else(|| self.pre_sasl_bans.get(id))
     }
 
-    pub fn find(&self, user_details: &UserDetails) -> Option<&state::NetworkBan> {
-        let mut candidates = Vec::new();
+    pub fn find_pre_registration(
+        &self,
+        matching: &PreRegistrationBanSettings,
+    ) -> impl Iterator<Item = &state::NetworkBan> {
+        let matches = self.pre_registration_engine.eval(&matching);
 
-        // First look for an exact IP match
-        if let Some(vec) = user_details.ip.and_then(|ip| self.exact_ip_bans.get(ip)) {
-            candidates.push(vec);
-        }
+        matches
+            .into_iter()
+            .filter_map(move |id| self.pre_registration_bans.get(&id))
+    }
 
-        // Then an exact hostname match
-        if let Some(vec) = user_details
-            .host
-            .and_then(|host| self.exact_host_bans.get(host))
-        {
-            candidates.push(vec);
-        }
+    pub fn find_new_connection(
+        &self,
+        matching: &NewConnectionBanSettings,
+    ) -> impl Iterator<Item = &state::NetworkBan> {
+        let matches = self.new_connection_engine.eval(&matching);
 
-        // Then run through each prefix length checking for range bans
-        if let Some(ip) = user_details.ip {
-            let mut next_net: Option<IpNet> = Some((*ip).into());
+        matches
+            .into_iter()
+            .filter_map(move |id| self.new_connection_bans.get(&id))
+    }
 
-            while let Some(ref net) = next_net {
-                if let Some(vec) = self.ip_net_bans.get(&net.network()) {
-                    candidates.push(vec)
-                }
-                next_net = net.supernet();
-            }
-        }
+    pub fn find_pre_sasl(
+        &self,
+        matching: &PreSaslBanSettings,
+    ) -> impl Iterator<Item = &state::NetworkBan> {
+        let matches = self.pre_sasl_engine.eval(&matching);
 
-        // Then go through each possible hostname suffix
-        if let Some(host) = user_details.host {
-            let mut host_part = host;
+        matches
+            .into_iter()
+            .filter_map(move |id| self.pre_sasl_bans.get(&id))
+    }
 
-            while let Some((_, suffix)) = host_part.split_once('.') {
-                if let Some(vec) = self.host_range_bans.get(suffix) {
-                    candidates.push(vec);
-                }
-                host_part = suffix;
-            }
-        }
-
-        candidates.push(&self.freeform_hostmask_bans);
-
-        // `candidates` is now ordered: exact IP match first, then exact hostname,
-        // then CIDR range bans from most specific to least specific prefix length,
-        // then hostname suffix bans from most to least specific, then freeform mask bans.
-        //
-        // The first of these that matches on its other criteria is the one we'll use.
-        for id in candidates.into_iter().flatten() {
-            if let Some(candidate_ban) = self.all_bans.get(&id) {
-                if candidate_ban.matcher.matches(user_details) {
-                    return Some(candidate_ban);
-                }
-            }
-        }
-
-        None
+    fn compile_engine<V: ChertStructTrait>(
+        bans: &HashMap<NetworkBanId, state::NetworkBan>,
+    ) -> Engine<V> {
+        chert::compile::compile_unsafe(bans.iter().map(|(k, v)| (*k, &v.pattern)))
     }
 }
 
@@ -169,7 +142,12 @@ impl serde::ser::Serialize for BanRepository {
     where
         S: serde::Serializer,
     {
-        serializer.collect_seq(self.all_bans.values())
+        serializer.collect_seq(
+            self.pre_registration_bans
+                .values()
+                .chain(self.new_connection_bans.values())
+                .chain(self.pre_sasl_bans.values()),
+        )
     }
 }
 
@@ -179,6 +157,6 @@ impl<'de> serde::de::Deserialize<'de> for BanRepository {
         D: serde::Deserializer<'de>,
     {
         let bans = Vec::deserialize(deserializer)?;
-        Self::from_ban_set(bans).map_err(serde::de::Error::custom)
+        Ok(Self::from_ban_set(bans))
     }
 }

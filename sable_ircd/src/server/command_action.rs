@@ -4,65 +4,106 @@ use parking_lot::RwLockUpgradableReadGuard;
 
 impl ClientServer {
     fn notify_access_error(&self, err: &user_access::AccessError, conn: &ClientConnection) {
+        use user_access::AccessError::*;
         match err {
-            user_access::AccessError::Banned(reason) => {
+            Banned(reason) => {
                 conn.send(make_numeric!(YoureBanned, &reason).format_for(self, &UnknownTarget));
+            }
+            SaslRequired(reason) => {
+                if reason.len() > 0 {
+                    conn.send(message::Notice::new(
+                        self,
+                        &UnknownTarget,
+                        &format!(
+                            "You must authenticate via SASL to use this server ({})",
+                            reason
+                        ),
+                    ));
+                } else {
+                    conn.send(message::Notice::new(
+                        self,
+                        &UnknownTarget,
+                        "You must authenticate via SASL to use this server",
+                    ));
+                }
+            }
+            InternalError => {
+                tracing::error!(?conn, "Internal error checking access");
+                conn.send(message::Error::new("Internal error"));
+            }
+        }
+    }
+
+    fn register_new_user(&self, connection_id: ConnectionId) {
+        let connections = self.connections.upgradable_read();
+        if let Ok(conn) = connections.get(connection_id) {
+            if let Some(pre_client) = conn.pre_client() {
+                // First check whether they're attaching, as that's an easier operation
+                if let Some(user_id) = pre_client.can_attach_to_user() {
+                    let user_connection_id = self.ids().next_user_connection();
+                    let user_connection = event::details::NewUserConnection {
+                        user: user_id,
+                        hostname: *pre_client.hostname.get().unwrap(),
+                        ip: conn.remote_addr(),
+                        connection_time: sable_network::utils::now(),
+                    };
+                    self.node.submit_event(user_connection_id, user_connection);
+
+                    let mut connections = RwLockUpgradableReadGuard::upgrade(connections);
+                    connections.add_user(user_id, user_connection_id, conn.id());
+                    conn.set_user(user_id, user_connection_id);
+                    return;
+                }
+
+                // If we get this far, we're registering a new user
+                if let Err(e) = self.check_user_access(&*self.network(), &*conn) {
+                    self.notify_access_error(&e, conn.as_ref());
+                    RwLockUpgradableReadGuard::upgrade(connections).remove(connection_id);
+                    return;
+                }
+
+                let new_user_id = self.ids().next_user();
+
+                if pre_client.can_register_new_user() {
+                    let mut umodes = UserModeSet::new();
+                    if conn.connection.is_tls() {
+                        umodes |= UserModeFlag::TlsConnection;
+                    }
+
+                    let initial_connection_id = self.ids().next_user_connection();
+                    let initial_connection = event::details::NewUserConnection {
+                        user: new_user_id,
+                        hostname: *pre_client.hostname.get().unwrap(),
+                        ip: conn.remote_addr(),
+                        connection_time: sable_network::utils::now(),
+                    };
+
+                    let new_user = event::details::NewUser {
+                        nickname: *pre_client.nick.get().unwrap(),
+                        username: *pre_client.user.get().unwrap(),
+                        visible_hostname: *pre_client.hostname.get().unwrap(),
+                        realname: pre_client.realname.get().unwrap().clone(),
+                        mode: state::UserMode::new(umodes),
+                        server: self.node.id(),
+                        account: pre_client.sasl_account.get().cloned(),
+                        initial_connection: Some((initial_connection_id, initial_connection)),
+                    };
+                    self.node.submit_event(new_user_id, new_user);
+
+                    RwLockUpgradableReadGuard::upgrade(connections).add_user(
+                        new_user_id,
+                        initial_connection_id,
+                        connection_id,
+                    );
+                }
             }
         }
     }
 
     pub(super) async fn apply_action(&self, action: CommandAction) {
         match action {
-            CommandAction::RegisterClient(id) => {
-                let mut should_add_user = None;
-                let connections = self.connections.upgradable_read();
-                if let Ok(conn) = connections.get(id) {
-                    {
-                        if let Err(e) = self.check_user_access(&*self.network(), &*conn) {
-                            self.notify_access_error(&e, conn.as_ref());
-                            RwLockUpgradableReadGuard::upgrade(connections).remove(id);
-                            return;
-                        }
-                    }
-
-                    if let Some(pre_client) = conn.pre_client() {
-                        // We don't delete the preclient here, because it's possible the event will fail to apply
-                        // if someone else takes the nickname in between
-                        let new_user_id = self.ids().next_user();
-
-                        let mut umodes = UserModeSet::new();
-                        if conn.connection.is_tls() {
-                            umodes |= UserModeFlag::TlsConnection;
-                        }
-
-                        let details = event::details::NewUser {
-                            nickname: *pre_client.nick.get().unwrap(),
-                            username: *pre_client.user.get().unwrap(),
-                            visible_hostname: *pre_client.hostname.get().unwrap(),
-                            realname: pre_client.realname.get().unwrap().clone(),
-                            mode: state::UserMode::new(umodes),
-                            server: self.node.id(),
-                            account: pre_client.sasl_account.get().cloned(),
-                        };
-                        self.node.submit_event(new_user_id, details);
-
-                        should_add_user = Some((new_user_id, id));
-                    }
-                }
-
-                if let Some((user_id, conn_id)) = should_add_user {
-                    RwLockUpgradableReadGuard::upgrade(connections).add_user(user_id, conn_id);
-                }
-            }
-
-            CommandAction::AttachToUser(connection_id, user_id) => {
-                // This operation will almost always require the write lock, so just get it immediately
-                let mut connections = self.connections.write();
-                if let Ok(conn) = connections.get(connection_id) {
-                    conn.set_user_id(user_id);
-
-                    connections.add_user(user_id, connection_id);
-                }
+            CommandAction::RegisterClient(connection_id) => {
+                self.register_new_user(connection_id);
             }
 
             CommandAction::UpdateConnectionCaps(conn_id, new_caps) => {

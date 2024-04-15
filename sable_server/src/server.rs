@@ -150,7 +150,6 @@ where
     pub async fn run(&self) -> ShutdownAction {
         let (shutdown_send, shutdown_recv) = broadcast::channel(1);
 
-        tracing::trace!("server run 1");
         let mut log_task = self.log.start_sync(shutdown_send.subscribe());
 
         let node = Arc::clone(&self.node);
@@ -159,7 +158,6 @@ where
         });
 
         let server = Arc::clone(&self.server);
-        tracing::trace!("server run 2");
 
         let shutdown_recv = shutdown_send.subscribe();
         let mut server_task = tokio::spawn(async move { server.run(shutdown_recv).await });
@@ -174,7 +172,6 @@ where
         let mut event_pump_task = tokio::spawn(async move {
             Self::run_event_pump(shutdown_recv, remote_command_recv, server).await
         });
-        tracing::trace!("server run 3");
 
         tokio::select! {
             // The management task will exit on receiving a shutdown command, so just wait for it to finish
@@ -321,10 +318,13 @@ where
         state: ServerState<ST>,
         net_config: SyncConfig,
         server_config: ServerConfig<ST>,
-    ) -> std::io::Result<Self> {
+    ) -> Result<Self, anyhow::Error> {
         let (server_send, server_recv) = unbounded_channel();
         let (history_send, history_recv) = unbounded_channel();
         let (remote_send, remote_recv) = unbounded_channel();
+
+        let processed_server_config = ST::validate_config(&server_config.server)
+            .context("Could not load server configuration")?;
 
         let log = Arc::new(ReplicatedEventLog::restore(
             state.log_state,
@@ -345,6 +345,7 @@ where
             state.server_state,
             Arc::clone(&node),
             history_recv,
+            &processed_server_config,
         )?);
 
         Ok(Self {

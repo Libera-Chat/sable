@@ -10,6 +10,8 @@ pub enum LookupError {
     WrongType,
     #[error("No such user id {0:?}")]
     NoSuchUser(UserId),
+    #[error("No such connection id {0:?}")]
+    NoSuchConnection(UserConnectionId),
     #[error("No such channel id {0:?}")]
     NoSuchChannel(ChannelId),
     #[error("No such banlist id {0:?}")]

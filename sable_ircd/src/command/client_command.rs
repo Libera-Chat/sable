@@ -11,30 +11,29 @@ pub enum CommandSource<'a> {
     /// A client connection which has not yet completed registration
     PreClient(Arc<PreClient>),
     /// A client connection which is associated with a network user
-    User(wrapper::User<'a>),
+    User(wrapper::User<'a>, wrapper::UserConnection<'a>),
 }
 
 impl<'a> CommandSource<'a> {
     pub fn user(&self) -> Option<&wrapper::User<'a>> {
         match self {
             Self::PreClient(_) => None,
-            Self::User(u) => Some(&u),
+            Self::User(u, _) => Some(&u),
         }
     }
-    /*
-        pub fn pre_client(&self) -> Option<&PreClient> {
-            match self {
-                Self::PreClient(pc) => Some(pc.as_ref()),
-                Self::User(_) => None,
-            }
+
+    pub fn pre_client(&self) -> Option<&PreClient> {
+        match self {
+            Self::PreClient(pc) => Some(pc.as_ref()),
+            Self::User(_, _) => None,
         }
-    */
+    }
 }
 
 /// Internal representation of a `CommandSource`
 enum InternalCommandSource {
     PreClient(Arc<PreClient>),
-    User(*const state::User),
+    User(*const state::User, *const state::UserConnection),
 }
 
 /// A client command to be handled
@@ -124,9 +123,10 @@ impl ClientCommand {
         net: &Network,
         source: &ClientConnection,
     ) -> Result<InternalCommandSource, CommandError> {
-        if let Some(user_id) = source.user_id() {
+        if let Some((user_id, conn_id)) = source.user_ids() {
             let user_state = net.user(user_id)?.raw();
-            Ok(InternalCommandSource::User(user_state))
+            let conn_state = net.user_connection(conn_id)?.raw();
+            Ok(InternalCommandSource::User(user_state, conn_state))
         } else if let Some(pre_client) = source.pre_client() {
             Ok(InternalCommandSource::PreClient(pre_client))
         } else {
@@ -142,13 +142,16 @@ impl ClientCommand {
     ) -> CommandSource<'a> {
         match source {
             InternalCommandSource::PreClient(pc) => CommandSource::PreClient(Arc::clone(pc)),
-            InternalCommandSource::User(user_pointer) => {
+            InternalCommandSource::User(user_pointer, conn_pointer) => {
                 // Safety: user_pointer points to data inside the object managed by `self.net`,
                 // so will always survive at least as long as `self`. The returned `CommandSource`
                 // creates a borrow of `self.net`, so it can't be removed while that exists.
                 let user: &'_ state::User = unsafe { &**user_pointer };
-                let wrapper = <wrapper::User as wrapper::ObjectWrapper>::wrap(net, user);
-                CommandSource::User(wrapper)
+                let user_conn: &'_ state::UserConnection = unsafe { &**conn_pointer };
+                let user_wrapper = <wrapper::User as wrapper::ObjectWrapper>::wrap(net, user);
+                let user_conn_wrapper =
+                    <wrapper::UserConnection as wrapper::ObjectWrapper>::wrap(net, user_conn);
+                CommandSource::User(user_wrapper, user_conn_wrapper)
             }
         }
     }
@@ -176,9 +179,7 @@ impl Command for ClientCommand {
     }
 
     fn notify_error(&self, err: CommandError) {
-        if let Some(n) = self.translate_command_error(err) {
-            let _ = self.response_sink().numeric(n);
-        }
+        self.send_command_error(err)
     }
 
     fn response_sink(&self) -> &dyn CommandResponse {
@@ -203,8 +204,8 @@ impl Command for ClientCommand {
 }
 
 impl ClientCommand {
-    fn translate_command_error(&self, err: CommandError) -> Option<UntargetedNumeric> {
-        match err {
+    fn send_command_error(&self, err: CommandError) {
+        let numeric = match err {
             CommandError::UnderlyingError(_) => {
                 todo!()
             }
@@ -274,6 +275,19 @@ impl ClientCommand {
                 }
             }
             CommandError::Numeric(n) => Some(n),
+            CommandError::Fail {
+                command,
+                code,
+                context,
+                description,
+            } => {
+                self.response_sink
+                    .send(message::Fail::new(command, code, &context, &description));
+                None
+            }
+        };
+        if let Some(numeric) = numeric {
+            self.response_sink.numeric(numeric)
         }
     }
 }

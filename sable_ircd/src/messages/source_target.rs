@@ -58,10 +58,7 @@ impl MessageSource for update::HistoricMessageSource {
 
 impl MessageSource for update::HistoricUser {
     fn format(&self) -> String {
-        format!(
-            "{}!{}@{}",
-            self.nickname, self.user.user, self.user.visible_host
-        )
+        self.nuh()
     }
 }
 
@@ -149,8 +146,26 @@ impl MessageTarget for wrapper::MessageTarget<'_> {
 impl MessageTarget for crate::command::CommandSource<'_> {
     fn format(&self) -> String {
         match self {
-            Self::User(u) => <wrapper::User as MessageTarget>::format(u),
+            Self::User(u, _) => <wrapper::User as MessageTarget>::format(u),
             Self::PreClient(_) => "*".to_string(),
         }
+    }
+}
+
+impl MessageTarget for crate::command::UserSource<'_> {
+    fn format(&self) -> String {
+        <wrapper::User as MessageTarget>::format(&self.user)
+    }
+}
+
+impl MessageTarget for crate::command::LoggedInUserSource<'_> {
+    fn format(&self) -> String {
+        <wrapper::User as MessageTarget>::format(&self.user)
+    }
+}
+
+impl MessageTarget for crate::command::PreClientSource {
+    fn format(&self) -> String {
+        "*".to_string()
     }
 }

@@ -1,31 +1,40 @@
 use super::*;
 use sable_macros::define_messages;
+use sable_network::network::update::HistoricUser;
 use sable_network::network::wrapper::{Channel, ChannelMode, ListModeEntry, Server, User};
 
 define_messages! {
     001(Welcome)    => { (network_name: &str, nick: &Nickname)  => ":Welcome to the {network_name} Internet Relay Chat network, {nick}" },
-    002(YourHostIs) => { (server_name: &ServerName, version: &str)     => ":Your host is {server_name}, running version {version}" },
+    002(YourHostIs) => { (server_name: &ServerName, version: &str)      => ":Your host is {server_name}, running version {version}" },
+    003(Created)    => { (when: &chrono::DateTime<chrono::offset::Utc>) => ":This server was created {when}" },
+    004(MyInfo)     => { (server_name: &ServerName, version: &str, user_modes: &str, chan_modes: &str, chan_modes_with_a_parameter: &str)
+                                                => "{server_name} {version} {user_modes} {chan_modes} {chan_modes_with_a_parameter}" },
     005(ISupport)   => { (data: &str)                           => "{data} :are supported by this server" },
 
     351(Version)    => { (server_name: &ServerName, version: &str) => "{server_name} {version}: Sable IRCd"},
 
     221(UserModeIs)             => { (modestring: &str)         => ":{modestring}" },
     301(Away)                   => { (nick: &User.nick(), reason: &AwayReason)  => "{nick} :{reason}" },
+    302(Userhost)               => { (reply: &str)              => ":{reply}" },
     305(Unaway)                 => { ()                         => ":You are no longer marked as being away" },
     306(NowAway)                => { ()                         => ":You have been marked as being away" },
     311(WhoisUser)              => { (nick: &User.nick(), user=nick.user(), host=nick.visible_host(), realname=nick.realname())
                                                                 => "{nick} {user} {host} * :{realname}" },
     312(WhoisServer)            => { (nick: &User.nick(), server: &Server.name(), info=server.id())
                                                                 => "{nick} {server} :{info:?}"},
+    314(WhowasUser)             => { (nick: &HistoricUser.nickname, user=nick.user.user, host=nick.user.visible_host, realname=nick.user.realname)
+                                                                => "{nick} {user} {host} * :{realname}" },
     315(EndOfWho)               => { (arg: &str)                => "{arg} :End of /WHO list" },
     318(EndOfWhois)             => { (user: &User.nick())       => "{user} :End of /WHOIS" },
     319(WhoisChannels)          => { (user: &User.nick(), chanlist: &str)
                                                                 => "{user} :{chanlist}" },
+    378(WhoisHost)              => { (user: &User.nick(), username=user.user(), host: &Hostname, ip: &std::net::IpAddr)
+                                                                => "{user} :is connecting from {username}@{host} {ip}" },
 
     324(ChannelModeIs)          => { (chan: &Channel.name(), modes: &ChannelMode.format())
                                                                 => "{chan} {modes}" },
 
-    330(WhoisAccount)           => { (nick: &User.nick(), account: &Nickname)
+    330(WhoisAccount)           => { (nick: &Nickname, account: &Nickname)
                                                                 => "{nick} {account} :is logged in as" },
 
     331(NoTopic)                => { (chan: &Channel.name())    => "{chan} :No topic is set"},
@@ -37,12 +46,14 @@ define_messages! {
     341(Inviting)               => { (nick: &User.nick(), chan: &Channel.name())
                                                                 => "{nick} {chan}" },
 
-    352(WhoReply)               => { (chname: &str, user: &User.user(), host=user.visible_host(), server: &Server.name(),
+    352(WhoReply)               => { (chname: &str, user: &User.user(), host=user.visible_host(),
                                       nick=user.nick(), status: &str, hopcount: usize, realname=&user.realname())
-                                                => "{chname} {user} {host} {server} {nick} {status} :{hopcount} {realname}" },
+                                                => "{chname} {user} {host} * {nick} {status} :{hopcount} {realname}" },
     353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)
                                                                 => "{is_pub} {chan} :{content}" },
     366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
+
+    369(EndOfWhowas)            => { (nick: &Nickname)          => "{nick} :End of /WHOWAS" },
 
     256(AdminMe)                => { (server_name: &ServerName) => "{server_name} :Administrative Info"},
     257(AdminLocation1)         => { (server_location: &str)    => ":{server_location}" },
@@ -61,6 +72,7 @@ define_messages! {
     402(NoSuchServer)           => { (server_name: &ServerName) => "{server_name} :No such server" },
     403(NoSuchChannel)          => { (chname: &ChannelName)     => "{chname} :No such channel" },
     404(CannotSendToChannel)    => { (chan: &ChannelName)       => "{chan} :Cannot send to channel" },
+    406(WasNoSuchNick)          => { (nick: &Nickname)          => "{nick} :There was no such nickname" },
     410(InvalidCapCmd)          => { (subcommand: &str)         => "{subcommand} :Invalid CAP command" },
     412(NoTextToSend)           => { ()                         => ":No text to send" },
     421(UnknownCommand)         => { (command: &str)            => "{command} :Unknown command" },
@@ -109,6 +121,13 @@ define_messages! {
     491(NoOperConf)         => { ()     => ":No oper configuration found" },
 
     440(ServicesNotAvailable) => { () => ":Services are not available"},
+
+    // https://ircv3.net/specs/extensions/monitor
+    730(MonOnline)          => { (content: &str )               => ":{content}" },
+    731(MonOffline)         => { (content: &str )               => ":{content}" },
+    732(MonList)            => { (targets: &str)                => ":{targets}" },
+    733(EndOfMonList)       => { ()                             => ":End of MONITOR list" },
+    734(MonListFull)        => { (limit: usize, targets: usize) => "{limit} {targets} :Monitor list is full." },
 
     900(LoggedIn)           => { (account: &Nickname) => "* {account} :You are now logged in as {account}" },  // TODO: <nick>!<ident>@<host> instead of *
     903(SaslSuccess)        => { () => ":SASL authentication successful" },

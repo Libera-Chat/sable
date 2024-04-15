@@ -1,45 +1,69 @@
 use super::*;
-use crate::{network::state_utils, prelude::state::UserSessionKey};
+use crate::{
+    network::{state::UserConnection, state_utils},
+    prelude::state::UserSessionKey,
+};
 
 impl Network {
-    pub(super) fn remove_user(&mut self, id: UserId, message: String) -> Option<update::UserQuit> {
+    pub(super) fn remove_user(
+        &mut self,
+        id: UserId,
+        message: String,
+        event: &Event,
+        updates: &dyn NetworkUpdateReceiver,
+    ) {
         if let Some(user) = self.users.remove(&id) {
-            // Because HashMap::drain_filter isn't stable yet...
-            let mut removed_memberships = Vec::new();
-            let mut retained_memberships = HashMap::new();
+            let mut historic_user = self.translate_historic_user(user.clone());
 
-            for (id, membership) in self.memberships.drain() {
-                if membership.user == user.id {
-                    removed_memberships.push(membership);
-                } else {
-                    retained_memberships.insert(id, membership);
-                }
-            }
-            self.memberships = retained_memberships;
+            // First remove the user's memberships and connections
+            let removed_memberships = self
+                .memberships
+                .extract_if(|_, m| m.user == id)
+                .map(|(_id, m)| m)
+                .collect::<Vec<_>>();
+
+            let removed_connections = self
+                .user_connections
+                .extract_if(|_id, conn| conn.user == id)
+                .collect::<Vec<_>>();
 
             let removed_nickname = if let Ok(binding) = self.nick_binding_for_user(user.id) {
                 let nick = binding.nick();
                 self.nick_bindings.remove(&nick);
+                let historic_nick_users =
+                    self.historic_nick_users.entry(nick.clone()).or_insert_with(
+                        || VecDeque::with_capacity(8), // arbitrary power of two
+                    );
+                if historic_nick_users.len() == historic_nick_users.capacity() {
+                    historic_nick_users.pop_back();
+                }
+                historic_nick_users.push_front(historic_user.clone());
                 nick
             } else {
                 state_utils::hashed_nick_for(user.id)
             };
 
-            Some(update::UserQuit {
-                // We can't use `translate_historic_user` because we've already removed the nick binding
-                user: HistoricUser {
-                    account: user
-                        .account
-                        .and_then(|id| self.account(id).ok().map(|acc| acc.name())),
-                    user,
+            for (_id, connection) in removed_connections {
+                updates.notify(
+                    update::UserConnectionDisconnected {
+                        user: self.translate_historic_user(user.clone()),
+                        connection,
+                    },
+                    event,
+                );
+            }
+
+            historic_user.nickname = removed_nickname;
+            updates.notify(
+                update::UserQuit {
+                    // We can't use `translate_historic_user` because we've already removed the nick binding
+                    user: historic_user,
                     nickname: removed_nickname,
+                    message,
+                    memberships: removed_memberships,
                 },
-                nickname: removed_nickname,
-                message,
-                memberships: removed_memberships,
-            })
-        } else {
-            None
+                event,
+            );
         }
     }
 
@@ -67,17 +91,16 @@ impl Network {
                 } else {
                     // The event we're processing does not depend on the one that created the
                     // existing binding. Kill both users, and drop the old binding.
-                    if let Some(update) =
-                        self.remove_user(existing_id_binding.user, "Nickname collision".to_string())
-                    {
-                        updates.notify(update, trigger);
-                    }
+                    self.remove_user(
+                        existing_id_binding.user,
+                        "Nickname collision".to_string(),
+                        trigger,
+                        updates,
+                    );
                 }
 
                 // Whichever way the above test went, we need to kill the newer user.
-                if let Some(update) = self.remove_user(user_id, "Nickname collision".to_string()) {
-                    updates.notify(update, trigger);
-                }
+                self.remove_user(user_id, "Nickname collision".to_string(), trigger, updates);
             } else {
                 // The ID-based nick isn't bound. Do so.
                 let new_binding =
@@ -180,7 +203,6 @@ impl Network {
     ) {
         let user = state::User::new(
             target,
-            detail.server,
             detail.username,
             detail.visible_hostname,
             detail.realname.clone(),
@@ -207,17 +229,16 @@ impl Network {
             user: self.translate_historic_user(user),
         };
         updates.notify(update, event);
-    }
 
-    pub(super) fn validate_new_user(
-        &self,
-        _target: UserId,
-        user: &details::NewUser,
-    ) -> ValidationResult {
-        if self.nick_bindings.contains_key(&user.nickname) {
-            Err(ValidationError::NickInUse(user.nickname))
-        } else {
-            Ok(())
+        // If there was an initial connection detail provided, add that now that the user is fully created
+        if let Some((initial_connection_id, initial_connection_detail)) = &detail.initial_connection
+        {
+            self.new_user_connection(
+                *initial_connection_id,
+                event,
+                initial_connection_detail,
+                updates,
+            )
         }
     }
 
@@ -277,9 +298,7 @@ impl Network {
         quit: &details::UserQuit,
         updates: &dyn NetworkUpdateReceiver,
     ) {
-        if let Some(update) = self.remove_user(target, quit.message.clone()) {
-            updates.notify(update, event);
-        }
+        self.remove_user(target, quit.message.clone(), event, updates);
     }
 
     pub(super) fn enable_persistent_session(
@@ -308,6 +327,70 @@ impl Network {
                 enabled_by: event.id,
                 key_hash: detail.key_hash.clone(),
             });
+        }
+    }
+
+    pub(super) fn disable_persistent_session(
+        &mut self,
+        target: UserId,
+        _event: &Event,
+        _detail: &details::DisablePersistentSession,
+        _updates: &dyn NetworkUpdateReceiver,
+    ) {
+        if let Some(user) = self.users.get_mut(&target) {
+            user.session_key = None;
+        }
+    }
+
+    pub(super) fn new_user_connection(
+        &mut self,
+        target: UserConnectionId,
+        event: &Event,
+        detail: &details::NewUserConnection,
+        updates: &dyn NetworkUpdateReceiver,
+    ) {
+        self.user_connections.insert(
+            target,
+            UserConnection {
+                id: target,
+                user: detail.user,
+                hostname: detail.hostname,
+                ip: detail.ip,
+                connection_time: detail.connection_time,
+            },
+        );
+
+        // unwrap is ok because we just inserted that key
+        let connection = self.user_connections.get(&target).unwrap();
+
+        if let Some(user) = self.users.get(&detail.user) {
+            updates.notify(
+                update::NewUserConnection {
+                    user: self.translate_historic_user(user.clone()),
+                    connection: connection.clone(),
+                },
+                event,
+            );
+        }
+    }
+
+    pub(super) fn user_disconnect(
+        &mut self,
+        target: UserConnectionId,
+        event: &Event,
+        _detail: &details::UserDisconnect,
+        updates: &dyn NetworkUpdateReceiver,
+    ) {
+        if let Some(user_connection) = self.user_connections.remove(&target) {
+            if let Some(user) = self.users.get(&user_connection.user) {
+                updates.notify(
+                    update::UserConnectionDisconnected {
+                        user: self.translate_historic_user(user.clone()),
+                        connection: user_connection,
+                    },
+                    event,
+                );
+            }
         }
     }
 }

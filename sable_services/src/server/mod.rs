@@ -1,5 +1,6 @@
 use crate::{
     database::{DatabaseConnection, DatabaseError},
+    hashing::HashConfig,
     model::*,
 };
 use command::CommandError;
@@ -37,6 +38,8 @@ mod sync;
 pub struct ServicesConfig {
     pub database: String,
     pub default_roles: HashMap<ChannelRoleName, Vec<ChannelAccessFlag>>,
+    #[serde(default)]
+    pub password_hash: HashConfig,
 }
 
 pub struct ServicesServer<DB> {
@@ -144,6 +147,7 @@ where
         _state: Self::Saved,
         _node: Arc<NetworkNode>,
         _history_receiver: UnboundedReceiver<sable_network::rpc::NetworkHistoryUpdate>,
+        _config: &Self::ProcessedConfig,
     ) -> std::io::Result<Self> {
         unimplemented!("services can't hot-upgrade");
     }

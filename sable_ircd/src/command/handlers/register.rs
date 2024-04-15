@@ -20,7 +20,7 @@ pub async fn handle_register(
             ));
             Ok(())
         }
-        CommandSource::User(user) => {
+        CommandSource::User(user, _) => {
             do_register_user(network, user, response, server, account, email, password).await
         }
     }

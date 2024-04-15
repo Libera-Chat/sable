@@ -4,6 +4,7 @@
 ///
 /// Implements [`Deref`](std::ops::Deref) for transparent access to the underlying
 /// value; this operation will panic if the `Movable` has been emptied.
+#[derive(Debug)]
 pub enum Movable<T> {
     Empty,
     Full(T),

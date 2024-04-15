@@ -6,8 +6,8 @@ fn handle_user(
     source: PreClientSource,
     cmd: &dyn Command,
     username: Username,
-    _unused1: &str,
-    _unused2: &str,
+    unused1: &str,
+    unused2: &str,
     realname: Result<Realname, &str>,
 ) -> CommandResult {
     let Ok(realname) = realname else {
@@ -22,6 +22,10 @@ fn handle_user(
     // from this pre-client. If that happens we silently ignore the new values.
     source.user.set(username).ok();
     source.realname.set(realname).ok();
+    source
+        .extra_user_params
+        .set((unused1.to_owned(), unused2.to_owned()))
+        .ok();
 
     if source.can_register() {
         server.add_action(CommandAction::RegisterClient(cmd.connection_id()));

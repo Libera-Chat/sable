@@ -5,7 +5,7 @@ use messages::*;
 
 use event::*;
 use rpc::*;
-use sable_network::{config::TlsData, prelude::*};
+use sable_network::{config::TlsData, network::ban::NetworkBanAction, prelude::*};
 
 use auth_client::*;
 use client_listener::*;
@@ -36,9 +36,10 @@ pub use async_handler_collection::*;
 mod upgrade;
 
 use self::{
-    config::{RawClientServerConfig, ServerInfoStrings},
+    config::{ClientServerConfig, RawClientServerConfig, ServerInfoStrings},
     message_sink_repository::MessageSinkRepository,
 };
+use crate::monitor::MonitorSet;
 
 pub mod config;
 
@@ -49,6 +50,13 @@ mod update_handler;
 mod user_access;
 
 const PREREG_TIMEOUT: time::Duration = time::Duration::from_secs(120);
+
+/// Last parameters of the RPL_MYINFO (004) numeric
+struct MyInfo {
+    user_modes: String,
+    chan_modes: String,
+    chan_modes_with_a_parameter: String,
+}
 
 /// A client server.
 ///
@@ -74,6 +82,7 @@ pub struct ClientServer {
     prereg_connections: Mutex<VecDeque<Weak<ClientConnection>>>,
 
     auth_client: AuthClient,
+    myinfo: MyInfo,
     pub isupport: ISupportBuilder,
     client_caps: CapabilityRepository,
 
@@ -82,6 +91,8 @@ pub struct ClientServer {
 
     // Any general static info (responses for MOTD, ADMIN, and so on)
     pub info_strings: ServerInfoStrings,
+
+    pub monitors: RwLock<MonitorSet>,
 }
 
 impl ClientServer {
@@ -145,11 +156,29 @@ impl ClientServer {
     }
 
     #[tracing::instrument]
-    fn build_basic_isupport() -> ISupportBuilder {
+    fn build_myinfo() -> MyInfo {
+        MyInfo {
+            user_modes: UserModeSet::all().map(|m| m.1).iter().collect(),
+            chan_modes: ChannelModeSet::all().map(|m| m.1).iter().collect(),
+            chan_modes_with_a_parameter: ListModeType::iter()
+                .map(|t| t.mode_letter())
+                .chain(KeyModeType::iter().map(|t| t.mode_letter()))
+                .chain(MembershipFlagSet::all().map(|m| m.1).into_iter())
+                .collect(),
+        }
+    }
+
+    #[tracing::instrument]
+    fn build_basic_isupport(config: &ClientServerConfig) -> ISupportBuilder {
         let mut ret = ISupportBuilder::new();
         ret.add(ISupportEntry::simple("EXCEPTS"));
         ret.add(ISupportEntry::simple("INVEX"));
         ret.add(ISupportEntry::simple("FNC"));
+
+        ret.add(ISupportEntry::int(
+            "MONITOR",
+            config.monitor.max_per_connection.into(),
+        ));
 
         ret.add(ISupportEntry::string("CASEMAPPING", "ascii"));
 
@@ -176,6 +205,10 @@ impl ClientServer {
         );
 
         ret.add(ISupportEntry::string("CHANMODES", &chanmodes));
+
+        // https://ircv3.net/specs/extensions/chathistory#isupport-tokens
+        // 'msgid' not supported yet
+        ret.add(ISupportEntry::string("MSGREFTYPES", "timestamp"));
 
         let prefix_modes: String = MembershipFlagSet::all().map(|m| m.1).iter().collect();
         let prefix_chars: String = MembershipFlagSet::all().map(|m| m.2).iter().collect();
@@ -223,6 +256,23 @@ impl ClientServer {
         match msg.detail {
             ConnectionEventDetail::NewConnection(conn) => {
                 tracing::trace!("Got new connection");
+
+                let conn_details = ban::NewConnectionBanSettings {
+                    ip: conn.remote_addr,
+                    tls: conn.is_tls(),
+                };
+                for ban in self
+                    .network()
+                    .network_bans()
+                    .find_new_connection(&conn_details)
+                {
+                    if let NetworkBanAction::RefuseConnection(_) = ban.action {
+                        conn.send(format!("ERROR :*** Banned: {}\r\n", ban.reason));
+                        conn.close();
+                        return;
+                    }
+                }
+
                 let conn = ClientConnection::new(conn);
 
                 conn.send(message::Notice::new(
@@ -242,7 +292,12 @@ impl ClientServer {
             }
             ConnectionEventDetail::Error(e) => {
                 if let Ok(conn) = self.connections.get(msg.source) {
-                    if let Some(userid) = conn.user_id() {
+                    if let Some((userid, user_conn_id)) = conn.user_ids() {
+                        // Tell the network that this connection has gone away, regardless of whether the
+                        // user itself is sticking around
+                        self.node
+                            .submit_event(user_conn_id, details::UserDisconnect {});
+
                         // If the user has a session key set, then they're in persistent session mode
                         // and shouldn't be quit just because one of their connections closed
                         let should_quit = if let Ok(user) = self.network().user(userid) {

@@ -22,9 +22,11 @@ pub struct RawClientServerConfig {
     pub listeners: Vec<ListenerConfig>,
     #[serde(flatten)]
     pub info_paths: RawServerInfo,
+    #[serde(default)]
+    pub monitor: MonitorConfig,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ServerInfoStrings {
     pub motd: Option<Vec<String>>, // Linewise to not repeatedly split
     pub admin_info: Option<AdminInfo>,
@@ -66,9 +68,32 @@ pub struct AdminInfo {
     pub email: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct MonitorConfig {
+    /// Maximum number of active MONITORs per client connection. Default to 100
+    #[serde(default = "default_max_monitors_per_connection")]
+    pub max_per_connection: u16,
+    // TODO: add a maximum per user and/or per account, specific limits for
+    // authenticated vs unauthenticated users, etc.
+}
+
+impl Default for MonitorConfig {
+    fn default() -> MonitorConfig {
+        MonitorConfig {
+            max_per_connection: 64,
+        }
+    }
+}
+
+fn default_max_monitors_per_connection() -> u16 {
+    MonitorConfig::default().max_per_connection
+}
+
+#[derive(Debug)]
 pub struct ClientServerConfig {
     pub listeners: Vec<ListenerConfig>,
     pub info_strings: ServerInfoStrings,
+    pub monitor: MonitorConfig,
 }
 
 #[derive(Debug, Error)]

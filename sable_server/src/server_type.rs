@@ -59,6 +59,7 @@ pub trait ServerType: Send + Sync + Sized + 'static {
         state: Self::Saved,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
+        config: &Self::ProcessedConfig,
     ) -> std::io::Result<Self>;
 
     /// Handle a request originating from a remote server

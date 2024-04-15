@@ -5,6 +5,35 @@ use sable_network::network::update::HistoricMessageTarget;
 
 use std::cmp::{max, min};
 
+fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<i64, CommandError> {
+    match msgref.split_once('=') {
+        Some(("timestamp", ts)) => utils::parse_timestamp(ts).ok_or_else(|| CommandError::Fail {
+            command: "CHATHISTORY",
+            code: "INVALID_PARAMS",
+            context: subcommand.to_string(),
+            description: "Invalid timestamp".to_string(),
+        }),
+        Some(("msgid", _)) => Err(CommandError::Fail {
+            command: "CHATHISTORY",
+            code: "INVALID_MSGREFTYPE",
+            context: match target {
+                Some(target) => format!("{} {}", subcommand, target),
+                None => subcommand.to_string(),
+            },
+            description: "msgid-based history requests are not supported yet".to_string(),
+        }),
+        _ => Err(CommandError::Fail {
+            command: "CHATHISTORY",
+            code: "INVALID_MSGREFTYPE",
+            context: match target {
+                Some(target) => format!("{} {}", subcommand, target),
+                None => subcommand.to_string(),
+            },
+            description: format!("{:?} is not a valid message reference", msgref),
+        }),
+    }
+}
+
 #[command_handler("CHATHISTORY")]
 fn handle_chathistory(
     source: UserSource,
@@ -20,19 +49,10 @@ fn handle_chathistory(
 
     match subcommand.to_ascii_uppercase().as_str() {
         "TARGETS" => {
-            let from_ts = utils::parse_timestamp(arg_1);
-            let to_ts = utils::parse_timestamp(arg_2);
+            let from_ts = parse_msgref(subcommand, None, arg_1)?;
+            let to_ts = parse_msgref(subcommand, None, arg_2)?;
             let limit = arg_3.parse().ok();
 
-            if from_ts.is_none() || to_ts.is_none() {
-                response.send(message::Fail::new(
-                    "CHATHISTORY",
-                    "INVALID_PARAMS",
-                    "",
-                    "Invalid timestamp",
-                ));
-                return Ok(());
-            }
             if limit.is_none() {
                 response.send(message::Fail::new(
                     "CHATHISTORY",
@@ -48,8 +68,8 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
-                min(from_ts, to_ts),
-                max(from_ts, to_ts),
+                Some(min(from_ts, to_ts)),
+                Some(max(from_ts, to_ts)),
                 limit,
             );
         }
@@ -57,18 +77,7 @@ fn handle_chathistory(
             let target = arg_1;
             let from_ts = match arg_2 {
                 "*" => None,
-                _ => match utils::parse_timestamp(arg_2) {
-                    Some(ts) => Some(ts),
-                    None => {
-                        response.send(message::Fail::new(
-                            "CHATHISTORY",
-                            "INVALID_PARAMS",
-                            "",
-                            "Invalid timestamp",
-                        ));
-                        return Ok(());
-                    }
-                },
+                _ => Some(parse_msgref(subcommand, Some(target), arg_2)?),
             };
 
             let limit = arg_3.parse().ok();
@@ -83,23 +92,12 @@ fn handle_chathistory(
             }
 
             send_history_for_target_reverse(
-                server, &response, source, &target, from_ts, None, limit,
+                server, &response, source, subcommand, &target, from_ts, None, limit,
             )?;
         }
         "BEFORE" => {
-            let target = arg_1.to_string();
-            let end_ts = match utils::parse_timestamp(arg_2) {
-                Some(ts) => ts,
-                None => {
-                    response.send(message::Fail::new(
-                        "CHATHISTORY",
-                        "INVALID_PARAMS",
-                        "",
-                        "Invalid timestamp",
-                    ));
-                    return Ok(());
-                }
-            };
+            let target = arg_1;
+            let end_ts = parse_msgref(subcommand, Some(target), arg_2)?;
 
             let limit = arg_3.parse().ok();
             if limit.is_none() {
@@ -116,6 +114,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 &target,
                 None,
                 Some(end_ts),
@@ -124,18 +123,7 @@ fn handle_chathistory(
         }
         "AFTER" => {
             let target = arg_1;
-            let start_ts = match utils::parse_timestamp(arg_2) {
-                Some(ts) => ts,
-                None => {
-                    response.send(message::Fail::new(
-                        "CHATHISTORY",
-                        "INVALID_PARAMS",
-                        "",
-                        "Invalid timestamp",
-                    ));
-                    return Ok(());
-                }
-            };
+            let start_ts = parse_msgref(subcommand, Some(target), arg_2)?;
 
             let limit = arg_3.parse().ok();
             if limit.is_none() {
@@ -152,6 +140,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 &target,
                 Some(start_ts),
                 None,
@@ -160,18 +149,7 @@ fn handle_chathistory(
         }
         "AROUND" => {
             let target = arg_1;
-            let around_ts = match utils::parse_timestamp(arg_2) {
-                Some(ts) => ts,
-                None => {
-                    response.send(message::Fail::new(
-                        "CHATHISTORY",
-                        "INVALID_PARAMS",
-                        "",
-                        "Invalid timestamp",
-                    ));
-                    return Ok(());
-                }
-            };
+            let around_ts = parse_msgref(subcommand, Some(target), arg_2)?;
 
             let limit = match arg_3.parse::<usize>().ok() {
                 Some(limit) => limit,
@@ -190,6 +168,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 &target,
                 Some(around_ts),
                 None,
@@ -199,6 +178,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 &target,
                 Some(around_ts),
                 None,
@@ -207,30 +187,8 @@ fn handle_chathistory(
         }
         "BETWEEN" => {
             let target = arg_1;
-            let start_ts = match utils::parse_timestamp(arg_2) {
-                Some(ts) => ts,
-                None => {
-                    response.send(message::Fail::new(
-                        "CHATHISTORY",
-                        "INVALID_PARAMS",
-                        "",
-                        "Invalid timestamp",
-                    ));
-                    return Ok(());
-                }
-            };
-            let end_ts = match utils::parse_timestamp(arg_3) {
-                Some(ts) => ts,
-                None => {
-                    response.send(message::Fail::new(
-                        "CHATHISTORY",
-                        "INVALID_PARAMS",
-                        "",
-                        "Invalid timestamp",
-                    ));
-                    return Ok(());
-                }
-            };
+            let start_ts = parse_msgref(subcommand, Some(target), arg_2)?;
+            let end_ts = parse_msgref(subcommand, Some(target), arg_3)?;
 
             let limit = arg_4.and_then(|arg| arg.parse().ok());
             if limit.is_none() {
@@ -247,6 +205,7 @@ fn handle_chathistory(
                 server,
                 &response,
                 source,
+                subcommand,
                 &target,
                 Some(start_ts),
                 Some(end_ts),
@@ -335,6 +294,7 @@ fn send_history_for_target_forward(
     server: &ClientServer,
     into: impl MessageSink,
     source: &wrapper::User,
+    subcommand: &str,
     target: &str,
     from_ts: Option<i64>,
     to_ts: Option<i64>,
@@ -364,16 +324,7 @@ fn send_history_for_target_forward(
         }
     }
 
-    let batch = into
-        .batch("chathistory", ClientCapability::Batch)
-        .with_arguments(&[target])
-        .start();
-
-    for entry in entries {
-        entry.send_to(&batch, entry)?;
-    }
-
-    Ok(())
+    send_history_entries(into, subcommand, target, entries.into_iter())
 }
 
 // As above, but work backwards
@@ -381,6 +332,7 @@ fn send_history_for_target_reverse(
     server: &ClientServer,
     into: impl MessageSink,
     source: &wrapper::User,
+    subcommand: &str,
     target: &str,
     from_ts: Option<i64>,
     to_ts: Option<i64>,
@@ -410,13 +362,34 @@ fn send_history_for_target_reverse(
         }
     }
 
-    let batch = into
-        .batch("chathistory", ClientCapability::Batch)
-        .with_arguments(&[target])
-        .start();
+    // "The order of returned messages within the batch is implementation-defined, but SHOULD be
+    // ascending time order or some approximation thereof, regardless of the subcommand used."
+    // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
+    send_history_entries(into, subcommand, target, entries.into_iter().rev())
+}
 
-    for entry in entries.into_iter().rev() {
-        entry.send_to(&batch, entry)?;
+fn send_history_entries<'a>(
+    into: impl MessageSink,
+    subcommand: &str,
+    target: &str,
+    entries: impl ExactSizeIterator<Item = &'a HistoryLogEntry>,
+) -> CommandResult {
+    if entries.len() == 0 {
+        into.send(message::Fail::new(
+            "CHATHISTORY",
+            "INVALID_TARGET",
+            &format!("{} {}", subcommand, target),
+            &format!("Cannot fetch history from {}", target),
+        ));
+    } else {
+        let batch = into
+            .batch("chathistory", ClientCapability::Batch)
+            .with_arguments(&[target])
+            .start();
+
+        for entry in entries {
+            entry.send_to(&batch, entry)?;
+        }
     }
 
     Ok(())

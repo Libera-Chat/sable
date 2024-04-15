@@ -27,6 +27,8 @@ fn account_for_tag(update: &NetworkStateChange) -> Option<String> {
             detail.removed_by.user().and_then(|u| u.account)
         }
         NetworkStateChange::NewUser(_) => None,
+        NetworkStateChange::NewUserConnection(_) => None,
+        NetworkStateChange::UserConnectionDisconnected(_) => None,
         NetworkStateChange::UserModeChange(_) => None,
         NetworkStateChange::BulkUserQuit(_) => None,
         NetworkStateChange::NewServer(_) => None,

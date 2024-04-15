@@ -1,4 +1,5 @@
 use super::*;
+use sable_network::chert;
 use sable_network::network::ban::*;
 
 const DEFAULT_KLINE_DURATION: u32 = 1440;
@@ -24,25 +25,55 @@ fn handle_kline(
     let mask_parts: Vec<_> = mask.split('@').collect();
 
     if let [user, host] = mask_parts[..] {
+        let user_condition = if user == "*" {
+            None
+        } else {
+            Some(format!("user == \"{}\"", user))
+        };
+
+        let host_condition = if host.parse::<std::net::IpAddr>().is_ok() {
+            format!("ip == {}", host)
+        } else if let Some((first, second)) = host.rsplit_once('/') {
+            if second.parse::<u8>().is_ok() && first.parse::<std::net::IpAddr>().is_ok() {
+                format!("ip in {}", host)
+            } else {
+                format!("host == \"{}\"", host)
+            }
+        } else {
+            format!("host == \"{}\"", host)
+        };
+
+        let condition = if let Some(user_condition) = user_condition {
+            format!("{} && {}", user_condition, host_condition)
+        } else {
+            host_condition
+        };
+
+        let pattern = match chert::parse::<PreRegistrationBanSettings>(&condition) {
+            Err(err) => {
+                tracing::error!(condition, ?err, "Translated ban condition failed to parse");
+                response.send(message::Notice::new(
+                    server,
+                    &source,
+                    "Internal error: condition failed to parse",
+                ));
+                return Ok(());
+            }
+            Ok(parsed) => parsed.into_root(),
+        };
+
         audit
             .ban()
-            .target_str(mask.to_string())
+            .target_str(condition)
             .target_duration(duration)
             .reason(message.to_string())
             .log();
 
-        let matcher = match NetworkBanMatch::from_user_host(user, host) {
-            Ok(matcher) => matcher,
-            Err(_) => {
-                response.notice(&format!("A network ban is already set on {}", mask));
-                return Ok(());
-            }
-        };
-
         let new_kline = event::NewNetworkBan {
-            matcher,
+            match_type: BanMatchType::PreRegistration,
+            pattern,
             action: NetworkBanAction::RefuseConnection(true),
-            setter_info: source.0.nuh(),
+            setter_info: source.nuh(),
             timestamp: sable_network::utils::now(),
             expires: sable_network::utils::now() + (duration * 60),
             reason: user_reason.to_string(),

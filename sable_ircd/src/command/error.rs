@@ -12,9 +12,9 @@ use crate::errors::HandlerError;
 #[derive(Debug)]
 pub enum CommandError {
     /// Something returned an `Error` that we don't know how to handle
-    UnderlyingError(anyhow::Error),
+    UnderlyingError(#[allow(unused)] anyhow::Error),
     /// Something went wrong but we don't have an `Error` impl for it
-    UnknownError(String),
+    UnknownError(#[allow(unused)] String),
     /*
         /// The command couldn't be processed successfully, and the client has already been
         /// notified
@@ -47,24 +47,17 @@ pub enum CommandError {
     /// The command couldn't be processed successfully; the provided
     /// numeric(messages::UntargetedNumeric) will be sent to the client to notify them
     Numeric(messages::UntargetedNumeric),
-}
 
-impl From<ValidationError> for CommandError {
-    fn from(e: ValidationError) -> Self {
-        match e {
-            ValidationError::NickInUse(n) => numeric::NicknameInUse::new(&n).into(),
-            ValidationError::ObjectNotFound(le) => match le {
-                LookupError::NoSuchNick(n) => numeric::NoSuchTarget::new(&n).into(),
-                LookupError::NoSuchChannelName(n) => numeric::NoSuchTarget::new(n.as_ref()).into(),
-                _ => CommandError::UnknownError(le.to_string()),
-            },
-            ValidationError::InvalidNickname(e) => numeric::ErroneousNickname::new(&e.0).into(),
-            ValidationError::InvalidChannelName(e) => numeric::InvalidChannelName::new(&e.0).into(),
-            ValidationError::InvalidUsername(e) => CommandError::UnknownError(e.0),
-            ValidationError::InvalidHostname(e) => CommandError::UnknownError(e.0),
-            ValidationError::WrongTypeId(e) => CommandError::UnknownError(e.to_string()),
-        }
-    }
+    /// The command couldn't be processed successfully; the provided parameters will
+    /// be turned into a [`FAIL` standard
+    /// reply](https://ircv3.net/specs/extensions/standard-replies) and sent to the client
+    /// to notify them
+    Fail {
+        command: &'static str,
+        code: &'static str,
+        context: String,
+        description: String,
+    },
 }
 
 impl From<policy::PermissionError> for CommandError {

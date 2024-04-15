@@ -1,4 +1,5 @@
 use super::*;
+use crate::capability::ClientCapability;
 use crate::utils::make_numeric;
 
 #[command_handler("WHO")]
@@ -20,22 +21,15 @@ fn handle_who(
                     continue;
                 }
 
-                response.numeric(make_who_reply(
-                    &member.user()?,
-                    Some(&channel),
-                    Some(&member),
-                    &member.user()?.server()?,
-                ));
+                send_who_reply(response, &member.user()?, Some(&channel), Some(&member));
             }
         }
     } else if let Ok(nick) = Nickname::from_str(target) {
         if let Ok(user) = network.user_by_nick(&nick) {
-            response.numeric(make_who_reply(
-                &user,
-                None, // channel
+            send_who_reply(
+                response, &user, None, // channel
                 None, // membership
-                &user.server()?,
-            ));
+            );
         }
     }
 
@@ -45,23 +39,35 @@ fn handle_who(
     Ok(())
 }
 
-fn make_who_reply(
+fn send_who_reply(
+    response: &dyn CommandResponse,
     target: &wrapper::User,
     channel: Option<&wrapper::Channel>,
     membership: Option<&wrapper::Membership>,
-    server: &wrapper::Server,
-) -> UntargetedNumeric {
+) {
     let chname = channel.map(|c| c.name().value() as &str).unwrap_or("*");
     let away_letter = match target.away_reason() {
         None => 'H',    // Here
         Some(_) => 'G', // Gone
     };
-    let status = format!(
-        "{}{}",
-        away_letter,
-        membership
-            .map(|m| m.permissions().to_prefixes())
-            .unwrap_or_else(|| "".to_string())
-    );
-    make_numeric!(WhoReply, chname, target, server, &status, 0)
+    let status = if response.capabilities().has(ClientCapability::MultiPrefix) {
+        format!(
+            "{}{}",
+            away_letter,
+            membership
+                .map(|m| m.permissions().to_prefixes())
+                .unwrap_or_else(|| "".to_string())
+        )
+    } else {
+        format!(
+            "{}{}",
+            away_letter,
+            membership
+                .and_then(|m| m.permissions().to_highest_prefix())
+                .as_ref()
+                .map(char::to_string)
+                .unwrap_or_else(|| "".to_string())
+        )
+    };
+    response.numeric(make_numeric!(WhoReply, chname, target, &status, 0))
 }

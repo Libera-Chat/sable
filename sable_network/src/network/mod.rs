@@ -46,6 +46,7 @@ pub mod wrapper {
     mod server;
     mod services;
     mod user;
+    mod user_connection;
     mod user_mode;
     mod wrapper;
 
@@ -74,6 +75,7 @@ pub mod wrapper {
     pub use server::Server;
     pub use services::*;
     pub use user::User;
+    pub use user_connection::UserConnection;
     pub use user_mode::UserMode;
 }
 

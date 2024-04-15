@@ -1,6 +1,7 @@
 //! Defines the [Network] object.
 
 use crate::network::event::*;
+use crate::network::network::HistoricUser;
 use crate::network::update::*;
 use crate::prelude::*;
 
@@ -8,35 +9,10 @@ use sable_macros::dispatch_event;
 
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use thiserror::Error;
 
-use std::collections::HashMap;
-use std::convert::TryInto;
+use std::collections::{HashMap, VecDeque};
 
 use std::sync::OnceLock;
-
-/// Error enumeration defining possible problems to be returned from
-/// the [Network::validate] method.
-#[derive(Error, Debug)]
-pub enum ValidationError {
-    #[error("Nickname {0} already in use")]
-    NickInUse(Nickname),
-    #[error("Object not found: {0}")]
-    ObjectNotFound(#[from] LookupError),
-    #[error("Wrong object ID type: {0}")]
-    WrongTypeId(#[from] WrongIdTypeError),
-    #[error("{0}")]
-    InvalidNickname(#[from] InvalidNicknameError),
-    #[error("{0}")]
-    InvalidUsername(#[from] InvalidUsernameError),
-    #[error("{0}")]
-    InvalidHostname(#[from] InvalidHostnameError),
-    #[error("{0}")]
-    InvalidChannelName(#[from] InvalidChannelNameError),
-}
-
-/// Convenience definition for a Result whose Error type is ValidationError
-pub type ValidationResult = Result<(), ValidationError>;
 
 /// Stores the current network state.
 ///
@@ -68,7 +44,11 @@ pub struct Network {
     #[serde_as(as = "Vec<(_,_)>")]
     nick_bindings: HashMap<Nickname, state::NickBinding>,
     #[serde_as(as = "Vec<(_,_)>")]
+    historic_nick_users: HashMap<Nickname, VecDeque<HistoricUser>>,
+    #[serde_as(as = "Vec<(_,_)>")]
     users: HashMap<UserId, state::User>,
+    #[serde_as(as = "Vec<(_,_)>")]
+    user_connections: HashMap<UserConnectionId, state::UserConnection>,
 
     #[serde_as(as = "Vec<(_,_)>")]
     channels: HashMap<ChannelId, state::Channel>,
@@ -126,7 +106,9 @@ impl Network {
     pub fn new(config: config::NetworkConfig) -> Network {
         let net = Network {
             nick_bindings: HashMap::new(),
+            historic_nick_users: HashMap::new(),
             users: HashMap::new(),
+            user_connections: HashMap::new(),
 
             channels: HashMap::new(),
             channel_topics: HashMap::new(),
@@ -198,6 +180,8 @@ impl Network {
         dispatch_event!(event(updates) => {
             BindNickname => self.bind_nickname,
             NewUser => self.new_user,
+            NewUserConnection => self.new_user_connection,
+            UserDisconnect => self.user_disconnect,
             UserQuit => self.user_quit,
             UserModeChange => self.user_mode_change,
             OperUp => self.oper_up,
@@ -221,6 +205,7 @@ impl Network {
             LoadConfig => self.load_config,
             NewAuditLogEntry => self.new_audit_log,
             EnablePersistentSession => self.enable_persistent_session,
+            DisablePersistentSession => self.disable_persistent_session,
             IntroduceServices => self.introduce_services,
             AccountUpdate => self.update_account,
             NickRegistrationUpdate => self.update_nick_registration,
@@ -235,25 +220,6 @@ impl Network {
         updates.notify(EventComplete {}, &event);
 
         Ok(())
-    }
-
-    /// Validate a proposed event against the current network state.
-    ///
-    /// This method can be used to identify problems which would occur if the
-    /// provided event details were transformed and applied to the current
-    /// state. This is provided as a convenience for consumers, and does not
-    /// give any guarantee of behaviour if other events are processed between
-    /// the validation and eventual application of a given event.
-    ///
-    /// Note also that this is not related to whether [`apply`](Self::apply)
-    ///  will succeed - `apply` always succeeds provided the event is well-
-    /// formed. `validate`  provides advance warning of potentially undesirable
-    /// effects, such as nickname collisions.
-    pub fn validate(&self, id: ObjectId, detail: &EventDetails) -> ValidationResult {
-        match detail {
-            EventDetails::NewUser(newuser) => self.validate_new_user(id.try_into()?, newuser),
-            _ => Ok(()),
-        }
     }
 
     /// Translate an object ID into a [`update::HistoricMessageSource`]

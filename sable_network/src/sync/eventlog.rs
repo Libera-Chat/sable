@@ -145,12 +145,19 @@ impl EventLog {
         }
 
         if self.has_dependencies_for(&e) {
+            tracing::debug!(
+                "Adding event {:?}; event clock={:?} my clock={:?}",
+                e,
+                e.clock,
+                self.last_event_clock
+            );
+
             self.do_add(e);
             self.check_pending();
         } else {
             tracing::debug!(
                 "Deferring event {:?}; event clock={:?} my clock={:?}",
-                e.id,
+                e,
                 e.clock,
                 self.last_event_clock
             );

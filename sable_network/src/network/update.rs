@@ -16,6 +16,15 @@ pub struct HistoricUser {
     pub account: Option<Nickname>,
 }
 
+impl HistoricUser {
+    pub fn nuh(&self) -> String {
+        format!(
+            "{}!{}@{}",
+            self.nickname, self.user.user, self.user.visible_host
+        )
+    }
+}
+
 /// Some state changes can originate from either users or servers; this enum is used in the
 /// [`NetworkStateChange`] for those changes to describe the source of the change.
 ///
@@ -101,6 +110,18 @@ NetworkStateChange => {
     /// Many users have left the network
     struct BulkUserQuit {
         pub items: Vec<UserQuit>,
+    }
+
+    /// A new connection has attached to an existing user
+    struct NewUserConnection {
+        pub user: HistoricUser,
+        pub connection: state::UserConnection,
+    }
+
+    /// A client has disconnected, without the user quitting
+    struct UserConnectionDisconnected {
+        pub user: HistoricUser,
+        pub connection: state::UserConnection,
     }
 
     /// A channel's mode has changed

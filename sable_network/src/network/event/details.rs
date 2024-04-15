@@ -22,6 +22,19 @@ EventDetails => {
         pub mode: state::UserMode,
         pub server: ServerId,
         pub account: Option<AccountId>,
+        pub initial_connection: Option<(UserConnectionId, NewUserConnection)>,
+    }
+
+    #[target_type(UserConnectionId)]
+    struct NewUserConnection {
+        pub user: UserId,
+        pub hostname: Hostname,
+        pub ip: std::net::IpAddr,
+        pub connection_time: i64,
+    }
+
+    #[target_type(UserConnectionId)]
+    struct UserDisconnect {
     }
 
     #[target_type(UserId)]
@@ -121,7 +134,8 @@ EventDetails => {
 
     #[target_type(NetworkBanId)]
     struct NewNetworkBan {
-        pub matcher: ban::NetworkBanMatch,
+        pub match_type: ban::BanMatchType,
+        pub pattern: crate::chert::NodeBoolean,
         pub action: ban::NetworkBanAction,
 
         pub timestamp: i64,
@@ -169,6 +183,10 @@ EventDetails => {
     #[target_type(UserId)]
     struct EnablePersistentSession {
         pub key_hash: String
+    }
+
+    #[target_type(UserId)]
+    struct DisablePersistentSession {
     }
 
     #[target_type(ServerId)]

@@ -16,6 +16,7 @@ object_ids!(ObjectId (ObjectIdGenerator) {
     Epoch: (LocalId,);
     Event: sequential;
     User: sequential;
+    UserConnection: sequential;
     Channel: sequential;
     ChannelTopic: sequential;
     ListMode: (ChannelId,ListModeType);

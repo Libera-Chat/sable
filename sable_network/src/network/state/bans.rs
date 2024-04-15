@@ -1,7 +1,8 @@
-use crate::network::ban::*;
 use crate::prelude::*;
 
 use serde::{Deserialize, Serialize};
+
+use ban::*;
 
 /// A network ban
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -9,7 +10,8 @@ pub struct NetworkBan {
     pub id: NetworkBanId,
     pub created_by: EventId,
 
-    pub matcher: NetworkBanMatch,
+    pub match_type: BanMatchType,
+    pub pattern: crate::chert::NodeBoolean,
     pub action: NetworkBanAction,
 
     pub timestamp: i64,

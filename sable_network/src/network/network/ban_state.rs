@@ -14,8 +14,9 @@ impl Network {
         let ban = state::NetworkBan {
             id: target,
             created_by: event.id,
-            matcher: details.matcher.clone(),
-            action: details.action.clone(),
+            match_type: details.match_type,
+            pattern: details.pattern.clone(),
+            action: details.action,
             timestamp: details.timestamp,
             expires: details.expires,
             reason: details.reason.clone(),
@@ -23,20 +24,7 @@ impl Network {
             setter_info: details.setter_info.clone(),
         };
 
-        if let Err(e) = self.network_bans.add(ban) {
-            let ban = e.ban;
-            if let Some(existing) = self.network_bans.get(&e.existing_id) {
-                // Two separate bans with identical matchers - we choose one arbitrarily
-                if ban.timestamp < existing.timestamp
-                    || (ban.timestamp == existing.timestamp && ban.created_by < existing.created_by)
-                {
-                    self.network_bans.remove(existing.id);
-                    if self.network_bans.add(ban).is_err() {
-                        todo!("handle this error, or at least report it");
-                    }
-                }
-            }
-        }
+        self.network_bans.add(ban);
     }
 
     pub(super) fn remove_ban(

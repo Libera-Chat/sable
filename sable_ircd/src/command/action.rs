@@ -19,9 +19,6 @@ pub enum CommandAction {
     /// Indicate that the given connection is ready to register
     RegisterClient(ConnectionId),
 
-    /// Attach the given connection to an existing user session
-    AttachToUser(ConnectionId, UserId),
-
     /// Update a connection's client caps
     UpdateConnectionCaps(ConnectionId, ClientCapabilitySet),
 

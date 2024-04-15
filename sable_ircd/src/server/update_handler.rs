@@ -3,6 +3,7 @@ use sable_network::prelude::update::{HistoricMessageSource, HistoricMessageTarge
 
 use super::*;
 use crate::errors::HandleResult;
+use crate::monitor::MonitoredItem;
 
 impl ClientServer {
     pub(super) fn handle_history_update(&self, update: NetworkHistoryUpdate) -> HandleResult {
@@ -14,9 +15,26 @@ impl ClientServer {
                 if let Some(entry) = history.get(entry_id) {
                     match &entry.details {
                         NetworkStateChange::NewUser(detail) => {
-                            let new_user = detail.clone();
+                            detail.notify_monitors(&self);
+                        }
+                        NetworkStateChange::UserNickChange(detail) => {
+                            detail.notify_monitors(&self);
+                        }
+                        NetworkStateChange::UserQuit(detail) => {
+                            detail.notify_monitors(&self);
+                        }
+                        NetworkStateChange::BulkUserQuit(detail) => {
+                            detail.notify_monitors(&self);
+                        }
+                        NetworkStateChange::NewUserConnection(detail) => {
+                            let new_user_connection = detail.clone();
                             drop(history);
-                            self.handle_new_user(&new_user)?;
+                            self.handle_new_user_connection(&new_user_connection)?;
+                        }
+                        NetworkStateChange::UserConnectionDisconnected(detail) => {
+                            let user_disconnect = detail.clone();
+                            drop(history);
+                            self.handle_user_disconnect(&user_disconnect)?;
                         }
                         NetworkStateChange::ServicesUpdate(detail) => {
                             let update = detail.clone();
@@ -118,11 +136,18 @@ impl ClientServer {
         entry.send_now(&sink, entry, self)
     }
 
-    fn handle_new_user(&self, detail: &update::NewUser) -> HandleResult {
+    fn handle_new_user_connection(&self, detail: &update::NewUserConnection) -> HandleResult {
         let net = self.node.network();
         let user = net.user(detail.user.user.id)?;
-        for connection in self.connections.read().get_user(user.id()) {
-            connection.set_user_id(user.id());
+
+        if let Ok(connection) = self
+            .connections
+            .read()
+            .get_user_connection(detail.connection.id)
+        {
+            // `register_new_user` doesn't set the user ID on the connection; it remains a pre-client until
+            // we see the registration events come back through (i.e. here)
+            connection.set_user(user.id(), detail.connection.id);
 
             connection.send(numeric::Numeric001::new_for(
                 &self.node.name().to_string(),
@@ -135,6 +160,20 @@ impl ClientServer {
                 &user.nick(),
                 self.node.name(),
                 self.node.version(),
+            ));
+            connection.send(numeric::Numeric003::new_for(
+                &self.node.name().to_string(),
+                &user.nick(),
+                &chrono::offset::Utc::now(),
+            ));
+            connection.send(numeric::Numeric004::new_for(
+                &self.node.name().to_string(),
+                &user.nick(),
+                self.node.name(),
+                self.node.version(),
+                &self.myinfo.user_modes,
+                &self.myinfo.chan_modes,
+                &self.myinfo.chan_modes_with_a_parameter,
             ));
             for line in self.isupport.data().iter() {
                 connection.send(numeric::ISupport::new_for(
@@ -151,6 +190,13 @@ impl ClientServer {
             connection.send(message::Notice::new(&self.node.name().to_string(), &user,
                     "The network is currently running in debug mode. Do not send any sensitive information such as passwords."));
         }
+        Ok(())
+    }
+
+    fn handle_user_disconnect(&self, detail: &update::UserConnectionDisconnected) -> HandleResult {
+        self.connections
+            .write()
+            .remove_user_connection(detail.connection.id);
         Ok(())
     }
 

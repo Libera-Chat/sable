@@ -1,5 +1,8 @@
+use std::collections::VecDeque;
+
 use super::{LookupError, LookupResult, Network};
 use crate::network::event::*;
+use crate::network::network::HistoricUser;
 use crate::network::state_utils;
 use crate::prelude::*;
 
@@ -27,6 +30,26 @@ impl Network {
     /// Return an iterator over the raw `state::User` objects.
     pub fn raw_users(&self) -> impl std::iter::Iterator<Item = &state::User> {
         self.users.values()
+    }
+
+    /// Look up a user connection by ID
+    pub fn user_connection(&self, id: UserConnectionId) -> LookupResult<wrapper::UserConnection> {
+        self.user_connections
+            .get(&id)
+            .ok_or(NoSuchConnection(id))
+            .wrap(self)
+    }
+
+    /// Return an iterator over all user connections.
+    pub fn user_connections(
+        &self,
+    ) -> impl std::iter::Iterator<Item = wrapper::UserConnection> + '_ {
+        self.raw_user_connections().wrap(self)
+    }
+
+    /// Return an iterator over the raw `state::UserConnection` objects.
+    pub fn raw_user_connections(&self) -> impl std::iter::Iterator<Item = &state::UserConnection> {
+        self.user_connections.values()
     }
 
     /// Return a nickname binding for the given nick.
@@ -81,6 +104,13 @@ impl Network {
                         .user,
                 )
             })
+    }
+
+    /// Remove a user from nick bindings and add it to historical users for that nick
+
+    /// Return a nickname binding for the given nick.
+    pub fn historic_users_by_nick(&self, nick: &Nickname) -> Option<&VecDeque<HistoricUser>> {
+        self.historic_nick_users.get(nick)
     }
 
     /// Look up a channel by ID

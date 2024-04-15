@@ -4,10 +4,17 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
     pub(crate) fn register_user(&self, account_name: Nickname, password: String) -> CommandResult {
         let new_account_id = self.node.ids().next_account();
 
-        let Ok(password_hash) = bcrypt::hash(password, bcrypt::DEFAULT_COST) else {
-            tracing::error!(?account_name, "Failed to hash password for new account");
+        let password_hash = match self.config.password_hash.hash(&password) {
+            Ok(password_hash) => password_hash,
+            Err(error) => {
+                tracing::error!(
+                    ?account_name,
+                    "Failed to hash password for new account: {}",
+                    error
+                );
 
-            return Err("Failed to hash password".into());
+                return Err("Failed to hash password".into());
+            }
         };
 
         let account_data = state::Account {

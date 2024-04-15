@@ -40,6 +40,10 @@ impl OperPolicyService for StandardOperPolicy {
     fn can_kill(&self, oper: &wrapper::User, _target: &wrapper::User) -> PermissionResult {
         self.require_oper(oper)
     }
+
+    fn can_see_connection_info(&self, source: &wrapper::User, target: &wrapper::User) -> bool {
+        self.require_oper(source).is_ok() || source.id() == target.id()
+    }
 }
 
 impl OperAuthenticationService for StandardOperPolicy {

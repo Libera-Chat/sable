@@ -2,10 +2,15 @@ use crate::{client::PreClient, numeric_error};
 
 use super::*;
 
-pub struct UserSource<'a>(pub wrapper::User<'a>);
+pub struct UserSource<'a> {
+    pub user: wrapper::User<'a>,
+    pub user_connection: wrapper::UserConnection<'a>,
+}
+
 pub struct PreClientSource(pub Arc<PreClient>);
 pub struct LoggedInUserSource<'a> {
     pub user: wrapper::User<'a>,
+    pub user_connection: wrapper::UserConnection<'a>,
     pub account: wrapper::Account<'a>,
 }
 
@@ -18,7 +23,10 @@ impl<'a> AmbientArgument<'a> for CommandSource<'a> {
 impl<'a> AmbientArgument<'a> for UserSource<'a> {
     fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError> {
         match ctx.source() {
-            CommandSource::User(user) => Ok(Self(user)),
+            CommandSource::User(user, conn) => Ok(Self {
+                user,
+                user_connection: conn,
+            }),
             _ => numeric_error!(NotRegistered),
         }
     }
@@ -36,9 +44,13 @@ impl<'a> AmbientArgument<'a> for PreClientSource {
 impl<'a> AmbientArgument<'a> for LoggedInUserSource<'a> {
     fn load_from(ctx: &'a dyn Command) -> Result<Self, CommandError> {
         match ctx.source() {
-            CommandSource::User(user) => {
+            CommandSource::User(user, user_connection) => {
                 if let Some(account) = user.account()? {
-                    Ok(Self { user, account })
+                    Ok(Self {
+                        user,
+                        user_connection,
+                        account,
+                    })
                 } else {
                     Err(CommandError::NotLoggedIn)
                 }
@@ -52,25 +64,19 @@ impl<'a> std::ops::Deref for UserSource<'a> {
     type Target = wrapper::User<'a>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.user
     }
 }
 
 impl<'a> std::convert::AsRef<wrapper::User<'a>> for UserSource<'a> {
     fn as_ref(&self) -> &wrapper::User<'a> {
-        &self.0
-    }
-}
-
-impl<'a> From<wrapper::User<'a>> for UserSource<'a> {
-    fn from(value: wrapper::User<'a>) -> Self {
-        Self(value)
+        &self.user
     }
 }
 
 impl<'a> Into<wrapper::User<'a>> for UserSource<'a> {
     fn into(self) -> wrapper::User<'a> {
-        self.0
+        self.user
     }
 }
 

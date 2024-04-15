@@ -6,6 +6,7 @@ use std::net::IpAddr;
 use tokio::sync::mpsc::UnboundedSender;
 
 /// A connection being managed by the worker process.
+#[derive(Debug)]
 pub struct Connection {
     pub id: ConnectionId,
     pub tls_info: Option<TlsInfo>,

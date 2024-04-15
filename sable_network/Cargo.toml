@@ -12,6 +12,10 @@ debug = []
 [build-dependencies]
 built = { version = "0.5", features = [ "git2" ] }
 
+[dev-dependencies]
+tracing-subscriber = "0.3"
+pretty_assertions = "1.4"
+
 [dependencies]
 sable_macros = { path = "../sable_macros" }
 
@@ -42,6 +46,7 @@ concurrent_log = { version = "0.2.4", features = [ "serde" ] }
 ipnet = { version = "2", features = [ "serde" ] }
 anyhow = "1.0"
 backoff = { version = "0.4.0", features = ["tokio"] }
+chert = { git = "https://github.com/jesopo/chert" }
 
 [dependencies.serde]
 version = "1"

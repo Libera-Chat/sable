@@ -1,8 +1,5 @@
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(incomplete_features)]
-#![feature(return_position_impl_trait_in_trait)]
-#![feature(async_fn_in_trait)]
-#![feature(type_alias_impl_trait)]
 #![feature(trait_upcasting)]
 
 //! IRC client server logic.
@@ -73,6 +70,7 @@ use connection_collection::ConnectionCollectionLockHelper;
 mod isupport;
 use isupport::*;
 
+mod monitor;
 mod movable;
 
 pub mod server;

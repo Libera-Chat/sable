@@ -13,5 +13,4 @@ members = [
 
 # Incremental builds break inventory
 [profile.dev]
-incremental = false
 panic = "abort"

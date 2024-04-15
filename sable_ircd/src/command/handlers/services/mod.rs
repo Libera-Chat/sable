@@ -161,6 +161,10 @@ impl<'a> Command for ServicesCommand<'a> {
                 tracing::warn!("Translating unknown error numeric from services response: {:?}", n);
                 self.notice(format_args!("Unknown error: {}", n.debug_format()));
             }
+            CommandError::Fail { command, code, context, description } => {
+                tracing::warn!("Translating unknown error numeric from services response: {} {} {} :{}", command, code, context, description);
+                self.notice(format_args!("Unknown error: {} {} {} :{}", command, code, context, description));
+            }
         }
     }
 }

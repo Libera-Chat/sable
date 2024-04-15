@@ -12,6 +12,8 @@ mod kw {
     syn::custom_keyword!(target);
 }
 
+// the keyword fields are never read but need to be present in order to parse properly
+#[allow(unused)]
 enum MessageArg {
     Source(kw::source),
     Target(kw::target),
