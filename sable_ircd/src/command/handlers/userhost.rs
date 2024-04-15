@@ -2,7 +2,7 @@ use super::*;
 use itertools::Itertools;
 
 /// "The USERHOST command takes up to five nicknames, each a separate parameters."
-/// -- https://modern.ircdocs.horse/#userhost-message
+/// -- <https://modern.ircdocs.horse/#userhost-message>
 const MAX_TARGETS: usize = 5;
 
 fn away_char(user: &wrapper::User) -> char {
@@ -14,7 +14,7 @@ fn away_char(user: &wrapper::User) -> char {
 }
 
 #[command_handler("USERHOST")]
-/// Syntax: USERHOST <nickname>{ <nickname>}
+/// Syntax: USERHOST &lt;nickname&gt;{ &lt;nickname&gt;}
 fn userhost_handler(
     response: &dyn CommandResponse,
     network: &Network,
