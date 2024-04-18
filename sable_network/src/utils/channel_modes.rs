@@ -42,18 +42,18 @@ pub fn format_channel_perm_changes(
 
     if !added.is_empty() {
         changes += "+";
-        for (flag, modechar, _) in MembershipFlagSet::all() {
+        for flag in MembershipFlagSet::all() {
             if added.is_set(flag) {
-                changes += &modechar.to_string();
+                changes += &flag.mode_char().to_string();
                 args.push(nick.to_string());
             }
         }
     }
     if !removed.is_empty() {
         changes += "-";
-        for (flag, modechar, _) in MembershipFlagSet::all() {
+        for flag in MembershipFlagSet::all() {
             if removed.is_set(flag) {
-                changes += &modechar.to_string();
+                changes += &flag.mode_char().to_string();
                 args.push(nick.to_string());
             }
         }
