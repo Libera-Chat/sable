@@ -69,7 +69,7 @@ async fn handle_user_mode(
     for c in mode_str.chars() {
         if let Ok(d) = Direction::try_from(c) {
             dir = d;
-        } else if let Some(flag) = UserModeSet::flag_for(c) {
+        } else if let Some(flag) = UserModeFlag::from_mode_char(c) {
             if server.policy().can_set_umode(&source, flag).is_err() {
                 continue;
             }
@@ -125,7 +125,7 @@ async fn handle_channel_mode(
     for c in mode_str.chars() {
         if let Ok(d) = Direction::try_from(c) {
             dir = d;
-        } else if let Some(flag) = ChannelModeSet::flag_for(c) {
+        } else if let Some(flag) = ChannelModeFlag::from_mode_char(c) {
             server.policy().can_change_mode(source, &chan, flag)?;
             match dir {
                 Direction::Add => {
@@ -136,7 +136,7 @@ async fn handle_channel_mode(
                 }
                 _ => {}
             }
-        } else if let Some(flag) = MembershipFlagSet::flag_for(c) {
+        } else if let Some(flag) = MembershipFlagFlag::from_mode_char(c) {
             let target = args.next::<wrapper::User>()?;
             let membership = target
                 .is_in_channel(chan.id())

@@ -9,10 +9,9 @@ use syn::{
 
 struct ModeDef {
     name: Ident,
-    _paren: token::Paren,
     flag: LitInt,
-    _comma: Token![,],
-    modechars: Punctuated<LitChar, Token![,]>,
+    modechar: LitChar,
+    prefixchar: Option<LitChar>,
 }
 
 struct ModeSet {
@@ -24,12 +23,20 @@ struct ModeSet {
 impl Parse for ModeDef {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
+        let name = input.parse()?;
+        let _: token::Paren = parenthesized!(content in input);
+        let flag = content.parse()?;
+        content.parse::<Token![,]>()?;
+        let modechar = content.parse()?;
+        let prefixchar = match content.parse::<Token![,]>() {
+            Ok(_) => Some(content.parse()?),
+            Err(_) => None,
+        };
         Ok(Self {
-            name: input.parse()?,
-            _paren: parenthesized!(content in input),
-            flag: content.parse()?,
-            _comma: content.parse()?,
-            modechars: content.parse_terminated(LitChar::parse)?,
+            name,
+            flag,
+            modechar,
+            prefixchar,
         })
     }
 }
@@ -55,18 +62,14 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
     let mut consts = Vec::new();
     let mut const_names = Vec::new();
     let mut mode_chars = Vec::new();
+    let mut prefix_chars = Vec::new();
     let mut pairs = Vec::new();
-
-    let mut mode_char_types = proc_macro2::TokenStream::new();
-    let num_chartypes = modes.items[0].modechars.len();
-    for _c in 0..num_chartypes {
-        mode_char_types.extend(quote!(char,));
-    }
 
     for item in modes.items {
         let name = item.name;
         let flag = item.flag;
-        let modechars = item.modechars;
+        let modechar = item.modechar;
+        let prefixchar = item.prefixchar;
 
         consts.push(quote!(
             #name = #flag
@@ -75,12 +78,24 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
             #name
         ));
         mode_chars.push(quote!(
-            #modechars
+            #modechar
         ));
+        if let Some(prefixchar) = prefixchar {
+            prefix_chars.push(quote!(
+                #prefixchar
+            ));
+        }
         pairs.push(quote!(
-            (#name_one::#flag, #modechars)
+            (#name_one::#flag, #modechar)
         ));
     }
+
+    assert!(
+        prefix_chars.is_empty() || prefix_chars.len() == mode_chars.len(),
+        "Got {} prefix chars, but there are {} mode chars",
+        prefix_chars.len(),
+        mode_chars.len(),
+    );
 
     let num_items = consts.len();
 
@@ -93,9 +108,23 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
 
         impl #name_one
         {
-            pub fn to_char(self) -> char
+            pub fn mode_char(self) -> char
             {
-                #name_set::char_for(self)
+                match self {
+                    #(
+                        Self::#const_names => #mode_chars,
+                    )*
+                }
+            }
+
+            pub fn from_mode_char(modechar: char) -> Option<#name_one>
+            {
+                match modechar {
+                    #(
+                        #mode_chars => Some(Self::#const_names),
+                    )*
+                    _ => None,
+                }
             }
         }
 
@@ -107,7 +136,7 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
 
         impl #name_set
         {
-            const ALL: [(#name_one, #mode_char_types); #num_items] = [ #( ( #name_one::#const_names, #mode_chars ) ),* ];
+            const ALL: [#name_one; #num_items] = [ #( #name_one::#const_names),* ];
 
             pub fn is_set(&self, flag: #name_one) -> bool
             {
@@ -124,9 +153,9 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
                 let mut s = String::new();
                 for v in Self::ALL
                 {
-                    if (self.is_set(v.0))
+                    if (self.is_set(v))
                     {
-                        s.push(v.1);
+                        s.push(v.mode_char());
                     }
                 }
                 return s;
@@ -134,25 +163,7 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
 
             pub fn new() -> Self { Self(0) }
 
-            pub fn all() -> [(#name_one, #mode_char_types); #num_items] { Self::ALL }
-
-            pub fn char_for(flag: #name_one) -> char
-            {
-                for v in Self::ALL
-                {
-                    if v.0 == flag { return v.1; }
-                }
-                panic!("Invalid flag value?");
-            }
-
-            pub fn flag_for(modechar: char) -> Option<#name_one>
-            {
-                for v in Self::ALL
-                {
-                    if v.1 == modechar { return Some(v.0); }
-                }
-                None
-            }
+            pub fn all() -> [#name_one; #num_items] { Self::ALL }
         }
 
         impl Default for #name_set
@@ -211,13 +222,27 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
         }
     );
 
-    if num_chartypes > 1 {
+    if !prefix_chars.is_empty() {
         output.extend(quote!(
             impl #name_one
             {
-                pub fn to_prefix(self) -> char
+                pub fn prefix_char(self) -> char
                 {
-                    #name_set::prefix_for(self)
+                    match self {
+                        #(
+                            Self::#const_names => #prefix_chars,
+                        )*
+                    }
+                }
+
+                pub fn from_prefix_char(modechar: char) -> Option<#name_one>
+                {
+                    match modechar {
+                        #(
+                            #prefix_chars => Some(Self::#const_names),
+                        )*
+                        _ => None,
+                    }
                 }
             }
 
@@ -228,9 +253,9 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
                     let mut s = String::new();
                     for v in Self::ALL
                     {
-                        if (self.is_set(v.0))
+                        if (self.is_set(v))
                         {
-                            s.push(v.2);
+                            s.push(v.prefix_char());
                         }
                     }
                     return s;
@@ -242,32 +267,13 @@ pub fn mode_flags(input: TokenStream) -> TokenStream {
                 {
                     for v in Self::ALL
                     {
-                        if (self.is_set(v.0))
+                        if (self.is_set(v))
                         {
-                            return Some(v.2)
+                            return Some(v.prefix_char())
                         }
                     }
                     return None;
                 }
-
-                pub fn prefix_for(flag: #name_one) -> char
-                {
-                    for v in Self::ALL
-                    {
-                        if v.0 == flag { return v.2; }
-                    }
-                    panic!("Invalid flag value?");
-                }
-
-                pub fn flag_for_prefix(modechar: char) -> Option<#name_one>
-                {
-                    for v in Self::ALL
-                    {
-                        if v.2 == modechar { return Some(v.0); }
-                    }
-                    None
-                }
-
             }
         ));
     }
