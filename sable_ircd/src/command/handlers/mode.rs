@@ -1,7 +1,7 @@
 use super::*;
 
 #[command_handler("MODE")]
-async fn handle_user(
+async fn handle_mode(
     server: &ClientServer,
     source: UserSource<'_>,
     cmd: &dyn Command,
@@ -15,73 +15,85 @@ async fn handle_user(
             handle_channel_mode(server, &source, cmd, response, chan, mode_str, args).await
         }
         TargetParameter::User(user) => {
-            if source.id() != user.id() {
-                return numeric_error!(CantChangeOtherUserMode);
-            }
-
-            let mode = source.mode();
-
-            let mut sent_unknown = false;
-            let mut added = UserModeSet::new();
-            let mut removed = UserModeSet::new();
-
-            enum Direction {
-                Add,
-                Rem,
-                Query,
-            }
-            let mut dir = Direction::Query;
-
-            let Some(mode_str) = mode_str else {
-                response.numeric(make_numeric!(UserModeIs, &mode.format()));
-                return Ok(());
-            };
-
-            for c in mode_str.chars() {
-                match c {
-                    '+' => {
-                        dir = Direction::Add;
-                    }
-                    '-' => {
-                        dir = Direction::Rem;
-                    }
-                    '=' => {
-                        dir = Direction::Query;
-                    }
-                    _ => {
-                        if let Some(flag) = UserModeSet::flag_for(c) {
-                            if server.policy().can_set_umode(&source, flag).is_err() {
-                                continue;
-                            }
-
-                            match dir {
-                                Direction::Add => {
-                                    added |= flag;
-                                }
-                                Direction::Rem => {
-                                    removed |= flag;
-                                }
-                                _ => {}
-                            }
-                        } else if !sent_unknown {
-                            response.numeric(make_numeric!(UnknownMode, c));
-                            sent_unknown = true;
-                        }
-                    }
-                }
-            }
-            if !added.is_empty() || !removed.is_empty() {
-                let detail = event::UserModeChange {
-                    changed_by: source.id().into(),
-                    added,
-                    removed,
-                };
-                cmd.new_event_with_response(source.id(), detail).await;
-            }
-
-            Ok(())
+            handle_user_mode(server, &source, cmd, response, user, mode_str, args).await
         }
     }
+}
+
+async fn handle_user_mode(
+    server: &ClientServer,
+    source: &wrapper::User<'_>,
+    cmd: &dyn Command,
+    response: &dyn CommandResponse,
+    user: wrapper::User<'_>,
+    mode_str: Option<&str>,
+    _args: ArgList<'_>,
+) -> CommandResult {
+    if source.id() != user.id() {
+        return numeric_error!(CantChangeOtherUserMode);
+    }
+
+    let mode = source.mode();
+
+    let mut sent_unknown = false;
+    let mut added = UserModeSet::new();
+    let mut removed = UserModeSet::new();
+
+    enum Direction {
+        Add,
+        Rem,
+        Query,
+    }
+    let mut dir = Direction::Query;
+
+    let Some(mode_str) = mode_str else {
+        response.numeric(make_numeric!(UserModeIs, &mode.format()));
+        return Ok(());
+    };
+
+    for c in mode_str.chars() {
+        match c {
+            '+' => {
+                dir = Direction::Add;
+            }
+            '-' => {
+                dir = Direction::Rem;
+            }
+            '=' => {
+                dir = Direction::Query;
+            }
+            _ => {
+                if let Some(flag) = UserModeSet::flag_for(c) {
+                    if server.policy().can_set_umode(&source, flag).is_err() {
+                        continue;
+                    }
+
+                    match dir {
+                        Direction::Add => {
+                            added |= flag;
+                        }
+                        Direction::Rem => {
+                            removed |= flag;
+                        }
+                        _ => {}
+                    }
+                } else if !sent_unknown {
+                    response.numeric(make_numeric!(UnknownMode, c));
+                    sent_unknown = true;
+                }
+            }
+        }
+    }
+    if !added.is_empty() || !removed.is_empty() {
+        let detail = event::UserModeChange {
+            changed_by: source.id().into(),
+            added,
+            removed,
+        };
+        cmd.new_event_with_response(source.id(), detail).await;
+    }
+
+    Ok(())
 }
 
 async fn handle_channel_mode(
