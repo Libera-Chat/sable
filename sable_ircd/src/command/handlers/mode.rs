@@ -20,6 +20,26 @@ async fn handle_mode(
     }
 }
 
+#[derive(PartialEq)]
+enum Direction {
+    Add,
+    Rem,
+    Query,
+}
+
+impl TryFrom<char> for Direction {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Direction, Self::Error> {
+        match value {
+            '+' => Ok(Direction::Add),
+            '-' => Ok(Direction::Rem),
+            '=' => Ok(Direction::Query),
+            _ => Err(()),
+        }
+    }
+}
+
 async fn handle_user_mode(
     server: &ClientServer,
     source: &wrapper::User<'_>,
@@ -39,11 +59,6 @@ async fn handle_user_mode(
     let mut added = UserModeSet::new();
     let mut removed = UserModeSet::new();
 
-    enum Direction {
-        Add,
-        Rem,
-        Query,
-    }
     let mut dir = Direction::Query;
 
     let Some(mode_str) = mode_str else {
@@ -52,36 +67,25 @@ async fn handle_user_mode(
     };
 
     for c in mode_str.chars() {
-        match c {
-            '+' => {
-                dir = Direction::Add;
+        if let Ok(d) = Direction::try_from(c) {
+            dir = d;
+        } else if let Some(flag) = UserModeSet::flag_for(c) {
+            if server.policy().can_set_umode(&source, flag).is_err() {
+                continue;
             }
-            '-' => {
-                dir = Direction::Rem;
-            }
-            '=' => {
-                dir = Direction::Query;
-            }
-            _ => {
-                if let Some(flag) = UserModeSet::flag_for(c) {
-                    if server.policy().can_set_umode(&source, flag).is_err() {
-                        continue;
-                    }
 
-                    match dir {
-                        Direction::Add => {
-                            added |= flag;
-                        }
-                        Direction::Rem => {
-                            removed |= flag;
-                        }
-                        _ => {}
-                    }
-                } else if !sent_unknown {
-                    response.numeric(make_numeric!(UnknownMode, c));
-                    sent_unknown = true;
+            match dir {
+                Direction::Add => {
+                    added |= flag;
                 }
+                Direction::Rem => {
+                    removed |= flag;
+                }
+                _ => {}
             }
+        } else if !sent_unknown {
+            response.numeric(make_numeric!(UnknownMode, c));
+            sent_unknown = true;
         }
     }
     if !added.is_empty() || !removed.is_empty() {
@@ -117,128 +121,107 @@ async fn handle_channel_mode(
     let mut removed = ChannelModeSet::new();
     let mut key_change = OptionChange::<ChannelKey>::NoChange;
 
-    #[derive(PartialEq)]
-    enum Direction {
-        Add,
-        Rem,
-        Query,
-    }
-
     let mut dir = Direction::Query;
     for c in mode_str.chars() {
-        match c {
-            '+' => {
-                dir = Direction::Add;
+        if let Ok(d) = Direction::try_from(c) {
+            dir = d;
+        } else if let Some(flag) = ChannelModeSet::flag_for(c) {
+            server.policy().can_change_mode(source, &chan, flag)?;
+            match dir {
+                Direction::Add => {
+                    added |= flag;
+                }
+                Direction::Rem => {
+                    removed |= flag;
+                }
+                _ => {}
             }
-            '-' => {
-                dir = Direction::Rem;
-            }
-            '=' => {
-                dir = Direction::Query;
-            }
-            _ => {
-                if let Some(flag) = ChannelModeSet::flag_for(c) {
-                    server.policy().can_change_mode(source, &chan, flag)?;
-                    match dir {
-                        Direction::Add => {
-                            added |= flag;
-                        }
-                        Direction::Rem => {
-                            removed |= flag;
-                        }
-                        _ => {}
-                    }
-                } else if let Some(flag) = MembershipFlagSet::flag_for(c) {
-                    let target = args.next::<wrapper::User>()?;
-                    let membership = target
-                        .is_in_channel(chan.id())
-                        .ok_or_else(|| make_numeric!(UserNotOnChannel, &target, &chan))?;
-                    let mut perm_added = MembershipFlagSet::new();
-                    let mut perm_removed = MembershipFlagSet::new();
+        } else if let Some(flag) = MembershipFlagSet::flag_for(c) {
+            let target = args.next::<wrapper::User>()?;
+            let membership = target
+                .is_in_channel(chan.id())
+                .ok_or_else(|| make_numeric!(UserNotOnChannel, &target, &chan))?;
+            let mut perm_added = MembershipFlagSet::new();
+            let mut perm_removed = MembershipFlagSet::new();
 
-                    match dir {
-                        Direction::Add => {
-                            server
-                                .policy()
-                                .can_grant_permission(source, &chan, &target, flag)?;
-                            perm_added |= flag;
-                        }
-                        Direction::Rem => {
-                            server
-                                .policy()
-                                .can_remove_permission(source, &chan, &target, flag)?;
-                            perm_removed |= flag;
-                        }
-                        _ => {}
-                    }
+            match dir {
+                Direction::Add => {
+                    server
+                        .policy()
+                        .can_grant_permission(source, &chan, &target, flag)?;
+                    perm_added |= flag;
+                }
+                Direction::Rem => {
+                    server
+                        .policy()
+                        .can_remove_permission(source, &chan, &target, flag)?;
+                    perm_removed |= flag;
+                }
+                _ => {}
+            }
 
-                    let detail = event::MembershipFlagChange {
-                        changed_by: source.id().into(),
-                        added: perm_added,
-                        removed: perm_removed,
+            let detail = event::MembershipFlagChange {
+                changed_by: source.id().into(),
+                added: perm_added,
+                removed: perm_removed,
+            };
+            cmd.new_event_with_response(membership.id(), detail).await;
+        } else if let Some(list_type) = ListModeType::from_char(c) {
+            let list = chan.list(list_type);
+
+            if dir == Direction::Query || args.is_empty() {
+                server.policy().can_query_list(source, &chan, list_type)?;
+                send_channel_banlike_list(response, &chan, &list)?;
+            } else {
+                let mask = args.next::<&str>()?;
+
+                if dir == Direction::Add {
+                    server
+                        .policy()
+                        .can_set_ban(source, &chan, list_type, mask)?;
+                    server.policy().validate_ban_mask(mask, list_type, &chan)?;
+
+                    let detail = event::NewListModeEntry {
+                        list: list.id(),
+                        pattern: Pattern::new(mask.to_owned()),
+                        setter: source.id(),
                     };
-                    cmd.new_event_with_response(membership.id(), detail).await;
-                } else if let Some(list_type) = ListModeType::from_char(c) {
-                    let list = chan.list(list_type);
+                    cmd.new_event_with_response(server.ids().next_list_mode_entry(), detail)
+                        .await;
+                } else {
+                    // We've already tested for Direction::Query above, so this is definitely Remove
+                    if let Some(entry) = list.entries().find(|e| e.pattern() == mask) {
+                        server
+                            .policy()
+                            .can_unset_ban(source, &chan, list_type, mask)?;
 
-                    if dir == Direction::Query || args.is_empty() {
-                        server.policy().can_query_list(source, &chan, list_type)?;
-                        send_channel_banlike_list(response, &chan, &list)?;
-                    } else {
-                        let mask = args.next::<&str>()?;
-
-                        if dir == Direction::Add {
-                            server
-                                .policy()
-                                .can_set_ban(source, &chan, list_type, mask)?;
-                            server.policy().validate_ban_mask(mask, list_type, &chan)?;
-
-                            let detail = event::NewListModeEntry {
-                                list: list.id(),
-                                pattern: Pattern::new(mask.to_owned()),
-                                setter: source.id(),
-                            };
-                            cmd.new_event_with_response(
-                                server.ids().next_list_mode_entry(),
-                                detail,
-                            )
-                            .await;
-                        } else {
-                            // We've already tested for Direction::Query above, so this is definitely Remove
-                            if let Some(entry) = list.entries().find(|e| e.pattern() == mask) {
-                                server
-                                    .policy()
-                                    .can_unset_ban(source, &chan, list_type, mask)?;
-
-                                let detail = event::DelListModeEntry {
-                                    removed_by: source.id(),
-                                };
-                                cmd.new_event_with_response(entry.id(), detail).await;
-                            }
-                        }
+                        let detail = event::DelListModeEntry {
+                            removed_by: source.id(),
+                        };
+                        cmd.new_event_with_response(entry.id(), detail).await;
                     }
-                } else if let Some(_key_type) = KeyModeType::from_char(c) {
-                    match dir {
-                        // Can't query keys
-                        Direction::Query => (),
-                        Direction::Add => {
-                            let new_key = match args.next().map(ChannelKey::new_coerce)? {
-                                Ok(key) => key,
-                                Err(_) => return numeric_error!(InvalidKey, &chan.name()),
-                            };
-                            server.policy().can_set_key(source, &chan, Some(&new_key))?;
-                            key_change = OptionChange::Set(new_key);
-                        }
-                        Direction::Rem => {
-                            server.policy().can_set_key(source, &chan, None)?;
-                            key_change = OptionChange::Unset;
-                        }
-                    }
-                } else if !sent_unknown {
-                    response.numeric(make_numeric!(UnknownMode, c));
-                    sent_unknown = true;
                 }
             }
+        } else if let Some(_key_type) = KeyModeType::from_char(c) {
+            match dir {
+                // Can't query keys
+                Direction::Query => (),
+                Direction::Add => {
+                    let new_key = match args.next().map(ChannelKey::new_coerce)? {
+                        Ok(key) => key,
+                        Err(_) => return numeric_error!(InvalidKey, &chan.name()),
+                    };
+                    server.policy().can_set_key(source, &chan, Some(&new_key))?;
+                    key_change = OptionChange::Set(new_key);
+                }
+                Direction::Rem => {
+                    server.policy().can_set_key(source, &chan, None)?;
+                    key_change = OptionChange::Unset;
+                }
+            }
+        } else if !sent_unknown {
+            response.numeric(make_numeric!(UnknownMode, c));
+            sent_unknown = true;
         }
     }
     if !added.is_empty() || !removed.is_empty() || !key_change.is_no_change() {
