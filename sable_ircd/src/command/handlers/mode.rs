@@ -166,7 +166,7 @@ async fn handle_channel_mode(
                 removed: perm_removed,
             };
             cmd.new_event_with_response(membership.id(), detail).await;
-        } else if let Some(list_type) = ListModeType::from_char(c) {
+        } else if let Some(list_type) = ListModeType::from_mode_char(c) {
             let list = chan.list(list_type);
 
             if dir == Direction::Query || args.is_empty() {
@@ -202,7 +202,7 @@ async fn handle_channel_mode(
                     }
                 }
             }
-        } else if let Some(_key_type) = KeyModeType::from_char(c) {
+        } else if let Some(_key_type) = KeyModeType::from_mode_char(c) {
             match dir {
                 // Can't query keys
                 Direction::Query => (),
