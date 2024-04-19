@@ -43,14 +43,14 @@ macro_rules! define_mode_type {
 
         impl $typename
         {
-            pub fn mode_letter(&self) -> char
+            pub fn mode_char(&self) -> char
             {
                 match self {
                     $( Self:: $var => $val ),*
                 }
             }
 
-            pub fn from_char(c: char) -> Option<Self>
+            pub fn from_mode_char(c: char) -> Option<Self>
             {
                 match c {
                     $( $val => Some(Self::$var) ),+,

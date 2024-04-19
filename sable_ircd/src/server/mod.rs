@@ -164,8 +164,8 @@ impl ClientServer {
                 .iter()
                 .collect(),
             chan_modes_with_a_parameter: ListModeType::iter()
-                .map(|t| t.mode_letter())
-                .chain(KeyModeType::iter().map(|t| t.mode_letter()))
+                .map(|t| t.mode_char())
+                .chain(KeyModeType::iter().map(|t| t.mode_char()))
                 .chain(MembershipFlagSet::all().map(|m| m.mode_char()).into_iter())
                 .collect(),
         }
@@ -198,8 +198,8 @@ impl ClientServer {
             Username::LENGTH.try_into().unwrap(),
         ));
 
-        let list_modes: String = ListModeType::iter().map(|t| t.mode_letter()).collect();
-        let key_modes: String = KeyModeType::iter().map(|t| t.mode_letter()).collect();
+        let list_modes: String = ListModeType::iter().map(|t| t.mode_char()).collect();
+        let key_modes: String = KeyModeType::iter().map(|t| t.mode_char()).collect();
         let param_modes = "";
         let simple_modes: String = ChannelModeSet::all()
             .map(|m| m.mode_char())

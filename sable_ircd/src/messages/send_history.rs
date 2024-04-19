@@ -158,7 +158,7 @@ impl SendHistoryItem for update::ChannelTopicChange {
 
 impl SendHistoryItem for update::ListModeAdded {
     fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
-        let text = format!("+{} {}", self.list_type.mode_letter(), self.pattern);
+        let text = format!("+{} {}", self.list_type.mode_char(), self.pattern);
         let message =
             message::Mode::new(&self.set_by, &self.channel, &text).with_tags_from(from_entry);
         conn.send(message);
@@ -168,7 +168,7 @@ impl SendHistoryItem for update::ListModeAdded {
 
 impl SendHistoryItem for update::ListModeRemoved {
     fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
-        let text = format!("-{} {}", self.list_type.mode_letter(), self.pattern);
+        let text = format!("-{} {}", self.list_type.mode_char(), self.pattern);
         let message =
             message::Mode::new(&self.removed_by, &self.channel, &text).with_tags_from(from_entry);
         conn.send(message);
