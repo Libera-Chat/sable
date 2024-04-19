@@ -178,6 +178,9 @@ impl ClientServer {
         ret.add(ISupportEntry::simple("INVEX"));
         ret.add(ISupportEntry::simple("FNC"));
 
+        // https://ircv3.net/specs/extensions/utf8-only
+        ret.add(ISupportEntry::simple("UTF8ONLY"));
+
         ret.add(ISupportEntry::int(
             "MONITOR",
             config.monitor.max_per_connection.into(),
