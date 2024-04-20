@@ -36,7 +36,7 @@ impl ServerInfoStrings {
     pub fn load(raw_info: &RawServerInfo) -> Result<ServerInfoStrings, ConfigProcessingError> {
         Ok(Self {
             motd: Self::get_info(&raw_info.motd, "motd")?
-                .and_then(|file| Some(file.lines().map(|v| v.to_string()).collect())),
+                .map(|file| file.lines().map(|v| v.to_string()).collect()),
             admin_info: raw_info.admin.clone(),
         })
     }
@@ -46,16 +46,14 @@ impl ServerInfoStrings {
         name: &str,
     ) -> Result<Option<String>, ConfigProcessingError> {
         match path {
-            Some(real_path) => Ok(Some(Self::read(&real_path, name)?)),
+            Some(real_path) => Ok(Some(Self::read(real_path, name)?)),
             None => Ok(None),
         }
     }
 
     fn read(path: &PathBuf, name: &str) -> Result<String, ConfigProcessingError> {
-        fs::read_to_string(path).or_else(|err| {
-            Err(ConfigProcessingError {
-                reason: format!("Unable to read info {name:?} from {path:?}: {err}"),
-            })
+        fs::read_to_string(path).map_err(|err| ConfigProcessingError {
+            reason: format!("Unable to read info {name:?} from {path:?}: {err}"),
         })
     }
 }

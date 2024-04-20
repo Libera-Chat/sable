@@ -64,8 +64,8 @@ impl SyncConfig {
         let mut config = String::new();
         file.read_to_string(&mut config)
             .map_err(|e| ConfigError::IoError(e, filename.as_ref().to_owned()))?;
-        Ok(json5::from_str(&config)
-            .map_err(|e| ConfigError::JsonError(e, filename.as_ref().to_owned()))?)
+        json5::from_str(&config)
+            .map_err(|e| ConfigError::JsonError(e, filename.as_ref().to_owned()))
     }
 
     /// Load and return the CA certificate for the network from the referenced
@@ -96,8 +96,8 @@ impl NodeConfig {
         let mut config = String::new();
         file.read_to_string(&mut config)
             .map_err(|e| ConfigError::IoError(e, filename.as_ref().to_owned()))?;
-        Ok(json5::from_str(&config)
-            .map_err(|e| ConfigError::JsonError(e, filename.as_ref().to_owned()))?)
+        json5::from_str(&config)
+            .map_err(|e| ConfigError::JsonError(e, filename.as_ref().to_owned()))
     }
 
     /// Load and return the client certificate and private key for this node

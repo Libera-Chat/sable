@@ -15,16 +15,16 @@ impl ClientServer {
                 if let Some(entry) = history.get(entry_id) {
                     match &entry.details {
                         NetworkStateChange::NewUser(detail) => {
-                            detail.notify_monitors(&self);
+                            detail.notify_monitors(self);
                         }
                         NetworkStateChange::UserNickChange(detail) => {
-                            detail.notify_monitors(&self);
+                            detail.notify_monitors(self);
                         }
                         NetworkStateChange::UserQuit(detail) => {
-                            detail.notify_monitors(&self);
+                            detail.notify_monitors(self);
                         }
                         NetworkStateChange::BulkUserQuit(detail) => {
-                            detail.notify_monitors(&self);
+                            detail.notify_monitors(self);
                         }
                         NetworkStateChange::NewUserConnection(detail) => {
                             let new_user_connection = detail.clone();

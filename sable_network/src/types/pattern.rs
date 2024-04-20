@@ -34,7 +34,7 @@ impl PartialEq<String> for Pattern {
 
 impl PartialEq<str> for Pattern {
     fn eq(&self, other: &str) -> bool {
-        &self.0 == other
+        self.0 == other
     }
 }
 

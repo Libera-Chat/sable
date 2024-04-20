@@ -19,7 +19,7 @@ impl<'a> AsyncHandlerCollection<'a> {
 
     pub async fn poll(&mut self) {
         // Poll as many as possible of the futures we're storing
-        while let Some(_) = self.futures.next().await {}
+        while (self.futures.next().await).is_some() {}
     }
 
     pub fn is_empty(&self) -> bool {

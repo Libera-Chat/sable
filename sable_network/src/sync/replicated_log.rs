@@ -276,8 +276,8 @@ impl ReplicatedEventLog {
         let (sender, receiver) = oneshot::channel();
 
         let targeted_message = TargetedMessage {
-            source: self.net.me().name.clone(),
-            target: target,
+            source: self.net.me().name,
+            target,
             via: Vec::new(),
             content: request,
         };
@@ -333,6 +333,9 @@ impl ReplicatedEventLog {
         net
     }
 
+    #[allow(clippy::await_holding_refcell_ref)] // don't care about 'attempts' being borrowed too
+                                                // long, the closure can't be running more than
+                                                // once at a time.
     async fn start_sync_to_network(
         &self,
         sender: UnboundedSender<Request>,
@@ -626,7 +629,7 @@ impl TaskState {
         // to try to send it along
 
         // Make sure it doesn't come back to us
-        detail.via.push(self.net.me().name.clone());
+        detail.via.push(self.net.me().name);
 
         // Keep going until we succeed in sending it somewhere
         while let Some(peer) = self.net.choose_peer_except(&detail.via) {
@@ -766,7 +769,7 @@ impl TaskState {
 
                 // Then reset our list of active peers to those that are active in the incoming state
                 for server in net.servers() {
-                    self.net.enable_peer(&server.name());
+                    self.net.enable_peer(server.name());
                 }
 
                 if let Err(e) = self

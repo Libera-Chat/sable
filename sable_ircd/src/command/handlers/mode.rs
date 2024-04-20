@@ -70,7 +70,7 @@ async fn handle_user_mode(
         if let Ok(d) = Direction::try_from(c) {
             dir = d;
         } else if let Some(flag) = UserModeSet::flag_for(c) {
-            if server.policy().can_set_umode(&source, flag).is_err() {
+            if server.policy().can_set_umode(source, flag).is_err() {
                 continue;
             }
 

@@ -34,6 +34,7 @@ fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[command_handler("CHATHISTORY")]
 fn handle_chathistory(
     source: UserSource,
@@ -66,7 +67,7 @@ fn handle_chathistory(
             // The spec allows the from and to timestamps in either order; list_targets requires from < to
             list_targets(
                 server,
-                &response,
+                response,
                 source,
                 Some(min(from_ts, to_ts)),
                 Some(max(from_ts, to_ts)),
@@ -92,7 +93,7 @@ fn handle_chathistory(
             }
 
             send_history_for_target_reverse(
-                server, &response, source, subcommand, &target, from_ts, None, limit,
+                server, response, source, subcommand, target, from_ts, None, limit,
             )?;
         }
         "BEFORE" => {
@@ -112,10 +113,10 @@ fn handle_chathistory(
 
             send_history_for_target_reverse(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 None,
                 Some(end_ts),
                 limit,
@@ -138,10 +139,10 @@ fn handle_chathistory(
 
             send_history_for_target_forward(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 Some(start_ts),
                 None,
                 limit,
@@ -166,20 +167,20 @@ fn handle_chathistory(
 
             send_history_for_target_reverse(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 Some(around_ts),
                 None,
                 Some(limit / 2),
             )?;
             send_history_for_target_forward(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 Some(around_ts),
                 None,
                 Some(limit / 2),
@@ -203,10 +204,10 @@ fn handle_chathistory(
 
             send_history_for_target_forward(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 Some(start_ts),
                 Some(end_ts),
                 limit,

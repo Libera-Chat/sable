@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 fn build_event_ids(input: &[[i64; 3]]) -> Vec<EventId> {
     let mut ret = Vec::new();
-    for v in input.into_iter() {
+    for v in input.iter() {
         ret.push(EventId::new(ServerId::new(v[0]), EpochId::new(v[1]), v[2]));
     }
     ret
@@ -11,7 +11,7 @@ fn build_event_ids(input: &[[i64; 3]]) -> Vec<EventId> {
 
 fn clock_from(ids: &[EventId]) -> EventClock {
     let mut ret = EventClock::new();
-    for id in ids.into_iter() {
+    for id in ids.iter() {
         ret.update_with_id(*id);
     }
     ret

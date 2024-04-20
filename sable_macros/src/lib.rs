@@ -1,5 +1,5 @@
 #![allow(clippy::large_enum_variant)]
-#![allow(clippy::eval_order_dependence)]
+#![allow(clippy::mixed_read_write_in_expression)]
 
 extern crate proc_macro;
 

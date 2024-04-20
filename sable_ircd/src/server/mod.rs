@@ -328,7 +328,7 @@ impl ClientServer {
         for (conn_id, message) in connections.poll_messages().collect::<Vec<_>>() {
             if let Some(parsed) = ClientMessage::parse(conn_id, &message) {
                 if let Ok(connection) = connections.get(conn_id) {
-                    if let Ok(command) = ClientCommand::new(Arc::clone(&self), connection, parsed) {
+                    if let Ok(command) = ClientCommand::new(Arc::clone(self), connection, parsed) {
                         if let Some(async_handler) =
                             self.command_dispatcher.dispatch_command(command)
                         {
@@ -383,7 +383,7 @@ impl ClientServer {
 
         let mut reap_preclients_timer = time::interval(Duration::from_secs(60));
 
-        let shutdown_action = loop {
+        loop {
             // tracing::trace!("ClientServer run loop");
             // Before looking for an I/O event, do our internal bookkeeping.
             // First, take inbound client messages and process them
@@ -505,8 +505,6 @@ impl ClientServer {
                     }
                 },
             }
-        };
-
-        shutdown_action
+        }
     }
 }

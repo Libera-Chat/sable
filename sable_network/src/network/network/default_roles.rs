@@ -18,7 +18,7 @@ impl Network {
                 id: DEFAULT_ROLE_ID,
                 name: name.clone(),
                 channel: None,
-                flags: flags.clone(),
+                flags: *flags,
             };
 
             new_cache.insert(name.clone(), cache_role);

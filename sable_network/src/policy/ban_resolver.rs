@@ -11,12 +11,8 @@ pub trait BanResolver {
         user: &User,
         list: &'a ListMode<'a>,
     ) -> Option<ListModeEntry<'a>> {
-        for entry in list.entries() {
-            if self.user_matches_entry(user, &entry) {
-                return Some(entry);
-            }
-        }
-        None
+        list.entries()
+            .find(|entry| self.user_matches_entry(user, entry))
     }
 }
 

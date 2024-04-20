@@ -103,11 +103,11 @@ impl CapabilityRepository {
             self.update_supported_lists();
         }
     */
-    pub fn enable_with_values(&self, cap: ClientCapability, values: &Vec<String>) {
+    pub fn enable_with_values(&self, cap: ClientCapability, values: &[String]) {
         for entry in &self.supported_caps {
             if entry.cap == cap {
                 entry.available.store(true, Ordering::Relaxed);
-                std::mem::swap(entry.values.write().as_mut(), &mut values.clone())
+                std::mem::swap(entry.values.write().as_mut(), &mut values.to_owned())
             }
         }
         self.update_supported_lists();

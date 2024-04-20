@@ -56,7 +56,7 @@ fn send_who_reply(
             away_letter,
             membership
                 .map(|m| m.permissions().to_prefixes())
-                .unwrap_or_else(|| "".to_string())
+                .unwrap_or_default()
         )
     } else {
         format!(
@@ -66,7 +66,7 @@ fn send_who_reply(
                 .and_then(|m| m.permissions().to_highest_prefix())
                 .as_ref()
                 .map(char::to_string)
-                .unwrap_or_else(|| "".to_string())
+                .unwrap_or_default()
         )
     };
     response.numeric(make_numeric!(WhoReply, chname, target, &status, 0))

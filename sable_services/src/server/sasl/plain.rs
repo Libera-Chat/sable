@@ -22,7 +22,7 @@ impl<DB: DatabaseConnection> SaslMechanism<DB> for SaslPlain {
             _ => return Ok(Fail),
         };
 
-        let account_name = std::str::from_utf8(&account_name)?;
+        let account_name = std::str::from_utf8(account_name)?;
         let account_name = Nickname::from_str(account_name)?;
         let account = server.db.account_named(&account_name)?;
 

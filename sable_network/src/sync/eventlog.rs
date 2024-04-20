@@ -189,7 +189,7 @@ impl EventLog {
         let s = e.id.server();
         let id = e.id;
 
-        self.history.entry(s).or_insert_with(BTreeMap::new);
+        self.history.entry(s).or_default();
 
         let server_map = self.history.get_mut(&s).unwrap();
         server_map.insert(e.id, e);

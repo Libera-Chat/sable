@@ -215,7 +215,7 @@ impl SendHistoryItem for update::ChannelJoin {
 
         if let Some(away_reason) = self.user.user.away_reason {
             let message =
-                message::Away::new(&self.user, &away_reason.value()).with_tags_from(from_entry);
+                message::Away::new(&self.user, away_reason.value()).with_tags_from(from_entry);
 
             conn.send(message.with_required_capabilities(ClientCapability::AwayNotify));
         }

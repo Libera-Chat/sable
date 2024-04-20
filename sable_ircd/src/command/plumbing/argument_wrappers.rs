@@ -7,9 +7,9 @@ pub struct ServicesTarget<'a> {
     server: &'a ClientServer,
 }
 
-impl Into<ServerName> for ServicesTarget<'_> {
-    fn into(self) -> ServerName {
-        self.name
+impl From<ServicesTarget<'_>> for ServerName {
+    fn from(val: ServicesTarget<'_>) -> Self {
+        val.name
     }
 }
 

@@ -44,8 +44,7 @@ impl InternalConnection {
                             .get_ref()
                             .1
                             .peer_certificates()
-                            .map(|c| c.get(0))
-                            .flatten()
+                            .and_then(|c| c.first())
                             .map(|cert| {
                                 let mut hasher = Sha1::new();
                                 hasher.update(&cert.0);
@@ -80,7 +79,11 @@ impl InternalConnection {
             tls_info,
         };
 
-        if let Err(_) = events.send(InternalConnectionEventType::New(conn)).await {
+        if events
+            .send(InternalConnectionEventType::New(conn))
+            .await
+            .is_err()
+        {
             tracing::error!("Error sending new connection");
         };
 

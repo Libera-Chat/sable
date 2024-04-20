@@ -85,7 +85,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         let mut notified = HashSet::new();
 
         for m1 in &detail.memberships {
-            let m1: wrapper::Membership = ObjectWrapper::wrap(&*net, m1);
+            let m1: wrapper::Membership = ObjectWrapper::wrap(&net, m1);
             for m2 in m1.channel()?.members() {
                 notified.insert(m2.user_id());
             }
@@ -118,7 +118,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         detail: &update::ChannelModeChange,
     ) -> HandleResult {
         let network = self.network();
-        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+        let channel = wrapper::Channel::wrap(&network, &detail.channel);
 
         self.notify_channel_members(&channel, entry);
 
@@ -131,7 +131,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         detail: &update::ListModeAdded,
     ) -> HandleResult {
         let network = self.network();
-        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+        let channel = wrapper::Channel::wrap(&network, &detail.channel);
 
         self.notify_channel_members_where(&channel, entry, |m| {
             self.policy_service
@@ -147,7 +147,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         detail: &update::ListModeRemoved,
     ) -> HandleResult {
         let network = self.network();
-        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+        let channel = wrapper::Channel::wrap(&network, &detail.channel);
 
         self.notify_channel_members_where(&channel, entry, |m| {
             self.policy_service
@@ -163,7 +163,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         detail: &update::ChannelTopicChange,
     ) -> HandleResult {
         let network = self.network();
-        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+        let channel = wrapper::Channel::wrap(&network, &detail.channel);
 
         self.notify_channel_members(&channel, entry);
 
@@ -176,7 +176,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         detail: &update::MembershipFlagChange,
     ) -> HandleResult {
         let network = self.network();
-        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+        let channel = wrapper::Channel::wrap(&network, &detail.channel);
 
         self.notify_channel_members(&channel, entry);
 
@@ -185,7 +185,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 
     fn handle_join(&self, entry: &HistoryLogEntry, detail: &update::ChannelJoin) -> HandleResult {
         let network = self.network();
-        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+        let channel = wrapper::Channel::wrap(&network, &detail.channel);
 
         self.notify_channel_members(&channel, entry);
 
@@ -196,7 +196,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         self.notify_user(detail.user.user.id, entry.id);
 
         let network = self.network();
-        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+        let channel = wrapper::Channel::wrap(&network, &detail.channel);
 
         self.notify_channel_members(&channel, entry);
 
@@ -207,7 +207,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         self.notify_user(detail.user.user.id, entry.id);
 
         let network = self.network();
-        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+        let channel = wrapper::Channel::wrap(&network, &detail.channel);
 
         self.notify_channel_members(&channel, entry);
 
@@ -230,7 +230,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         detail: &update::ChannelRename,
     ) -> HandleResult {
         let network = self.network();
-        let channel = wrapper::Channel::wrap(&*network, &detail.channel);
+        let channel = wrapper::Channel::wrap(&network, &detail.channel);
 
         self.notify_channel_members(&channel, entry);
 
@@ -245,7 +245,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         match &detail.target {
             update::HistoricMessageTarget::Channel(channel) => {
                 let network = self.network();
-                let channel = wrapper::Channel::wrap(&*network, channel);
+                let channel = wrapper::Channel::wrap(&network, channel);
 
                 self.notify_channel_members(&channel, entry);
             }

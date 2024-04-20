@@ -53,7 +53,7 @@ async fn cert_add(
             if let Some(fp) = cmd
                 .connection()
                 .tls_info()
-                .and_then(|ti| ti.fingerprint.as_ref().map(|f| f.as_str()))
+                .and_then(|ti| ti.fingerprint.as_deref())
             {
                 fp
             } else {
@@ -65,7 +65,7 @@ async fn cert_add(
         }
     };
 
-    if net.account_with_fingerprint(&fingerprint).is_some() {
+    if net.account_with_fingerprint(fingerprint).is_some() {
         cmd.notice("That fingerprint is already in use");
         return Ok(());
     }

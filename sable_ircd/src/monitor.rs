@@ -45,10 +45,7 @@ impl MonitorSet {
         nick: Nickname,
         monitor: ConnectionId,
     ) -> Result<(), MonitorInsertError> {
-        let entry = self
-            .monitors_by_connection
-            .entry(monitor)
-            .or_insert_with(HashSet::new);
+        let entry = self.monitors_by_connection.entry(monitor).or_default();
         if entry.len() >= self.max_per_connection {
             return Err(MonitorInsertError::TooManyMonitorsPerConnection {
                 max: self.max_per_connection,
@@ -58,7 +55,7 @@ impl MonitorSet {
         entry.insert(nick);
         self.monitors_by_nickname
             .entry(nick)
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(monitor);
         Ok(())
     }
@@ -131,7 +128,7 @@ impl MonitoredItem for update::UserNickChange {
         if self.user.nickname != self.new_nick {
             // Don't notify on case change
             notify_monitors(server, &self.user.nickname, || {
-                make_numeric!(MonOffline, &self.user.nickname.to_string())
+                make_numeric!(MonOffline, self.user.nickname.as_ref())
             })?;
             notify_monitors(server, &self.new_nick, || {
                 make_numeric!(
@@ -151,7 +148,7 @@ impl MonitoredItem for update::UserNickChange {
 impl MonitoredItem for update::UserQuit {
     fn try_notify_monitors(&self, server: &ClientServer) -> Result<()> {
         notify_monitors(server, &self.user.nickname, || {
-            make_numeric!(MonOffline, &self.user.nickname.to_string())
+            make_numeric!(MonOffline, self.user.nickname.as_ref())
         })
     }
 }

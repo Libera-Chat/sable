@@ -13,8 +13,7 @@ impl ChannelRole<'_> {
     pub fn channel(&self) -> Option<wrapper::ChannelRegistration> {
         self.data
             .channel
-            .map(|id| self.network.channel_registration(id).ok())
-            .flatten()
+            .and_then(|id| self.network.channel_registration(id).ok())
     }
 
     pub fn name(&self) -> &state::ChannelRoleName {

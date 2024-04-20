@@ -36,8 +36,7 @@ fn handle_monitor_add(
     let mut monitors = server.monitors.write();
     let res = targets
         .iter()
-        .map(|&target| monitors.insert(target, cmd.connection_id()))
-        .collect::<Result<(), _>>()
+        .try_for_each(|&target| monitors.insert(target, cmd.connection_id()))
         .map_err(
             |MonitorInsertError::TooManyMonitorsPerConnection { max, current }| {
                 CommandError::Numeric(make_numeric!(MonListFull, max, current))

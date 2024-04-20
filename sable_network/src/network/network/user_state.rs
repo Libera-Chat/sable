@@ -30,10 +30,9 @@ impl Network {
             let removed_nickname = if let Ok(binding) = self.nick_binding_for_user(user.id) {
                 let nick = binding.nick();
                 self.nick_bindings.remove(&nick);
-                let historic_nick_users =
-                    self.historic_nick_users.entry(nick.clone()).or_insert_with(
-                        || VecDeque::with_capacity(8), // arbitrary power of two
-                    );
+                let historic_nick_users = self.historic_nick_users.entry(nick).or_insert_with(
+                    || VecDeque::with_capacity(8), // arbitrary power of two
+                );
                 if historic_nick_users.len() == historic_nick_users.capacity() {
                     historic_nick_users.pop_back();
                 }
@@ -205,9 +204,9 @@ impl Network {
             target,
             detail.username,
             detail.visible_hostname,
-            detail.realname.clone(),
+            detail.realname,
             detail.mode.clone(),
-            detail.account.clone(),
+            detail.account,
         );
 
         // First insert the user (with no nickname yet) so that the nick binding can see
@@ -250,8 +249,8 @@ impl Network {
         updates: &dyn NetworkUpdateReceiver,
     ) {
         if let Some(user) = self.users.get_mut(&target) {
-            let new_reason = update.reason.clone();
-            let mut old_reason = new_reason.clone();
+            let new_reason = update.reason;
+            let mut old_reason = new_reason;
             std::mem::swap(&mut user.away_reason, &mut old_reason);
 
             let update_user = user.clone();

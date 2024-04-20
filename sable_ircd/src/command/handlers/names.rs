@@ -9,7 +9,7 @@ fn handle_names(
 ) -> CommandResult {
     match channel {
         Ok(channel) => Ok(crate::utils::send_channel_names(
-            server, &response, &source, &channel,
+            server, response, &source, &channel,
         )?),
         Err(channel_name) => {
             // "If the channel name is invalid or the channel does not exist, one RPL_ENDOFNAMES numeric

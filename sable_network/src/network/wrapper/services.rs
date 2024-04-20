@@ -17,7 +17,7 @@ impl ServicesData<'_> {
     }
 
     pub fn server_name(&self) -> LookupResult<ServerName> {
-        self.server().map(|s| s.name().clone())
+        self.server().map(|s| *s.name())
     }
 
     pub fn sasl_mechanisms(&self) -> &Vec<String> {

@@ -168,12 +168,12 @@ impl GossipNetwork {
 
     pub fn save_state(&self) -> GossipNetworkState {
         GossipNetworkState {
-            server_name: self.me.name.clone(),
+            server_name: self.me.name,
             peer_states: self
                 .task_state
                 .peers
                 .iter()
-                .map(|peer| (peer.conf.name.clone(), peer.enabled.load(Ordering::SeqCst)))
+                .map(|peer| (peer.conf.name, peer.enabled.load(Ordering::SeqCst)))
                 .collect(),
         }
     }
@@ -241,7 +241,7 @@ impl GossipNetwork {
     }
 
     /// Choose a peer at random that isn't in the provided list
-    pub fn choose_peer_except(&self, except: &Vec<ServerName>) -> Option<&PeerConfig> {
+    pub fn choose_peer_except(&self, except: &[ServerName]) -> Option<&PeerConfig> {
         let ret = self
             .task_state
             .peers
@@ -341,7 +341,7 @@ impl GossipNetwork {
             };
 
             let socket = Self::get_socket_for_addr(local_addr)?;
-            socket.bind(local_addr.clone())?;
+            socket.bind(*local_addr)?;
             match socket.connect(ip_addr).await {
                 Ok(conn) => {
                     tracing::info!("Connected to {} ({})", host_addr, ip_addr);
@@ -575,7 +575,7 @@ impl NetworkTaskState {
 
             let (req_send, mut req_recv) = channel(8);
             let req = Request {
-                received_from: peer_name.clone(),
+                received_from: peer_name,
                 response: req_send,
                 message: msg,
             };

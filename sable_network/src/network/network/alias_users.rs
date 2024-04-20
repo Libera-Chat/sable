@@ -7,12 +7,12 @@ impl Network {
         for (id, user_config) in self.config.alias_users.iter().enumerate() {
             // Create alias users with invalid ID and server ID
             alias_users.insert(
-                user_config.nick.clone(),
+                user_config.nick,
                 state::User {
                     id: UserId::new(ServerId::new(0), EpochId::new(0), id as LocalId),
-                    user: user_config.user.clone(),
-                    visible_host: user_config.host.clone(),
-                    realname: user_config.realname.clone(),
+                    user: user_config.user,
+                    visible_host: user_config.host,
+                    realname: user_config.realname,
                     mode: state::UserMode::new(UserModeSet::new()),
                     oper_privileges: None,
                     away_reason: None, // Never away

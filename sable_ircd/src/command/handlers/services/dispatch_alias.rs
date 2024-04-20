@@ -6,9 +6,9 @@ pub async fn dispatch_alias_command(
     alias: &str,
     command_str: &str,
 ) -> CommandResult {
-    let (command, args) = command_str.split_once(" ").unwrap_or((command_str, ""));
+    let (command, args) = command_str.split_once(' ').unwrap_or((command_str, ""));
 
-    let new_args = args.split(" ").map(ToOwned::to_owned).collect::<Vec<_>>();
+    let new_args = args.split(' ').map(ToOwned::to_owned).collect::<Vec<_>>();
     let new_arg_iter = ArgListIter::new(&new_args);
 
     let new_cmd = ServicesCommand::new(cmd, command, new_arg_iter, Some(through_user));

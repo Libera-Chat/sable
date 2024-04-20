@@ -112,9 +112,8 @@ pub fn load_network_config(
     let mut config = String::new();
     file.read_to_string(&mut config)
         .map_err(|e| sable_network::sync::ConfigError::IoError(e, filename.as_ref().to_owned()))?;
-    Ok(json5::from_str(&config).map_err(|e| {
-        sable_network::sync::ConfigError::JsonError(e, filename.as_ref().to_owned())
-    })?)
+    json5::from_str(&config)
+        .map_err(|e| sable_network::sync::ConfigError::JsonError(e, filename.as_ref().to_owned()))
 }
 
 impl From<LogLevel> for LevelFilter {

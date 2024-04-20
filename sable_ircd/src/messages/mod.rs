@@ -78,7 +78,7 @@ impl OutboundClientMessage {
         Self {
             caps: Default::default(),
             tags: Default::default(),
-            content: content,
+            content,
         }
     }
 
@@ -93,7 +93,7 @@ impl OutboundClientMessage {
     }
 
     /// Add a set of message tags to the message
-    pub fn with_tags(mut self, tags: &Vec<OutboundMessageTag>) -> Self {
+    pub fn with_tags(mut self, tags: &[OutboundMessageTag]) -> Self {
         self.tags.extend_from_slice(tags);
         self
     }

@@ -66,45 +66,39 @@ impl<'a> Command for ServicesCommand<'a> {
     }
 
     fn notify_error(&self, err: CommandError) {
-        match err
-        {
+        match err {
             CommandError::UnderlyingError(_) => {
                 todo!()
             }
             CommandError::UnknownError(_) => {
                 todo!()
             }
-/*
+            /*
             CommandError::CustomError => {
                 todo!()
             }
-*/
+            */
             CommandError::CommandNotFound(cmd) => {
                 self.notice(format_args!("Unknown command {}", cmd.to_ascii_uppercase()));
             }
             CommandError::NotEnoughParameters => {
                 self.notice("Invalid parameters");
             }
-            CommandError::LookupError(le) => {
-                match le
-                {
-                    LookupError::NoSuchNick(nick) => {
-                        self.notice(format_args!("There is no such nick {}", nick))
-                    }
-                    LookupError::NoSuchChannelName(name) => {
-                        self.notice(format_args!("Channel {} does not exist", name))
-                    }
-                    LookupError::NoSuchAccountNamed(name) => {
-                        self.notice(format_args!("{} is not registered", name))
-                    }
-                    LookupError::ChannelNotRegistered(name) => {
-                        self.notice(format_args!("{} is not registered", name))
-                    }
-                    err => {
-                        self.notice(format_args!("Unknown error: {}", err))
-                    }
+            CommandError::LookupError(le) => match le {
+                LookupError::NoSuchNick(nick) => {
+                    self.notice(format_args!("There is no such nick {}", nick))
                 }
-            }
+                LookupError::NoSuchChannelName(name) => {
+                    self.notice(format_args!("Channel {} does not exist", name))
+                }
+                LookupError::NoSuchAccountNamed(name) => {
+                    self.notice(format_args!("{} is not registered", name))
+                }
+                LookupError::ChannelNotRegistered(name) => {
+                    self.notice(format_args!("{} is not registered", name))
+                }
+                err => self.notice(format_args!("Unknown error: {}", err)),
+            },
             CommandError::InvalidNickname(name) => {
                 self.notice(format_args!("Invalid nickname {}", name));
             }
@@ -131,6 +125,7 @@ impl<'a> Command for ServicesCommand<'a> {
                     PermissionError::User(ue) =>
                     {
                         use UserPermissionError::*;
+                        #[allow(clippy::single_match)] // For consistency with other branches
                         match ue {
                             NotLoggedIn => { self.notice("You are not logged in") }
                             _ => {}
@@ -158,12 +153,29 @@ impl<'a> Command for ServicesCommand<'a> {
                 }
             }
             CommandError::Numeric(n) => {
-                tracing::warn!("Translating unknown error numeric from services response: {:?}", n);
+                tracing::warn!(
+                    "Translating unknown error numeric from services response: {:?}",
+                    n
+                );
                 self.notice(format_args!("Unknown error: {}", n.debug_format()));
             }
-            CommandError::Fail { command, code, context, description } => {
-                tracing::warn!("Translating unknown error numeric from services response: {} {} {} :{}", command, code, context, description);
-                self.notice(format_args!("Unknown error: {} {} {} :{}", command, code, context, description));
+            CommandError::Fail {
+                command,
+                code,
+                context,
+                description,
+            } => {
+                tracing::warn!(
+                    "Translating unknown error numeric from services response: {} {} {} :{}",
+                    command,
+                    code,
+                    context,
+                    description
+                );
+                self.notice(format_args!(
+                    "Unknown error: {} {} {} :{}",
+                    command, code, context, description
+                ));
             }
         }
     }

@@ -16,7 +16,7 @@ fn random_batch_name() -> String {
     format!("{:x}", rand::random::<u128>())
 }
 
-impl<'a, Underlying: MessageSink> BatchBuilder<Underlying> {
+impl<Underlying: MessageSink> BatchBuilder<Underlying> {
     /// Construct a new builder with the given name
     pub(super) fn with_name(
         batch_type: impl ToString,
@@ -98,7 +98,7 @@ pub struct MessageBatch<Underlying: MessageSink> {
     target: Underlying,
 }
 
-impl<'a, Underlying: MessageSink> Drop for MessageBatch<Underlying> {
+impl<Underlying: MessageSink> Drop for MessageBatch<Underlying> {
     fn drop(&mut self) {
         let end_msg =
             message::BatchEnd::new(&self.name).with_required_capabilities(self.capability);
@@ -106,7 +106,7 @@ impl<'a, Underlying: MessageSink> Drop for MessageBatch<Underlying> {
     }
 }
 
-impl<'a, Underlying: MessageSink> MessageSink for MessageBatch<Underlying> {
+impl<Underlying: MessageSink> MessageSink for MessageBatch<Underlying> {
     fn send(&self, msg: OutboundClientMessage) {
         let tag = OutboundMessageTag::new("batch", Some(self.name.clone()), self.capability);
         let message = msg.with_tag(tag);
@@ -162,7 +162,7 @@ impl<Sink: MessageSink> LazyMessageBatch<Sink> {
     }
 }
 
-impl<'a, Underlying: MessageSink> Drop for LazyMessageBatch<Underlying> {
+impl<Underlying: MessageSink> Drop for LazyMessageBatch<Underlying> {
     fn drop(&mut self) {
         // Only send the batch end if we sent the start
         if self.is_opened() {

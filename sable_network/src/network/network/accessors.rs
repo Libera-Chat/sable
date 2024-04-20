@@ -82,7 +82,7 @@ impl Network {
     /// otherwise a hashed nickname (as used in collision resolution) is returned
     pub fn infallible_nick_for_user(&self, user: UserId) -> Nickname {
         if let Some((nick, _)) = self.find_alias_user_with_id(user) {
-            nick.clone()
+            *nick
         } else if let Ok(binding) = self.nick_binding_for_user(user) {
             binding.nick()
         } else {
@@ -133,7 +133,7 @@ impl Network {
         self.channels
             .values()
             .find(|x| &x.name == name)
-            .ok_or_else(|| NoSuchChannelName(*name))
+            .ok_or(NoSuchChannelName(*name))
     }
 
     /// Look up a channel by name.
@@ -141,7 +141,7 @@ impl Network {
         self.channels
             .values()
             .find(|x| &x.name == name)
-            .ok_or_else(|| NoSuchChannelName(*name))
+            .ok_or(NoSuchChannelName(*name))
             .wrap(self)
     }
 
@@ -237,7 +237,7 @@ impl Network {
         self.current_services
             .as_ref()
             .and_then(|state| self.servers.get(&state.server_id))
-            .map(|s| s.name.clone())
+            .map(|s| s.name)
     }
 
     /// Retrieve the current services data
@@ -265,7 +265,7 @@ impl Network {
         self.accounts
             .values()
             .find(|a| &a.name == name)
-            .ok_or_else(|| LookupError::NoSuchAccountNamed(name.clone()))
+            .ok_or(LookupError::NoSuchAccountNamed(*name))
             .wrap(self)
     }
 
