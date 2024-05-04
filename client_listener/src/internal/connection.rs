@@ -2,7 +2,7 @@ use crate::internal::*;
 use crate::*;
 
 use sha1::{Digest, Sha1};
-use std::{convert::TryInto, net::IpAddr};
+use std::net::IpAddr;
 use tokio::{
     io::AsyncWriteExt,
     net::TcpStream,
@@ -48,7 +48,7 @@ impl InternalConnection {
                             .map(|cert| {
                                 let mut hasher = Sha1::new();
                                 hasher.update(&cert.0);
-                                hex::encode(hasher.finalize()).as_str().try_into().unwrap()
+                                hex::encode(hasher.finalize()).as_str().into()
                             });
 
                         tls_info = Some(TlsInfo { fingerprint });

@@ -94,10 +94,10 @@ fn handle_chathistory(
 
             send_history_for_target(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 None,
                 to_ts,
                 limit,
@@ -372,7 +372,7 @@ fn send_history_entries<'a>(
     backward_entries: Vec<&'a HistoryLogEntry>,
     forward_entries: Vec<&'a HistoryLogEntry>,
 ) -> CommandResult {
-    if backward_entries.len() == 0 && forward_entries.len() == 0 {
+    if backward_entries.is_empty() && forward_entries.is_empty() {
         into.send(message::Fail::new(
             "CHATHISTORY",
             "INVALID_TARGET",

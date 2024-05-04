@@ -374,7 +374,7 @@ impl GossipNetwork {
         local_addr.set_port(0);
         let connector = TlsConnector::from(Arc::clone(&self.tls_client_config));
         let conn = Self::connect(&local_addr, &peer.address).await?;
-        let server_name = (&peer.name.value() as &str)
+        let server_name = (peer.name.value() as &str)
             .try_into()
             .expect("Invalid server name");
         let stream = connector.connect(server_name, conn).await?;
