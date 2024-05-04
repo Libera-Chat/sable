@@ -1,5 +1,6 @@
 use super::*;
 
+#[allow(clippy::too_many_arguments)]
 #[command_handler("RENAME")]
 async fn handle_rename(
     server: &ClientServer,

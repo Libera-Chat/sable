@@ -10,7 +10,7 @@ impl ClientServer {
                 conn.send(make_numeric!(YoureBanned, &reason).format_for(self, &UnknownTarget));
             }
             SaslRequired(reason) => {
-                if reason.len() > 0 {
+                if !reason.is_empty() {
                     conn.send(message::Notice::new(
                         self,
                         &UnknownTarget,
@@ -56,7 +56,7 @@ impl ClientServer {
                 }
 
                 // If we get this far, we're registering a new user
-                if let Err(e) = self.check_user_access(&*self.network(), &*conn) {
+                if let Err(e) = self.check_user_access(&self.network(), &conn) {
                     self.notify_access_error(&e, conn.as_ref());
                     RwLockUpgradableReadGuard::upgrade(connections).remove(connection_id);
                     return;
@@ -82,7 +82,7 @@ impl ClientServer {
                         nickname: *pre_client.nick.get().unwrap(),
                         username: *pre_client.user.get().unwrap(),
                         visible_hostname: *pre_client.hostname.get().unwrap(),
-                        realname: pre_client.realname.get().unwrap().clone(),
+                        realname: *pre_client.realname.get().unwrap(),
                         mode: state::UserMode::new(umodes),
                         server: self.node.id(),
                         account: pre_client.sasl_account.get().cloned(),

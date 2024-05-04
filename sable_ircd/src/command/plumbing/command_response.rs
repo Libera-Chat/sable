@@ -82,7 +82,7 @@ pub struct LabeledResponseSink<Sink: MessageSink> {
     batch: LazyMessageBatch<Arc<Sink>>,
 }
 
-impl<'a, Sink: MessageSink> LabeledResponseSink<Sink> {
+impl<Sink: MessageSink> LabeledResponseSink<Sink> {
     pub(in crate::command) fn new(
         response_source: String,
         response_target: String,

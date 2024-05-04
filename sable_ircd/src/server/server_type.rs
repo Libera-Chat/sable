@@ -87,7 +87,7 @@ impl sable_server::ServerType for ClientServer {
             myinfo: Self::build_myinfo(),
             isupport: Self::build_basic_isupport(&config),
             client_caps: CapabilityRepository::new(),
-            node: node,
+            node,
             listeners: Movable::new(client_listeners),
             info_strings: config.info_strings,
             monitors: MonitorSet::new(config.monitor.max_per_connection.into()).into(),

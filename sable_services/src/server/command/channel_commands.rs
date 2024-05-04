@@ -14,7 +14,7 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
 
         let new_channel_registration = state::ChannelRegistration {
             id: self.node.ids().next_channel_registration(),
-            channelname: channel.name().clone(),
+            channelname: *channel.name(),
         };
 
         let new_channel_registration =

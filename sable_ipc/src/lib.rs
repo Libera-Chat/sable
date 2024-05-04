@@ -114,13 +114,10 @@ pub struct Receiver<T: DeserializeOwned> {
 
 impl<T: DeserializeOwned> Receiver<T> {
     fn new(socket: UnixDatagram, max_len: u64) -> Self {
-        let mut recv_buf = Vec::new();
-        recv_buf.resize(max_len as usize, 0u8);
-
         Self {
             socket: Some(socket),
             max_len,
-            recv_buffer: Mutex::new(recv_buf),
+            recv_buffer: Mutex::new(vec![0u8; max_len as usize]),
             _phantom: PhantomData,
         }
     }

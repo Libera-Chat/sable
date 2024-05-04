@@ -91,7 +91,7 @@ impl ISupportBuilder {
         let mut result = Vec::new();
         let mut current = Cell::new(String::new());
 
-        for (i, entry) in (&self.entries).iter().enumerate() {
+        for (i, entry) in self.entries.iter().enumerate() {
             let s = entry.format();
 
             if current.get_mut().len() + s.len() + 1 > MAX_LEN {

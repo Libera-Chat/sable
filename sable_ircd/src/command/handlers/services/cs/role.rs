@@ -78,7 +78,7 @@ async fn role_edit(
         let (adding, flag_name) = match flag_str.as_bytes()[0] {
             b'+' => (true, &flag_str[1..]),
             b'-' => (false, &flag_str[1..]),
-            _ => (true, &flag_str[..]),
+            _ => (true, flag_str),
         };
 
         let Ok(flag) = ChannelAccessFlag::from_str(flag_name) else {
@@ -154,7 +154,7 @@ async fn role_add(
         source: source.account.id(),
         channel: chan.id(),
         name: target_role_name,
-        flags: flags,
+        flags,
     };
     let registration_response = services_target.send_remote_request(request).await;
 

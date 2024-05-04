@@ -31,7 +31,7 @@ async fn handle_notice(
          */
         return Ok(());
     };
-    if msg.len() == 0 {
+    if msg.is_empty() {
         // Ditto
         return Ok(());
     }
@@ -44,7 +44,7 @@ async fn handle_notice(
             }
         }
         TargetParameter::Channel(channel) => {
-            if server.policy().can_send(&source, &channel, msg).is_err() {
+            if server.policy().can_send(&source, channel, msg).is_err() {
                 // Silent error, see above
                 return Ok(());
             }

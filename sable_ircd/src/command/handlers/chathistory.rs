@@ -34,6 +34,7 @@ fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[command_handler("CHATHISTORY")]
 fn handle_chathistory(
     source: UserSource,
@@ -66,7 +67,7 @@ fn handle_chathistory(
             // The spec allows the from and to timestamps in either order; list_targets requires from < to
             list_targets(
                 server,
-                &response,
+                response,
                 source,
                 Some(min(from_ts, to_ts)),
                 Some(max(from_ts, to_ts)),
@@ -93,10 +94,10 @@ fn handle_chathistory(
 
             send_history_for_target(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 None,
                 to_ts,
                 limit,
@@ -120,7 +121,7 @@ fn handle_chathistory(
 
             send_history_for_target(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
                 target,
@@ -147,10 +148,10 @@ fn handle_chathistory(
 
             send_history_for_target(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 Some(start_ts),
                 None,
                 Some(0), // backward limit
@@ -176,10 +177,10 @@ fn handle_chathistory(
 
             send_history_for_target(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 Some(around_ts),
                 None,
                 Some(limit / 2), // backward limit
@@ -204,10 +205,10 @@ fn handle_chathistory(
 
             send_history_for_target(
                 server,
-                &response,
+                response,
                 source,
                 subcommand,
-                &target,
+                target,
                 Some(start_ts),
                 Some(end_ts),
                 Some(0), // backward limit
@@ -371,7 +372,7 @@ fn send_history_entries<'a>(
     backward_entries: Vec<&'a HistoryLogEntry>,
     forward_entries: Vec<&'a HistoryLogEntry>,
 ) -> CommandResult {
-    if backward_entries.len() == 0 && forward_entries.len() == 0 {
+    if backward_entries.is_empty() && forward_entries.is_empty() {
         into.send(message::Fail::new(
             "CHATHISTORY",
             "INVALID_TARGET",

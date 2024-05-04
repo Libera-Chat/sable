@@ -116,7 +116,7 @@ impl ClientCapabilitySet {
         self.0 &= !(cap as u64);
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = ClientCapability> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = ClientCapability> + '_ {
         ClientCapability::ALL
             .iter()
             .cloned()
@@ -156,7 +156,7 @@ impl AtomicCapabilitySet {
         self.0.fetch_and(!(cap as u64), Ordering::Relaxed);
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = ClientCapability> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = ClientCapability> + '_ {
         ClientCapability::ALL
             .iter()
             .cloned()

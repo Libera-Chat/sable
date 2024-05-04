@@ -14,7 +14,7 @@ const fn default_bcrypt_cost() -> u32 {
 /// [`bcrypt::Version`] but it's Serde-deserializable
 ///
 /// [Bcrypt versions](https://en.wikipedia.org/wiki/Bcrypt#Versioning_history)
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Default)]
 pub enum BcryptVersion {
     #[serde(rename = "2a")]
     TwoA,
@@ -23,13 +23,8 @@ pub enum BcryptVersion {
     #[serde(rename = "2y")]
     TwoY,
     #[serde(rename = "2b")]
+    #[default]
     TwoB,
-}
-
-impl Default for BcryptVersion {
-    fn default() -> BcryptVersion {
-        BcryptVersion::TwoB
-    }
 }
 
 impl From<BcryptVersion> for bcrypt::Version {

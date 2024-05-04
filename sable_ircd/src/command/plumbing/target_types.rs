@@ -43,7 +43,7 @@ impl<'a> PositionalArgument<'a> for RegisteredChannel<'a> {
                 registration: reg,
             })
         } else {
-            Err(CommandError::ChannelNotRegistered(chan.name().clone()))
+            Err(CommandError::ChannelNotRegistered(*chan.name()))
         }
     }
 }

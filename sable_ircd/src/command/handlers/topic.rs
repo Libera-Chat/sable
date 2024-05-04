@@ -11,7 +11,7 @@ async fn handle_topic(
     new_topic: Option<&str>,
 ) -> CommandResult {
     if let Some(text) = new_topic {
-        server.policy().can_set_topic(&source, &channel, &text)?;
+        server.policy().can_set_topic(&source, &channel, text)?;
 
         let details = event::details::NewChannelTopic {
             channel: channel.id(),

@@ -36,7 +36,7 @@ impl Account<'_> {
     }
 
     pub fn fingerprints(&self) -> &Vec<String> {
-        &&self.data.authorised_fingerprints
+        &self.data.authorised_fingerprints
     }
 }
 

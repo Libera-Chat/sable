@@ -101,33 +101,33 @@ impl BanRepository {
         &self,
         matching: &PreRegistrationBanSettings,
     ) -> impl Iterator<Item = &state::NetworkBan> {
-        let matches = self.pre_registration_engine.eval(&matching);
+        let matches = self.pre_registration_engine.eval(matching);
 
         matches
             .into_iter()
-            .filter_map(move |id| self.pre_registration_bans.get(&id))
+            .filter_map(move |id| self.pre_registration_bans.get(id))
     }
 
     pub fn find_new_connection(
         &self,
         matching: &NewConnectionBanSettings,
     ) -> impl Iterator<Item = &state::NetworkBan> {
-        let matches = self.new_connection_engine.eval(&matching);
+        let matches = self.new_connection_engine.eval(matching);
 
         matches
             .into_iter()
-            .filter_map(move |id| self.new_connection_bans.get(&id))
+            .filter_map(move |id| self.new_connection_bans.get(id))
     }
 
     pub fn find_pre_sasl(
         &self,
         matching: &PreSaslBanSettings,
     ) -> impl Iterator<Item = &state::NetworkBan> {
-        let matches = self.pre_sasl_engine.eval(&matching);
+        let matches = self.pre_sasl_engine.eval(matching);
 
         matches
             .into_iter()
-            .filter_map(move |id| self.pre_sasl_bans.get(&id))
+            .filter_map(move |id| self.pre_sasl_bans.get(id))
     }
 
     fn compile_engine<V: ChertStructTrait>(

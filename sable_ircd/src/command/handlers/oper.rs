@@ -40,10 +40,5 @@ fn find_oper_block<'a>(
 ) -> Option<&'a config::OperConfig> {
     let conf = net.config();
 
-    for block in &conf.opers {
-        if block.name == oper_name {
-            return Some(block);
-        }
-    }
-    None
+    conf.opers.iter().find(|&block| block.name == oper_name)
 }

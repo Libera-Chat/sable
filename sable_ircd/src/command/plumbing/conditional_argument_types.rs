@@ -12,9 +12,9 @@ impl<T> std::ops::Deref for IfParses<T> {
     }
 }
 
-impl<T> Into<Option<T>> for IfParses<T> {
-    fn into(self) -> Option<T> {
-        self.0
+impl<T> From<IfParses<T>> for Option<T> {
+    fn from(val: IfParses<T>) -> Self {
+        val.0
     }
 }
 

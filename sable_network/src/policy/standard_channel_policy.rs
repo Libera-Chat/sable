@@ -47,6 +47,7 @@ fn has_default_access(channel: &Channel) -> Option<state::ChannelAccessSet> {
         .map(|r| r.flags())
 }
 
+#[allow(clippy::if_same_then_else)]
 fn has_access(user: &User, channel: &Channel, flag: ChannelAccessFlag) -> PermissionResult {
     let assigned = has_assigned_access(user, channel);
     let ephemeral = has_ephemeral_access(user, channel);

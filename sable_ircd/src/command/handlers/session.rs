@@ -37,7 +37,7 @@ fn handle_session(
             if let Some(target_user) = server
                 .network()
                 .raw_users()
-                .find(|u| matches!(&u.session_key, Some(sk) if &sk.key_hash == key))
+                .find(|u| matches!(&u.session_key, Some(sk) if sk.key_hash == key))
             {
                 // Ok to ignore an error here, as that'll only happen if the command is run twice
                 let _ = pre_client.attach_user_id.set(target_user.id);

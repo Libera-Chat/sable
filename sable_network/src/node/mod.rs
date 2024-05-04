@@ -54,6 +54,7 @@ where
 }
 
 impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
+    #[allow(clippy::too_many_arguments)]
     /// Construct a network node.
     ///
     /// Arguments:
@@ -179,7 +180,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     fn build_version() -> String {
         let git_version = crate::build_data::GIT_COMMIT_HASH
             .map(|s| format!("-{}", s))
-            .unwrap_or_else(String::new);
+            .unwrap_or_default();
         let git_dirty = if matches!(crate::build_data::GIT_DIRTY, Some(true)) {
             "-dirty".to_string()
         } else {

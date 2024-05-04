@@ -62,7 +62,7 @@ async fn do_restart(
 ) -> ! {
     let data = SaveData {
         listeners: listeners.save().await.unwrap(),
-        connections: connections.into_iter().map(|(_, c)| c.save()).collect(),
+        connections: connections.into_values().map(|c| c.save()).collect(),
     };
     let fd = to_memfd(data).unwrap();
 

@@ -51,6 +51,7 @@ macro_rules! define_handler_fn
             }
         }
 
+        #[allow(clippy::manual_async_fn)]
         impl<'ctx, T, F, $($ambient,)* $($pos),*> AsyncHandlerFn<'ctx, ($($ambient,)*), ($($pos,)*)> for T
             where T: Fn($($ambient,)* $($pos),*) -> F,
                   T: Send + Sync,

@@ -1,3 +1,5 @@
+#![allow(clippy::crate_in_macro_def)]
+
 use super::*;
 
 /// Makes authentication decisions for users attempting to gain oper access

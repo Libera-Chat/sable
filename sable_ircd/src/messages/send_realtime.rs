@@ -107,7 +107,7 @@ impl SendRealtimeItem for update::ChannelRename {
 
             let fake_part = update::ChannelPart {
                 channel: state::Channel {
-                    name: self.old_name.clone(),
+                    name: self.old_name,
                     ..self.channel.clone()
                 },
                 membership: membership.raw().clone(),
@@ -121,7 +121,7 @@ impl SendRealtimeItem for update::ChannelRename {
 
             let fake_join = update::ChannelJoin {
                 channel: state::Channel {
-                    name: self.new_name.clone(),
+                    name: self.new_name,
                     ..self.channel.clone()
                 },
                 membership: membership.raw().clone(),

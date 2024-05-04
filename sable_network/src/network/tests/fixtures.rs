@@ -43,7 +43,7 @@ impl NetworkBuilder {
             self.id_gen.next_channel(),
             details::NewChannel {
                 mode: state::ChannelMode::new(ChannelModeSet::default()),
-                name: name,
+                name,
             },
         );
     }

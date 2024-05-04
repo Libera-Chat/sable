@@ -47,7 +47,7 @@ const DIGIT: &str = "0123456789";
 
 define_validated! {
     AwayReason(ArrayString<{ AwayReason::LENGTH }>) {
-        if value.len() == 0 {
+        if value.is_empty() {
             Self::error(value)
         } else {
             Ok(())
@@ -67,7 +67,7 @@ define_validated! {
     }
 
     Username(ArrayString<{ Username::LENGTH }>) {
-        if value.len() == 0 {
+        if value.is_empty() {
             Self::error(value)
         } else {
             Ok(())
@@ -75,7 +75,7 @@ define_validated! {
     }
 
     Realname(ArrayString<{ Realname::LENGTH }>) {
-        if value.len() == 0 {
+        if value.is_empty() {
             Self::error(value)
         } else {
             Ok(())
@@ -119,7 +119,7 @@ define_validated! {
                 return Self::error(value);
             }
         }
-        if value.len() == 0 {
+        if value.is_empty() {
             return Self::error(value);
         }
         Ok(())

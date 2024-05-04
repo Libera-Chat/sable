@@ -74,9 +74,9 @@ impl<'a> std::convert::AsRef<wrapper::User<'a>> for UserSource<'a> {
     }
 }
 
-impl<'a> Into<wrapper::User<'a>> for UserSource<'a> {
-    fn into(self) -> wrapper::User<'a> {
-        self.user
+impl<'a> From<UserSource<'a>> for wrapper::User<'a> {
+    fn from(val: UserSource<'a>) -> Self {
+        val.user
     }
 }
 
@@ -84,7 +84,7 @@ impl std::ops::Deref for PreClientSource {
     type Target = PreClient;
 
     fn deref(&self) -> &Self::Target {
-        &self.0.deref()
+        self.0.deref()
     }
 }
 
@@ -100,8 +100,8 @@ impl From<Arc<PreClient>> for PreClientSource {
     }
 }
 
-impl Into<Arc<PreClient>> for PreClientSource {
-    fn into(self) -> Arc<PreClient> {
-        self.0
+impl From<PreClientSource> for Arc<PreClient> {
+    fn from(val: PreClientSource) -> Self {
+        val.0
     }
 }

@@ -19,7 +19,7 @@ impl<const JOINER: char, Item: AsRef<str>, Iter: Iterator<Item = Item>>
                 buf.push_str(item.as_ref());
                 buf
             }),
-            iter: iter,
+            iter,
         }
     }
 }
@@ -34,7 +34,7 @@ impl<const JOINER: char, Item: AsRef<str>, Iter: Iterator<Item = Item>> Iterator
             return None;
         };
 
-        while let Some(item) = self.iter.next() {
+        for item in self.iter.by_ref() {
             let item = item.as_ref();
             if buf.as_bytes().len() + JOINER.len_utf8() + item.as_bytes().len() <= self.line_length
             {

@@ -231,7 +231,7 @@ impl From<ChannelAccessSet> for HumanReadableChannelAccessSet {
 
 impl std::fmt::Display for HumanReadableChannelAccessSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let vec: Vec<_> = self.0.clone().into();
+        let vec: Vec<_> = self.0.into();
         let names: Vec<_> = vec.iter().map(ToString::to_string).collect();
 
         f.write_str(&names.join(","))
@@ -243,7 +243,7 @@ impl serde_with::SerializeAs<ChannelAccessSet> for HumanReadableChannelAccessSet
     where
         S: serde::Serializer,
     {
-        let vec: Vec<ChannelAccessFlag> = source.clone().into();
+        let vec: Vec<ChannelAccessFlag> = (*source).into();
         vec.serialize(serializer)
     }
 }
@@ -263,7 +263,7 @@ impl serde::Serialize for HumanReadableChannelAccessSet {
     where
         S: serde::Serializer,
     {
-        let vec: Vec<ChannelAccessFlag> = self.0.clone().into();
+        let vec: Vec<ChannelAccessFlag> = self.0.into();
         vec.serialize(serializer)
     }
 }

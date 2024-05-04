@@ -10,14 +10,14 @@ async fn handle_privmsg(
     target: TargetParameter<'_>,
     msg: &str,
 ) -> CommandResult {
-    if msg.len() == 0 {
+    if msg.is_empty() {
         return numeric_error!(NoTextToSend);
     }
 
     match &target {
         TargetParameter::User(user) => {
             if let Some(AliasUser { command_alias, .. }) = user.is_alias_user() {
-                return super::services::dispatch_alias_command(cmd, &user, &command_alias, msg)
+                return super::services::dispatch_alias_command(cmd, user, command_alias, msg)
                     .await;
             }
 
@@ -26,7 +26,7 @@ async fn handle_privmsg(
             }
         }
         TargetParameter::Channel(channel) => {
-            server.policy().can_send(&source, &channel, msg)?;
+            server.policy().can_send(&source, channel, msg)?;
         }
     }
 

@@ -18,7 +18,7 @@ impl<'a> CommandSource<'a> {
     pub fn user(&self) -> Option<&wrapper::User<'a>> {
         match self {
             Self::PreClient(_) => None,
-            Self::User(u, _) => Some(&u),
+            Self::User(u, _) => Some(u),
         }
     }
 
@@ -72,7 +72,7 @@ impl ClientCommand {
         message: ClientMessage,
     ) -> Result<Self, CommandError> {
         let net = server.network();
-        let source = Self::translate_message_source(&*net, &*connection)?;
+        let source = Self::translate_message_source(&net, &connection)?;
         let response_target = Self::translate_internal_source(&source, net.as_ref()).format();
         let response_sink = Self::make_response_sink(
             Arc::clone(&connection),
