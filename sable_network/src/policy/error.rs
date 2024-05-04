@@ -32,6 +32,8 @@ pub enum UserPermissionError {
     ReadOnlyUmode,
     /// User isn't logged in (and needs to be)
     NotLoggedIn,
+    /// That user is invisible, and does not share any channel with the requested
+    Invisible,
 }
 
 /// A permission error for a registration-related operation

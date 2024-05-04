@@ -106,6 +106,26 @@ impl Network {
             })
     }
 
+    /// Look up the user currently using the given nickname pattern
+    pub fn users_by_nick_pattern<'a>(
+        &'a self,
+        pattern: &'a NicknameMatcher,
+    ) -> impl Iterator<Item = wrapper::User> + 'a {
+        let pattern = std::rc::Rc::new(pattern);
+        let pattern2 = pattern.clone();
+        let alias_users = self
+            .get_alias_users()
+            .iter()
+            .filter(move |(nick, _)| pattern2.matches(nick))
+            .map(move |(_, user)| User::wrap(self, user));
+        let users = self
+            .nick_bindings
+            .iter()
+            .filter(move |(nick, _)| pattern.matches(nick))
+            .map(move |(_, user)| self.user(user.user).unwrap());
+        alias_users.chain(users)
+    }
+
     /// Remove a user from nick bindings and add it to historical users for that nick
 
     /// Return a nickname binding for the given nick.

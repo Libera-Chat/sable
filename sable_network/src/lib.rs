@@ -26,6 +26,9 @@ pub mod config;
 pub mod audit;
 
 pub mod types {
+    mod matchers;
+    pub use matchers::*;
+
     mod pattern;
     pub use pattern::*;
 }

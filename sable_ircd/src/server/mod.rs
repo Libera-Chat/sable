@@ -158,12 +158,15 @@ impl ClientServer {
     #[tracing::instrument]
     fn build_myinfo() -> MyInfo {
         MyInfo {
-            user_modes: UserModeSet::all().map(|m| m.1).iter().collect(),
-            chan_modes: ChannelModeSet::all().map(|m| m.1).iter().collect(),
+            user_modes: UserModeSet::all().map(|m| m.mode_char()).iter().collect(),
+            chan_modes: ChannelModeSet::all()
+                .map(|m| m.mode_char())
+                .iter()
+                .collect(),
             chan_modes_with_a_parameter: ListModeType::iter()
-                .map(|t| t.mode_letter())
-                .chain(KeyModeType::iter().map(|t| t.mode_letter()))
-                .chain(MembershipFlagSet::all().map(|m| m.1).into_iter())
+                .map(|t| t.mode_char())
+                .chain(KeyModeType::iter().map(|t| t.mode_char()))
+                .chain(MembershipFlagSet::all().map(|m| m.mode_char()).into_iter())
                 .collect(),
         }
     }
@@ -174,6 +177,9 @@ impl ClientServer {
         ret.add(ISupportEntry::simple("EXCEPTS"));
         ret.add(ISupportEntry::simple("INVEX"));
         ret.add(ISupportEntry::simple("FNC"));
+
+        // https://ircv3.net/specs/extensions/utf8-only
+        ret.add(ISupportEntry::simple("UTF8ONLY"));
 
         ret.add(ISupportEntry::int(
             "MONITOR",
@@ -195,10 +201,13 @@ impl ClientServer {
             Username::LENGTH.try_into().unwrap(),
         ));
 
-        let list_modes: String = ListModeType::iter().map(|t| t.mode_letter()).collect();
-        let key_modes: String = KeyModeType::iter().map(|t| t.mode_letter()).collect();
+        let list_modes: String = ListModeType::iter().map(|t| t.mode_char()).collect();
+        let key_modes: String = KeyModeType::iter().map(|t| t.mode_char()).collect();
         let param_modes = "";
-        let simple_modes: String = ChannelModeSet::all().map(|m| m.1).iter().collect();
+        let simple_modes: String = ChannelModeSet::all()
+            .map(|m| m.mode_char())
+            .iter()
+            .collect();
         let chanmodes = format!(
             "{},{},{},{}",
             list_modes, key_modes, param_modes, simple_modes
@@ -210,8 +219,14 @@ impl ClientServer {
         // 'msgid' not supported yet
         ret.add(ISupportEntry::string("MSGREFTYPES", "timestamp"));
 
-        let prefix_modes: String = MembershipFlagSet::all().map(|m| m.1).iter().collect();
-        let prefix_chars: String = MembershipFlagSet::all().map(|m| m.2).iter().collect();
+        let prefix_modes: String = MembershipFlagSet::all()
+            .map(|m| m.mode_char())
+            .iter()
+            .collect();
+        let prefix_chars: String = MembershipFlagSet::all()
+            .map(|m| m.prefix_char())
+            .iter()
+            .collect();
 
         let prefix = format!("({}){}", prefix_modes, prefix_chars);
         ret.add(ISupportEntry::string("PREFIX", &prefix));

@@ -17,7 +17,7 @@ impl ChannelMode<'_> {
     pub fn format(&self) -> String {
         let mut ret = format!("+{}", self.data.modes.to_chars());
         if self.data.key.is_some() {
-            ret.push(KeyModeType::Key.mode_letter());
+            ret.push(KeyModeType::Key.mode_char());
         }
         ret
     }

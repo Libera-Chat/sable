@@ -16,7 +16,7 @@ pub fn format_cmode_changes(detail: &ChannelModeChange) -> (String, Vec<String>)
         changes += "+";
         changes += &detail.added.to_chars();
         if let OptionChange::Set(new_key) = detail.key_change {
-            changes.push(KeyModeType::Key.mode_letter());
+            changes.push(KeyModeType::Key.mode_char());
             params.push(new_key.to_string());
         }
     }
@@ -24,7 +24,7 @@ pub fn format_cmode_changes(detail: &ChannelModeChange) -> (String, Vec<String>)
         changes += "-";
         changes += &detail.removed.to_chars();
         if detail.key_change.is_unset() {
-            changes.push(KeyModeType::Key.mode_letter());
+            changes.push(KeyModeType::Key.mode_char());
             params.push("*".to_string());
         }
     }
@@ -42,18 +42,18 @@ pub fn format_channel_perm_changes(
 
     if !added.is_empty() {
         changes += "+";
-        for (flag, modechar, _) in MembershipFlagSet::all() {
+        for flag in MembershipFlagSet::all() {
             if added.is_set(flag) {
-                changes += &modechar.to_string();
+                changes += &flag.mode_char().to_string();
                 args.push(nick.to_string());
             }
         }
     }
     if !removed.is_empty() {
         changes += "-";
-        for (flag, modechar, _) in MembershipFlagSet::all() {
+        for flag in MembershipFlagSet::all() {
             if removed.is_set(flag) {
-                changes += &modechar.to_string();
+                changes += &flag.mode_char().to_string();
                 args.push(nick.to_string());
             }
         }

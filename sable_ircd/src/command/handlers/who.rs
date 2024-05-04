@@ -2,6 +2,8 @@ use super::*;
 use crate::capability::ClientCapability;
 use crate::utils::make_numeric;
 
+const MAX_RESULTS: usize = 10;
+
 #[command_handler("WHO")]
 fn handle_who(
     server: &ClientServer,
@@ -31,6 +33,18 @@ fn handle_who(
                 None, // membership
             );
         }
+    } else {
+        let nick_pattern = NicknameMatcher::new(Pattern::new(target.to_owned()));
+        network
+            .users_by_nick_pattern(&nick_pattern)
+            .filter(|user| server.policy().can_list_user(&source, user).is_ok())
+            .take(MAX_RESULTS)
+            .for_each(|user| {
+                send_who_reply(
+                    response, &user, None, // channel
+                    None, // membership
+                );
+            });
     }
 
     // If nick/channel is not found, EndOfWho should be the only numeric we send
