@@ -2048,6 +2048,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe232bdf6be8c8de797b22184ee71118d63780ea42ac85b61d1baa6d3b782ae9"
 
 [[package]]
+name = "sable_history"
+version = "0.1.0"
+dependencies = [
+ "built",
+ "sable_macros",
+ "sable_network",
+]
+
+[[package]]
 name = "sable_ipc"
 version = "0.1.0"
 dependencies = [
@@ -2078,6 +2087,7 @@ dependencies = [
  "pwhash",
  "rand",
  "rustls",
+ "sable_history",
  "sable_macros",
  "sable_network",
  "sable_server",

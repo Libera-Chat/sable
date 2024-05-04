@@ -9,6 +9,7 @@ debug = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+sable_history = { path = "../sable_history" }
 sable_macros = { path = "../sable_macros" }
 sable_network = { path = "../sable_network" }
 sable_server = { path = "../sable_server" }

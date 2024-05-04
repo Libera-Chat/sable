@@ -16,6 +16,21 @@ impl TargetParameter<'_> {
     }
 }
 
+impl<'a> From<&TargetParameter<'a>> for sable_history::TargetId {
+    fn from(value: &TargetParameter) -> Self {
+        match value {
+            TargetParameter::User(u) => u.id().into(),
+            TargetParameter::Channel(c) => c.id().into(),
+        }
+    }
+}
+
+impl<'a> From<TargetParameter<'a>> for sable_history::TargetId {
+    fn from(value: TargetParameter) -> Self {
+        (&value).into()
+    }
+}
+
 impl<'a> PositionalArgument<'a> for TargetParameter<'a> {
     fn parse_str(ctx: &'a dyn Command, value: &'a str) -> Result<Self, CommandError> {
         if let Ok(chname) = ChannelName::from_str(value) {

@@ -1,7 +1,8 @@
+use sable_history::{HistoryRequest, HistoryService};
+
 use super::*;
 use crate::{capability::ClientCapability, utils};
 use messages::send_history::SendHistoryItem;
-use sable_network::network::update::HistoricMessageTarget;
 
 use std::cmp::{max, min};
 
@@ -34,9 +35,19 @@ fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<
     }
 }
 
+fn parse_limit(s: &str) -> Result<usize, CommandError> {
+    s.parse().map_err(|_| CommandError::Fail {
+        command: "CHATHISTORY",
+        code: "INVALID_PARAMS",
+        context: "".to_string(),
+        description: "Invalid limit".to_string(),
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 #[command_handler("CHATHISTORY")]
 fn handle_chathistory(
+    ctx: &dyn Command,
     source: UserSource,
     server: &ClientServer,
     response: &dyn CommandResponse,
@@ -49,20 +60,10 @@ fn handle_chathistory(
     let source = source.deref();
 
     match subcommand.to_ascii_uppercase().as_str() {
-        "TARGETS" => {
+        "TARGET" => {
             let from_ts = parse_msgref(subcommand, None, arg_1)?;
             let to_ts = parse_msgref(subcommand, None, arg_2)?;
-            let limit = arg_3.parse().ok();
-
-            if limit.is_none() {
-                response.send(message::Fail::new(
-                    "CHATHISTORY",
-                    "INVALID_PARAMS",
-                    "",
-                    "Invalid limit",
-                ));
-                return Ok(());
-            }
+            let limit = parse_limit(arg_3)?;
 
             // The spec allows the from and to timestamps in either order; list_targets requires from < to
             list_targets(
@@ -71,178 +72,76 @@ fn handle_chathistory(
                 source,
                 Some(min(from_ts, to_ts)),
                 Some(max(from_ts, to_ts)),
-                limit,
+                Some(limit),
             );
         }
-        "LATEST" => {
+        normalized_subcommand => {
             let target = arg_1;
-            let to_ts = match arg_2 {
-                "*" => None,
-                _ => Some(parse_msgref(subcommand, Some(target), arg_2)?),
-            };
+            let target_id = TargetParameter::parse_str(ctx, target)
+                .map_err(|_| CommandError::Fail {
+                    command: "CHATHISTORY",
+                    code: "INVALID_TARGET",
+                    context: format!("{} {}", subcommand, target),
+                    description: format!("Cannot fetch history from {}", target),
+                })?
+                .into();
+            let request = match normalized_subcommand {
+                "LATEST" => {
+                    let to_ts = match arg_2 {
+                        "*" => None,
+                        _ => Some(parse_msgref(subcommand, Some(target), arg_2)?),
+                    };
+                    let limit = parse_limit(arg_3)?;
 
-            let limit = arg_3.parse().ok();
-            if limit.is_none() {
-                response.send(message::Fail::new(
-                    "CHATHISTORY",
-                    "INVALID_PARAMS",
-                    "",
-                    "Invalid limit",
-                ));
-                return Ok(());
-            }
+                    HistoryRequest::Latest { to_ts, limit }
+                }
+                "BEFORE" => {
+                    let from_ts = parse_msgref(subcommand, Some(target), arg_2)?;
+                    let limit = parse_limit(arg_3)?;
 
-            send_history_for_target(
-                server,
-                response,
-                source,
-                subcommand,
-                target,
-                None,
-                to_ts,
-                limit,
-                Some(0), // forward limit
-            )?;
-        }
-        "BEFORE" => {
-            let target = arg_1;
-            let from_ts = parse_msgref(subcommand, Some(target), arg_2)?;
+                    HistoryRequest::Before { from_ts, limit }
+                }
+                "AFTER" => {
+                    let start_ts = parse_msgref(subcommand, Some(target), arg_2)?;
+                    let limit = parse_limit(arg_3)?;
 
-            let limit = arg_3.parse().ok();
-            if limit.is_none() {
-                response.send(message::Fail::new(
-                    "CHATHISTORY",
-                    "INVALID_PARAMS",
-                    "",
-                    "Invalid limit",
-                ));
-                return Ok(());
-            }
+                    HistoryRequest::After { start_ts, limit }
+                }
+                "AROUND" => {
+                    let around_ts = parse_msgref(subcommand, Some(target), arg_2)?;
+                    let limit = parse_limit(arg_3)?;
 
-            send_history_for_target(
-                server,
-                response,
-                source,
-                subcommand,
-                target,
-                Some(from_ts),
-                None,
-                limit,
-                Some(0), // forward limit
-            )?;
-        }
-        "AFTER" => {
-            let target = arg_1;
-            let start_ts = parse_msgref(subcommand, Some(target), arg_2)?;
+                    HistoryRequest::Around { around_ts, limit }
+                }
+                "BETWEEN" => {
+                    let start_ts = parse_msgref(subcommand, Some(target), arg_2)?;
+                    let end_ts = parse_msgref(subcommand, Some(target), arg_3)?;
+                    let limit = parse_limit(arg_4.unwrap_or(""))?;
 
-            let limit = arg_3.parse().ok();
-            if limit.is_none() {
-                response.send(message::Fail::new(
-                    "CHATHISTORY",
-                    "INVALID_PARAMS",
-                    "",
-                    "Invalid limit",
-                ));
-                return Ok(());
-            }
-
-            send_history_for_target(
-                server,
-                response,
-                source,
-                subcommand,
-                target,
-                Some(start_ts),
-                None,
-                Some(0), // backward limit
-                limit,
-            )?;
-        }
-        "AROUND" => {
-            let target = arg_1;
-            let around_ts = parse_msgref(subcommand, Some(target), arg_2)?;
-
-            let limit = match arg_3.parse::<usize>().ok() {
-                Some(limit) => limit,
-                None => {
+                    HistoryRequest::Between {
+                        start_ts,
+                        end_ts,
+                        limit,
+                    }
+                }
+                _ => {
                     response.send(message::Fail::new(
                         "CHATHISTORY",
                         "INVALID_PARAMS",
-                        "",
-                        "Invalid limit",
+                        subcommand,
+                        "Invalid subcommand",
                     ));
                     return Ok(());
                 }
             };
 
-            send_history_for_target(
-                server,
-                response,
-                source,
-                subcommand,
-                target,
-                Some(around_ts),
-                None,
-                Some(limit / 2), // backward limit
-                Some(limit / 2), // forward limit
-            )?;
-        }
-        "BETWEEN" => {
-            let target = arg_1;
-            let start_ts = parse_msgref(subcommand, Some(target), arg_2)?;
-            let end_ts = parse_msgref(subcommand, Some(target), arg_3)?;
-
-            let limit = arg_4.and_then(|arg| arg.parse().ok());
-            if limit.is_none() {
-                response.send(message::Fail::new(
-                    "CHATHISTORY",
-                    "INVALID_PARAMS",
-                    "",
-                    "Invalid limit",
-                ));
-                return Ok(());
-            }
-
-            send_history_for_target(
-                server,
-                response,
-                source,
-                subcommand,
-                target,
-                Some(start_ts),
-                Some(end_ts),
-                Some(0), // backward limit
-                limit,
-            )?;
-        }
-        _ => {
-            response.send(message::Fail::new(
-                "CHATHISTORY",
-                "INVALID_PARAMS",
-                subcommand,
-                "Invalid subcommand",
-            ));
+            let log = server.node().history();
+            let entries = log.get_entries(source.id(), target_id, request);
+            send_history_entries(response, subcommand, target, entries)?;
         }
     }
 
     Ok(())
-}
-
-// Helper to extract the target name for chathistory purposes from a given event.
-// This might be the source or target of the actual event, or might be None if it's
-// an event type that we don't include in history playback
-fn target_name_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<String> {
-    match &entry.details {
-        NetworkStateChange::NewMessage(message) => {
-            if matches!(&message.target, HistoricMessageTarget::User(user) if user.user.id == for_user)
-            {
-                Some(messages::MessageTarget::format(&message.source))
-            } else {
-                Some(message.target.format())
-            }
-        }
-        _ => None,
-    }
 }
 
 // For listing targets, we iterate backwards through time; this allows us to just collect the
@@ -256,28 +155,8 @@ fn list_targets(
     limit: Option<usize>,
 ) {
     let log = server.node().history();
-    let mut found_targets = HashMap::new();
 
-    for entry in log.entries_for_user_reverse(source.id()) {
-        if matches!(to_ts, Some(ts) if entry.timestamp >= ts) {
-            // Skip over until we hit the timestamp window we're interested in
-            continue;
-        }
-        if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
-            // We're iterating backwards through time; if we hit this then we've
-            // passed the requested window and should stop
-            break;
-        }
-
-        if let Some(target_name) = target_name_for_entry(source.id(), entry) {
-            found_targets.entry(target_name).or_insert(entry.timestamp);
-        }
-
-        // If this pushes us past the the requested limit, stop
-        if matches!(limit, Some(limit) if limit <= found_targets.len()) {
-            break;
-        }
-    }
+    let found_targets = log.list_targets(source.id(), to_ts, from_ts, limit);
 
     // The appropriate cap here is Batch - chathistory is enabled because we got here,
     // but can be used without batch support.
@@ -286,6 +165,22 @@ fn list_targets(
         .start();
 
     for (target, timestamp) in found_targets {
+        let target = match target {
+            sable_history::TargetId::User(user) => server
+                .node()
+                .network()
+                .user(user)
+                .expect("History service returned unknown user id")
+                .nick()
+                .format(),
+            sable_history::TargetId::Channel(channel) => server
+                .node()
+                .network()
+                .channel(channel)
+                .expect("History service returned unknown channel id")
+                .name()
+                .to_string(),
+        };
         batch.send(message::ChatHistoryTarget::new(
             &target,
             &utils::format_timestamp(timestamp),
@@ -293,108 +188,26 @@ fn list_targets(
     }
 }
 
-fn send_history_for_target(
-    server: &ClientServer,
-    into: impl MessageSink,
-    source: &wrapper::User,
-    subcommand: &str,
-    target: &str,
-    from_ts: Option<i64>,
-    to_ts: Option<i64>,
-    backward_limit: Option<usize>,
-    forward_limit: Option<usize>,
-) -> CommandResult {
-    let log = server.node().history();
-    let mut backward_entries = Vec::new();
-    let mut forward_entries = Vec::new();
-
-    if backward_limit != Some(0) {
-        let from_ts = if forward_limit == Some(0) {
-            from_ts
-        } else {
-            // HACK: This is AROUND so we want to capture messages whose timestamp matches exactly
-            // (it's a message in the middle of the range)
-            from_ts.map(|from_ts| from_ts + 1)
-        };
-
-        for entry in log.entries_for_user_reverse(source.id()) {
-            if matches!(from_ts, Some(ts) if entry.timestamp >= ts) {
-                // Skip over until we hit the timestamp window we're interested in
-                continue;
-            }
-            if matches!(to_ts, Some(ts) if entry.timestamp <= ts) {
-                // If we hit this then we've passed the requested window and should stop
-                break;
-            }
-
-            if let Some(event_target) = target_name_for_entry(source.id(), entry) {
-                if event_target == target {
-                    backward_entries.push(entry);
-                }
-            }
-
-            if matches!(backward_limit, Some(limit) if limit <= backward_entries.len()) {
-                break;
-            }
-        }
-    }
-
-    if forward_limit != Some(0) {
-        for entry in log.entries_for_user(source.id()) {
-            if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
-                // Skip over until we hit the timestamp window we're interested in
-                continue;
-            }
-            if matches!(to_ts, Some(ts) if entry.timestamp >= ts) {
-                // If we hit this then we've passed the requested window and should stop
-                break;
-            }
-
-            if let Some(event_target) = target_name_for_entry(source.id(), entry) {
-                if event_target == target {
-                    forward_entries.push(entry);
-                }
-            }
-
-            if matches!(forward_limit, Some(limit) if limit <= forward_entries.len()) {
-                break;
-            }
-        }
-    }
-
-    send_history_entries(into, subcommand, target, backward_entries, forward_entries)
-}
-
 fn send_history_entries<'a>(
     into: impl MessageSink,
     subcommand: &str,
     target: &str,
-    backward_entries: Vec<&'a HistoryLogEntry>,
-    forward_entries: Vec<&'a HistoryLogEntry>,
+    mut entries: impl Iterator<Item = &'a HistoryLogEntry>,
 ) -> CommandResult {
-    if backward_entries.is_empty() && forward_entries.is_empty() {
-        into.send(message::Fail::new(
-            "CHATHISTORY",
-            "INVALID_TARGET",
-            &format!("{} {}", subcommand, target),
-            &format!("Cannot fetch history from {}", target),
-        ));
-    } else {
-        let batch = into
-            .batch("chathistory", ClientCapability::Batch)
-            .with_arguments(&[target])
-            .start();
+    let first_entry = entries.next().ok_or(CommandError::Fail {
+        command: "CHATHISTORY",
+        code: "INVALID_TARGET",
+        context: format!("{} {}", subcommand, target),
+        description: format!("Cannot fetch history from {}", target),
+    })?;
+    let batch = into
+        .batch("chathistory", ClientCapability::Batch)
+        .with_arguments(&[target])
+        .start();
+    first_entry.send_to(&batch, first_entry)?;
 
-        // "The order of returned messages within the batch is implementation-defined, but SHOULD be
-        // ascending time order or some approximation thereof, regardless of the subcommand used."
-        // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
-        for entry in backward_entries
-            .into_iter()
-            .rev()
-            .chain(forward_entries.into_iter())
-        {
-            entry.send_to(&batch, entry)?;
-        }
+    for entry in entries {
+        entry.send_to(&batch, entry)?;
     }
 
     Ok(())

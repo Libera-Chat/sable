@@ -1,12 +1,13 @@
 [workspace]
 resolver = "2"
 members = [
+    "auth_client",
+    "client_listener",
+    "sable_ircd",
+    "sable_ipc",
+    "sable_history",
     "sable_macros",
     "sable_network",
-    "sable_ircd",
-    "client_listener",
-    "auth_client",
-    "sable_ipc",
     "sable_server",
     "sable_services",
 ]
