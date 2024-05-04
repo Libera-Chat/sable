@@ -1,9 +1,23 @@
 use super::*;
 
+// TODO: once rustc implements support for it, use `if(not(Self::Output=CommandResult))`
+// to pick the right note to display.
+#[diagnostic::on_unimplemented(
+    message = "Invalid command handler",
+    label = "`{Self}` is not a valid command handler",
+    note = "All parameter types must implement `AmbientArgument` or `PositionalArgument`",
+    note = "Return type must be `CommandResult`"
+)]
 pub trait HandlerFn<'ctx, Ambient, Positional> {
     fn call(&self, ctx: &'ctx dyn Command, args: ArgListIter<'ctx>) -> CommandResult;
 }
 
+#[diagnostic::on_unimplemented(
+    message = "Invalid command handler",
+    label = "`{Self}` is not a valid command handler",
+    note = "All parameter types must implement `AmbientArgument` or `PositionalArgument`",
+    note = "Return type must be `CommandResult`"
+)]
 pub trait AsyncHandlerFn<'ctx, Ambient, Positional>: Send + Sync {
     fn call(
         &'ctx self,
