@@ -7,38 +7,79 @@ pub struct User<'a> {
     data: &'a state::User,
 }
 
-impl<'a> User<'a> {
+/// Common functionality for current and historic user objects
+pub trait WrappedUser {
     /// Return this object's ID
-    pub fn id(&self) -> UserId {
-        self.data.id
-    }
+    fn id(&self) -> UserId;
 
     /// Infallibly returns a nickname for this user.
     /// If a nickname binding exists, then the associated nick is returned; otherwise,
     /// a fallback nick based on the hash of the user ID is used - this is the same
     /// computed nickname used in case of binding collisions.
-    pub fn nick(&self) -> Nickname {
+    fn nick(&self) -> Nickname;
+
+    /// The user's username
+    fn user(&self) -> &Username;
+
+    /// The user's visible hostname, for client protocol purposes
+    fn visible_host(&self) -> &Hostname;
+
+    /// The user's realname
+    fn realname(&self) -> &Realname;
+
+    /// Returns the user's reason for being away, or the empty string if they are not
+    fn away_reason(&self) -> Option<&AwayReason>;
+
+    /// The user's nick!user@host mask, as used in the IRC client protocol
+    fn nuh(&self) -> String;
+
+    /// Return the user's account name, if any
+    fn account_name(&self) -> Option<Nickname>;
+}
+
+impl WrappedUser for User<'_> {
+    fn id(&self) -> UserId {
+        self.data.id
+    }
+
+    fn nick(&self) -> Nickname {
         self.network.infallible_nick_for_user(self.data.id)
     }
 
-    /// Return the nickname binding currently active for this user
-    pub fn nick_binding(&self) -> LookupResult<NickBinding> {
-        self.network.nick_binding_for_user(self.data.id)
-    }
-
-    /// The user's username
-    pub fn user(&self) -> &Username {
+    fn user(&self) -> &Username {
         &self.data.user
     }
 
-    /// The user's visible hostname, for client protocol purposes
-    pub fn visible_host(&self) -> &Hostname {
+    fn visible_host(&self) -> &Hostname {
         &self.data.visible_host
     }
 
-    /// The user's realname
-    pub fn realname(&self) -> &Realname {
+    fn realname(&self) -> &Realname {
         &self.data.realname
+    }
+
+    fn away_reason(&self) -> Option<&AwayReason> {
+        self.data.away_reason.as_ref()
+    }
+
+    fn nuh(&self) -> String {
+        format!(
+            "{}!{}@{}",
+            self.nick().value(),
+            self.data.user.value(),
+            self.data.visible_host.value()
+        )
+    }
+
+    fn account_name(&self) -> Option<Nickname> {
+        self.account().ok().flatten().map(|a| a.name())
+    }
+}
+
+impl<'a> User<'a> {
+    /// Return the nickname binding currently active for this user
+    pub fn nick_binding(&self) -> LookupResult<NickBinding> {
+        self.network.nick_binding_for_user(self.data.id)
     }
 
     /// The user's current modes
@@ -84,21 +125,6 @@ impl<'a> User<'a> {
     /// Access the user's operator privilege information
     pub fn oper_privileges(&self) -> Option<&state::UserPrivileges> {
         self.data.oper_privileges.as_ref()
-    }
-
-    /// Returns the user's reason for being away, or the empty string if they are not
-    pub fn away_reason(&self) -> Option<&AwayReason> {
-        self.data.away_reason.as_ref()
-    }
-
-    /// The user's nick!user@host mask, as used in the IRC client protocol
-    pub fn nuh(&self) -> String {
-        format!(
-            "{}!{}@{}",
-            self.nick().value(),
-            self.data.user.value(),
-            self.data.visible_host.value()
-        )
     }
 
     /// Return the user's session key, if any

@@ -1,7 +1,7 @@
 use super::*;
 use crate::{capability::ClientCapability, utils};
 use messages::send_history::SendHistoryItem;
-use sable_network::network::update::HistoricMessageTarget;
+use sable_network::network::state::HistoricMessageTarget;
 
 use std::cmp::{max, min};
 
@@ -234,7 +234,7 @@ fn handle_chathistory(
 fn target_name_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<String> {
     match &entry.details {
         NetworkStateChange::NewMessage(message) => {
-            if matches!(&message.target, HistoricMessageTarget::User(user) if user.user.id == for_user)
+            if matches!(&message.target, HistoricMessageTarget::User(user) if user.id() == for_user)
             {
                 Some(messages::MessageTarget::format(&message.source))
             } else {

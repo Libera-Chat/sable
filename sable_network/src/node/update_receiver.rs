@@ -27,12 +27,12 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         detail: &update::UserAwayChange,
     ) -> HandleResult {
         let net = self.network();
-        let source = net.user(detail.user.user.id)?;
+        let source = net.user(detail.user.id())?;
 
         let mut notified = HashSet::new();
 
         // Notify the source user themselves, even if they are not in any channel
-        notified.insert(detail.user.user.id);
+        notified.insert(detail.user.id());
 
         for m1 in source.channels() {
             let chan = m1.channel()?;
@@ -53,7 +53,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         // This fires after the nick change is applied to the network state, so we
         // have to construct the n!u@h string explicitly
         let net = self.network();
-        let source = net.user(detail.user.user.id)?;
+        let source = net.user(detail.user.id())?;
         let mut notified = HashSet::new();
 
         notified.insert(source.id());
@@ -75,7 +75,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         entry: &HistoryLogEntry,
         detail: &update::UserModeChange,
     ) -> HandleResult {
-        self.notify_user(detail.user.user.id, entry.id);
+        self.notify_user(detail.user.id(), entry.id);
         Ok(())
     }
 
@@ -193,7 +193,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     }
 
     fn handle_kick(&self, entry: &HistoryLogEntry, detail: &update::ChannelKick) -> HandleResult {
-        self.notify_user(detail.user.user.id, entry.id);
+        self.notify_user(detail.user.id(), entry.id);
 
         let network = self.network();
         let channel = wrapper::Channel::wrap(&network, &detail.channel);
@@ -204,7 +204,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     }
 
     fn handle_part(&self, entry: &HistoryLogEntry, detail: &update::ChannelPart) -> HandleResult {
-        self.notify_user(detail.user.user.id, entry.id);
+        self.notify_user(detail.user.id(), entry.id);
 
         let network = self.network();
         let channel = wrapper::Channel::wrap(&network, &detail.channel);
@@ -219,7 +219,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         entry: &HistoryLogEntry,
         detail: &update::ChannelInvite,
     ) -> HandleResult {
-        self.notify_user(detail.user.user.id, entry.id);
+        self.notify_user(detail.user.id(), entry.id);
 
         Ok(())
     }
@@ -243,24 +243,24 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         detail: &update::NewMessage,
     ) -> HandleResult {
         match &detail.target {
-            update::HistoricMessageTarget::Channel(channel) => {
+            state::HistoricMessageTarget::Channel(channel) => {
                 let network = self.network();
                 let channel = wrapper::Channel::wrap(&network, channel);
 
                 self.notify_channel_members(&channel, entry);
             }
-            update::HistoricMessageTarget::User(user) => {
-                self.notify_user(user.user.id, entry.id);
+            state::HistoricMessageTarget::User(user) => {
+                self.notify_user(user.id(), entry.id);
                 // Users should always be allowed to see messages they send
-                if let update::HistoricMessageSource::User(source) = &detail.source {
+                if let state::HistoricMessageSource::User(source) = &detail.source {
                     // However, if the source and target are the same, only notify them once -
                     // the client server code can handle duplication if required
-                    if source.user.id != user.user.id {
+                    if source.user.id != user.id() {
                         self.notify_user(source.user.id, entry.id);
                     }
                 }
             }
-            update::HistoricMessageTarget::Unknown => (),
+            state::HistoricMessageTarget::Unknown => (),
         }
 
         Ok(())

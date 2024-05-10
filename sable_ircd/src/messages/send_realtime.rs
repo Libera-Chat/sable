@@ -2,7 +2,7 @@ use crate::errors::HandleResult;
 use crate::messages::MessageSink;
 use crate::ClientServer;
 use sable_network::network::state;
-use sable_network::network::update::HistoricUser;
+use sable_network::network::state::HistoricUser;
 use sable_network::prelude::wrapper::ObjectWrapper;
 use sable_network::prelude::*;
 
@@ -48,14 +48,14 @@ impl SendRealtimeItem for update::ChannelJoin {
         self.send_to(conn, from_entry)?;
 
         // If we're notifying someone other than the joining user, we're done now
-        if conn.user_id() != Some(self.user.user.id) {
+        if conn.user_id() != Some(self.user.id()) {
             return Ok(());
         }
 
         // If we get here, the user we're notifying is the joining user
         let network = server.network();
         let channel = network.channel(self.channel.id)?;
-        let user = network.user(self.user.user.id)?;
+        let user = network.user(self.user.id())?;
 
         if let Some(topic) = channel.topic() {
             conn.send(numeric::TopicIs::new(&channel, topic.text()).format_for(server, &self.user));

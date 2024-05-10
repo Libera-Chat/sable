@@ -7,6 +7,7 @@ pub use crate::{
     modes::*,
     network::errors::{LookupError, LookupResult},
     network::event::{Event, EventClock, EventDetails},
+    network::wrapper::{WrappedMessage, WrappedUser},
     network::*,
     node::NetworkNode,
     policy, rpc,

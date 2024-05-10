@@ -66,7 +66,7 @@ impl SendHistoryItem for update::UserConnectionDisconnected {
 
 impl SendHistoryItem for update::UserAwayChange {
     fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
-        if Some(self.user.user.id) == conn.user_id() {
+        if Some(self.user.id()) == conn.user_id() {
             // Echo back to the user
             let message = match self.new_reason {
                 None => numeric::Unaway::new(),
@@ -213,7 +213,7 @@ impl SendHistoryItem for update::ChannelJoin {
             conn.send(msg);
         }
 
-        if let Some(away_reason) = self.user.user.away_reason {
+        if let Some(away_reason) = self.user.away_reason() {
             let message =
                 message::Away::new(&self.user, away_reason.value()).with_tags_from(from_entry);
 
@@ -279,9 +279,9 @@ impl SendHistoryItem for update::NewMessage {
         // Users should only see their own message echoed if they've asked for it,
         // unless it's sent to themself
         match &self.source {
-            update::HistoricMessageSource::User(user) => {
-                if conn.user_id() == Some(user.user.id)
-                    && !matches!(&self.target, update::HistoricMessageTarget::User(target) if target.user.id == user.user.id)
+            state::HistoricMessageSource::User(user) => {
+                if conn.user_id() == Some(user.id())
+                    && !matches!(&self.target, state::HistoricMessageTarget::User(target) if target.user.id == user.id())
                 {
                     conn.send(message.with_required_capabilities(ClientCapability::EchoMessage));
                 } else {

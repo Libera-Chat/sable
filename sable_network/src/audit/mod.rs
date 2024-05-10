@@ -4,7 +4,7 @@ use std::{fmt::Write, net::IpAddr};
 
 use crate::{
     id::*,
-    network::{event::*, state::*},
+    network::{event::*, state::*, wrapper::WrappedUser},
     node::NetworkNode,
 };
 

@@ -1,5 +1,6 @@
 use super::Network;
 use crate::network::event::*;
+use crate::network::state::HistoricMessageSource;
 use crate::network::state_utils;
 use crate::network::update::*;
 use crate::prelude::*;
@@ -127,7 +128,7 @@ impl Network {
         match setter {
             ObjectId::User(user_id) => {
                 if let Ok(user) = self.user(user_id) {
-                    format!("{}!{}@{}", user.nick(), user.user(), user.visible_host())
+                    user.nuh()
                 } else {
                     String::from("<unknown>")
                 }
