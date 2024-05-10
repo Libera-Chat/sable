@@ -30,19 +30,10 @@ fn whowas_handler(
         response.numeric(make_numeric!(WasNoSuchNick, &target));
     } else {
         for historic_user in historic_users {
-            let user: sable_network::network::wrapper::User<'_> =
-                wrapper::ObjectWrapper::wrap(network, &historic_user.user);
             response.numeric(make_numeric!(WhowasUser, &historic_user));
 
-            if let Ok(Some(account)) = user.account() {
-                response.numeric(make_numeric!(WhoisAccount, &target, &account.name()));
-            }
-
-            if server.policy().can_see_connection_info(&source, &user) {
-                for conn in user.connections() {
-                    response.numeric(make_numeric!(WhoisServer, &user, &conn.server()?));
-                    response.numeric(make_numeric!(WhoisHost, &user, conn.hostname(), conn.ip()));
-                }
+            if let Some(account_name) = historic_user.account_name() {
+                response.numeric(make_numeric!(WhoisAccount, &target, &account_name));
             }
         }
     }
