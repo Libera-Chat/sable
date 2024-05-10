@@ -110,29 +110,15 @@ where
 
                 update = history_receiver.recv() =>
                 {
-                    let mut do_burst = false;
-
-                    if let Some(NetworkHistoryUpdate::NewEntry(id)) = update
+                    if let Some(update) = update
                     {
-                        if let Some(entry) = self.node.history().get(id)
+                        if let NetworkStateChange::NewServer(new_server) = &update.change
                         {
-                            if let NetworkStateChange::NewServer(new_server) = &entry.details
+                            if new_server.server.id == self.node.id()
                             {
-                                if new_server.server.id == self.node.id()
-                                {
-                                    // The network has seen us join, so now's the time to sync
-                                    // the database and set ourselves as the active services, but
-                                    // we need to defer it until after we've dropped the lock guard
-                                    // on history.
-                                    do_burst = true;
-                                }
+                                self.burst_to_network().await;
                             }
                         }
-                    }
-
-                    if do_burst
-                    {
-                        self.burst_to_network().await;
                     }
                 }
             }

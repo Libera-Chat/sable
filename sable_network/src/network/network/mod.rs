@@ -222,7 +222,7 @@ impl Network {
         Ok(())
     }
 
-    /// Translate an object ID into a [`update::HistoricMessageSource`]
+    /// Translate an object ID into a [`state::HistoricMessageSource`]
     pub(crate) fn translate_state_change_source(
         &self,
         id: ObjectId,
@@ -254,7 +254,7 @@ impl Network {
         }
     }
 
-    /// Translate an [`ObjectId`] into a [`HistoricMessageTarget`] for storage in history log
+    /// Translate an [`ObjectId`] into a [`state::HistoricMessageTarget`] for storage in history log
     pub(crate) fn translate_message_target(&self, id: ObjectId) -> state::HistoricMessageTarget {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {

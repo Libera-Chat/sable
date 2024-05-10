@@ -9,80 +9,54 @@ impl ClientServer {
     pub(super) fn handle_history_update(&self, update: NetworkHistoryUpdate) -> HandleResult {
         tracing::trace!(?update, "Got history update");
 
-        match update {
-            NetworkHistoryUpdate::NewEntry(entry_id) => {
-                let history = self.node.history();
-                if let Some(entry) = history.get(entry_id) {
-                    match &entry.details {
-                        NetworkStateChange::NewUser(detail) => {
-                            detail.notify_monitors(self);
-                        }
-                        NetworkStateChange::UserNickChange(detail) => {
-                            detail.notify_monitors(self);
-                        }
-                        NetworkStateChange::UserQuit(detail) => {
-                            detail.notify_monitors(self);
-                        }
-                        NetworkStateChange::BulkUserQuit(detail) => {
-                            detail.notify_monitors(self);
-                        }
-                        NetworkStateChange::NewUserConnection(detail) => {
-                            let new_user_connection = detail.clone();
-                            drop(history);
-                            self.handle_new_user_connection(&new_user_connection)?;
-                        }
-                        NetworkStateChange::UserConnectionDisconnected(detail) => {
-                            let user_disconnect = detail.clone();
-                            drop(history);
-                            self.handle_user_disconnect(&user_disconnect)?;
-                        }
-                        NetworkStateChange::ServicesUpdate(detail) => {
-                            let update = detail.clone();
-                            drop(history);
-                            self.handle_services_update(&update)?;
-                        }
-                        NetworkStateChange::EventComplete(_) => {
-                            // All
-                            self.stored_response_sinks
-                                .write()
-                                .remove(&entry.source_event);
-                        }
-                        _ => {}
-                    }
-                }
+        match &update.change {
+            NetworkStateChange::NewUser(detail) => {
+                detail.notify_monitors(self);
             }
-            NetworkHistoryUpdate::NotifyUser(user_id, entry_id) => {
-                self.notify_user_update(user_id, entry_id)?;
+            NetworkStateChange::UserNickChange(detail) => {
+                detail.notify_monitors(self);
             }
-            NetworkHistoryUpdate::NotifyUsers(user_ids, entry_id) => {
-                for user_id in user_ids {
-                    self.notify_user_update(user_id, entry_id)?;
-                }
+            NetworkStateChange::UserQuit(detail) => {
+                detail.notify_monitors(self);
             }
+            NetworkStateChange::NewUserConnection(detail) => {
+                let new_user_connection = detail.clone();
+                self.handle_new_user_connection(&new_user_connection)?;
+            }
+            NetworkStateChange::UserConnectionDisconnected(detail) => {
+                let user_disconnect = detail.clone();
+                self.handle_user_disconnect(&user_disconnect)?;
+            }
+            NetworkStateChange::ServicesUpdate(detail) => {
+                let update = detail.clone();
+                self.handle_services_update(&update)?;
+            }
+            NetworkStateChange::EventComplete(_) => {
+                // All
+                self.stored_response_sinks.write().remove(&update.event);
+            }
+            _ => {}
+        }
+        for user_id in &update.users_to_notify {
+            self.notify_user_update(user_id, &update)?;
         }
 
         Ok(())
     }
 
-    fn notify_user_update(&self, user_id: UserId, entry_id: LogEntryId) -> HandleResult {
-        for conn in self.connections.read().get_user(user_id) {
-            let log = self.node.history();
+    fn notify_user_update(&self, user_id: &UserId, update: &NetworkHistoryUpdate) -> HandleResult {
+        for conn in self.connections.read().get_user(*user_id) {
+            let stored_sinks = self.stored_response_sinks.read();
+            let sink = stored_sinks.get(&update.event, conn.id()).unwrap_or(&conn);
 
-            if let Some(entry) = log.get(entry_id) {
-                let stored_sinks = self.stored_response_sinks.read();
-                let sink = stored_sinks
-                    .get(&entry.source_event, conn.id())
-                    .unwrap_or(&conn);
-
-                // Messages need special handling at this level because of the highly irritating interaction
-                // between labeled-response and echo-message
-                match &entry.details {
-                    NetworkStateChange::NewMessage(msg) => {
-                        self.notify_user_of_message(&conn, &sink, entry, msg)?;
-                    }
-                    _ => {
-                        entry.send_now(&sink, entry, self)?;
-                    }
+            // Messages need special handling at this level because of the highly irritating interaction
+            // between labeled-response and echo-message
+            match &update.change {
+                NetworkStateChange::NewMessage(msg) => {
+                    self.notify_user_of_message(&conn, &sink, update, msg)?;
+                }
+                _ => {
+                    update.send_now(&sink, update, self)?;
                 }
             }
         }
@@ -94,7 +68,7 @@ impl ClientServer {
         &self,
         conn: &ClientConnection,
         sink: &dyn MessageSink,
-        entry: &HistoryLogEntry,
+        update: &NetworkHistoryUpdate,
         msg: &update::NewMessage,
     ) -> HandleResult {
         // This special handler only exists because if labeled-response and echo-message
@@ -115,7 +89,7 @@ impl ClientServer {
                         msg.message.message_type,
                         &msg.message.text,
                     )
-                    .with_tags_from(entry);
+                    .with_tags_from(update);
 
                     // First, send the echo-message acknowledgement, into the labeled-response sink
                     sink.send(
@@ -133,7 +107,7 @@ impl ClientServer {
             }
         }
 
-        entry.send_now(&sink, entry, self)
+        update.send_now(&sink, update, self)
     }
 
     fn handle_new_user_connection(&self, detail: &update::NewUserConnection) -> HandleResult {

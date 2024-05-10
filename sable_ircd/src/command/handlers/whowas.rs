@@ -8,8 +8,6 @@ const DEFAULT_COUNT: usize = 8; // Arbitrary value, that happens to match the ca
 fn whowas_handler(
     network: &Network,
     response: &dyn CommandResponse,
-    source: UserSource,
-    server: &ClientServer,
     target: Nickname,
     count: Option<u32>,
 ) -> CommandResult {

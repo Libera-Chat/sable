@@ -4,17 +4,50 @@ use crate::errors::HandleResult;
 use crate::messages::MessageSink;
 use crate::prelude::numeric;
 use sable_network::prelude::*;
+use sable_network::rpc::NetworkHistoryUpdate;
 use sable_network::utils::*;
 
 use super::message;
 
 /// Extension trait to translate a network history entry into client protocol messages
 pub(crate) trait SendHistoryItem {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult;
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult;
+}
+
+impl SendHistoryItem for NetworkHistoryUpdate {
+    fn send_to(&self, conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
+        match &self.change {
+            NetworkStateChange::NewUser(detail) => detail.send_to(conn, self),
+            NetworkStateChange::NewUserConnection(detail) => detail.send_to(conn, self),
+            NetworkStateChange::UserConnectionDisconnected(detail) => detail.send_to(conn, self),
+            NetworkStateChange::UserAwayChange(detail) => detail.send_to(conn, self),
+            NetworkStateChange::UserNickChange(detail) => detail.send_to(conn, self),
+            NetworkStateChange::UserModeChange(detail) => detail.send_to(conn, self),
+            NetworkStateChange::UserQuit(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ChannelModeChange(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ChannelTopicChange(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ListModeAdded(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ListModeRemoved(detail) => detail.send_to(conn, self),
+            NetworkStateChange::MembershipFlagChange(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ChannelJoin(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ChannelKick(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ChannelPart(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ChannelInvite(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ChannelRename(detail) => detail.send_to(conn, self),
+            NetworkStateChange::NewMessage(detail) => detail.send_to(conn, self),
+            NetworkStateChange::NewServer(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ServerQuit(detail) => detail.send_to(conn, self),
+            NetworkStateChange::NewAuditLogEntry(detail) => detail.send_to(conn, self),
+            NetworkStateChange::UserLoginChange(detail) => detail.send_to(conn, self),
+            NetworkStateChange::ServicesUpdate(detail) => detail.send_to(conn, self),
+            // EventComplete is handled further up and has no meaning here
+            NetworkStateChange::EventComplete(_) => Ok(()),
+        }
+    }
 }
 
 impl SendHistoryItem for HistoryLogEntry {
-    fn send_to(&self, conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         match &self.details {
             NetworkStateChange::NewUser(detail) => detail.send_to(conn, self),
             NetworkStateChange::NewUserConnection(detail) => detail.send_to(conn, self),
@@ -23,7 +56,6 @@ impl SendHistoryItem for HistoryLogEntry {
             NetworkStateChange::UserNickChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserModeChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::UserQuit(detail) => detail.send_to(conn, self),
-            NetworkStateChange::BulkUserQuit(detail) => detail.send_to(conn, self),
             NetworkStateChange::ChannelModeChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::ChannelTopicChange(detail) => detail.send_to(conn, self),
             NetworkStateChange::ListModeAdded(detail) => detail.send_to(conn, self),
@@ -47,25 +79,25 @@ impl SendHistoryItem for HistoryLogEntry {
 }
 
 impl SendHistoryItem for update::NewUser {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         Ok(())
     }
 }
 
 impl SendHistoryItem for update::NewUserConnection {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         Ok(())
     }
 }
 
 impl SendHistoryItem for update::UserConnectionDisconnected {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         Ok(())
     }
 }
 
 impl SendHistoryItem for update::UserAwayChange {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         if Some(self.user.id()) == conn.user_id() {
             // Echo back to the user
             let message = match self.new_reason {
@@ -88,7 +120,7 @@ impl SendHistoryItem for update::UserAwayChange {
 }
 
 impl SendHistoryItem for update::UserNickChange {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let message = message::Nick::new(&self.user, &self.new_nick).with_tags_from(from_entry);
 
         conn.send(message);
@@ -98,7 +130,7 @@ impl SendHistoryItem for update::UserNickChange {
 }
 
 impl SendHistoryItem for update::UserModeChange {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let message = message::Mode::new(
             &self.user,
             &self.user,
@@ -113,7 +145,7 @@ impl SendHistoryItem for update::UserModeChange {
 }
 
 impl SendHistoryItem for update::UserQuit {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let message = message::Quit::new(&self.user, &self.message).with_tags_from(from_entry);
 
         conn.send(message);
@@ -122,14 +154,8 @@ impl SendHistoryItem for update::UserQuit {
     }
 }
 
-impl SendHistoryItem for update::BulkUserQuit {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
-        Ok(())
-    }
-}
-
 impl SendHistoryItem for update::ChannelModeChange {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let (mut changes, params) = format_cmode_changes(self);
         for p in params {
             changes.push(' ');
@@ -146,7 +172,7 @@ impl SendHistoryItem for update::ChannelModeChange {
 }
 
 impl SendHistoryItem for update::ChannelTopicChange {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let message = message::Topic::new(&self.setter, &self.channel.name, &self.new_text)
             .with_tags_from(from_entry);
 
@@ -157,7 +183,7 @@ impl SendHistoryItem for update::ChannelTopicChange {
 }
 
 impl SendHistoryItem for update::ListModeAdded {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let text = format!("+{} {}", self.list_type.mode_char(), self.pattern);
         let message =
             message::Mode::new(&self.set_by, &self.channel, &text).with_tags_from(from_entry);
@@ -167,7 +193,7 @@ impl SendHistoryItem for update::ListModeAdded {
 }
 
 impl SendHistoryItem for update::ListModeRemoved {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let text = format!("-{} {}", self.list_type.mode_char(), self.pattern);
         let message =
             message::Mode::new(&self.removed_by, &self.channel, &text).with_tags_from(from_entry);
@@ -177,7 +203,7 @@ impl SendHistoryItem for update::ListModeRemoved {
 }
 
 impl SendHistoryItem for update::MembershipFlagChange {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let (mut changes, args) =
             format_channel_perm_changes(&self.user.nickname, &self.added, &self.removed);
 
@@ -194,7 +220,7 @@ impl SendHistoryItem for update::MembershipFlagChange {
 }
 
 impl SendHistoryItem for update::ChannelJoin {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let message = message::Join::new(&self.user, &self.channel.name).with_tags_from(from_entry);
 
         conn.send(message);
@@ -225,7 +251,7 @@ impl SendHistoryItem for update::ChannelJoin {
 }
 
 impl SendHistoryItem for update::ChannelKick {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let message =
             message::Kick::new(&self.source, &self.user, &self.channel.name, &self.message)
                 .with_tags_from(from_entry);
@@ -237,7 +263,7 @@ impl SendHistoryItem for update::ChannelKick {
 }
 
 impl SendHistoryItem for update::ChannelPart {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let message = message::Part::new(&self.user, &self.channel.name, &self.message)
             .with_tags_from(from_entry);
 
@@ -248,7 +274,7 @@ impl SendHistoryItem for update::ChannelPart {
 }
 
 impl SendHistoryItem for update::ChannelInvite {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let message = message::Invite::new(&self.source, &self.user, &self.channel.name)
             .with_tags_from(from_entry);
 
@@ -259,7 +285,7 @@ impl SendHistoryItem for update::ChannelInvite {
 }
 
 impl SendHistoryItem for update::ChannelRename {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         // Not part of history, so it is handled entirely in send_realtime.rs.
         // See https://github.com/ircv3/ircv3-specifications/issues/532
         Ok(())
@@ -267,7 +293,7 @@ impl SendHistoryItem for update::ChannelRename {
 }
 
 impl SendHistoryItem for update::NewMessage {
-    fn send_to(&self, conn: impl MessageSink, from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, conn: impl MessageSink, from_entry: &impl HistoryItem) -> HandleResult {
         let message = message::Message::new(
             &self.source,
             &self.target,
@@ -296,31 +322,31 @@ impl SendHistoryItem for update::NewMessage {
 }
 
 impl SendHistoryItem for update::NewServer {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         Ok(())
     }
 }
 
 impl SendHistoryItem for update::ServerQuit {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         Ok(())
     }
 }
 
 impl SendHistoryItem for update::NewAuditLogEntry {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         todo!();
     }
 }
 
 impl SendHistoryItem for update::UserLoginChange {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         todo!();
     }
 }
 
 impl SendHistoryItem for update::ServicesUpdate {
-    fn send_to(&self, _conn: impl MessageSink, _from_entry: &HistoryLogEntry) -> HandleResult {
+    fn send_to(&self, _conn: impl MessageSink, _from_entry: &impl HistoryItem) -> HandleResult {
         Ok(())
     }
 }

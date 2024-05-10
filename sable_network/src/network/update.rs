@@ -59,11 +59,6 @@ NetworkStateChange => {
         pub memberships: Vec<state::Membership>,
     }
 
-    /// Many users have left the network
-    struct BulkUserQuit {
-        pub items: Vec<UserQuit>,
-    }
-
     /// A new connection has attached to an existing user
     struct NewUserConnection {
         pub user: HistoricUser,
