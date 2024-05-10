@@ -145,23 +145,47 @@ impl NetworkHistoryLog {
         }
     }
 
-    pub fn add(
-        &self,
-        details: NetworkStateChange,
-        source_event: EventId,
-        timestamp: i64,
-    ) -> &HistoryLogEntry {
-        let index = self.entries.push_with_index(
-            HistoryLogEntry {
-                id: 0,
-                source_event,
-                timestamp,
-                details,
-            },
-            |entry, index| entry.id = index,
-        );
+    /// Add an entry to the history log, iff it is one of the event types that we store for
+    /// history purposes.
+    pub fn add(&self, details: NetworkStateChange, source_event: EventId, timestamp: i64) {
+        use NetworkStateChange::*;
+        match details {
+            NewUser(_)
+            | UserModeChange(_)
+            | UserAwayChange(_)
+            | NewUserConnection(_)
+            | UserConnectionDisconnected(_)
+            | NewServer(_)
+            | ServerQuit(_)
+            | NewAuditLogEntry(_)
+            | UserLoginChange(_)
+            | ServicesUpdate(_)
+            | EventComplete(_) => (),
 
-        self.entries.get(index).unwrap()
+            UserNickChange(_)
+            | UserQuit(_)
+            | ChannelModeChange(_)
+            | ChannelTopicChange(_)
+            | ListModeAdded(_)
+            | ListModeRemoved(_)
+            | MembershipFlagChange(_)
+            | ChannelJoin(_)
+            | ChannelKick(_)
+            | ChannelPart(_)
+            | ChannelInvite(_)
+            | ChannelRename(_)
+            | NewMessage(_) => {
+                self.entries.push_with_index(
+                    HistoryLogEntry {
+                        id: 0,
+                        source_event,
+                        timestamp,
+                        details,
+                    },
+                    |entry, index| entry.id = index,
+                );
+            }
+        }
     }
 
     pub fn get(&self, entry_id: LogEntryId) -> Option<&HistoryLogEntry> {
