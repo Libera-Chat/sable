@@ -307,7 +307,7 @@ impl SendHistoryItem for update::NewMessage {
         match &self.source {
             state::HistoricMessageSource::User(user) => {
                 if conn.user_id() == Some(user.id())
-                    && !matches!(&self.target, state::HistoricMessageTarget::User(target) if target.user.id == user.id())
+                    && !matches!(&self.target, state::HistoricMessageTarget::User(target) if target.id() == user.id())
                 {
                     conn.send(message.with_required_capabilities(ClientCapability::EchoMessage));
                 } else {

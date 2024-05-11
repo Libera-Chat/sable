@@ -112,11 +112,7 @@ impl SendRealtimeItem for update::ChannelRename {
                     ..self.channel.clone()
                 },
                 membership: membership.raw().clone(),
-                user: HistoricUser {
-                    user: user.raw().clone(),
-                    account: user.account().ok().flatten().map(|acc| acc.name()),
-                    nickname: user.nick(),
-                },
+                user: HistoricUser::new(user.raw().clone(), &network),
                 message: format!("Channel renamed to {}: {}", &self.new_name, &self.message),
             };
 
@@ -126,11 +122,7 @@ impl SendRealtimeItem for update::ChannelRename {
                     ..self.channel.clone()
                 },
                 membership: membership.raw().clone(),
-                user: HistoricUser {
-                    user: user.raw().clone(),
-                    account: user.account().ok().flatten().map(|acc| acc.name()),
-                    nickname: user.nick(),
-                },
+                user: HistoricUser::new(user.raw().clone(), &network),
             };
 
             let fake_log_entry = NetworkHistoryUpdate {
