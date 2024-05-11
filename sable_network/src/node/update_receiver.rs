@@ -253,7 +253,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode<Policy> {
     fn notify_update(&self, update: NetworkStateChange, event: &Event) {
         let history_guard = self.history_log.read();
-        history_guard.add(update.clone(), event.id, event.timestamp);
+        let entry_id = history_guard.add(update.clone(), event.id, event.timestamp);
 
         // Then, once it's been notified of a new log entry, we process it to determine which users
         // should see it, add it to those users' personalised histories, and notify the subscriber
@@ -294,7 +294,13 @@ impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode
             Ok(users) => users,
         };
 
-        // Now that we know which users to notify, send it through to the subscriber
+        // Now that we know which users to notify, add to their logs and send it through to the subscriber
+        if let Some(entry_id) = entry_id {
+            for user in &users_to_notify {
+                history_guard.add_entry_for_user(*user, entry_id);
+            }
+        }
+
         if let Err(e) = self.subscriber.send(NetworkHistoryUpdate {
             event: event.id,
             timestamp: event.timestamp,

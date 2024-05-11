@@ -147,7 +147,12 @@ impl NetworkHistoryLog {
 
     /// Add an entry to the history log, iff it is one of the event types that we store for
     /// history purposes.
-    pub fn add(&self, details: NetworkStateChange, source_event: EventId, timestamp: i64) {
+    pub fn add(
+        &self,
+        details: NetworkStateChange,
+        source_event: EventId,
+        timestamp: i64,
+    ) -> Option<LogEntryId> {
         use NetworkStateChange::*;
         match details {
             NewUser(_)
@@ -160,7 +165,7 @@ impl NetworkHistoryLog {
             | NewAuditLogEntry(_)
             | UserLoginChange(_)
             | ServicesUpdate(_)
-            | EventComplete(_) => (),
+            | EventComplete(_) => None,
 
             UserNickChange(_)
             | UserQuit(_)
@@ -174,17 +179,15 @@ impl NetworkHistoryLog {
             | ChannelPart(_)
             | ChannelInvite(_)
             | ChannelRename(_)
-            | NewMessage(_) => {
-                self.entries.push_with_index(
-                    HistoryLogEntry {
-                        id: 0,
-                        source_event,
-                        timestamp,
-                        details,
-                    },
-                    |entry, index| entry.id = index,
-                );
-            }
+            | NewMessage(_) => Some(self.entries.push_with_index(
+                HistoryLogEntry {
+                    id: 0,
+                    source_event,
+                    timestamp,
+                    details,
+                },
+                |entry, index| entry.id = index,
+            )),
         }
     }
 
