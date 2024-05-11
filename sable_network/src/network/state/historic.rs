@@ -52,7 +52,7 @@ impl wrapper::WrappedUser for HistoricUser {
 }
 
 impl HistoricUser {
-    pub fn new(user: super::User, network: &Network) -> Self {
+    pub fn new(user: &super::User, network: &Network) -> Self {
         Self {
             nickname: network.infallible_nick_for_user(user.id),
             account: user

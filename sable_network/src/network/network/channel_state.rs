@@ -262,7 +262,7 @@ impl Network {
                 updates.notify(
                     update::MembershipFlagChange {
                         membership: membership.clone(),
-                        user: self.translate_historic_user(user.clone()),
+                        user: self.translate_historic_user(&user),
                         channel: channel.clone(),
                         added: details.added,
                         removed: details.removed,
@@ -295,7 +295,7 @@ impl Network {
         ) {
             let update = update::ChannelJoin {
                 membership,
-                user: self.translate_historic_user(user.clone()),
+                user: self.translate_historic_user(&user),
                 channel: channel.clone(),
             };
             updates.notify(update, event);
@@ -326,7 +326,7 @@ impl Network {
                     membership: removed_membership,
                     source: self.translate_state_change_source(details.source.into()),
                     channel: channel.clone(),
-                    user: self.translate_historic_user(user.clone()),
+                    user: self.translate_historic_user(&user),
                     message: details.message.clone(),
                 };
                 updates.notify(update, event);
@@ -356,7 +356,7 @@ impl Network {
             ) {
                 let update = update::ChannelPart {
                     membership: removed_membership,
-                    user: self.translate_historic_user(user.clone()),
+                    user: self.translate_historic_user(&user),
                     channel: channel.clone(),
                     message: details.message.clone(),
                 };
@@ -399,7 +399,7 @@ impl Network {
             let update = update::ChannelInvite {
                 invite,
                 source: self.translate_state_change_source(details.source.into()),
-                user: self.translate_historic_user(user.clone()),
+                user: self.translate_historic_user(&user),
                 channel: channel.clone(),
             };
             updates.notify(update, event);

@@ -117,7 +117,7 @@ impl Network {
             let user = user.clone();
 
             let update = update::UserLoginChange {
-                user: self.translate_historic_user(user),
+                user: self.translate_historic_user(&user),
                 old_account,
                 new_account,
             };

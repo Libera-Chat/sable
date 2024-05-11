@@ -23,7 +23,7 @@ impl Network {
 
                 updates.notify(
                     update::UserModeChange {
-                        user: self.translate_historic_user(update_user),
+                        user: self.translate_historic_user(&update_user),
                         added: UserModeFlag::Oper.into(),
                         removed: UserModeSet::new(),
                         changed_by: self.translate_state_change_source(target.into()),

@@ -229,7 +229,7 @@ impl Network {
     ) -> state::HistoricMessageSource {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                state::HistoricMessageSource::User(self.translate_historic_user(user.clone()))
+                state::HistoricMessageSource::User(self.translate_historic_user(&user))
             }),
             ObjectId::Server(server_id) => self
                 .servers
@@ -241,7 +241,7 @@ impl Network {
     }
 
     /// Translate a [`state::User`] to a [`HistoricUser`] based on the current network state
-    pub(crate) fn translate_historic_user(&self, user: state::User) -> state::HistoricUser {
+    pub(crate) fn translate_historic_user(&self, user: &state::User) -> state::HistoricUser {
         HistoricUser::new(user, self)
     }
 
@@ -249,7 +249,7 @@ impl Network {
     pub(crate) fn translate_message_target(&self, id: ObjectId) -> state::HistoricMessageTarget {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                state::HistoricMessageTarget::User(self.translate_historic_user(user.clone()))
+                state::HistoricMessageTarget::User(self.translate_historic_user(&user))
             }),
             ObjectId::Channel(channel_id) => self
                 .channels
