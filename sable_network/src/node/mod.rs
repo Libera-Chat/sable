@@ -41,6 +41,7 @@ where
     my_id: ServerId,
     name: ServerName,
     version: String,
+    commit_date: String,
     net: RwLock<Arc<Network>>,
     event_log: Arc<ReplicatedEventLog>,
     epoch: EpochId,
@@ -90,6 +91,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
             my_id: id,
             name,
             version: Self::build_version(),
+            commit_date: Self::get_commit_date(),
             net: RwLock::new(Arc::new(net)),
             epoch,
             event_log,
@@ -192,6 +194,17 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
             git_version,
             git_dirty
         )
+    }
+
+    /// The server's HEAD commit date
+    pub fn commit_date(&self) -> &str {
+        &self.commit_date
+    }
+
+    fn get_commit_date() -> String {
+        crate::build_data::GIT_COMMIT_TIME_UTC
+            .unwrap_or("unknown")
+            .to_string()
     }
 
     /// The server's build flags
