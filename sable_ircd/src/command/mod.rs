@@ -42,6 +42,7 @@ mod handlers {
     mod ban;
     mod cap;
     mod chathistory;
+    mod info;
     mod invite;
     mod join;
     mod kick;
