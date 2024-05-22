@@ -44,6 +44,7 @@ impl<Policy: PolicyService + Saveable> NetworkNode<Policy> {
             my_id: state.id,
             name: state.name,
             version: Self::build_version(),
+            commit_date: Self::get_commit_date(),
             net: RwLock::new(Arc::new(state.net)),
             epoch: state.epoch,
             id_generator: state.id_generator,
