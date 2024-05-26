@@ -81,3 +81,43 @@ impl HistoricUserStore {
         self.users.get(&HistoricUserId::new(user.id, user.serial))
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoricNickStore {
+    data: HashMap<Nickname, VecDeque<HistoricUserId>>,
+}
+
+const WHOWAS_LENGTH: usize = 8;
+
+impl HistoricNickStore {
+    pub fn new() -> Self {
+        Self {
+            data: HashMap::new(),
+        }
+    }
+
+    pub fn get<'a>(
+        &'a self,
+        nick: &Nickname,
+        net: &'a Network,
+    ) -> impl Iterator<Item = &HistoricUser> + 'a {
+        self.data
+            .get(nick)
+            .map(move |vec| vec.iter().filter_map(move |id| net.historic_users.get(id)))
+            .into_iter()
+            .flatten()
+    }
+
+    pub fn add(&mut self, nick: &Nickname, id: HistoricUserId) {
+        let vec = self
+            .data
+            .entry(*nick)
+            .or_insert_with(|| VecDeque::with_capacity(WHOWAS_LENGTH));
+
+        if vec.len() == vec.capacity() {
+            vec.pop_back();
+        }
+
+        vec.push_front(id);
+    }
+}

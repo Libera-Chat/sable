@@ -30,13 +30,10 @@ impl Network {
             let removed_nickname = if let Ok(binding) = self.nick_binding_for_user(user.id) {
                 let nick = binding.nick();
                 self.nick_bindings.remove(&nick);
-                let historic_nick_users = self.historic_nick_users.entry(nick).or_insert_with(
-                    || VecDeque::with_capacity(8), // arbitrary power of two
-                );
-                if historic_nick_users.len() == historic_nick_users.capacity() {
-                    historic_nick_users.pop_back();
-                }
-                historic_nick_users.push_front(historic_user.clone());
+
+                self.historic_nick_users
+                    .add(&nick, HistoricUserId::new(user.id, user.serial));
+
                 nick
             } else {
                 state_utils::hashed_nick_for(user.id)
@@ -210,7 +207,7 @@ impl Network {
         detail: &details::NewUser,
         updates: &dyn NetworkUpdateReceiver,
     ) {
-        let user = state::User::new(
+        let mut user = state::User::new(
             target,
             detail.username,
             detail.visible_hostname,
@@ -219,7 +216,17 @@ impl Network {
             detail.account,
         );
 
-        // First insert the user (with no nickname yet) so that the nick binding can see
+        // Get the user into the historic buffer while we still own it, so that we don't need to
+        // get_mut later on
+        self.historic_users.add(
+            &mut user,
+            detail.nickname,
+            detail
+                .account
+                .and_then(|id| self.accounts.get(&id).map(|acc| acc.name)),
+        );
+
+        // Insert the user (with no nickname yet) so that the nick binding can see
         // a user to bind to
         self.users.insert(target, user.clone());
 

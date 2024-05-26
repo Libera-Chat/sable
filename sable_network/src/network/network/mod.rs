@@ -43,8 +43,7 @@ pub struct Network {
     // used as a JSON object key.
     #[serde_as(as = "Vec<(_,_)>")]
     nick_bindings: HashMap<Nickname, state::NickBinding>,
-    #[serde_as(as = "Vec<(_,_)>")]
-    historic_nick_users: HashMap<Nickname, VecDeque<HistoricUser>>,
+    historic_nick_users: HistoricNickStore,
     #[serde_as(as = "Vec<(_,_)>")]
     users: HashMap<UserId, state::User>,
     historic_users: HistoricUserStore,
@@ -107,7 +106,7 @@ impl Network {
     pub fn new(config: config::NetworkConfig) -> Network {
         let net = Network {
             nick_bindings: HashMap::new(),
-            historic_nick_users: HashMap::new(),
+            historic_nick_users: HistoricNickStore::new(),
             users: HashMap::new(),
             historic_users: HistoricUserStore::new(),
             user_connections: HashMap::new(),

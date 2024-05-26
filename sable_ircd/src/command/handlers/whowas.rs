@@ -18,9 +18,6 @@ fn whowas_handler(
     };
     let historic_users: Vec<_> = network
         .historic_users_by_nick(&target)
-        .cloned()
-        .unwrap_or_default()
-        .into_iter()
         .take(count)
         .collect();
 

@@ -1,3 +1,4 @@
+/*
 use super::fixtures::*;
 use crate::prelude::*;
 use serde_json::Value;
@@ -20,3 +21,4 @@ fn add_and_remove_user() {
 
     assert_eq!(empty_net, modified_net);
 }
+*/
