@@ -47,6 +47,7 @@ pub struct Network {
     historic_nick_users: HashMap<Nickname, VecDeque<HistoricUser>>,
     #[serde_as(as = "Vec<(_,_)>")]
     users: HashMap<UserId, state::User>,
+    historic_users: HistoricUserStore,
     #[serde_as(as = "Vec<(_,_)>")]
     user_connections: HashMap<UserConnectionId, state::UserConnection>,
 
@@ -108,6 +109,7 @@ impl Network {
             nick_bindings: HashMap::new(),
             historic_nick_users: HashMap::new(),
             users: HashMap::new(),
+            historic_users: HistoricUserStore::new(),
             user_connections: HashMap::new(),
 
             channels: HashMap::new(),
@@ -264,6 +266,9 @@ impl Network {
 mod accessors;
 mod alias_users;
 mod default_roles;
+
+mod user_history;
+use user_history::*;
 
 mod account_state;
 mod audit_log;

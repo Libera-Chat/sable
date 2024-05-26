@@ -40,6 +40,7 @@ pub struct UserConnection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub id: UserId,
+    pub serial: u32,
 
     pub user: Username,
     pub visible_host: Hostname,
@@ -100,6 +101,7 @@ impl User {
     ) -> Self {
         Self {
             id,
+            serial: 0,
             user,
             visible_host,
             realname,

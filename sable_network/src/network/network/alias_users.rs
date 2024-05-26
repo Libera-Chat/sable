@@ -10,6 +10,7 @@ impl Network {
                 user_config.nick,
                 state::User {
                     id: UserId::new(ServerId::new(0), EpochId::new(0), id as LocalId),
+                    serial: 0,
                     user: user_config.user,
                     visible_host: user_config.host,
                     realname: user_config.realname,

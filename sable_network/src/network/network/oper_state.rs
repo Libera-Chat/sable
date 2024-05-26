@@ -18,6 +18,8 @@ impl Network {
 
             user.mode.modes |= UserModeFlag::Oper;
 
+            // No need to update historic_users as oper information isn't stored there
+
             if new_oper {
                 let update_user = user.clone();
 
