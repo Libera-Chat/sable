@@ -14,17 +14,23 @@ Handlers are identified by the `command_handler` attribute macro.
 
 ## The command_handler macro
 
-The `command_handler` attribute macro has two possible forms, allowing for
-multiple command dispatchers to exist.
+The `command_handler` attribute macro can take several arguments:
 
-The single-argument form - e.g. `#[command_handler("CAP")]` defines a handler
-for the 'default' global dispatcher, which is used to look up client protocol
-commands.
+```rs
+#[command_handler("PRIMARY", "ALIAS", "ALIAS2", in("PARENT"), restricted)]
+```
 
-The two-argument form - e.g. `#[command_handler("CERT", in("NS"))]` puts the
-handler into a named secondary dispatcher, in this case `"NS"`. This form is
+The first argument defines the primary name of the command. Any further strings
+given will be used as aliases for the command.
+
+If an argument is given of the form `in("PARENT")`, the command handler will be
+put into a named secondary dispatcher, in this case `"PARENT"`. This form is
 used to define handlers for services commands, and may have other uses in the
-future.
+future. If this argument is not given, the handler is added to the 'default'
+global dispatcher, which is used to look up client protocol commands.
+
+If the `restricted` keyword is added, the command will be marked as for operators
+and will not be shown in `HELP` output to users.
 
 ## Async handlers
 
