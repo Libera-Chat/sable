@@ -70,6 +70,10 @@ define_messages! {
     371(Info)                   => { (line: &str)               => ":{line}" },
     374(EndOfInfo)              => { ()                         => ":End of /INFO list" },
 
+    704(HelpStart)              => { (subj: &str, line: &str)   => "{subj} :{line}" },
+    705(HelpText)               => { (subj: &str, line: &str)   => "{subj} :{line}" },
+    706(EndOfHelp)              => { (subj: &str)               => "{subj} :End of /HELP" },
+
 
     401(NoSuchTarget)           => { (unknown: &str)            => "{unknown} :No such nick/channel" },
     402(NoSuchServer)           => { (server_name: &ServerName) => "{server_name} :No such server" },
@@ -124,6 +128,8 @@ define_messages! {
     491(NoOperConf)         => { ()     => ":No oper configuration found" },
 
     440(ServicesNotAvailable) => { () => ":Services are not available"},
+
+    524(HelpNotFound)           => { (subj: &str)               => "{subj} :No help available on this topic" },
 
     // https://ircv3.net/specs/extensions/monitor
     730(MonOnline)          => { (content: &str )               => ":{content}" },
