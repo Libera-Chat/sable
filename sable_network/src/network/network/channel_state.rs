@@ -338,10 +338,7 @@ impl Network {
                 self.remove_channel(removed_membership.channel, updates);
             }
 
-            if let (Some(channel), Some(user)) = (
-                self.channels.get(&target.channel()),
-                self.users.get(&target.user()),
-            ) {
+            if let Some(user) = self.users.get(&target.user()) {
                 let update = update::ChannelPart {
                     membership: removed_membership,
                     user: self.translate_historic_user_id(&user),
@@ -379,10 +376,7 @@ impl Network {
         let invite = state::ChannelInvite::new(target, details.source, event.timestamp);
         self.channel_invites.insert(invite.id, invite.clone());
 
-        if let (Some(channel), Some(user)) = (
-            self.channels.get(&target.channel()),
-            self.users.get(&target.user()),
-        ) {
+        if let Some(user) = self.users.get(&target.user()) {
             let update = update::ChannelInvite {
                 invite: target,
                 source: self.translate_state_change_source(details.source.into()),
