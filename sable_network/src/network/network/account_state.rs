@@ -115,6 +115,7 @@ impl Network {
 
         self.historic_users.update_account(
             user,
+            event.timestamp,
             new_account
                 .as_ref()
                 .and_then(|id| accounts.get(id).map(|a| a.name)),
