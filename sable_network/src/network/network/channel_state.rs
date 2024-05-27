@@ -38,7 +38,7 @@ impl Network {
                 updates.notify(
                     update::ChannelRename {
                         source,
-                        channel: channel.clone(),
+                        channel: channel_id,
                         old_name,
                         new_name,
                         message,
@@ -113,7 +113,7 @@ impl Network {
 
             updates.notify(
                 update::ChannelModeChange {
-                    channel: channel.clone(),
+                    channel: target,
                     added: details.added,
                     removed: details.removed,
                     key_change: details.key_change,
@@ -183,8 +183,8 @@ impl Network {
 
         if let Some(channel) = self.channels.get(&details.channel) {
             let update = update::ChannelTopicChange {
-                channel: channel.clone(),
-                topic: new_topic.clone(),
+                channel: channel.id,
+                topic: target,
                 new_text: details.text.clone(),
                 setter: self.translate_state_change_source(details.setter),
                 timestamp: event.timestamp,
@@ -215,7 +215,7 @@ impl Network {
 
         if let Some(channel) = self.channels.get(&details.list.channel()) {
             let update = update::ListModeAdded {
-                channel: channel.clone(),
+                channel: channel.id,
                 list_type: details.list.list_type(),
                 pattern: details.pattern.clone(),
                 set_by: self.translate_state_change_source(details.setter.into()),
@@ -234,7 +234,7 @@ impl Network {
         if let Some(removed) = self.list_mode_entries.remove(&target) {
             if let Some(channel) = self.channels.get(&removed.list.channel()) {
                 let update = update::ListModeRemoved {
-                    channel: channel.clone(),
+                    channel: channel.id,
                     list_type: removed.list.list_type(),
                     pattern: removed.pattern,
                     removed_by: self.translate_state_change_source(details.removed_by.into()),
@@ -255,15 +255,11 @@ impl Network {
             membership.permissions |= details.added;
             membership.permissions &= !details.removed;
 
-            if let (Some(channel), Some(user)) = (
-                self.channels.get(&target.channel()),
-                self.users.get(&target.user()),
-            ) {
+            if let Some(user) = self.users.get(&target.user()) {
                 updates.notify(
                     update::MembershipFlagChange {
-                        membership: membership.clone(),
+                        membership: target,
                         user: self.translate_historic_user_id(&user),
-                        channel: channel.clone(),
                         added: details.added,
                         removed: details.removed,
                         changed_by: self.translate_state_change_source(details.changed_by),
@@ -289,14 +285,10 @@ impl Network {
         self.channel_invites
             .remove(&InviteId::new(details.user, details.channel));
 
-        if let (Some(channel), Some(user)) = (
-            self.channels.get(&target.channel()),
-            self.users.get(&target.user()),
-        ) {
+        if let Some(user) = self.users.get(&target.user()) {
             let update = update::ChannelJoin {
-                membership,
+                membership: target,
                 user: self.translate_historic_user_id(&user),
-                channel: channel.clone(),
             };
             updates.notify(update, event);
         }
@@ -318,14 +310,10 @@ impl Network {
                 self.remove_channel(removed_membership.channel, updates);
             }
 
-            if let (Some(channel), Some(user)) = (
-                self.channels.get(&target.channel()),
-                self.users.get(&target.user()),
-            ) {
+            if let Some(user) = self.users.get(&target.user()) {
                 let update = update::ChannelKick {
                     membership: removed_membership,
                     source: self.translate_state_change_source(details.source.into()),
-                    channel: channel.clone(),
                     user: self.translate_historic_user_id(&user),
                     message: details.message.clone(),
                 };
@@ -357,7 +345,6 @@ impl Network {
                 let update = update::ChannelPart {
                     membership: removed_membership,
                     user: self.translate_historic_user_id(&user),
-                    channel: channel.clone(),
                     message: details.message.clone(),
                 };
                 updates.notify(update, event);
@@ -397,10 +384,9 @@ impl Network {
             self.users.get(&target.user()),
         ) {
             let update = update::ChannelInvite {
-                invite,
+                invite: target,
                 source: self.translate_state_change_source(details.source.into()),
                 user: self.translate_historic_user_id(&user),
-                channel: channel.clone(),
             };
             updates.notify(update, event);
         }

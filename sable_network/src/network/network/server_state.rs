@@ -23,9 +23,9 @@ impl Network {
             version: detail.version.clone(),
         };
 
-        self.servers.insert(target, server.clone());
+        self.servers.insert(target, server);
 
-        updates.notify(update::NewServer { server }, event);
+        updates.notify(update::NewServer { server: target }, event);
     }
 
     pub(super) fn server_ping(
@@ -66,7 +66,8 @@ impl Network {
             // that services has gone away
             if let Some(services) = &self.current_services {
                 if removed.id == services.server_id {
-                    updates.notify(update::ServicesUpdate { new_state: None }, event);
+                    self.current_services = None;
+                    updates.notify(update::ServicesUpdate {}, event);
                 }
             }
 

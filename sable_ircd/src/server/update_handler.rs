@@ -77,21 +77,23 @@ impl ClientServer {
         // without. This is called out explicitly in the labeled-response spec, and appears
         // to exist solely to make my life difficult.
 
+        let net = self.network();
+        let message = net.message(msg.message)?;
+
         if let HistoricMessageSourceId::User(source) = &msg.source {
             if let HistoricMessageTargetId::User(target) = &msg.target {
                 // Source and target are both users. Check for self-message with the awkward caps
                 if source == target {
                     // We handle this as a special case.
 
-                    let net = self.network();
                     let source = net.historic_user(*source)?;
                     let target = net.historic_user(*target)?;
 
                     let message = message::Message::new(
                         source,
                         target,
-                        msg.message.message_type,
-                        &msg.message.text,
+                        message.message_type(),
+                        message.text(),
                     )
                     .with_tags_from(update, &net);
 
@@ -121,11 +123,11 @@ impl ClientServer {
         if let Ok(connection) = self
             .connections
             .read()
-            .get_user_connection(detail.connection.id)
+            .get_user_connection(detail.connection)
         {
             // `register_new_user` doesn't set the user ID on the connection; it remains a pre-client until
             // we see the registration events come back through (i.e. here)
-            connection.set_user(user.id(), detail.connection.id);
+            connection.set_user(user.id(), detail.connection);
 
             connection.send(numeric::Numeric001::new_for(
                 &self.node.name().to_string(),
@@ -178,10 +180,13 @@ impl ClientServer {
         Ok(())
     }
 
-    fn handle_services_update(&self, detail: &update::ServicesUpdate) -> HandleResult {
-        match &detail.new_state {
+    fn handle_services_update(&self, _detail: &update::ServicesUpdate) -> HandleResult {
+        let net = self.network();
+        let new_state = net.current_services();
+
+        match new_state {
             Some(state) => {
-                let mut mechanisms = state.sasl_mechanisms.clone();
+                let mut mechanisms = state.sasl_mechanisms().clone();
                 mechanisms.push("EXTERNAL".to_string());
                 self.client_caps
                     .enable_with_values(ClientCapability::Sasl, &mechanisms);

@@ -114,7 +114,7 @@ where
                     {
                         if let NetworkStateChange::NewServer(new_server) = &update.change
                         {
-                            if new_server.server.id == self.node.id()
+                            if new_server.server == self.node.id()
                             {
                                 self.burst_to_network().await;
                             }

@@ -1,9 +1,6 @@
 use crate::errors::HandleResult;
 use crate::messages::MessageSink;
 use crate::ClientServer;
-use sable_network::network::state;
-use sable_network::network::state::HistoricUser;
-use sable_network::prelude::wrapper::ObjectWrapper;
 use sable_network::prelude::*;
 use sable_network::rpc::NetworkHistoryUpdate;
 
@@ -55,7 +52,7 @@ impl SendRealtimeItem<update::ChannelJoin> for ClientServer {
 
         // If we get here, the user we're notifying is the joining user
         let network = self.network();
-        let channel = network.channel(item.channel.id)?;
+        let channel = network.channel(item.membership.channel())?;
         let user = network.user(*item.user.user())?;
 
         if let Some(topic) = channel.topic() {
@@ -79,13 +76,13 @@ impl SendRealtimeItem<update::ChannelRename> for ClientServer {
         conn: &impl MessageSink,
         from_entry: &NetworkHistoryUpdate,
     ) -> HandleResult {
-        let net = self.network();
-        let source = net.message_source(&item.source)?;
+        let network = self.network();
+        let source = network.message_source(&item.source)?;
 
         if conn.capabilities().has(ClientCapability::ChannelRename) {
             conn.send(
                 message::Rename::new(&source, &item.old_name, &item.new_name, &item.message)
-                    .with_tags_from(from_entry, &net)
+                    .with_tags_from(from_entry, &network)
                     .with_required_capabilities(ClientCapability::ChannelRename),
             );
 
@@ -98,8 +95,7 @@ impl SendRealtimeItem<update::ChannelRename> for ClientServer {
                 return Ok(());
             };
 
-            let network = self.network();
-            let channel = network.channel(item.channel.id)?;
+            let channel = network.channel(item.channel)?;
             let Some(membership) = channel.has_member(user_id) else {
                 tracing::warn!("Cannot send ChannelRename to non-member {:?}", user_id);
                 return Ok(());
@@ -109,22 +105,8 @@ impl SendRealtimeItem<update::ChannelRename> for ClientServer {
 
             // Construct fake join/part updates so that we can fake the log entry as well
 
-            let fake_part = update::ChannelPart {
-                channel: state::Channel {
-                    name: item.old_name,
-                    ..item.channel.clone()
-                },
-                membership: membership.raw().clone(),
-                user: user.historic_id(),
-                message: format!("Channel renamed to {}: {}", &item.new_name, &item.message),
-            };
-
             let fake_join = update::ChannelJoin {
-                channel: state::Channel {
-                    name: item.new_name,
-                    ..item.channel.clone()
-                },
-                membership: membership.raw().clone(),
+                membership: membership.id(),
                 user: user.historic_id(),
             };
 
@@ -135,7 +117,10 @@ impl SendRealtimeItem<update::ChannelRename> for ClientServer {
                 users_to_notify: vec![],
             };
 
-            self.send_item(&fake_part, conn, &fake_log_entry)?;
+            let fake_part = message::Part::new(&user, &item.old_name, &item.message)
+                .with_tags_from(&fake_log_entry, &network);
+            conn.send(fake_part);
+
             // fake_join was moved into fake_log_entry
             self.send_now(&fake_log_entry, conn, &fake_log_entry)
         }

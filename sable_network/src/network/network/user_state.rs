@@ -380,7 +380,7 @@ impl Network {
             updates.notify(
                 update::NewUserConnection {
                     user: self.translate_historic_user_id(&user),
-                    connection: connection.clone(),
+                    connection: connection.id,
                 },
                 event,
             );

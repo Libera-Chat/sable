@@ -10,9 +10,7 @@ impl Network {
     ) {
         self.audit_log.insert(target, details.entry.clone());
 
-        let update = update::NewAuditLogEntry {
-            entry: details.entry.clone(),
-        };
+        let update = update::NewAuditLogEntry { entry: target };
         updates.notify(update, event);
     }
 }

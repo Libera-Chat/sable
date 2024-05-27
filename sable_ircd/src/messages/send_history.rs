@@ -188,6 +188,7 @@ impl SendHistoryItem<update::ChannelModeChange> for ClientServer {
     ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.changed_by)?;
+        let channel = net.channel(item.channel)?;
         let (mut changes, params) = format_cmode_changes(item);
 
         for p in params {
@@ -196,7 +197,7 @@ impl SendHistoryItem<update::ChannelModeChange> for ClientServer {
         }
 
         let message =
-            message::Mode::new(&source, &item.channel, &changes).with_tags_from(from_entry, &net);
+            message::Mode::new(&source, &channel, &changes).with_tags_from(from_entry, &net);
 
         conn.send(message);
 
@@ -213,8 +214,9 @@ impl SendHistoryItem<update::ChannelTopicChange> for ClientServer {
     ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.setter)?;
+        let channel = net.channel(item.channel)?;
 
-        let message = message::Topic::new(&source, &item.channel.name, &item.new_text)
+        let message = message::Topic::new(&source, &channel.name(), &item.new_text)
             .with_tags_from(from_entry, &net);
 
         conn.send(message);
@@ -232,10 +234,10 @@ impl SendHistoryItem<update::ListModeAdded> for ClientServer {
     ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.set_by)?;
+        let channel = net.channel(item.channel)?;
 
         let text = format!("+{} {}", item.list_type.mode_char(), item.pattern);
-        let message =
-            message::Mode::new(&source, &item.channel, &text).with_tags_from(from_entry, &net);
+        let message = message::Mode::new(&source, &channel, &text).with_tags_from(from_entry, &net);
         conn.send(message);
         Ok(())
     }
@@ -250,10 +252,10 @@ impl SendHistoryItem<update::ListModeRemoved> for ClientServer {
     ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.removed_by)?;
+        let channel = net.channel(item.channel)?;
 
         let text = format!("-{} {}", item.list_type.mode_char(), item.pattern);
-        let message =
-            message::Mode::new(&source, &item.channel, &text).with_tags_from(from_entry, &net);
+        let message = message::Mode::new(&source, &channel, &text).with_tags_from(from_entry, &net);
         conn.send(message);
         Ok(())
     }
@@ -269,6 +271,7 @@ impl SendHistoryItem<update::MembershipFlagChange> for ClientServer {
         let net = self.network();
         let source = net.message_source(&item.changed_by)?;
         let user = net.historic_user(item.user)?;
+        let channel = net.channel(item.membership.channel())?;
 
         let (mut changes, args) =
             format_channel_perm_changes(&user.nickname, &item.added, &item.removed);
@@ -277,7 +280,7 @@ impl SendHistoryItem<update::MembershipFlagChange> for ClientServer {
         changes += &args.join(" ");
 
         let message =
-            message::Mode::new(&source, &item.channel, &changes).with_tags_from(from_entry, &net);
+            message::Mode::new(&source, &channel, &changes).with_tags_from(from_entry, &net);
 
         conn.send(message);
 
@@ -294,22 +297,24 @@ impl SendHistoryItem<update::ChannelJoin> for ClientServer {
     ) -> HandleResult {
         let net = self.network();
         let user = net.historic_user(item.user)?;
+        let membership = net.membership(item.membership)?;
+        let channel = membership.channel()?;
 
-        let message = message::Join::new(user, &item.channel.name).with_tags_from(from_entry, &net);
+        let message = message::Join::new(user, &channel.name()).with_tags_from(from_entry, &net);
 
         conn.send(message);
 
-        if !item.membership.permissions.is_empty() {
+        if !membership.permissions().is_empty() {
             let (mut changes, args) = format_channel_perm_changes(
                 &user.nickname,
-                &item.membership.permissions,
+                &membership.permissions(),
                 &MembershipFlagSet::new(),
             );
 
             changes += " ";
             changes += &args.join(" ");
 
-            let msg = message::Mode::new(user, &item.channel, &changes);
+            let msg = message::Mode::new(user, &channel, &changes);
             conn.send(msg);
         }
 
@@ -334,8 +339,9 @@ impl SendHistoryItem<update::ChannelKick> for ClientServer {
         let net = self.network();
         let source = net.message_source(&item.source)?;
         let user = net.historic_user(item.user)?;
+        let channel = net.channel(item.membership.channel)?;
 
-        let message = message::Kick::new(&source, user, &item.channel.name, &item.message)
+        let message = message::Kick::new(&source, user, &channel.name(), &item.message)
             .with_tags_from(from_entry, &net);
 
         conn.send(message);
@@ -353,8 +359,11 @@ impl SendHistoryItem<update::ChannelPart> for ClientServer {
     ) -> HandleResult {
         let net = self.network();
         let user = net.historic_user(item.user)?;
+        let channel = net.channel(item.membership.channel)?;
 
-        let message = message::Part::new(user, &item.channel.name, &item.message)
+        // If editing this behaviour, make sure that the faked version in the channel rename
+        // handler stays in sync
+        let message = message::Part::new(user, &channel.name(), &item.message)
             .with_tags_from(from_entry, &net);
 
         conn.send(message);
@@ -373,9 +382,10 @@ impl SendHistoryItem<update::ChannelInvite> for ClientServer {
         let net = self.network();
         let source = net.message_source(&item.source)?;
         let user = net.historic_user(item.user)?;
+        let channel = net.channel(item.invite.channel())?;
 
-        let message = message::Invite::new(&source, user, &item.channel.name)
-            .with_tags_from(from_entry, &net);
+        let message =
+            message::Invite::new(&source, user, &channel.name()).with_tags_from(from_entry, &net);
 
         conn.send(message);
 
@@ -406,14 +416,11 @@ impl SendHistoryItem<update::NewMessage> for ClientServer {
         let net = self.network();
         let source = net.message_source(&item.source)?;
         let target = net.message_target(&item.target)?;
+        let message = net.message(item.message)?;
 
-        let message = message::Message::new(
-            &source,
-            &target,
-            item.message.message_type,
-            &item.message.text,
-        )
-        .with_tags_from(from_entry, &net);
+        let message =
+            message::Message::new(&source, &target, message.message_type(), message.text())
+                .with_tags_from(from_entry, &net);
 
         // Users should only see their own message echoed if they've asked for it,
         // unless it's sent to themself
