@@ -4,6 +4,7 @@ use crate::{id::*, network::*, validated::*};
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct HistoricUser {
     pub id: UserId,
+    pub serial: u32,
     pub nickname: Nickname,
     pub user: Username,
     pub visible_host: Hostname,
@@ -15,6 +16,10 @@ pub struct HistoricUser {
 impl wrapper::WrappedUser for HistoricUser {
     fn id(&self) -> crate::id::UserId {
         self.id
+    }
+
+    fn historic_id(&self) -> HistoricUserId {
+        HistoricUserId::new(self.id, self.serial)
     }
 
     fn nick(&self) -> Nickname {
@@ -61,6 +66,7 @@ impl HistoricUser {
                 .map(|acc| acc.name()),
             user: user.user,
             id: user.id,
+            serial: user.serial,
             visible_host: user.visible_host,
             realname: user.realname,
             away_reason: user.away_reason,
@@ -74,15 +80,15 @@ impl HistoricUser {
 /// This roughly corresponds to "things that can go in the source field of a client protocol
 /// message".
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub enum HistoricMessageSource {
-    User(HistoricUser),
-    Server(state::Server),
+pub enum HistoricMessageSourceId {
+    User(HistoricUserId),
+    Server(ServerId),
     Unknown,
 }
 
-impl HistoricMessageSource {
-    /// Return the [`HistoricUser`] if it's a user source
-    pub fn user(&self) -> Option<&HistoricUser> {
+impl HistoricMessageSourceId {
+    /// Return the [`HistoricUserId`] if it's a user source
+    pub fn user(&self) -> Option<&HistoricUserId> {
         match self {
             Self::User(user) => Some(user),
             _ => None,
@@ -94,8 +100,18 @@ impl HistoricMessageSource {
 /// [`NetworkStateChange`] for those changes to describe the target in a way that can be
 /// replayed later
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub enum HistoricMessageTarget {
-    User(HistoricUser),
-    Channel(state::Channel),
+pub enum HistoricMessageTargetId {
+    User(HistoricUserId),
+    Channel(ChannelId),
     Unknown,
+}
+
+impl HistoricMessageTargetId {
+    /// Return the [`HistoricUserId`] if it's a user source
+    pub fn user(&self) -> Option<&HistoricUserId> {
+        match self {
+            Self::User(user) => Some(user),
+            _ => None,
+        }
+    }
 }

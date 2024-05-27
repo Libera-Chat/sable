@@ -1,5 +1,5 @@
 use messages::send_realtime::SendRealtimeItem;
-use sable_network::prelude::state::{HistoricMessageSource, HistoricMessageTarget};
+use sable_network::prelude::state::{HistoricMessageSourceId, HistoricMessageTargetId};
 
 use super::*;
 use crate::errors::HandleResult;
@@ -56,7 +56,7 @@ impl ClientServer {
                     self.notify_user_of_message(&conn, &sink, update, msg)?;
                 }
                 _ => {
-                    update.send_now(&sink, update, self)?;
+                    self.send_now(update, &sink, update)?;
                 }
             }
         }
@@ -77,19 +77,23 @@ impl ClientServer {
         // without. This is called out explicitly in the labeled-response spec, and appears
         // to exist solely to make my life difficult.
 
-        if let HistoricMessageSource::User(source) = &msg.source {
-            if let HistoricMessageTarget::User(target) = &msg.target {
+        if let HistoricMessageSourceId::User(source) = &msg.source {
+            if let HistoricMessageTargetId::User(target) = &msg.target {
                 // Source and target are both users. Check for self-message with the awkward caps
-                if source.id() == target.id() {
+                if source == target {
                     // We handle this as a special case.
 
+                    let net = self.network();
+                    let source = net.historic_user(*source)?;
+                    let target = net.historic_user(*target)?;
+
                     let message = message::Message::new(
-                        &msg.source,
-                        &msg.target,
+                        source,
+                        target,
                         msg.message.message_type,
                         &msg.message.text,
                     )
-                    .with_tags_from(update);
+                    .with_tags_from(update, &net);
 
                     // First, send the echo-message acknowledgement, into the labeled-response sink
                     sink.send(
@@ -107,12 +111,12 @@ impl ClientServer {
             }
         }
 
-        update.send_now(&sink, update, self)
+        self.send_now(update, &sink, update)
     }
 
     fn handle_new_user_connection(&self, detail: &update::NewUserConnection) -> HandleResult {
         let net = self.node.network();
-        let user = net.user(detail.user.id())?;
+        let user = net.user(*detail.user.user())?;
 
         if let Ok(connection) = self
             .connections

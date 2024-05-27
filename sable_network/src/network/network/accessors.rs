@@ -124,11 +124,46 @@ impl Network {
         alias_users.chain(users)
     }
 
-    /// Remove a user from nick bindings and add it to historical users for that nick
+    /// Look up a historic user
+    pub fn historic_user(&self, id: HistoricUserId) -> LookupResult<&HistoricUser> {
+        self.historic_users.get(&id).ok_or(NoSuchHistoricUser(id))
+    }
 
-    /// Return a nickname binding for the given nick.
+    /// Iterate over historic users by nickname
     pub fn historic_users_by_nick(&self, nick: &Nickname) -> impl Iterator<Item = &HistoricUser> {
         self.historic_nick_users.get(nick, self)
+    }
+
+    /// Look up a historic message source
+    pub fn message_source(
+        &self,
+        id: &state::HistoricMessageSourceId,
+    ) -> LookupResult<wrapper::HistoricMessageSource> {
+        match id {
+            state::HistoricMessageSourceId::User(id) => Ok(wrapper::HistoricMessageSource::User(
+                self.historic_user(*id)?,
+            )),
+            state::HistoricMessageSourceId::Server(id) => {
+                Ok(wrapper::HistoricMessageSource::Server(self.server(*id)?))
+            }
+            state::HistoricMessageSourceId::Unknown => Ok(wrapper::HistoricMessageSource::Unknown),
+        }
+    }
+
+    /// Look up a historic message target
+    pub fn message_target(
+        &self,
+        id: &state::HistoricMessageTargetId,
+    ) -> LookupResult<wrapper::HistoricMessageTarget> {
+        match id {
+            state::HistoricMessageTargetId::User(id) => Ok(wrapper::HistoricMessageTarget::User(
+                self.historic_user(*id)?,
+            )),
+            state::HistoricMessageTargetId::Channel(id) => {
+                Ok(wrapper::HistoricMessageTarget::Channel(self.channel(*id)?))
+            }
+            state::HistoricMessageTargetId::Unknown => Ok(wrapper::HistoricMessageTarget::Unknown),
+        }
     }
 
     /// Look up a channel by ID

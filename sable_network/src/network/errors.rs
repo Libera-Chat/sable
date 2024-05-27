@@ -10,6 +10,8 @@ pub enum LookupError {
     WrongType,
     #[error("No such user id {0:?}")]
     NoSuchUser(UserId),
+    #[error("No such historic user id {0:?}")]
+    NoSuchHistoricUser(HistoricUserId),
     #[error("No such connection id {0:?}")]
     NoSuchConnection(UserConnectionId),
     #[error("No such channel id {0:?}")]

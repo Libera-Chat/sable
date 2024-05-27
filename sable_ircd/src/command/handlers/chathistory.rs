@@ -1,7 +1,7 @@
 use super::*;
 use crate::{capability::ClientCapability, utils};
 use messages::send_history::SendHistoryItem;
-use sable_network::network::state::HistoricMessageTarget;
+use sable_network::network::state::HistoricMessageTargetId;
 
 use std::cmp::{max, min};
 
@@ -231,16 +231,22 @@ fn handle_chathistory(
 // Helper to extract the target name for chathistory purposes from a given event.
 // This might be the source or target of the actual event, or might be None if it's
 // an event type that we don't include in history playback
-fn target_name_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<String> {
+fn target_name_for_entry(
+    for_user: UserId,
+    entry: &HistoryLogEntry,
+    net: &Network,
+) -> Option<String> {
     match &entry.details {
-        NetworkStateChange::NewMessage(message) => {
-            if matches!(&message.target, HistoricMessageTarget::User(user) if user.id() == for_user)
-            {
-                Some(messages::MessageTarget::format(&message.source))
-            } else {
-                Some(message.target.format())
+        NetworkStateChange::NewMessage(message) => match &message.target {
+            HistoricMessageTargetId::User(user) if user.user() == &for_user => {
+                let source = net.historic_user(*user).ok()?;
+                Some(messages::MessageTarget::format(source))
             }
-        }
+            _ => {
+                let target = net.message_target(&message.target).ok()?;
+                Some(target.format())
+            }
+        },
         _ => None,
     }
 }
@@ -269,7 +275,7 @@ fn list_targets(
             break;
         }
 
-        if let Some(target_name) = target_name_for_entry(source.id(), entry) {
+        if let Some(target_name) = target_name_for_entry(source.id(), entry, &server.network()) {
             found_targets.entry(target_name).or_insert(entry.timestamp);
         }
 
@@ -327,7 +333,8 @@ fn send_history_for_target(
                 break;
             }
 
-            if let Some(event_target) = target_name_for_entry(source.id(), entry) {
+            if let Some(event_target) = target_name_for_entry(source.id(), entry, &server.network())
+            {
                 if event_target == target {
                     backward_entries.push(entry);
                 }
@@ -350,7 +357,8 @@ fn send_history_for_target(
                 break;
             }
 
-            if let Some(event_target) = target_name_for_entry(source.id(), entry) {
+            if let Some(event_target) = target_name_for_entry(source.id(), entry, &server.network())
+            {
                 if event_target == target {
                     forward_entries.push(entry);
                 }
@@ -362,10 +370,18 @@ fn send_history_for_target(
         }
     }
 
-    send_history_entries(into, subcommand, target, backward_entries, forward_entries)
+    send_history_entries(
+        server,
+        into,
+        subcommand,
+        target,
+        backward_entries,
+        forward_entries,
+    )
 }
 
 fn send_history_entries<'a>(
+    server: &ClientServer,
     into: impl MessageSink,
     subcommand: &str,
     target: &str,
@@ -393,7 +409,7 @@ fn send_history_entries<'a>(
             .rev()
             .chain(forward_entries.into_iter())
         {
-            entry.send_to(&batch, entry)?;
+            server.send_item(entry, &batch, entry)?;
         }
     }
 

@@ -25,12 +25,12 @@ pub type HandleResult = Result<Vec<UserId>, HandlerError>;
 impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     fn handle_away_change(&self, detail: &update::UserAwayChange) -> HandleResult {
         let net = self.network();
-        let source = net.user(detail.user.id())?;
+        let source = net.user(*detail.user.user())?;
 
         let mut notified = HashSet::new();
 
         // Notify the source user themselves, even if they are not in any channel
-        notified.insert(detail.user.id());
+        notified.insert(*detail.user.user());
 
         for m1 in source.channels() {
             let chan = m1.channel()?;
@@ -44,7 +44,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 
     fn handle_nick_change(&self, detail: &update::UserNickChange) -> HandleResult {
         let net = self.network();
-        let source = net.user(detail.user.id())?;
+        let source = net.user(*detail.user.user())?;
         let mut notified = HashSet::new();
 
         notified.insert(source.id());
@@ -60,7 +60,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     }
 
     fn handle_umode_change(&self, detail: &update::UserModeChange) -> HandleResult {
-        Ok(vec![detail.user.id()])
+        Ok(vec![*detail.user.user()])
     }
 
     fn handle_user_quit(&self, detail: &update::UserQuit) -> HandleResult {

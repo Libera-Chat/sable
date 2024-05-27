@@ -1,31 +1,25 @@
 use super::*;
 use crate::messages::OutboundMessageTag;
-use sable_network::prelude::NetworkStateChange;
+use sable_network::{network::Network, prelude::NetworkStateChange};
 
-fn account_for_tag(update: &NetworkStateChange) -> Option<String> {
-    match update {
-        NetworkStateChange::UserNickChange(detail) => detail.user.account,
-        NetworkStateChange::UserAwayChange(detail) => detail.user.account,
-        NetworkStateChange::UserQuit(detail) => detail.user.account,
-        NetworkStateChange::MembershipFlagChange(detail) => detail.user.account,
-        NetworkStateChange::ChannelJoin(detail) => detail.user.account,
-        NetworkStateChange::ChannelPart(detail) => detail.user.account,
-        NetworkStateChange::UserLoginChange(detail) => detail.user.account,
+fn account_for_tag(update: &NetworkStateChange, net: &Network) -> Option<String> {
+    let id = match update {
+        NetworkStateChange::UserNickChange(detail) => Some(&detail.user),
+        NetworkStateChange::UserAwayChange(detail) => Some(&detail.user),
+        NetworkStateChange::UserQuit(detail) => Some(&detail.user),
+        NetworkStateChange::MembershipFlagChange(detail) => Some(&detail.user),
+        NetworkStateChange::ChannelJoin(detail) => Some(&detail.user),
+        NetworkStateChange::ChannelPart(detail) => Some(&detail.user),
+        NetworkStateChange::UserLoginChange(detail) => Some(&detail.user),
 
-        NetworkStateChange::ChannelRename(detail) => detail.source.user().and_then(|u| u.account),
-        NetworkStateChange::ChannelInvite(detail) => detail.source.user().and_then(|u| u.account),
-        NetworkStateChange::NewMessage(detail) => detail.source.user().and_then(|u| u.account),
-        NetworkStateChange::ChannelKick(detail) => detail.source.user().and_then(|u| u.account),
-        NetworkStateChange::ChannelModeChange(detail) => {
-            detail.changed_by.user().and_then(|u| u.account)
-        }
-        NetworkStateChange::ChannelTopicChange(detail) => {
-            detail.setter.user().and_then(|u| u.account)
-        }
-        NetworkStateChange::ListModeAdded(detail) => detail.set_by.user().and_then(|u| u.account),
-        NetworkStateChange::ListModeRemoved(detail) => {
-            detail.removed_by.user().and_then(|u| u.account)
-        }
+        NetworkStateChange::ChannelRename(detail) => detail.source.user(),
+        NetworkStateChange::ChannelInvite(detail) => detail.source.user(),
+        NetworkStateChange::NewMessage(detail) => detail.source.user(),
+        NetworkStateChange::ChannelKick(detail) => detail.source.user(),
+        NetworkStateChange::ChannelModeChange(detail) => detail.changed_by.user(),
+        NetworkStateChange::ChannelTopicChange(detail) => detail.setter.user(),
+        NetworkStateChange::ListModeAdded(detail) => detail.set_by.user(),
+        NetworkStateChange::ListModeRemoved(detail) => detail.removed_by.user(),
         NetworkStateChange::NewUser(_) => None,
         NetworkStateChange::NewUserConnection(_) => None,
         NetworkStateChange::UserConnectionDisconnected(_) => None,
@@ -35,12 +29,12 @@ fn account_for_tag(update: &NetworkStateChange) -> Option<String> {
         NetworkStateChange::NewAuditLogEntry(_) => None,
         NetworkStateChange::ServicesUpdate(_) => None,
         NetworkStateChange::EventComplete(_) => None,
-    }
-    .map(|n| n.to_string())
+    }?;
+    Some(net.historic_user(*id).ok()?.account?.to_string())
 }
 
-pub fn account_tag(update: &NetworkStateChange) -> Option<OutboundMessageTag> {
-    account_for_tag(update).map(|account| {
+pub fn account_tag(update: &NetworkStateChange, net: &Network) -> Option<OutboundMessageTag> {
+    account_for_tag(update, net).map(|account| {
         OutboundMessageTag::new("account", Some(account), ClientCapability::AccountTag)
     })
 }

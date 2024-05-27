@@ -13,7 +13,7 @@ impl Network {
         updates: &dyn NetworkUpdateReceiver,
     ) {
         if let Some(user) = self.users.remove(&id) {
-            let mut historic_user = self.translate_historic_user(&user);
+            let historic_user_id = HistoricUserId::new(user.id, user.serial);
 
             // First remove the user's memberships and connections
             let removed_memberships = self
@@ -31,8 +31,7 @@ impl Network {
                 let nick = binding.nick();
                 self.nick_bindings.remove(&nick);
 
-                self.historic_nick_users
-                    .add(&nick, HistoricUserId::new(user.id, user.serial));
+                self.historic_nick_users.add(&nick, historic_user_id);
 
                 nick
             } else {
@@ -42,18 +41,17 @@ impl Network {
             for (_id, connection) in removed_connections {
                 updates.notify(
                     update::UserConnectionDisconnected {
-                        user: self.translate_historic_user(&user),
+                        user: self.translate_historic_user_id(&user),
                         connection,
                     },
                     event,
                 );
             }
 
-            historic_user.nickname = removed_nickname;
             updates.notify(
                 update::UserQuit {
                     // We can't use `translate_historic_user` because we've already removed the nick binding
-                    user: historic_user,
+                    user: historic_user_id,
                     nickname: removed_nickname,
                     message,
                     memberships: removed_memberships,
@@ -66,7 +64,7 @@ impl Network {
     fn collide_user(
         &mut self,
         user_id: UserId,
-        from: Nickname,
+        _from: Nickname,
         trigger: &Event,
         updates: &dyn NetworkUpdateReceiver,
     ) {
@@ -102,16 +100,12 @@ impl Network {
                 let new_binding =
                     state::NickBinding::new(new_nick, user_id, trigger.timestamp, trigger.id);
 
-                self.historic_users.update_nick(user, new_nick);
+                let prev_historic_id = self.historic_users.update_nick(user, new_nick);
 
-                // Clone the user object to release the mut borrow on self.users
-                let user = user.clone();
                 // Let translate_historic_user do the work of mapping the account name, then manually fill in
                 // the old (collided) nick
-                let mut historic_user = self.translate_historic_user(&user);
-                historic_user.nickname = from;
                 let update = UserNickChange {
-                    user: historic_user,
+                    user: prev_historic_id,
                     new_nick: new_binding.nick,
                 };
                 self.nick_bindings.insert(new_nick, new_binding);
@@ -160,17 +154,12 @@ impl Network {
             let new_nick = new_binding.nick;
             self.nick_bindings.insert(new_nick, new_binding);
 
-            self.historic_users.update_nick(user_object, new_nick);
-
-            // To release the mut borrow
-            let user_object = user_object.clone();
+            let prev_historic_id = self.historic_users.update_nick(user_object, new_nick);
 
             // Emit UserNickChange update if a nick change happens as a result of this rebinding.
             if old_nick.value() != new_nick.value() {
-                let mut historic_user = self.translate_historic_user(&user_object);
-                historic_user.nickname = old_nick;
                 let update = UserNickChange {
-                    user: historic_user,
+                    user: prev_historic_id,
                     new_nick,
                 };
                 updates.notify(update, event);
@@ -242,7 +231,7 @@ impl Network {
         );
 
         let update = update::NewUser {
-            user: self.translate_historic_user(&user),
+            user: self.translate_historic_user_id(&user),
         };
         updates.notify(update, event);
 
@@ -275,7 +264,7 @@ impl Network {
             let update_user = user.clone();
 
             let update = update::UserAwayChange {
-                user: self.translate_historic_user(&update_user),
+                user: self.translate_historic_user_id(&update_user),
                 old_reason,
                 new_reason,
             };
@@ -301,7 +290,7 @@ impl Network {
 
             updates.notify(
                 update::UserModeChange {
-                    user: self.translate_historic_user(&update_user),
+                    user: self.translate_historic_user_id(&update_user),
                     added: mode.added,
                     removed: mode.removed,
                     changed_by: self.translate_state_change_source(mode.changed_by),
@@ -390,7 +379,7 @@ impl Network {
         if let Some(user) = self.users.get(&detail.user) {
             updates.notify(
                 update::NewUserConnection {
-                    user: self.translate_historic_user(&user),
+                    user: self.translate_historic_user_id(&user),
                     connection: connection.clone(),
                 },
                 event,
@@ -409,7 +398,7 @@ impl Network {
             if let Some(user) = self.users.get(&user_connection.user) {
                 updates.notify(
                     update::UserConnectionDisconnected {
-                        user: self.translate_historic_user(&user),
+                        user: self.translate_historic_user_id(&user),
                         connection: user_connection,
                     },
                     event,
