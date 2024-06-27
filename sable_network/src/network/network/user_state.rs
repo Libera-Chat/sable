@@ -100,7 +100,9 @@ impl Network {
                 let new_binding =
                     state::NickBinding::new(new_nick, user_id, trigger.timestamp, trigger.id);
 
-                let prev_historic_id = self.historic_users.update_nick(user, new_nick);
+                let prev_historic_id =
+                    self.historic_users
+                        .update_nick(user, trigger.timestamp, new_nick);
 
                 // Let translate_historic_user do the work of mapping the account name, then manually fill in
                 // the old (collided) nick
@@ -154,7 +156,9 @@ impl Network {
             let new_nick = new_binding.nick;
             self.nick_bindings.insert(new_nick, new_binding);
 
-            let prev_historic_id = self.historic_users.update_nick(user_object, new_nick);
+            let prev_historic_id =
+                self.historic_users
+                    .update_nick(user_object, event.timestamp, new_nick);
 
             // Emit UserNickChange update if a nick change happens as a result of this rebinding.
             if old_nick.value() != new_nick.value() {
@@ -209,6 +213,7 @@ impl Network {
         // get_mut later on
         self.historic_users.add(
             &mut user,
+            event.timestamp,
             detail.nickname,
             detail
                 .account
@@ -259,7 +264,7 @@ impl Network {
             let mut old_reason = new_reason;
             std::mem::swap(&mut user.away_reason, &mut old_reason);
 
-            self.historic_users.update(user);
+            self.historic_users.update(user, event.timestamp);
 
             let update_user = user.clone();
 
@@ -380,7 +385,7 @@ impl Network {
             updates.notify(
                 update::NewUserConnection {
                     user: self.translate_historic_user_id(&user),
-                    connection: connection.clone(),
+                    connection: connection.id,
                 },
                 event,
             );

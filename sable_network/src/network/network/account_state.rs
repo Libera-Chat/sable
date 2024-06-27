@@ -16,12 +16,7 @@ impl Network {
             sasl_mechanisms: update.sasl_mechanisms.clone(),
         });
 
-        updates.notify(
-            update::ServicesUpdate {
-                new_state: self.current_services.clone(),
-            },
-            event,
-        );
+        updates.notify(update::ServicesUpdate {}, event);
     }
 
     pub(super) fn update_account(
@@ -113,13 +108,18 @@ impl Network {
             return;
         };
 
-        let old_account = user.account.and_then(|id| accounts.get(&id)).cloned();
-        let new_account = update.account.and_then(|id| accounts.get(&id)).cloned();
+        let old_account = user.account;
+        let new_account = update.account;
 
         user.account = update.account;
 
-        self.historic_users
-            .update_account(user, new_account.as_ref().map(|a| a.name));
+        self.historic_users.update_account(
+            user,
+            event.timestamp,
+            new_account
+                .as_ref()
+                .and_then(|id| accounts.get(id).map(|a| a.name)),
+        );
 
         let user = user.clone();
 

@@ -16,11 +16,11 @@ impl Network {
             message_type: details.message_type,
             text: details.text.clone(),
         };
-        self.messages.insert(target, message.clone());
+        self.messages.insert(target, message);
 
         updates.notify(
             update::NewMessage {
-                message,
+                message: target,
                 source: self.translate_state_change_source(details.source.into()),
                 target: self.translate_message_target(details.target),
             },

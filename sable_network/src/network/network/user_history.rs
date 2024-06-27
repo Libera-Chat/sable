@@ -17,9 +17,26 @@ impl HistoricUserStore {
 
     /// Add a user to the store.
     ///
-    /// This should be called by the [`Network`] for every change to a client-protocol-visible attribute
-    /// of the user object.
-    pub fn add(&mut self, user: &mut state::User, nickname: Nickname, account: Option<Nickname>) {
+    /// This (or one of the update variants) should be called by the [`Network`] for every change
+    /// to a client-protocol-visible attribute of the user object.
+    ///
+    /// The provided timestamp will be applied to the previous historic user corresponding to this
+    /// user object, to indicate when it ceased to be relevant, and the user object's serial number
+    /// will be incremented.
+    pub fn add(
+        &mut self,
+        user: &mut state::User,
+        timestamp: i64,
+        nickname: Nickname,
+        account: Option<Nickname>,
+    ) {
+        if let Some(existing) = self
+            .users
+            .get_mut(&HistoricUserId::new(user.id, user.serial))
+        {
+            existing.timestamp = Some(timestamp);
+        }
+
         user.serial += 1;
 
         let historic_user = HistoricUser {
@@ -31,6 +48,7 @@ impl HistoricUserStore {
             realname: user.realname,
             away_reason: user.away_reason,
             account,
+            timestamp: None,
         };
 
         let new_id = HistoricUserId::new(user.id, user.serial);
@@ -39,7 +57,7 @@ impl HistoricUserStore {
     }
 
     /// Update the details of a user that's already in the store, reusing the existing nickname and account
-    pub fn update(&mut self, user: &mut state::User) -> HistoricUserId {
+    pub fn update(&mut self, user: &mut state::User, timestamp: i64) -> HistoricUserId {
         let old_id = HistoricUserId::new(user.id, user.serial);
 
         let Some(existing) = self.get_user(&user) else {
@@ -49,12 +67,17 @@ impl HistoricUserStore {
         let nickname = existing.nickname;
         let account = existing.account;
 
-        self.add(user, nickname, account);
+        self.add(user, timestamp, nickname, account);
         old_id
     }
 
     /// Update the details of a user that's already in the store, reusing the existing account
-    pub fn update_nick(&mut self, user: &mut state::User, nickname: Nickname) -> HistoricUserId {
+    pub fn update_nick(
+        &mut self,
+        user: &mut state::User,
+        timestamp: i64,
+        nickname: Nickname,
+    ) -> HistoricUserId {
         let old_id = HistoricUserId::new(user.id, user.serial);
 
         let Some(existing) = self.get_user(&user) else {
@@ -63,7 +86,7 @@ impl HistoricUserStore {
 
         let account = existing.account;
 
-        self.add(user, nickname, account);
+        self.add(user, timestamp, nickname, account);
         old_id
     }
 
@@ -71,6 +94,7 @@ impl HistoricUserStore {
     pub fn update_account(
         &mut self,
         user: &mut state::User,
+        timestamp: i64,
         account: Option<Nickname>,
     ) -> HistoricUserId {
         let old_id = HistoricUserId::new(user.id, user.serial);
@@ -81,7 +105,7 @@ impl HistoricUserStore {
 
         let nickname = existing.nickname;
 
-        self.add(user, nickname, account);
+        self.add(user, timestamp, nickname, account);
         old_id
     }
 

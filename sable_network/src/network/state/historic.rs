@@ -11,6 +11,10 @@ pub struct HistoricUser {
     pub realname: Realname,
     pub away_reason: Option<AwayReason>,
     pub account: Option<Nickname>,
+
+    /// The time until which this historic user state was accurate - if None
+    /// then this data is current.
+    pub timestamp: Option<i64>,
 }
 
 impl wrapper::WrappedUser for HistoricUser {
@@ -70,6 +74,7 @@ impl HistoricUser {
             visible_host: user.visible_host,
             realname: user.realname,
             away_reason: user.away_reason,
+            timestamp: None,
         }
     }
 }

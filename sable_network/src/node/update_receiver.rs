@@ -80,14 +80,14 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 
     fn handle_channel_mode_change(&self, detail: &update::ChannelModeChange) -> HandleResult {
         let network = self.network();
-        let channel = network.channel(detail.channel.id)?;
+        let channel = network.channel(detail.channel)?;
 
         Ok(channel.members().map(|m| m.user_id()).collect())
     }
 
     fn handle_list_mode_added(&self, detail: &update::ListModeAdded) -> HandleResult {
         let network = self.network();
-        let channel = network.channel(detail.channel.id)?;
+        let channel = network.channel(detail.channel)?;
 
         Ok(channel
             .members()
@@ -106,7 +106,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 
     fn handle_list_mode_removed(&self, detail: &update::ListModeRemoved) -> HandleResult {
         let network = self.network();
-        let channel = network.channel(detail.channel.id)?;
+        let channel = network.channel(detail.channel)?;
 
         Ok(channel
             .members()
@@ -125,21 +125,21 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 
     fn handle_channel_topic(&self, detail: &update::ChannelTopicChange) -> HandleResult {
         let network = self.network();
-        let channel = network.channel(detail.channel.id)?;
+        let channel = network.channel(detail.channel)?;
 
         Ok(channel.members().map(|m| m.user_id()).collect())
     }
 
     fn handle_chan_perm_change(&self, detail: &update::MembershipFlagChange) -> HandleResult {
         let network = self.network();
-        let channel = network.channel(detail.membership.channel)?;
+        let channel = network.channel(detail.membership.channel())?;
 
         Ok(channel.members().map(|m| m.user_id()).collect())
     }
 
     fn handle_join(&self, detail: &update::ChannelJoin) -> HandleResult {
         let network = self.network();
-        let channel = network.channel(detail.membership.channel)?;
+        let channel = network.channel(detail.membership.channel())?;
 
         Ok(channel.members().map(|m| m.user_id()).collect())
     }
@@ -165,19 +165,19 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     }
 
     fn handle_invite(&self, detail: &update::ChannelInvite) -> HandleResult {
-        Ok(vec![detail.invite.id.user()])
+        Ok(vec![detail.invite.user()])
     }
 
     fn handle_channel_rename(&self, detail: &update::ChannelRename) -> HandleResult {
         let network = self.network();
-        let channel = network.channel(detail.channel.id)?;
+        let channel = network.channel(detail.channel)?;
 
         Ok(channel.members().map(|m| m.user_id()).collect())
     }
 
     fn handle_new_message(&self, detail: &update::NewMessage) -> HandleResult {
         let network = self.network();
-        let message = network.message(detail.message.id)?;
+        let message = network.message(detail.message)?;
 
         Ok(match &message.target()? {
             wrapper::MessageTarget::Channel(channel) => {
@@ -202,8 +202,10 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     fn handle_new_server(&self, detail: &update::NewServer) -> HandleResult {
         tracing::trace!("Got new server");
 
-        self.sync_log()
-            .enable_server(detail.server.name, detail.server.id);
+        let network = self.network();
+        let server = network.server(detail.server)?;
+
+        self.sync_log().enable_server(*server.name(), server.id());
 
         Ok(Vec::new())
     }
