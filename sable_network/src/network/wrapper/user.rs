@@ -12,6 +12,9 @@ pub trait WrappedUser {
     /// Return this object's ID
     fn id(&self) -> UserId;
 
+    /// Return the historic user ID referring to this user's current state
+    fn historic_id(&self) -> HistoricUserId;
+
     /// Infallibly returns a nickname for this user.
     /// If a nickname binding exists, then the associated nick is returned; otherwise,
     /// a fallback nick based on the hash of the user ID is used - this is the same
@@ -40,6 +43,10 @@ pub trait WrappedUser {
 impl WrappedUser for User<'_> {
     fn id(&self) -> UserId {
         self.data.id
+    }
+
+    fn historic_id(&self) -> HistoricUserId {
+        HistoricUserId::new(self.data.id, self.data.serial)
     }
 
     fn nick(&self) -> Nickname {

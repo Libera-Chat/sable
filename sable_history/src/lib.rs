@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use sable_network::history::HistoryLogEntry;
-use sable_network::prelude::state::{HistoricMessageSource, HistoricMessageTarget};
+use sable_network::network::state::{HistoricMessageSourceId, HistoricMessageTargetId};
 use sable_network::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,25 +24,25 @@ impl From<ChannelId> for TargetId {
     }
 }
 
-impl TryFrom<&HistoricMessageSource> for TargetId {
+impl TryFrom<&HistoricMessageSourceId> for TargetId {
     type Error = ();
 
-    fn try_from(value: &HistoricMessageSource) -> Result<Self, Self::Error> {
+    fn try_from(value: &HistoricMessageSourceId) -> Result<Self, Self::Error> {
         match value {
-            HistoricMessageSource::Server(_) => Err(()), // Is that okay?
-            HistoricMessageSource::User(user) => Ok(TargetId::User(user.user.id)),
-            HistoricMessageSource::Unknown => Err(()),
+            HistoricMessageSourceId::Server(_) => Err(()), // Is that okay?
+            HistoricMessageSourceId::User(user) => Ok(TargetId::User(*user.user())),
+            HistoricMessageSourceId::Unknown => Err(()),
         }
     }
 }
-impl TryFrom<&HistoricMessageTarget> for TargetId {
+impl TryFrom<&HistoricMessageTargetId> for TargetId {
     type Error = ();
 
-    fn try_from(value: &HistoricMessageTarget) -> Result<Self, Self::Error> {
+    fn try_from(value: &HistoricMessageTargetId) -> Result<Self, Self::Error> {
         match value {
-            HistoricMessageTarget::User(user) => Ok(TargetId::User(user.user.id)),
-            HistoricMessageTarget::Channel(channel) => Ok(TargetId::Channel(channel.id)),
-            HistoricMessageTarget::Unknown => Err(()),
+            HistoricMessageTargetId::User(user) => Ok(TargetId::User(*user.user())),
+            HistoricMessageTargetId::Channel(channel) => Ok(TargetId::Channel(*channel)),
+            HistoricMessageTargetId::Unknown => Err(()),
         }
     }
 }

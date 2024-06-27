@@ -4,7 +4,7 @@ use crate::network::state;
 use crate::prelude::*;
 use sable_macros::event_details;
 
-use state::{HistoricMessageSource, HistoricMessageTarget, HistoricUser};
+use state::{HistoricMessageSourceId, HistoricMessageTargetId};
 
 #[derive(Debug)]
 pub struct WrongEventTypeError;
@@ -25,26 +25,26 @@ event_details!(
 NetworkStateChange => {
     /// A new user has joined the network
     struct NewUser {
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
     }
 
     ///  A user has changed nickname
     struct UserNickChange {
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub new_nick: Nickname,
     }
 
     /// A user's mode has changed
     struct UserModeChange {
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub added: UserModeSet,
         pub removed: UserModeSet,
-        pub changed_by: HistoricMessageSource,
+        pub changed_by: HistoricMessageSourceId,
     }
 
     /// A user's away reason/status has changed
     struct UserAwayChange {
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         /// None iff the user was not away
         pub old_reason: Option<AwayReason>,
         /// None iff the user is no longer away
@@ -53,7 +53,7 @@ NetworkStateChange => {
 
     /// A user has left the network
     struct UserQuit {
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub nickname: Nickname,
         pub message: String,
         pub memberships: Vec<state::Membership>,
@@ -61,13 +61,13 @@ NetworkStateChange => {
 
     /// A new connection has attached to an existing user
     struct NewUserConnection {
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub connection: state::UserConnection,
     }
 
     /// A client has disconnected, without the user quitting
     struct UserConnectionDisconnected {
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub connection: state::UserConnection,
     }
 
@@ -77,7 +77,7 @@ NetworkStateChange => {
         pub added: ChannelModeSet,
         pub removed: ChannelModeSet,
         pub key_change: OptionChange<ChannelKey>,
-        pub changed_by: HistoricMessageSource,
+        pub changed_by: HistoricMessageSourceId,
     }
 
     /// A channel's topic has changed
@@ -85,7 +85,7 @@ NetworkStateChange => {
         pub channel: state::Channel,
         pub topic: state::ChannelTopic,
         pub new_text: String,
-        pub setter: HistoricMessageSource,
+        pub setter: HistoricMessageSourceId,
         pub timestamp: i64,
     }
 
@@ -94,7 +94,7 @@ NetworkStateChange => {
         pub channel: state::Channel,
         pub list_type: ListModeType,
         pub pattern: Pattern,
-        pub set_by: HistoricMessageSource,
+        pub set_by: HistoricMessageSourceId,
     }
 
     /// A list-type mode has been removed from a channel
@@ -102,39 +102,39 @@ NetworkStateChange => {
         pub channel: state::Channel,
         pub list_type: ListModeType,
         pub pattern: Pattern,
-        pub removed_by: HistoricMessageSource,
+        pub removed_by: HistoricMessageSourceId,
     }
 
     /// A membership flag (+ov) has been added to or removed from a channel members
     struct MembershipFlagChange {
         pub membership: state::Membership,
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub channel: state::Channel,
         pub added: MembershipFlagSet,
         pub removed: MembershipFlagSet,
-        pub changed_by: HistoricMessageSource,
+        pub changed_by: HistoricMessageSourceId,
     }
 
     /// A user has joined a channel
     struct ChannelJoin {
         pub membership: state::Membership,
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub channel: state::Channel,
     }
 
     /// A user was kicked from a channel
     struct ChannelKick {
         pub membership: state::Membership,
-        pub source: HistoricMessageSource,
+        pub source: HistoricMessageSourceId,
         pub channel: state::Channel,
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub message: String,
     }
 
     /// A user has left a channel
     struct ChannelPart {
         pub membership: state::Membership,
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub channel: state::Channel,
         pub message: String,
     }
@@ -142,14 +142,14 @@ NetworkStateChange => {
     /// A user has been invited to a channel
     struct ChannelInvite {
         pub invite: state::ChannelInvite,
-        pub source: HistoricMessageSource,
-        pub user: HistoricUser,
+        pub source: HistoricMessageSourceId,
+        pub user: HistoricUserId,
         pub channel: state::Channel
     }
 
     /// A channel's name has changed
     struct ChannelRename {
-        pub source: HistoricMessageSource,
+        pub source: HistoricMessageSourceId,
         pub channel: state::Channel,
         pub old_name: ChannelName,
         pub new_name: ChannelName,
@@ -159,8 +159,8 @@ NetworkStateChange => {
     /// A message has been sent to a user or channel
     struct NewMessage {
         pub message: state::Message,
-        pub source: HistoricMessageSource,
-        pub target: HistoricMessageTarget,
+        pub source: HistoricMessageSourceId,
+        pub target: HistoricMessageTargetId,
     }
 
     /// A new server has joined the network
@@ -180,7 +180,7 @@ NetworkStateChange => {
 
     /// A user has logged into or out of an account
     struct UserLoginChange {
-        pub user: HistoricUser,
+        pub user: HistoricUserId,
         pub old_account: Option<state::Account>,
         pub new_account: Option<state::Account>,
     }

@@ -117,25 +117,30 @@ pub(crate) trait MonitoredItem: std::fmt::Debug {
 
 impl MonitoredItem for update::NewUser {
     fn try_notify_monitors(&self, server: &ClientServer) -> Result<()> {
-        notify_monitors(server, &self.user.nickname, || {
-            make_numeric!(MonOnline, &self.user.nuh())
+        let net = server.network();
+        let user = net.historic_user(self.user)?;
+        notify_monitors(server, &user.nickname, || {
+            make_numeric!(MonOnline, &user.nuh())
         })
     }
 }
 
 impl MonitoredItem for update::UserNickChange {
     fn try_notify_monitors(&self, server: &ClientServer) -> Result<()> {
-        if self.user.nickname != self.new_nick {
+        let net = server.network();
+        let user = net.historic_user(self.user)?;
+
+        if user.nickname != self.new_nick {
             // Don't notify on case change
-            notify_monitors(server, &self.user.nickname, || {
-                make_numeric!(MonOffline, self.user.nickname.as_ref())
+            notify_monitors(server, &user.nickname, || {
+                make_numeric!(MonOffline, user.nickname.as_ref())
             })?;
             notify_monitors(server, &self.new_nick, || {
                 make_numeric!(
                     MonOnline,
                     &state::HistoricUser {
                         nickname: self.new_nick,
-                        ..self.user.clone()
+                        ..user.clone()
                     }
                     .nuh()
                 )
@@ -147,8 +152,11 @@ impl MonitoredItem for update::UserNickChange {
 
 impl MonitoredItem for update::UserQuit {
     fn try_notify_monitors(&self, server: &ClientServer) -> Result<()> {
-        notify_monitors(server, &self.user.nickname, || {
-            make_numeric!(MonOffline, self.user.nickname.as_ref())
+        let net = server.network();
+        let user = net.historic_user(self.user)?;
+
+        notify_monitors(server, &user.nickname, || {
+            make_numeric!(MonOffline, user.nickname.as_ref())
         })
     }
 }

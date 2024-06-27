@@ -1,6 +1,6 @@
 use super::Network;
 use crate::network::event::*;
-use crate::network::state::HistoricMessageSource;
+use crate::network::state::HistoricMessageSourceId;
 use crate::network::state_utils;
 use crate::network::update::*;
 use crate::prelude::*;
@@ -24,7 +24,7 @@ impl Network {
     fn do_rename_channel(
         &mut self,
         channel_id: ChannelId,
-        source: HistoricMessageSource,
+        source: HistoricMessageSourceId,
         new_name: ChannelName,
         message: String,
         event: &Event,
@@ -75,7 +75,7 @@ impl Network {
 
                 self.do_rename_channel(
                     existing_id,
-                    HistoricMessageSource::Unknown,
+                    HistoricMessageSourceId::Unknown,
                     newname,
                     format!(
                         "Name clash between {:?} and {:?}",
@@ -262,7 +262,7 @@ impl Network {
                 updates.notify(
                     update::MembershipFlagChange {
                         membership: membership.clone(),
-                        user: self.translate_historic_user(&user),
+                        user: self.translate_historic_user_id(&user),
                         channel: channel.clone(),
                         added: details.added,
                         removed: details.removed,
@@ -295,7 +295,7 @@ impl Network {
         ) {
             let update = update::ChannelJoin {
                 membership,
-                user: self.translate_historic_user(&user),
+                user: self.translate_historic_user_id(&user),
                 channel: channel.clone(),
             };
             updates.notify(update, event);
@@ -326,7 +326,7 @@ impl Network {
                     membership: removed_membership,
                     source: self.translate_state_change_source(details.source.into()),
                     channel: channel.clone(),
-                    user: self.translate_historic_user(&user),
+                    user: self.translate_historic_user_id(&user),
                     message: details.message.clone(),
                 };
                 updates.notify(update, event);
@@ -356,7 +356,7 @@ impl Network {
             ) {
                 let update = update::ChannelPart {
                     membership: removed_membership,
-                    user: self.translate_historic_user(&user),
+                    user: self.translate_historic_user_id(&user),
                     channel: channel.clone(),
                     message: details.message.clone(),
                 };
@@ -399,7 +399,7 @@ impl Network {
             let update = update::ChannelInvite {
                 invite,
                 source: self.translate_state_change_source(details.source.into()),
-                user: self.translate_historic_user(&user),
+                user: self.translate_historic_user_id(&user),
                 channel: channel.clone(),
             };
             updates.notify(update, event);

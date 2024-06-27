@@ -227,38 +227,34 @@ impl Network {
     pub(crate) fn translate_state_change_source(
         &self,
         id: ObjectId,
-    ) -> state::HistoricMessageSource {
+    ) -> state::HistoricMessageSourceId {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                state::HistoricMessageSource::User(self.translate_historic_user(&user))
+                state::HistoricMessageSourceId::User(self.translate_historic_user_id(&user))
             }),
-            ObjectId::Server(server_id) => self
-                .servers
-                .get(&server_id)
-                .map(|s| state::HistoricMessageSource::Server(s.clone())),
+            ObjectId::Server(server_id) => Some(state::HistoricMessageSourceId::Server(server_id)),
             _ => None,
         }
-        .unwrap_or(state::HistoricMessageSource::Unknown)
+        .unwrap_or(state::HistoricMessageSourceId::Unknown)
     }
 
     /// Translate a [`state::User`] to a [`HistoricUser`] based on the current network state
-    pub(crate) fn translate_historic_user(&self, user: &state::User) -> state::HistoricUser {
-        HistoricUser::new(user, self)
+    pub(crate) fn translate_historic_user_id(&self, user: &state::User) -> HistoricUserId {
+        HistoricUserId::new(user.id, user.serial)
     }
 
     /// Translate an [`ObjectId`] into a [`state::HistoricMessageTarget`] for storage in history log
-    pub(crate) fn translate_message_target(&self, id: ObjectId) -> state::HistoricMessageTarget {
+    pub(crate) fn translate_message_target(&self, id: ObjectId) -> state::HistoricMessageTargetId {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                state::HistoricMessageTarget::User(self.translate_historic_user(&user))
+                state::HistoricMessageTargetId::User(self.translate_historic_user_id(&user))
             }),
-            ObjectId::Channel(channel_id) => self
-                .channels
-                .get(&channel_id)
-                .map(|c| state::HistoricMessageTarget::Channel(c.clone())),
+            ObjectId::Channel(channel_id) => {
+                Some(state::HistoricMessageTargetId::Channel(channel_id))
+            }
             _ => None,
         }
-        .unwrap_or(state::HistoricMessageTarget::Unknown)
+        .unwrap_or(state::HistoricMessageTargetId::Unknown)
     }
 }
 

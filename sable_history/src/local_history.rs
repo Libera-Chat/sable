@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use sable_network::prelude::state::HistoricMessageTarget;
+use sable_network::network::state::HistoricMessageTargetId;
 use sable_network::prelude::*;
 
 use crate::*;
@@ -11,14 +11,12 @@ use crate::*;
 /// an event type that we don't include in history playback
 fn target_id_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<TargetId> {
     match &entry.details {
-        NetworkStateChange::NewMessage(message) => {
-            if matches!(&message.target, HistoricMessageTarget::User(user) if user.user.id == for_user)
-            {
+        NetworkStateChange::NewMessage(message) => match &message.target {
+            HistoricMessageTargetId::User(user) if user.user() == &for_user => {
                 (&message.source).try_into().ok()
-            } else {
-                (&message.target).try_into().ok()
             }
-        }
+            _ => (&message.target).try_into().ok(),
+        },
         _ => None,
     }
 }

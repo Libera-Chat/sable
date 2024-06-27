@@ -137,7 +137,7 @@ fn handle_chathistory(
 
             let log = server.node().history();
             let entries = log.get_entries(source.id(), target_id, request);
-            send_history_entries(response, subcommand, target, entries)?;
+            send_history_entries(server, response, subcommand, target, entries)?;
         }
     }
 
@@ -189,6 +189,7 @@ fn list_targets(
 }
 
 fn send_history_entries<'a>(
+    server: &ClientServer,
     into: impl MessageSink,
     subcommand: &str,
     target: &str,
@@ -204,10 +205,10 @@ fn send_history_entries<'a>(
         .batch("chathistory", ClientCapability::Batch)
         .with_arguments(&[target])
         .start();
-    first_entry.send_to(&batch, first_entry)?;
+    server.send_item(first_entry, &batch, first_entry)?;
 
     for entry in entries {
-        entry.send_to(&batch, entry)?;
+        server.send_item(entry, &batch, entry)?;
     }
 
     Ok(())

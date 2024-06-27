@@ -11,78 +11,81 @@ use super::send_history::SendHistoryItem;
 use super::*;
 
 /// Extension trait for network updates that behave differently in realtime than in history playback
-pub(crate) trait SendRealtimeItem: SendHistoryItem {
+pub(crate) trait SendRealtimeItem<Item>: SendHistoryItem<Item> {
     // Default implementation delegates to the historic version
     fn send_now(
         &self,
+        item: &Item,
         conn: &impl MessageSink,
         from_entry: &NetworkHistoryUpdate,
-        _server: &ClientServer,
     ) -> HandleResult;
 }
 
-impl SendRealtimeItem for NetworkHistoryUpdate {
+impl SendRealtimeItem<NetworkHistoryUpdate> for ClientServer {
     fn send_now(
         &self,
+        item: &NetworkHistoryUpdate,
         conn: &impl MessageSink,
         _from_entry: &NetworkHistoryUpdate,
-        server: &ClientServer,
     ) -> HandleResult {
-        match &self.change {
-            NetworkStateChange::ChannelJoin(detail) => detail.send_now(conn, self, server),
-            NetworkStateChange::ChannelRename(detail) => detail.send_now(conn, self, server),
-            _ => self.send_to(conn, self),
+        match &item.change {
+            NetworkStateChange::ChannelJoin(detail) => self.send_now(detail, conn, item),
+            NetworkStateChange::ChannelRename(detail) => self.send_now(detail, conn, item),
+            _ => self.send_item(item, conn, item),
         }
     }
 }
 
-impl SendRealtimeItem for update::ChannelJoin {
+impl SendRealtimeItem<update::ChannelJoin> for ClientServer {
     fn send_now(
         &self,
+        item: &update::ChannelJoin,
         conn: &impl MessageSink,
         from_entry: &NetworkHistoryUpdate,
-        server: &ClientServer,
     ) -> HandleResult {
         // When a user joins, we need to send topic, names, etc. We can't easily do that when replaying
         // history, because we don't have direct access to the historic member list.
 
-        self.send_to(conn, from_entry)?;
+        self.send_item(item, conn, from_entry)?;
 
         // If we're notifying someone other than the joining user, we're done now
-        if conn.user_id() != Some(self.user.id()) {
+        if conn.user_id() != Some(*item.user.user()) {
             return Ok(());
         }
 
         // If we get here, the user we're notifying is the joining user
-        let network = server.network();
-        let channel = network.channel(self.channel.id)?;
-        let user = network.user(self.user.id())?;
+        let network = self.network();
+        let channel = network.channel(item.channel.id)?;
+        let user = network.user(*item.user.user())?;
 
         if let Some(topic) = channel.topic() {
-            conn.send(numeric::TopicIs::new(&channel, topic.text()).format_for(server, &self.user));
+            conn.send(numeric::TopicIs::new(&channel, topic.text()).format_for(self, &user));
             conn.send(
                 numeric::TopicSetBy::new(&channel, topic.setter(), topic.timestamp())
-                    .format_for(server, &self.user),
+                    .format_for(self, &user),
             );
         }
 
-        crate::utils::send_channel_names(server, conn, &user, &channel)?;
+        crate::utils::send_channel_names(self, conn, &user, &channel)?;
 
         Ok(())
     }
 }
 
-impl SendRealtimeItem for update::ChannelRename {
+impl SendRealtimeItem<update::ChannelRename> for ClientServer {
     fn send_now(
         &self,
+        item: &update::ChannelRename,
         conn: &impl MessageSink,
         from_entry: &NetworkHistoryUpdate,
-        server: &ClientServer,
     ) -> HandleResult {
+        let net = self.network();
+        let source = net.message_source(&item.source)?;
+
         if conn.capabilities().has(ClientCapability::ChannelRename) {
             conn.send(
-                message::Rename::new(&self.source, &self.old_name, &self.new_name, &self.message)
-                    .with_tags_from(from_entry)
+                message::Rename::new(&source, &item.old_name, &item.new_name, &item.message)
+                    .with_tags_from(from_entry, &net)
                     .with_required_capabilities(ClientCapability::ChannelRename),
             );
 
@@ -95,8 +98,8 @@ impl SendRealtimeItem for update::ChannelRename {
                 return Ok(());
             };
 
-            let network = server.network();
-            let channel = network.channel(self.channel.id)?;
+            let network = self.network();
+            let channel = network.channel(item.channel.id)?;
             let Some(membership) = channel.has_member(user_id) else {
                 tracing::warn!("Cannot send ChannelRename to non-member {:?}", user_id);
                 return Ok(());
@@ -108,21 +111,21 @@ impl SendRealtimeItem for update::ChannelRename {
 
             let fake_part = update::ChannelPart {
                 channel: state::Channel {
-                    name: self.old_name,
-                    ..self.channel.clone()
+                    name: item.old_name,
+                    ..item.channel.clone()
                 },
                 membership: membership.raw().clone(),
-                user: HistoricUser::new(user.raw(), &network),
-                message: format!("Channel renamed to {}: {}", &self.new_name, &self.message),
+                user: user.historic_id(),
+                message: format!("Channel renamed to {}: {}", &item.new_name, &item.message),
             };
 
             let fake_join = update::ChannelJoin {
                 channel: state::Channel {
-                    name: self.new_name,
-                    ..self.channel.clone()
+                    name: item.new_name,
+                    ..item.channel.clone()
                 },
                 membership: membership.raw().clone(),
-                user: HistoricUser::new(user.raw(), &network),
+                user: user.historic_id(),
             };
 
             let fake_log_entry = NetworkHistoryUpdate {
@@ -132,9 +135,9 @@ impl SendRealtimeItem for update::ChannelRename {
                 users_to_notify: vec![],
             };
 
-            fake_part.send_to(conn, &fake_log_entry)?;
+            self.send_item(&fake_part, conn, &fake_log_entry)?;
             // fake_join was moved into fake_log_entry
-            fake_log_entry.send_now(conn, &fake_log_entry, server)
+            self.send_now(&fake_log_entry, conn, &fake_log_entry)
         }
     }
 }

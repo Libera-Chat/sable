@@ -24,6 +24,7 @@ impl HistoricUserStore {
 
         let historic_user = HistoricUser {
             id: user.id,
+            serial: user.serial,
             nickname,
             user: user.user,
             visible_host: user.visible_host,
@@ -38,37 +39,50 @@ impl HistoricUserStore {
     }
 
     /// Update the details of a user that's already in the store, reusing the existing nickname and account
-    pub fn update(&mut self, user: &mut state::User) {
+    pub fn update(&mut self, user: &mut state::User) -> HistoricUserId {
+        let old_id = HistoricUserId::new(user.id, user.serial);
+
         let Some(existing) = self.get_user(&user) else {
-            return;
+            return old_id;
         };
 
         let nickname = existing.nickname;
         let account = existing.account;
 
         self.add(user, nickname, account);
+        old_id
     }
 
     /// Update the details of a user that's already in the store, reusing the existing account
-    pub fn update_nick(&mut self, user: &mut state::User, nickname: Nickname) {
+    pub fn update_nick(&mut self, user: &mut state::User, nickname: Nickname) -> HistoricUserId {
+        let old_id = HistoricUserId::new(user.id, user.serial);
+
         let Some(existing) = self.get_user(&user) else {
-            return;
+            return old_id;
         };
 
         let account = existing.account;
 
         self.add(user, nickname, account);
+        old_id
     }
 
     /// Update the details of a user that's already in the store, reusing the existing nickname
-    pub fn update_account(&mut self, user: &mut state::User, account: Option<Nickname>) {
+    pub fn update_account(
+        &mut self,
+        user: &mut state::User,
+        account: Option<Nickname>,
+    ) -> HistoricUserId {
+        let old_id = HistoricUserId::new(user.id, user.serial);
+
         let Some(existing) = self.get_user(&user) else {
-            return;
+            return old_id;
         };
 
         let nickname = existing.nickname;
 
         self.add(user, nickname, account);
+        old_id
     }
 
     /// Look up a historic user by ID
