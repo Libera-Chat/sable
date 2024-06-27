@@ -1,16 +1,20 @@
-use crate::{network::*, validated::*};
+use crate::{id::*, network::*, validated::*};
 
 /// Info about a User at a point in time, in a form which can be stored for replay.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct HistoricUser {
-    pub user: state::User,
+    pub id: UserId,
     pub nickname: Nickname,
+    pub user: Username,
+    pub visible_host: Hostname,
+    pub realname: Realname,
+    pub away_reason: Option<AwayReason>,
     pub account: Option<Nickname>,
 }
 
 impl wrapper::WrappedUser for HistoricUser {
     fn id(&self) -> crate::id::UserId {
-        self.user.id
+        self.id
     }
 
     fn nick(&self) -> Nickname {
@@ -18,27 +22,27 @@ impl wrapper::WrappedUser for HistoricUser {
     }
 
     fn user(&self) -> &Username {
-        &self.user.user
+        &self.user
     }
 
     fn visible_host(&self) -> &Hostname {
-        &self.user.visible_host
+        &self.visible_host
     }
 
     fn realname(&self) -> &Realname {
-        &self.user.realname
+        &self.realname
     }
 
     fn away_reason(&self) -> Option<&AwayReason> {
-        self.user.away_reason.as_ref()
+        self.away_reason.as_ref()
     }
 
     fn nuh(&self) -> String {
         format!(
             "{}!{}@{}",
             self.nick().value(),
-            self.user.user.value(),
-            self.user.visible_host.value()
+            self.user.value(),
+            self.visible_host.value()
         )
     }
 
@@ -48,14 +52,18 @@ impl wrapper::WrappedUser for HistoricUser {
 }
 
 impl HistoricUser {
-    pub fn new(user: super::User, network: &Network) -> Self {
+    pub fn new(user: &super::User, network: &Network) -> Self {
         Self {
             nickname: network.infallible_nick_for_user(user.id),
             account: user
                 .account
                 .and_then(|id| network.account(id).ok())
                 .map(|acc| acc.name()),
-            user: user,
+            user: user.user,
+            id: user.id,
+            visible_host: user.visible_host,
+            realname: user.realname,
+            away_reason: user.away_reason,
         }
     }
 }
@@ -67,8 +75,8 @@ impl HistoricUser {
 /// message".
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum HistoricMessageSource {
-    Server(state::Server),
     User(HistoricUser),
+    Server(state::Server),
     Unknown,
 }
 

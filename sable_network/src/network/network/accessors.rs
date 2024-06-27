@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use super::{LookupError, LookupResult, Network};
 use crate::network::event::*;
 use crate::network::network::HistoricUser;
@@ -129,8 +127,8 @@ impl Network {
     /// Remove a user from nick bindings and add it to historical users for that nick
 
     /// Return a nickname binding for the given nick.
-    pub fn historic_users_by_nick(&self, nick: &Nickname) -> Option<&VecDeque<HistoricUser>> {
-        self.historic_nick_users.get(nick)
+    pub fn historic_users_by_nick(&self, nick: &Nickname) -> impl Iterator<Item = &HistoricUser> {
+        self.historic_nick_users.get(nick, self)
     }
 
     /// Look up a channel by ID

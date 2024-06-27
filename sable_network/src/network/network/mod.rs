@@ -43,10 +43,10 @@ pub struct Network {
     // used as a JSON object key.
     #[serde_as(as = "Vec<(_,_)>")]
     nick_bindings: HashMap<Nickname, state::NickBinding>,
-    #[serde_as(as = "Vec<(_,_)>")]
-    historic_nick_users: HashMap<Nickname, VecDeque<HistoricUser>>,
+    historic_nick_users: HistoricNickStore,
     #[serde_as(as = "Vec<(_,_)>")]
     users: HashMap<UserId, state::User>,
+    historic_users: HistoricUserStore,
     #[serde_as(as = "Vec<(_,_)>")]
     user_connections: HashMap<UserConnectionId, state::UserConnection>,
 
@@ -106,8 +106,9 @@ impl Network {
     pub fn new(config: config::NetworkConfig) -> Network {
         let net = Network {
             nick_bindings: HashMap::new(),
-            historic_nick_users: HashMap::new(),
+            historic_nick_users: HistoricNickStore::new(),
             users: HashMap::new(),
+            historic_users: HistoricUserStore::new(),
             user_connections: HashMap::new(),
 
             channels: HashMap::new(),
@@ -222,14 +223,14 @@ impl Network {
         Ok(())
     }
 
-    /// Translate an object ID into a [`update::HistoricMessageSource`]
+    /// Translate an object ID into a [`state::HistoricMessageSource`]
     pub(crate) fn translate_state_change_source(
         &self,
         id: ObjectId,
     ) -> state::HistoricMessageSource {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                state::HistoricMessageSource::User(self.translate_historic_user(user.clone()))
+                state::HistoricMessageSource::User(self.translate_historic_user(&user))
             }),
             ObjectId::Server(server_id) => self
                 .servers
@@ -241,24 +242,15 @@ impl Network {
     }
 
     /// Translate a [`state::User`] to a [`HistoricUser`] based on the current network state
-    pub(crate) fn translate_historic_user(&self, user: state::User) -> state::HistoricUser {
-        let nickname = self.infallible_nick_for_user(user.id);
-        let account = user
-            .account
-            .and_then(|id| self.account(id).ok())
-            .map(|acc| acc.name());
-        state::HistoricUser {
-            nickname,
-            account,
-            user,
-        }
+    pub(crate) fn translate_historic_user(&self, user: &state::User) -> state::HistoricUser {
+        HistoricUser::new(user, self)
     }
 
-    /// Translate an [`ObjectId`] into a [`HistoricMessageTarget`] for storage in history log
+    /// Translate an [`ObjectId`] into a [`state::HistoricMessageTarget`] for storage in history log
     pub(crate) fn translate_message_target(&self, id: ObjectId) -> state::HistoricMessageTarget {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                state::HistoricMessageTarget::User(self.translate_historic_user(user.clone()))
+                state::HistoricMessageTarget::User(self.translate_historic_user(&user))
             }),
             ObjectId::Channel(channel_id) => self
                 .channels
@@ -273,6 +265,9 @@ impl Network {
 mod accessors;
 mod alias_users;
 mod default_roles;
+
+mod user_history;
+use user_history::*;
 
 mod account_state;
 mod audit_log;

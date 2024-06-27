@@ -13,7 +13,7 @@ impl Network {
         updates: &dyn NetworkUpdateReceiver,
     ) {
         if let Some(user) = self.users.remove(&id) {
-            let mut historic_user = self.translate_historic_user(user.clone());
+            let mut historic_user = self.translate_historic_user(&user);
 
             // First remove the user's memberships and connections
             let removed_memberships = self
@@ -30,13 +30,10 @@ impl Network {
             let removed_nickname = if let Ok(binding) = self.nick_binding_for_user(user.id) {
                 let nick = binding.nick();
                 self.nick_bindings.remove(&nick);
-                let historic_nick_users = self.historic_nick_users.entry(nick).or_insert_with(
-                    || VecDeque::with_capacity(8), // arbitrary power of two
-                );
-                if historic_nick_users.len() == historic_nick_users.capacity() {
-                    historic_nick_users.pop_back();
-                }
-                historic_nick_users.push_front(historic_user.clone());
+
+                self.historic_nick_users
+                    .add(&nick, HistoricUserId::new(user.id, user.serial));
+
                 nick
             } else {
                 state_utils::hashed_nick_for(user.id)
@@ -45,7 +42,7 @@ impl Network {
             for (_id, connection) in removed_connections {
                 updates.notify(
                     update::UserConnectionDisconnected {
-                        user: self.translate_historic_user(user.clone()),
+                        user: self.translate_historic_user(&user),
                         connection,
                     },
                     event,
@@ -73,7 +70,7 @@ impl Network {
         trigger: &Event,
         updates: &dyn NetworkUpdateReceiver,
     ) {
-        if let Some(user) = self.users.get(&user_id) {
+        if let Some(user) = self.users.get_mut(&user_id) {
             let new_nick = state_utils::hashed_nick_for(user_id);
             if let Some(existing_id_binding) = self.nick_bindings.remove(&new_nick) {
                 // The hash-based nick is already in use.
@@ -104,9 +101,14 @@ impl Network {
                 // The ID-based nick isn't bound. Do so.
                 let new_binding =
                     state::NickBinding::new(new_nick, user_id, trigger.timestamp, trigger.id);
+
+                self.historic_users.update_nick(user, new_nick);
+
+                // Clone the user object to release the mut borrow on self.users
+                let user = user.clone();
                 // Let translate_historic_user do the work of mapping the account name, then manually fill in
                 // the old (collided) nick
-                let mut historic_user = self.translate_historic_user(user.clone());
+                let mut historic_user = self.translate_historic_user(&user);
                 historic_user.nickname = from;
                 let update = UserNickChange {
                     user: historic_user,
@@ -154,13 +156,18 @@ impl Network {
         // If we get here, then either there was no conflict or the existing binding has been removed,
         // and we can continue
         let new_binding = state::NickBinding::new(*target.nick(), user, event.timestamp, event.id);
-        if let Some(user_object) = self.users.get(&user) {
+        if let Some(user_object) = self.users.get_mut(&user) {
             let new_nick = new_binding.nick;
             self.nick_bindings.insert(new_nick, new_binding);
 
+            self.historic_users.update_nick(user_object, new_nick);
+
+            // To release the mut borrow
+            let user_object = user_object.clone();
+
             // Emit UserNickChange update if a nick change happens as a result of this rebinding.
             if old_nick.value() != new_nick.value() {
-                let mut historic_user = self.translate_historic_user(user_object.clone());
+                let mut historic_user = self.translate_historic_user(&user_object);
                 historic_user.nickname = old_nick;
                 let update = UserNickChange {
                     user: historic_user,
@@ -200,7 +207,7 @@ impl Network {
         detail: &details::NewUser,
         updates: &dyn NetworkUpdateReceiver,
     ) {
-        let user = state::User::new(
+        let mut user = state::User::new(
             target,
             detail.username,
             detail.visible_hostname,
@@ -209,7 +216,17 @@ impl Network {
             detail.account,
         );
 
-        // First insert the user (with no nickname yet) so that the nick binding can see
+        // Get the user into the historic buffer while we still own it, so that we don't need to
+        // get_mut later on
+        self.historic_users.add(
+            &mut user,
+            detail.nickname,
+            detail
+                .account
+                .and_then(|id| self.accounts.get(&id).map(|acc| acc.name)),
+        );
+
+        // Insert the user (with no nickname yet) so that the nick binding can see
         // a user to bind to
         self.users.insert(target, user.clone());
 
@@ -225,7 +242,7 @@ impl Network {
         );
 
         let update = update::NewUser {
-            user: self.translate_historic_user(user),
+            user: self.translate_historic_user(&user),
         };
         updates.notify(update, event);
 
@@ -253,10 +270,12 @@ impl Network {
             let mut old_reason = new_reason;
             std::mem::swap(&mut user.away_reason, &mut old_reason);
 
+            self.historic_users.update(user);
+
             let update_user = user.clone();
 
             let update = update::UserAwayChange {
-                user: self.translate_historic_user(update_user),
+                user: self.translate_historic_user(&update_user),
                 old_reason,
                 new_reason,
             };
@@ -276,11 +295,13 @@ impl Network {
             user.mode.modes |= mode.added;
             user.mode.modes &= !mode.removed;
 
+            // No need to update historic_users as modes aren't stored there
+
             let update_user = user.clone();
 
             updates.notify(
                 update::UserModeChange {
-                    user: self.translate_historic_user(update_user),
+                    user: self.translate_historic_user(&update_user),
                     added: mode.added,
                     removed: mode.removed,
                     changed_by: self.translate_state_change_source(mode.changed_by),
@@ -320,6 +341,8 @@ impl Network {
                 }
             }
 
+            // No need to update historic_users as persistent session state isn't stored there
+
             // If we get here, then we should update
             user.session_key = Some(UserSessionKey {
                 timestamp: event.timestamp,
@@ -338,6 +361,8 @@ impl Network {
     ) {
         if let Some(user) = self.users.get_mut(&target) {
             user.session_key = None;
+
+            // No need to update historic_users as persistent session state isn't stored there
         }
     }
 
@@ -365,7 +390,7 @@ impl Network {
         if let Some(user) = self.users.get(&detail.user) {
             updates.notify(
                 update::NewUserConnection {
-                    user: self.translate_historic_user(user.clone()),
+                    user: self.translate_historic_user(&user),
                     connection: connection.clone(),
                 },
                 event,
@@ -384,7 +409,7 @@ impl Network {
             if let Some(user) = self.users.get(&user_connection.user) {
                 updates.notify(
                     update::UserConnectionDisconnected {
-                        user: self.translate_historic_user(user.clone()),
+                        user: self.translate_historic_user(&user),
                         connection: user_connection,
                     },
                     event,

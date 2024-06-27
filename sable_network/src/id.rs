@@ -16,6 +16,7 @@ object_ids!(ObjectId (ObjectIdGenerator) {
     Epoch: (LocalId,);
     Event: sequential;
     User: sequential;
+    HistoricUser: (UserId, u32);
     UserConnection: sequential;
     Channel: sequential;
     ChannelTopic: sequential;
@@ -43,6 +44,16 @@ object_ids!(ObjectId (ObjectIdGenerator) {
 
     SaslSession: sequential;
 });
+
+impl HistoricUserId {
+    pub fn user(&self) -> &UserId {
+        &self.0
+    }
+
+    pub fn serial(&self) -> u32 {
+        self.1
+    }
+}
 
 impl NicknameId {
     pub fn nick(&self) -> &Nickname {

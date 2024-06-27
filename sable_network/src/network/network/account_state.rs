@@ -106,23 +106,29 @@ impl Network {
         update: &UserLogin,
         updates: &dyn NetworkUpdateReceiver,
     ) {
+        // Get the info we'll need later, before mutably borrowing self
         let accounts = &self.accounts;
 
-        if let Some(user) = self.users.get_mut(&target) {
-            let old_account = user.account.and_then(|id| accounts.get(&id)).cloned();
-            let new_account = update.account.and_then(|id| accounts.get(&id)).cloned();
+        let Some(user) = self.users.get_mut(&target) else {
+            return;
+        };
 
-            user.account = update.account;
+        let old_account = user.account.and_then(|id| accounts.get(&id)).cloned();
+        let new_account = update.account.and_then(|id| accounts.get(&id)).cloned();
 
-            let user = user.clone();
+        user.account = update.account;
 
-            let update = update::UserLoginChange {
-                user: self.translate_historic_user(user),
-                old_account,
-                new_account,
-            };
+        self.historic_users
+            .update_account(user, new_account.as_ref().map(|a| a.name));
 
-            updates.notify(update, event);
-        }
+        let user = user.clone();
+
+        let update = update::UserLoginChange {
+            user: self.translate_historic_user(&user),
+            old_account,
+            new_account,
+        };
+
+        updates.notify(update, event);
     }
 }

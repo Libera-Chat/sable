@@ -5,6 +5,7 @@ use sable_network::network::state;
 use sable_network::network::state::HistoricUser;
 use sable_network::prelude::wrapper::ObjectWrapper;
 use sable_network::prelude::*;
+use sable_network::rpc::NetworkHistoryUpdate;
 
 use super::send_history::SendHistoryItem;
 use super::*;
@@ -15,19 +16,19 @@ pub(crate) trait SendRealtimeItem: SendHistoryItem {
     fn send_now(
         &self,
         conn: &impl MessageSink,
-        from_entry: &HistoryLogEntry,
+        from_entry: &NetworkHistoryUpdate,
         _server: &ClientServer,
     ) -> HandleResult;
 }
 
-impl SendRealtimeItem for HistoryLogEntry {
+impl SendRealtimeItem for NetworkHistoryUpdate {
     fn send_now(
         &self,
         conn: &impl MessageSink,
-        _from_entry: &HistoryLogEntry,
+        _from_entry: &NetworkHistoryUpdate,
         server: &ClientServer,
     ) -> HandleResult {
-        match &self.details {
+        match &self.change {
             NetworkStateChange::ChannelJoin(detail) => detail.send_now(conn, self, server),
             NetworkStateChange::ChannelRename(detail) => detail.send_now(conn, self, server),
             _ => self.send_to(conn, self),
@@ -39,7 +40,7 @@ impl SendRealtimeItem for update::ChannelJoin {
     fn send_now(
         &self,
         conn: &impl MessageSink,
-        from_entry: &HistoryLogEntry,
+        from_entry: &NetworkHistoryUpdate,
         server: &ClientServer,
     ) -> HandleResult {
         // When a user joins, we need to send topic, names, etc. We can't easily do that when replaying
@@ -75,7 +76,7 @@ impl SendRealtimeItem for update::ChannelRename {
     fn send_now(
         &self,
         conn: &impl MessageSink,
-        from_entry: &HistoryLogEntry,
+        from_entry: &NetworkHistoryUpdate,
         server: &ClientServer,
     ) -> HandleResult {
         if conn.capabilities().has(ClientCapability::ChannelRename) {
@@ -111,11 +112,7 @@ impl SendRealtimeItem for update::ChannelRename {
                     ..self.channel.clone()
                 },
                 membership: membership.raw().clone(),
-                user: HistoricUser {
-                    user: user.raw().clone(),
-                    account: user.account().ok().flatten().map(|acc| acc.name()),
-                    nickname: user.nick(),
-                },
+                user: HistoricUser::new(user.raw(), &network),
                 message: format!("Channel renamed to {}: {}", &self.new_name, &self.message),
             };
 
@@ -125,18 +122,14 @@ impl SendRealtimeItem for update::ChannelRename {
                     ..self.channel.clone()
                 },
                 membership: membership.raw().clone(),
-                user: HistoricUser {
-                    user: user.raw().clone(),
-                    account: user.account().ok().flatten().map(|acc| acc.name()),
-                    nickname: user.nick(),
-                },
+                user: HistoricUser::new(user.raw(), &network),
             };
 
-            let fake_log_entry = HistoryLogEntry {
-                id: from_entry.id,
+            let fake_log_entry = NetworkHistoryUpdate {
                 timestamp: from_entry.timestamp,
-                source_event: from_entry.source_event,
-                details: NetworkStateChange::ChannelJoin(fake_join),
+                event: from_entry.event,
+                change: NetworkStateChange::ChannelJoin(fake_join),
+                users_to_notify: vec![],
             };
 
             fake_part.send_to(conn, &fake_log_entry)?;

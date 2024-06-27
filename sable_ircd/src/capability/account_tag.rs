@@ -30,7 +30,6 @@ fn account_for_tag(update: &NetworkStateChange) -> Option<String> {
         NetworkStateChange::NewUserConnection(_) => None,
         NetworkStateChange::UserConnectionDisconnected(_) => None,
         NetworkStateChange::UserModeChange(_) => None,
-        NetworkStateChange::BulkUserQuit(_) => None,
         NetworkStateChange::NewServer(_) => None,
         NetworkStateChange::ServerQuit(_) => None,
         NetworkStateChange::NewAuditLogEntry(_) => None,

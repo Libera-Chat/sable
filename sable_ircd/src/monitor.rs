@@ -153,17 +153,6 @@ impl MonitoredItem for update::UserQuit {
     }
 }
 
-impl MonitoredItem for update::BulkUserQuit {
-    fn try_notify_monitors(&self, server: &ClientServer) -> Result<()> {
-        self.items
-            .iter()
-            .map(|item| item.try_notify_monitors(server))
-            .collect::<Vec<_>>() // Notify all monitors even if one of them fails halfway
-            .into_iter()
-            .collect()
-    }
-}
-
 fn notify_monitors(
     server: &ClientServer,
     nick: &Nickname,

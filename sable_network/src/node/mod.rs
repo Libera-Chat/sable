@@ -24,7 +24,6 @@ use std::{sync::Arc, time::Duration};
 
 use parking_lot::RwLock;
 
-mod history;
 mod pings;
 mod update_receiver;
 

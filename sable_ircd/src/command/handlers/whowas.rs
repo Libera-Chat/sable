@@ -8,8 +8,6 @@ const DEFAULT_COUNT: usize = 8; // Arbitrary value, that happens to match the ca
 fn whowas_handler(
     network: &Network,
     response: &dyn CommandResponse,
-    source: UserSource,
-    server: &ClientServer,
     target: Nickname,
     count: Option<u32>,
 ) -> CommandResult {
@@ -20,9 +18,6 @@ fn whowas_handler(
     };
     let historic_users: Vec<_> = network
         .historic_users_by_nick(&target)
-        .cloned()
-        .unwrap_or_default()
-        .into_iter()
         .take(count)
         .collect();
 
@@ -30,19 +25,10 @@ fn whowas_handler(
         response.numeric(make_numeric!(WasNoSuchNick, &target));
     } else {
         for historic_user in historic_users {
-            let user: sable_network::network::wrapper::User<'_> =
-                wrapper::ObjectWrapper::wrap(network, &historic_user.user);
             response.numeric(make_numeric!(WhowasUser, &historic_user));
 
-            if let Ok(Some(account)) = user.account() {
-                response.numeric(make_numeric!(WhoisAccount, &target, &account.name()));
-            }
-
-            if server.policy().can_see_connection_info(&source, &user) {
-                for conn in user.connections() {
-                    response.numeric(make_numeric!(WhoisServer, &user, &conn.server()?));
-                    response.numeric(make_numeric!(WhoisHost, &user, conn.hostname(), conn.ip()));
-                }
+            if let Some(account_name) = historic_user.account_name() {
+                response.numeric(make_numeric!(WhoisAccount, &target, &account_name));
             }
         }
     }
