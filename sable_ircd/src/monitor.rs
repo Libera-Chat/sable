@@ -133,7 +133,7 @@ impl MonitoredItem for update::UserNickChange {
             notify_monitors(server, &self.new_nick, || {
                 make_numeric!(
                     MonOnline,
-                    &update::HistoricUser {
+                    &state::HistoricUser {
                         nickname: self.new_nick,
                         ..self.user.clone()
                     }

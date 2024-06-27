@@ -4,58 +4,10 @@ use crate::network::state;
 use crate::prelude::*;
 use sable_macros::event_details;
 
+use state::{HistoricMessageSource, HistoricMessageTarget, HistoricUser};
+
 #[derive(Debug)]
 pub struct WrongEventTypeError;
-
-/// Info about a User at a point in time, in a form which can be stored for replay. This contains
-/// both the [`state::User`] object itself and the user's nickname at the given time
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct HistoricUser {
-    pub user: state::User,
-    pub nickname: Nickname,
-    pub account: Option<Nickname>,
-}
-
-impl HistoricUser {
-    pub fn nuh(&self) -> String {
-        format!(
-            "{}!{}@{}",
-            self.nickname, self.user.user, self.user.visible_host
-        )
-    }
-}
-
-/// Some state changes can originate from either users or servers; this enum is used in the
-/// [`NetworkStateChange`] for those changes to describe the source of the change.
-///
-/// This roughly corresponds to "things that can go in the source field of a client protocol
-/// message".
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub enum HistoricMessageSource {
-    Server(state::Server),
-    User(HistoricUser),
-    Unknown,
-}
-
-impl HistoricMessageSource {
-    /// Return the [`HistoricUser`] if it's a user source
-    pub fn user(&self) -> Option<&HistoricUser> {
-        match self {
-            Self::User(user) => Some(user),
-            _ => None,
-        }
-    }
-}
-
-/// Some messages can be targeted at either a user or a channel; this enum is used in the
-/// [`NetworkStateChange`] for those changes to describe the target in a way that can be
-/// replayed later
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub enum HistoricMessageTarget {
-    User(HistoricUser),
-    Channel(state::Channel),
-    Unknown,
-}
 
 event_details!(
 

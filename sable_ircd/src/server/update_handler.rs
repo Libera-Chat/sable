@@ -1,5 +1,5 @@
 use messages::send_realtime::SendRealtimeItem;
-use sable_network::prelude::update::{HistoricMessageSource, HistoricMessageTarget};
+use sable_network::prelude::state::{HistoricMessageSource, HistoricMessageTarget};
 
 use super::*;
 use crate::errors::HandleResult;
@@ -138,7 +138,7 @@ impl ClientServer {
 
     fn handle_new_user_connection(&self, detail: &update::NewUserConnection) -> HandleResult {
         let net = self.node.network();
-        let user = net.user(detail.user.user.id)?;
+        let user = net.user(detail.user.id())?;
 
         if let Ok(connection) = self
             .connections

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use sable_network::history::HistoryLogEntry;
-use sable_network::prelude::update::{HistoricMessageSource, HistoricMessageTarget};
+use sable_network::prelude::state::{HistoricMessageSource, HistoricMessageTarget};
 use sable_network::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]

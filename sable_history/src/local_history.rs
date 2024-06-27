@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use sable_network::prelude::state::HistoricMessageTarget;
 use sable_network::prelude::*;
 
 use crate::*;
@@ -11,7 +12,7 @@ use crate::*;
 fn target_id_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<TargetId> {
     match &entry.details {
         NetworkStateChange::NewMessage(message) => {
-            if matches!(&message.target, update::HistoricMessageTarget::User(user) if user.user.id == for_user)
+            if matches!(&message.target, HistoricMessageTarget::User(user) if user.user.id == for_user)
             {
                 (&message.source).try_into().ok()
             } else {

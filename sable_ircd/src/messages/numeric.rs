@@ -1,6 +1,6 @@
 use super::*;
 use sable_macros::define_messages;
-use sable_network::network::update::HistoricUser;
+use sable_network::network::state::HistoricUser;
 use sable_network::network::wrapper::{Channel, ChannelMode, ListModeEntry, Server, User};
 
 define_messages! {
@@ -22,7 +22,7 @@ define_messages! {
                                                                 => "{nick} {user} {host} * :{realname}" },
     312(WhoisServer)            => { (nick: &User.nick(), server: &Server.name(), info=server.id())
                                                                 => "{nick} {server} :{info:?}"},
-    314(WhowasUser)             => { (nick: &HistoricUser.nickname, user=nick.user.user, host=nick.user.visible_host, realname=nick.user.realname)
+    314(WhowasUser)             => { (nick: &HistoricUser.nick(), user=nick.user(), host=nick.visible_host(), realname=nick.realname())
                                                                 => "{nick} {user} {host} * :{realname}" },
     315(EndOfWho)               => { (arg: &str)                => "{arg} :End of /WHO list" },
     318(EndOfWhois)             => { (user: &User.nick())       => "{user} :End of /WHOIS" },

@@ -1,7 +1,7 @@
 //! Defines the [Network] object.
 
 use crate::network::event::*;
-use crate::network::network::HistoricUser;
+use crate::network::state::HistoricUser;
 use crate::network::update::*;
 use crate::prelude::*;
 
@@ -226,28 +226,28 @@ impl Network {
     pub(crate) fn translate_state_change_source(
         &self,
         id: ObjectId,
-    ) -> update::HistoricMessageSource {
+    ) -> state::HistoricMessageSource {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                update::HistoricMessageSource::User(self.translate_historic_user(user.clone()))
+                state::HistoricMessageSource::User(self.translate_historic_user(user.clone()))
             }),
             ObjectId::Server(server_id) => self
                 .servers
                 .get(&server_id)
-                .map(|s| update::HistoricMessageSource::Server(s.clone())),
+                .map(|s| state::HistoricMessageSource::Server(s.clone())),
             _ => None,
         }
-        .unwrap_or(update::HistoricMessageSource::Unknown)
+        .unwrap_or(state::HistoricMessageSource::Unknown)
     }
 
     /// Translate a [`state::User`] to a [`HistoricUser`] based on the current network state
-    pub(crate) fn translate_historic_user(&self, user: state::User) -> update::HistoricUser {
+    pub(crate) fn translate_historic_user(&self, user: state::User) -> state::HistoricUser {
         let nickname = self.infallible_nick_for_user(user.id);
         let account = user
             .account
             .and_then(|id| self.account(id).ok())
             .map(|acc| acc.name());
-        update::HistoricUser {
+        state::HistoricUser {
             nickname,
             account,
             user,
@@ -255,18 +255,18 @@ impl Network {
     }
 
     /// Translate an [`ObjectId`] into a [`HistoricMessageTarget`] for storage in history log
-    pub(crate) fn translate_message_target(&self, id: ObjectId) -> update::HistoricMessageTarget {
+    pub(crate) fn translate_message_target(&self, id: ObjectId) -> state::HistoricMessageTarget {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                update::HistoricMessageTarget::User(self.translate_historic_user(user.clone()))
+                state::HistoricMessageTarget::User(self.translate_historic_user(user.clone()))
             }),
             ObjectId::Channel(channel_id) => self
                 .channels
                 .get(&channel_id)
-                .map(|c| update::HistoricMessageTarget::Channel(c.clone())),
+                .map(|c| state::HistoricMessageTarget::Channel(c.clone())),
             _ => None,
         }
-        .unwrap_or(update::HistoricMessageTarget::Unknown)
+        .unwrap_or(state::HistoricMessageTarget::Unknown)
     }
 }
 

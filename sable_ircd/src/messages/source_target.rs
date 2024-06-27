@@ -40,23 +40,21 @@ impl MessageSource for String {
 
 impl MessageSource for wrapper::User<'_> {
     fn format(&self) -> String {
-        format!("{}!{}@{}", self.nick(), self.user(), self.visible_host())
+        self.nuh()
     }
 }
 
-impl MessageSource for update::HistoricMessageSource {
+impl MessageSource for state::HistoricMessageSource {
     fn format(&self) -> String {
         match self {
-            Self::User(historic_user) => {
-                <update::HistoricUser as MessageSource>::format(historic_user)
-            }
+            Self::User(historic_user) => MessageSource::format(historic_user),
             Self::Server(server) => server.name.to_string(),
             Self::Unknown => "*".to_string(),
         }
     }
 }
 
-impl MessageSource for update::HistoricUser {
+impl MessageSource for state::HistoricUser {
     fn format(&self) -> String {
         self.nuh()
     }
@@ -105,13 +103,13 @@ impl MessageTarget for String {
     }
 }
 
-impl MessageTarget for update::HistoricUser {
+impl MessageTarget for state::HistoricUser {
     fn format(&self) -> String {
         self.nickname.to_string()
     }
 }
 
-impl MessageTarget for update::HistoricMessageTarget {
+impl MessageTarget for state::HistoricMessageTarget {
     fn format(&self) -> String {
         match self {
             Self::Channel(c) => c.name.to_string(),
@@ -123,7 +121,7 @@ impl MessageTarget for update::HistoricMessageTarget {
 
 // This may seem counter-intuitive, but there are times we need to
 // format a message source as if it were a target
-impl MessageTarget for update::HistoricMessageSource {
+impl MessageTarget for state::HistoricMessageSource {
     fn format(&self) -> String {
         match self {
             Self::Server(s) => s.name.to_string(),

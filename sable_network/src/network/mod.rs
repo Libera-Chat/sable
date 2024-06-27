@@ -8,6 +8,7 @@ pub mod state {
     mod audit_log;
     mod bans;
     mod channel;
+    mod historic;
     mod message;
     mod server;
     mod services;
@@ -18,6 +19,7 @@ pub mod state {
     pub use audit_log::*;
     pub use bans::*;
     pub use channel::*;
+    pub use historic::*;
     pub use message::*;
     pub use server::*;
     pub use services::*;
@@ -26,58 +28,7 @@ pub mod state {
 
 /// Defines wrapper objects which provide accessor methods and basic
 /// application logic for objects in [`state`]
-pub mod wrapper {
-
-    mod account;
-    mod bans;
-    mod channel;
-    mod channel_access;
-    mod channel_invite;
-    mod channel_mode;
-    mod channel_registration;
-    mod channel_role;
-    mod channel_topic;
-    mod list_mode;
-    mod list_mode_entry;
-    mod membership;
-    mod message;
-    mod nick_binding;
-    mod nick_registration;
-    mod server;
-    mod services;
-    mod user;
-    mod user_connection;
-    mod user_mode;
-    mod wrapper;
-
-    pub use wrapper::ObjectWrapper;
-    pub use wrapper::WrapIterator;
-    pub use wrapper::WrapOption;
-    pub use wrapper::WrapResult;
-    pub use wrapper::WrappedObjectIterator;
-
-    pub use account::*;
-    pub use bans::*;
-    pub use channel::Channel;
-    pub use channel_access::*;
-    pub use channel_invite::ChannelInvite;
-    pub use channel_mode::ChannelMode;
-    pub use channel_registration::*;
-    pub use channel_role::*;
-    pub use channel_topic::ChannelTopic;
-    pub use list_mode::ListMode;
-    pub use list_mode_entry::ListModeEntry;
-    pub use membership::Membership;
-    pub use message::Message;
-    pub use message::MessageTarget;
-    pub use nick_binding::NickBinding;
-    pub use nick_registration::*;
-    pub use server::Server;
-    pub use services::*;
-    pub use user::User;
-    pub use user_connection::UserConnection;
-    pub use user_mode::UserMode;
-}
+pub mod wrapper;
 
 pub mod ban;
 pub mod config;

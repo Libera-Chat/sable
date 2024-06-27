@@ -1,13 +1,38 @@
 use super::*;
 use crate::prelude::*;
 
-/// A wrapper around a [`state::Message`]
-pub struct Message<'a> {
-    network: &'a Network,
-    data: &'a state::Message,
+/// Describes a message's source
+pub enum MessageSource<'a> {
+    /// A user currently in the network state
+    User(User<'a>),
+    /// A server currently in the network state
+    Server(Server<'a>),
+    /// A user which is no longer in the network state (for example, because they just quit)
+    HistoricUser(state::HistoricUser),
 }
 
-/// Describe a message's target
+impl MessageSource<'_> {
+    pub fn user(&self) -> Option<&User> {
+        match self {
+            Self::User(u) => Some(u),
+            _ => None,
+        }
+    }
+}
+
+impl<'a> From<User<'a>> for MessageSource<'a> {
+    fn from(value: User<'a>) -> Self {
+        Self::User(value)
+    }
+}
+
+impl<'a> From<Server<'a>> for MessageSource<'a> {
+    fn from(value: Server<'a>) -> Self {
+        Self::Server(value)
+    }
+}
+
+/// Describes a message's target
 pub enum MessageTarget<'a> {
     /// Message sent to a user
     User(User<'a>),
@@ -15,19 +40,59 @@ pub enum MessageTarget<'a> {
     Channel(Channel<'a>),
 }
 
-impl Message<'_> {
+impl MessageTarget<'_> {
+    pub fn user(&self) -> Option<&User> {
+        match self {
+            Self::User(u) => Some(&u),
+            _ => None,
+        }
+    }
+
+    pub fn channel(&self) -> Option<&Channel> {
+        match self {
+            Self::Channel(c) => Some(&c),
+            _ => None,
+        }
+    }
+}
+
+/// A wrapper around a [`state::Message`]
+pub struct Message<'a> {
+    network: &'a Network,
+    data: &'a state::Message,
+}
+
+pub trait WrappedMessage {
     /// Return this object's ID
-    pub fn id(&self) -> MessageId {
+    fn id(&self) -> MessageId;
+
+    /// The user who sent this message
+    fn source(&self) -> LookupResult<impl WrappedUser>;
+
+    /// The target to which the message was sent
+    fn target(&self) -> LookupResult<MessageTarget>;
+
+    /// Whether this is a privmsg or a notice
+    fn message_type(&self) -> state::MessageType;
+
+    /// The message content
+    fn text(&self) -> &str;
+
+    /// The message's timestamp
+    fn ts(&self) -> i64;
+}
+
+impl WrappedMessage for Message<'_> {
+    fn id(&self) -> MessageId {
         self.data.id
     }
 
-    /// The user who sent this message
-    pub fn source(&self) -> LookupResult<User> {
+    #[allow(refining_impl_trait)]
+    fn source(&self) -> LookupResult<User> {
         self.network.user(self.data.source)
     }
 
-    /// The target to which the message was sent
-    pub fn target(&self) -> LookupResult<MessageTarget> {
+    fn target(&self) -> LookupResult<MessageTarget> {
         match self.data.target {
             ObjectId::User(id) => Ok(MessageTarget::User(self.network.user(id)?)),
             ObjectId::Channel(id) => Ok(MessageTarget::Channel(self.network.channel(id)?)),
@@ -35,18 +100,15 @@ impl Message<'_> {
         }
     }
 
-    /// Whether this is a privmsg or a notice
-    pub fn message_type(&self) -> state::MessageType {
+    fn message_type(&self) -> state::MessageType {
         self.data.message_type
     }
 
-    /// The message content
-    pub fn text(&self) -> &str {
+    fn text(&self) -> &str {
         &self.data.text
     }
 
-    /// The message's timestamp
-    pub fn ts(&self) -> i64 {
+    fn ts(&self) -> i64 {
         self.data.ts
     }
 }
