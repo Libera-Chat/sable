@@ -1,4 +1,4 @@
-use sable_history::{HistoryRequest, HistoryService};
+use sable_history::{HistoryError, HistoryRequest, HistoryService};
 
 use super::*;
 use crate::{capability::ClientCapability, utils};
@@ -77,13 +77,14 @@ fn handle_chathistory(
         }
         normalized_subcommand => {
             let target = arg_1;
+            let invalid_target_error = || CommandError::Fail {
+                command: "CHATHISTORY",
+                code: "INVALID_TARGET",
+                context: format!("{} {}", subcommand, target),
+                description: format!("Cannot fetch history from {}", target),
+            };
             let target_id = TargetParameter::parse_str(ctx, target)
-                .map_err(|_| CommandError::Fail {
-                    command: "CHATHISTORY",
-                    code: "INVALID_TARGET",
-                    context: format!("{} {}", subcommand, target),
-                    description: format!("Cannot fetch history from {}", target),
-                })?
+                .map_err(|_| invalid_target_error())?
                 .into();
             let request = match normalized_subcommand {
                 "LATEST" => {
@@ -136,8 +137,10 @@ fn handle_chathistory(
             };
 
             let log = server.node().history();
-            let entries = log.get_entries(source.id(), target_id, request);
-            send_history_entries(server, response, subcommand, target, entries)?;
+            match log.get_entries(source.id(), target_id, request) {
+                Ok(entries) => send_history_entries(server, response, target, entries)?,
+                Err(HistoryError::InvalidTarget(_)) => Err(invalid_target_error())?,
+            };
         }
     }
 
@@ -191,21 +194,13 @@ fn list_targets(
 fn send_history_entries<'a>(
     server: &ClientServer,
     into: impl MessageSink,
-    subcommand: &str,
     target: &str,
-    mut entries: impl Iterator<Item = &'a HistoryLogEntry>,
+    entries: impl Iterator<Item = &'a HistoryLogEntry>,
 ) -> CommandResult {
-    let first_entry = entries.next().ok_or(CommandError::Fail {
-        command: "CHATHISTORY",
-        code: "INVALID_TARGET",
-        context: format!("{} {}", subcommand, target),
-        description: format!("Cannot fetch history from {}", target),
-    })?;
     let batch = into
         .batch("chathistory", ClientCapability::Batch)
         .with_arguments(&[target])
         .start();
-    server.send_item(first_entry, &batch, first_entry)?;
 
     for entry in entries {
         server.send_item(entry, &batch, entry)?;

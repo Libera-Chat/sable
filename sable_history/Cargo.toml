@@ -10,3 +10,4 @@ built = { version = "0.5", features = [ "git2" ] }
 [dependencies]
 sable_macros = { path = "../sable_macros" }
 sable_network = { path = "../sable_network" }
+thiserror = "1"

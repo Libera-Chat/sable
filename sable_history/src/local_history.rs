@@ -61,7 +61,7 @@ impl HistoryService for NetworkHistoryLog {
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> impl Iterator<Item = &HistoryLogEntry> {
+    ) -> Result<impl Iterator<Item = &HistoryLogEntry>, HistoryError> {
         match request {
             #[rustfmt::skip]
             HistoryRequest::Latest { to_ts, limit } => get_history_for_target(
@@ -130,9 +130,10 @@ fn get_history_for_target(
     to_ts: Option<i64>,
     backward_limit: usize,
     forward_limit: usize,
-) -> impl Iterator<Item = &HistoryLogEntry> {
+) -> Result<impl Iterator<Item = &HistoryLogEntry>, HistoryError> {
     let mut backward_entries = Vec::new();
     let mut forward_entries = Vec::new();
+    let mut target_exists = false;
 
     if backward_limit != 0 {
         let from_ts = if forward_limit == 0 {
@@ -144,6 +145,7 @@ fn get_history_for_target(
         };
 
         for entry in log.entries_for_user_reverse(source) {
+            target_exists = true;
             if matches!(from_ts, Some(ts) if entry.timestamp >= ts) {
                 // Skip over until we hit the timestamp window we're interested in
                 continue;
@@ -167,6 +169,7 @@ fn get_history_for_target(
 
     if forward_limit != 0 {
         for entry in log.entries_for_user(source) {
+            target_exists = true;
             if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
                 // Skip over until we hit the timestamp window we're interested in
                 continue;
@@ -188,11 +191,15 @@ fn get_history_for_target(
         }
     }
 
-    // "The order of returned messages within the batch is implementation-defined, but SHOULD be
-    // ascending time order or some approximation thereof, regardless of the subcommand used."
-    // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
-    backward_entries
-        .into_iter()
-        .rev()
-        .chain(forward_entries.into_iter())
+    if target_exists {
+        // "The order of returned messages within the batch is implementation-defined, but SHOULD be
+        // ascending time order or some approximation thereof, regardless of the subcommand used."
+        // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
+        Ok(backward_entries
+            .into_iter()
+            .rev()
+            .chain(forward_entries.into_iter()))
+    } else {
+        Err(HistoryError::InvalidTarget(target))
+    }
 }
