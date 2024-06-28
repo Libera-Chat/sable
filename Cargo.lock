@@ -2076,6 +2076,7 @@ dependencies = [
  "built",
  "sable_macros",
  "sable_network",
+ "thiserror",
 ]
 
 [[package]]

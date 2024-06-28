@@ -2,11 +2,13 @@
 
 use std::collections::HashMap;
 
+use thiserror::Error;
+
 use sable_network::history::HistoryLogEntry;
 use sable_network::network::state::{HistoricMessageSourceId, HistoricMessageTargetId};
 use sable_network::prelude::*;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TargetId {
     User(UserId),
     Channel(ChannelId),
@@ -71,6 +73,12 @@ pub enum HistoryRequest {
     },
 }
 
+#[derive(Error, Debug)]
+pub enum HistoryError {
+    #[error("invalid target: {0:?}")]
+    InvalidTarget(TargetId),
+}
+
 /// A backend implementation of [IRCv3 CHATHISTORY](https://ircv3.net/specs/extensions/chathistory)
 pub trait HistoryService {
     /// Returns a list of list of history logs the given user has access to
@@ -89,7 +97,7 @@ pub trait HistoryService {
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> impl Iterator<Item = &HistoryLogEntry>;
+    ) -> Result<impl Iterator<Item = &HistoryLogEntry>, HistoryError>;
 }
 
 pub mod local_history;
