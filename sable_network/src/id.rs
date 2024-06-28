@@ -3,9 +3,29 @@
 use super::modes::ListModeType;
 use super::validated::*;
 use sable_macros::object_ids;
+use serde::{Deserialize, Serialize};
+use std::ops::Deref;
 use thiserror::Error;
+use uuid::Uuid;
 
 pub type LocalId = i64;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Copy, Hash, Serialize, Deserialize)]
+pub struct Uuid7(Uuid);
+
+impl Deref for Uuid7 {
+    type Target = Uuid;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Uuid7 {
+    pub fn new_now() -> Self {
+        Self(Uuid::now_v7())
+    }
+}
 
 #[derive(Debug, Error)]
 #[error("Mismatched object ID type for event")]
@@ -22,7 +42,7 @@ object_ids!(ObjectId (ObjectIdGenerator) {
     ChannelTopic: sequential;
     ListMode: (ChannelId,ListModeType);
     ListModeEntry: sequential;
-    Message: sequential;
+    Message: (Uuid7,);
 
     NetworkBan: sequential;
 
@@ -52,6 +72,14 @@ impl HistoricUserId {
 
     pub fn serial(&self) -> u32 {
         self.1
+    }
+}
+
+impl Deref for MessageId {
+    type Target = Uuid7;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

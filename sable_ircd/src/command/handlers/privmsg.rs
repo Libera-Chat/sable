@@ -36,7 +36,7 @@ async fn handle_privmsg(
         message_type: state::MessageType::Privmsg,
         text: msg.to_owned(),
     };
-    cmd.new_event_with_response(server.ids().next_message(), details)
+    cmd.new_event_with_response(MessageId::new(Uuid7::new_now()), details)
         .await;
     Ok(())
 }
