@@ -109,15 +109,31 @@ impl HistoryService for NetworkHistoryLog {
                 start_ts,
                 end_ts,
                 limit,
-            } => get_history_for_target(
-                self,
-                user,
-                target,
-                Some(start_ts),
-                Some(end_ts),
-                0, // Backward limit
-                limit,
-            ),
+            } => {
+                if start_ts <= end_ts {
+                    get_history_for_target(
+                        self,
+                        user,
+                        target,
+                        Some(start_ts),
+                        Some(end_ts),
+                        0, // Backward limit
+                        limit,
+                    )
+                } else {
+                    // Search backward from start_ts instead of swapping start_ts and end_ts,
+                    // because we want to match the last messages first in case we reach the limit
+                    get_history_for_target(
+                        self,
+                        user,
+                        target,
+                        Some(start_ts),
+                        Some(end_ts),
+                        limit,
+                        0, // Forward limit
+                    )
+                }
+            }
         }
     }
 }
