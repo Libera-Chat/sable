@@ -7,7 +7,7 @@ pub fn format_timestamp(ts: i64) -> String {
 }
 
 pub fn parse_timestamp(str: &str) -> Option<i64> {
-    Utc.datetime_from_str(str, "%+")
-        .map(|dt| dt.timestamp())
+    NaiveDateTime::parse_from_str(str, "%+")
+        .map(|dt| dt.and_utc().timestamp())
         .ok()
 }

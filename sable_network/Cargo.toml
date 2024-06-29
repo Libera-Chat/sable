@@ -11,6 +11,8 @@ debug = []
 
 [build-dependencies]
 built = { version = "0.5", features = [ "git2" ] }
+git2 = { version = "0.15", default-features = false }
+chrono = "0.4"
 
 [dev-dependencies]
 tracing-subscriber = "0.3"

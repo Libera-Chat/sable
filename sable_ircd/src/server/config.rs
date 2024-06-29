@@ -30,6 +30,7 @@ pub struct RawClientServerConfig {
 pub struct ServerInfoStrings {
     pub motd: Option<Vec<String>>, // Linewise to not repeatedly split
     pub admin_info: Option<AdminInfo>,
+    pub info: Vec<String>,
 }
 
 impl ServerInfoStrings {
@@ -38,6 +39,10 @@ impl ServerInfoStrings {
             motd: Self::get_info(&raw_info.motd, "motd")?
                 .map(|file| file.lines().map(|v| v.to_string()).collect()),
             admin_info: raw_info.admin.clone(),
+            info: include_str!("../../info.txt")
+                .lines()
+                .map(|v| v.to_string())
+                .collect(),
         })
     }
 

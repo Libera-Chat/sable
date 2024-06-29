@@ -1,0 +1,16 @@
+Sable --
+
+Copyright (c) 2021-2024 Sable Development Team
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Source code is available at: https://github.com/Libera-Chat/sable
+
+A list of contributors can be found in the git log.
+
+Visit the Sable website at: https://sable.chat/
+Visit us on IRC at irc.libera.chat #libera-dev
+
