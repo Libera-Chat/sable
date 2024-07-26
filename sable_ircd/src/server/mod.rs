@@ -188,6 +188,11 @@ impl ClientServer {
 
         ret.add(ISupportEntry::string("CASEMAPPING", "ascii"));
 
+        // https://ircv3.net/specs/extensions/message-tags#rpl_isupport-tokens
+        // Tell clients all client tags are rejected, so conforming clients won't
+        // even try to send TAGMSG (which we don't support yet).
+        ret.add(ISupportEntry::string("CLIENTTAGDENY", "*"));
+
         ret.add(ISupportEntry::int(
             "HOSTLEN",
             Hostname::LENGTH.try_into().unwrap(),
