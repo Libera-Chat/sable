@@ -81,7 +81,7 @@ const EVENT_JSON: &str = r###"
       "1": [1,1707606926,4]
     },
     "target": {
-      "Message": [1,1707606926,1]
+      "Message": "018d954d-e2b0-73be-8f43-337709fa3429"
     },
     "details": {
       "NewMessage": {
@@ -174,7 +174,7 @@ const EVENT_JSON: &str = r###"
       "1": [1,1707606926,5]
     },
     "target": {
-      "Message": [2,1707606928,1]
+      "Message": "018d954d-ea80-7461-b32a-f6d9880e1c44"
     },
     "details": {
       "NewMessage": {

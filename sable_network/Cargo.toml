@@ -49,6 +49,7 @@ ipnet = { version = "2", features = [ "serde" ] }
 anyhow = "1.0"
 backoff = { version = "0.4.0", features = ["tokio"] }
 chert = { git = "https://github.com/jesopo/chert" }
+uuid = { version = "1.9.1", features = ["v7", "fast-rng", "serde"] }
 
 [dependencies.serde]
 version = "1"
