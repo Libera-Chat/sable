@@ -336,7 +336,15 @@ impl ClientServer {
                             .await;
                         }
                     }
-                    conn.send(message::Error::new(&e.to_string()));
+                    match e {
+                        ConnectionError::InputLineTooLong => {
+                            conn.send(numeric::InputTooLong::new_for(
+                                &self.node.name().to_string(),
+                                &"*".to_string(),
+                            ))
+                        }
+                        _ => conn.send(message::Error::new(&e.to_string())),
+                    }
                 }
                 self.connections.write().remove(msg.source);
             }

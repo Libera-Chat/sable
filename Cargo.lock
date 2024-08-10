@@ -494,6 +494,7 @@ dependencies = [
 name = "client_listener"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "console-subscriber",
  "hex",
  "libc",

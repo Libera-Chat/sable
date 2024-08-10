@@ -78,6 +78,7 @@ define_messages! {
     406(WasNoSuchNick)          => { (nick: &Nickname)          => "{nick} :There was no such nickname" },
     410(InvalidCapCmd)          => { (subcommand: &str)         => "{subcommand} :Invalid CAP command" },
     412(NoTextToSend)           => { ()                         => ":No text to send" },
+    417(InputTooLong)           => { ()                         => ":Input line was too long" },
     421(UnknownCommand)         => { (command: &str)            => "{command} :Unknown command" },
     432(ErroneousNickname)      => { (nick: &str)               => "{nick} :Erroneous nickname" },
     433(NicknameInUse)          => { (nick: &Nickname)          => "{nick} :Nickname is already in use." },

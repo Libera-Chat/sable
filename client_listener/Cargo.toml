@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 sable_macros = { path = "../sable_macros" }
 sable_ipc = { path = "../sable_ipc" }
+bincode = "1.3"
 tracing = "0.1"
 thiserror = "1"
 serde = { version = "1", features = [ "derive" ] }
