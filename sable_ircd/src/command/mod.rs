@@ -62,6 +62,7 @@ mod handlers {
     mod quit;
     pub mod register;
     mod rename;
+    mod tagmsg;
     mod topic;
     mod user;
     mod userhost;
