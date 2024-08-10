@@ -11,7 +11,8 @@
 //! connections will be sent via the provided event channel.
 
 /// Maximum serialised size of a client message
-pub const MAX_MSG_SIZE: u64 = 1024;
+pub const MAX_MSG_SIZE: u64 = 8191 + 512 + 512; // 8k for tags, 512 for non-tag message, 512 slack
+                                                // for bincoding ConnectionEventDetail
 
 /// Maximum serialised size of a control message
 /// NB: this needs to include the size of the TLS cert chain
