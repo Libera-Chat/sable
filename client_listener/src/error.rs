@@ -13,6 +13,8 @@ pub enum ConnectionError {
     InternalError,
     #[error("Send queue full")]
     SendQueueFull,
+    #[error("Input line was too long")]
+    InputLineTooLong,
 }
 
 /// An error that might occur when configuring a listener.
