@@ -310,6 +310,14 @@ impl ClientServer {
 
                 self.connections.write().new_message(msg.source, m);
             }
+            ConnectionEventDetail::Error(ConnectionError::InputLineTooLong) => {
+                if let Ok(conn) = self.connections.get(msg.source) {
+                    conn.send(numeric::InputTooLong::new_for(
+                        &self.node.name().to_string(),
+                        &"*".to_string(),
+                    ))
+                }
+            }
             ConnectionEventDetail::Error(e) => {
                 if let Ok(conn) = self.connections.get(msg.source) {
                     if let Some((userid, user_conn_id)) = conn.user_ids() {
@@ -336,17 +344,9 @@ impl ClientServer {
                             .await;
                         }
                     }
-                    match e {
-                        ConnectionError::InputLineTooLong => {
-                            conn.send(numeric::InputTooLong::new_for(
-                                &self.node.name().to_string(),
-                                &"*".to_string(),
-                            ))
-                        }
-                        _ => conn.send(message::Error::new(&e.to_string())),
-                    }
+                    conn.send(message::Error::new(&e.to_string()));
+                    self.connections.write().remove(msg.source);
                 }
-                self.connections.write().remove(msg.source);
             }
         }
     }
