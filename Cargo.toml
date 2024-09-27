@@ -1,5 +1,7 @@
 [workspace]
 resolver = "2"
+package.name = "sable"
+package.version = "0.0.1"
 members = [
     "auth_client",
     "client_listener",
