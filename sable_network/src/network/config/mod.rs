@@ -14,6 +14,8 @@ pub struct NetworkConfig {
     pub default_roles: HashMap<state::ChannelRoleName, state::ChannelAccessSet>,
 
     pub alias_users: Vec<AliasUser>,
+
+    pub object_expiry: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +41,7 @@ impl NetworkConfig {
             debug_mode: false,
             default_roles: HashMap::new(),
             alias_users: Vec::new(),
+            object_expiry: 0,
         }
     }
 }

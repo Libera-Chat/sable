@@ -202,8 +202,12 @@ fn send_history_entries<'a>(
         .with_arguments(&[target])
         .start();
 
+    // Ignore errors here; it's possible that a message has been expired out of network state
+    // but a reference to it still exists in the history log
+    let _ = server.send_item(first_entry, &batch, first_entry);
+
     for entry in entries {
-        server.send_item(entry, &batch, entry)?;
+        let _ = server.send_item(entry, &batch, entry);
     }
 
     Ok(())

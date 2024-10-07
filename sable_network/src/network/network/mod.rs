@@ -223,6 +223,22 @@ impl Network {
         Ok(())
     }
 
+    /// Expire objects older than the provided timestamp
+    pub fn expire_objects(&mut self, min_timestamp: i64) {
+        // First remove any messages older than the cutoff
+        self.messages
+            .retain(|_, message| message.ts >= min_timestamp);
+        // Now that messages before that time are gone, we can remove any historic users
+        // whose last-relevant time is before the same timestamp
+        let removed_historic_users = self
+            .historic_users
+            .expire_users(min_timestamp)
+            .collect::<HashMap<_, _>>();
+        // Now remove any references to those pruned historic users from the whowas buffers
+        self.historic_nick_users
+            .retain(|id| !removed_historic_users.contains_key(id));
+    }
+
     /// Translate an object ID into a [`state::HistoricMessageSourceId`]
     pub(crate) fn translate_state_change_source(
         &self,

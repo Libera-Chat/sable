@@ -118,6 +118,15 @@ impl HistoricUserStore {
     pub fn get_user(&self, user: &state::User) -> Option<&HistoricUser> {
         self.users.get(&HistoricUserId::new(user.id, user.serial))
     }
+
+    /// Expire user objects whose last-relevant time is older than the given timestamp
+    pub fn expire_users(
+        &mut self,
+        min_timestamp: i64,
+    ) -> impl Iterator<Item = (HistoricUserId, HistoricUser)> + '_ {
+        self.users
+            .extract_if(move |_, user| user.timestamp.is_some_and(|ts| ts < min_timestamp))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,6 +143,7 @@ impl HistoricNickStore {
         }
     }
 
+    /// Iterate over entries for a given nickname
     pub fn get<'a>(
         &'a self,
         nick: &Nickname,
@@ -146,6 +156,7 @@ impl HistoricNickStore {
             .flatten()
     }
 
+    /// Add an entry for the given nickname
     pub fn add(&mut self, nick: &Nickname, id: HistoricUserId) {
         let vec = self
             .data
@@ -157,5 +168,12 @@ impl HistoricNickStore {
         }
 
         vec.push_front(id);
+    }
+
+    /// Remove expired entries for which the provided predicate returns false
+    pub fn retain(&mut self, pred: impl Fn(&HistoricUserId) -> bool) {
+        for vec in self.data.values_mut() {
+            vec.retain(&pred);
+        }
     }
 }

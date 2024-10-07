@@ -215,6 +215,19 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         ret
     }
 
+    /// Expire old entries from the network and history log
+    pub fn expire_old_entries(&self) {
+        let now = crate::utils::now();
+
+        let mut network = self.net.write();
+        let network = Arc::make_mut(&mut *network);
+        let max_age = network.config().object_expiry;
+        let min_ts = now - max_age;
+
+        network.expire_objects(min_ts);
+        self.history_log.write().expire_entries(min_ts);
+    }
+
     #[tracing::instrument(skip(self))]
     fn apply_event(&self, event: Event) {
         tracing::trace!("Applying inbound event");
@@ -247,6 +260,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         );
 
         let mut check_ping_timer = time::interval(Duration::from_secs(60));
+        let mut expire_objects_timer = time::interval(Duration::from_secs(60));
 
         let mut rpc_receiver = self.rpc_receiver.lock().await;
 
@@ -297,6 +311,11 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
                     tracing::trace!("...from check_ping_timer");
                     self.check_pings();
                 },
+                _ = expire_objects_timer.tick() =>
+                {
+                    tracing::trace!("...from expire_objects_timer");
+                    self.expire_old_entries();
+                }
                 shutdown = shutdown_channel.recv() =>
                 {
                     match shutdown

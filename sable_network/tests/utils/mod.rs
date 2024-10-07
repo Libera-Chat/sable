@@ -10,6 +10,7 @@ pub fn empty_network_config() -> NetworkConfig {
         debug_mode: false,
         default_roles: HashMap::new(),
         alias_users: Vec::new(),
+        object_expiry: 0,
     }
 }
 

@@ -1,4 +1,6 @@
 {
+    "object_expiry": 300,
+
     "opers": [
         {
             "name": "stephen",

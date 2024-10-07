@@ -208,4 +208,17 @@ impl NetworkHistoryLog {
             }
         };
     }
+
+    /// Remove entries older than the given timestamp
+    ///
+    /// Note that this expiry operation is not exact; some older entries may remain
+    pub fn expire_entries(&mut self, older_than: i64) {
+        self.entries.trim(|entry| entry.timestamp < older_than);
+
+        let new_first_index = self.entries.start_index();
+
+        for user_log in self.user_logs.get_mut().values_mut() {
+            user_log.trim(|id| id < &new_first_index);
+        }
+    }
 }

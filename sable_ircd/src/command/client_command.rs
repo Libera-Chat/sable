@@ -30,6 +30,20 @@ impl<'a> CommandSource<'a> {
     }
 }
 
+impl std::fmt::Debug for CommandSource<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PreClient(arg0) => f.debug_tuple("PreClient").field(arg0).finish(),
+            Self::User(arg0, arg1) => f
+                .debug_tuple("User")
+                .field(&format!("id={:?}", arg0.id()))
+                .field(&format!("nick={}", arg0.nick()))
+                .field(&format!("conn_id={:?}", arg1.id()))
+                .finish(),
+        }
+    }
+}
+
 /// Internal representation of a `CommandSource`
 enum InternalCommandSource {
     PreClient(Arc<PreClient>),
@@ -207,7 +221,8 @@ impl ClientCommand {
     fn send_command_error(&self, err: CommandError) {
         let numeric = match err {
             CommandError::UnderlyingError(_) => {
-                todo!()
+                tracing::error!(?self.command, ?self.args, source = ?self.source(), "Got unhandled error: {:?}", err);
+                None
             }
             CommandError::UnknownError(_) => {
                 todo!()
