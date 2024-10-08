@@ -29,23 +29,40 @@ pub struct ClientMessage {
     pub tags: InboundTagSet,
 }
 
+/// An error encountered when parsing a [`ClientMessage`]
+#[derive(Debug)]
+pub enum ClientMessageParseError {
+    NoInput,
+    InputTooLong,
+}
+
+const MAX_POST_TAG_MSG_LEN: usize = 512;
+const MAX_CLIENT_TAGS_LEN: usize = 4096;
+
 impl ClientMessage {
     /// Create a `ClientMessage` from a received message
-    pub fn parse(source: ConnectionId, raw: &str) -> Option<Self> {
+    pub fn parse(source: ConnectionId, raw: &str) -> Result<Self, ClientMessageParseError> {
+        use ClientMessageParseError::*;
+
         let mut args = Vec::new();
         let mut tags = Vec::new();
 
         let mut raw = raw.trim_start();
         if raw.is_empty() {
-            return None;
+            return Err(NoInput);
         }
 
         if raw.starts_with('@') {
             // We've got message tags, so parse them
             let Some(space_offset) = raw.find(' ') else {
                 // TODO: handle this better? We got a string of tags with no command
-                return None;
+                return Err(NoInput);
             };
+
+            // Max tags length includes the leading @ and trailing space
+            if space_offset > MAX_CLIENT_TAGS_LEN - 1 {
+                return Err(InputTooLong);
+            }
 
             // Take the text between the '@' and the delimiting space and split
             for tag_def in raw[1..space_offset].split(';') {
@@ -61,10 +78,14 @@ impl ClientMessage {
             raw = raw[space_offset..].trim_start();
         }
 
+        if raw.len() > MAX_POST_TAG_MSG_LEN {
+            return Err(InputTooLong);
+        }
+
         let offset = match raw.find(' ') {
             Some(offset) => offset,
             None => {
-                return Some(Self {
+                return Ok(Self {
                     source,
                     command: raw.to_string(),
                     args: Vec::new(),
@@ -101,7 +122,7 @@ impl ClientMessage {
             }
         }
 
-        Some(Self {
+        Ok(Self {
             source,
             command: command.to_string(),
             args,
@@ -165,7 +186,7 @@ mod tests {
 
     #[test]
     fn empty() {
-        assert!(ClientMessage::parse(get_connid(), "").is_none());
+        assert!(ClientMessage::parse(get_connid(), "").is_err());
     }
 
     #[test]

@@ -354,18 +354,31 @@ impl ClientServer {
     fn process_pending_client_messages(self: &Arc<Self>, async_handlers: &AsyncHandlerCollection) {
         let connections = self.connections.read();
         for (conn_id, message) in connections.poll_messages().collect::<Vec<_>>() {
-            if let Some(parsed) = ClientMessage::parse(conn_id, &message) {
-                if let Ok(connection) = connections.get(conn_id) {
-                    if let Ok(command) = ClientCommand::new(Arc::clone(self), connection, parsed) {
-                        if let Some(async_handler) =
-                            self.command_dispatcher.dispatch_command(command)
+            match ClientMessage::parse(conn_id, &message) {
+                Ok(parsed) => {
+                    if let Ok(connection) = connections.get(conn_id) {
+                        if let Ok(command) =
+                            ClientCommand::new(Arc::clone(self), connection, parsed)
                         {
-                            async_handlers.add(async_handler);
+                            if let Some(async_handler) =
+                                self.command_dispatcher.dispatch_command(command)
+                            {
+                                async_handlers.add(async_handler);
+                            }
                         }
                     }
                 }
-            } else {
-                tracing::info!(?message, "Failed parsing")
+                Err(ClientMessageParseError::InputTooLong) => {
+                    if let Ok(conn) = self.connections.get(conn_id) {
+                        conn.send(numeric::InputTooLong::new_for(
+                            &self.node.name().to_string(),
+                            &"*".to_string(),
+                        ))
+                    }
+                }
+                Err(error) => {
+                    tracing::info!(?error, ?message, "Failed parsing")
+                }
             }
         }
         drop(connections);
