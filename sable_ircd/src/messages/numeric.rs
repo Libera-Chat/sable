@@ -25,7 +25,7 @@ define_messages! {
     314(WhowasUser)             => { (nick: &HistoricUser.nick(), user=nick.user(), host=nick.visible_host(), realname=nick.realname())
                                                                 => "{nick} {user} {host} * :{realname}" },
     315(EndOfWho)               => { (arg: &str)                => "{arg} :End of /WHO list" },
-    318(EndOfWhois)             => { (user: &User.nick())       => "{user} :End of /WHOIS" },
+    318(EndOfWhois)             => { (user: &str)               => "{user} :End of /WHOIS" },
     319(WhoisChannels)          => { (user: &User.nick(), chanlist: &str)
                                                                 => "{user} :{chanlist}" },
     378(WhoisHost)              => { (user: &User.nick(), username=user.user(), host: &Hostname, ip: &std::net::IpAddr)
