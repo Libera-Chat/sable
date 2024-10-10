@@ -16,7 +16,7 @@ impl TargetParameter<'_> {
     }
 }
 
-impl<'a> From<&TargetParameter<'a>> for sable_history::TargetId {
+impl<'a> From<&TargetParameter<'a>> for sable_network::history::TargetId {
     fn from(value: &TargetParameter) -> Self {
         match value {
             TargetParameter::User(u) => u.id().into(),
@@ -25,7 +25,7 @@ impl<'a> From<&TargetParameter<'a>> for sable_history::TargetId {
     }
 }
 
-impl<'a> From<TargetParameter<'a>> for sable_history::TargetId {
+impl<'a> From<TargetParameter<'a>> for sable_network::history::TargetId {
     fn from(value: TargetParameter) -> Self {
         (&value).into()
     }

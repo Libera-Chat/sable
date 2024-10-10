@@ -1,8 +1,7 @@
-use sable_history::{HistoryError, HistoryRequest, HistoryService};
-
 use super::*;
 use crate::{capability::ClientCapability, utils};
 use messages::send_history::SendHistoryItem;
+use sable_network::history::{HistoryError, HistoryRequest, HistoryService, TargetId};
 
 use std::cmp::{max, min};
 
@@ -169,14 +168,14 @@ fn list_targets(
 
     for (target, timestamp) in found_targets {
         let target = match target {
-            sable_history::TargetId::User(user) => server
+            TargetId::User(user) => server
                 .node()
                 .network()
                 .user(user)
                 .expect("History service returned unknown user id")
                 .nick()
                 .format(),
-            sable_history::TargetId::Channel(channel) => server
+            TargetId::Channel(channel) => server
                 .node()
                 .network()
                 .channel(channel)

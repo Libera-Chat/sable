@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
-use sable_network::network::state::HistoricMessageTargetId;
-use sable_network::prelude::*;
-
-use crate::*;
+use crate::network::state::HistoricMessageTargetId;
+use crate::prelude::*;
 
 /// Helper to extract the target name for chathistory purposes from a given event.
 ///

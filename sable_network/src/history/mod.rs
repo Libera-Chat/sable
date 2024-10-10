@@ -1,5 +1,8 @@
 mod log;
 pub use log::*;
+mod service;
+pub use service::*;
+mod local_service;
 
 use crate::network::NetworkStateChange;
 
