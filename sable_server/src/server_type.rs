@@ -1,8 +1,7 @@
 use sable_network::{config::TlsData, node::*, rpc::*};
 
-use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
-use std::sync::Arc;
+use std::{future::Future, sync::Arc};
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc::UnboundedReceiver};
 
@@ -17,7 +16,6 @@ pub enum ServerSaveError {
 /// Trait to be implemented by providers of server application logic.
 ///
 /// An implementor of this trait can be constructed and used by [`run_server`](crate::run::run_server).
-#[async_trait]
 pub trait ServerType: Send + Sync + Sized + 'static {
     /// The configuration settings required for this server type. A field named "server" of this
     /// type must be read from the server's config file.
@@ -46,13 +44,16 @@ pub trait ServerType: Send + Sync + Sized + 'static {
 
     /// Run the application logic. `shutdown_channel` will be signalled with an `ShutdownAction` when
     /// the server should be stopped.
-    async fn run(self: Arc<Self>, shutdown_channel: broadcast::Receiver<ShutdownAction>);
+    fn run(
+        self: Arc<Self>,
+        shutdown_channel: broadcast::Receiver<ShutdownAction>,
+    ) -> impl Future<Output = ()> + Send + 'static;
 
     /// Perform any actions required to shut down the server, if it will not be resumed
-    async fn shutdown(self);
+    fn shutdown(self) -> impl Future<Output = ()>;
 
     /// Save state for later resumption
-    async fn save(self) -> Result<Self::Saved, ServerSaveError>;
+    fn save(self) -> impl Future<Output = Result<Self::Saved, ServerSaveError>>;
 
     /// Restore from saved state
     fn restore(

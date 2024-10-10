@@ -2096,7 +2096,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arc-swap",
- "async-trait",
  "auth_client",
  "base64 0.21.2",
  "bitflags",
@@ -2183,7 +2182,6 @@ name = "sable_server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-trait",
  "chrono",
  "console-subscriber",
  "daemonize",
@@ -2214,7 +2212,6 @@ name = "sable_services"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-trait",
  "bcrypt",
  "dashmap",
  "ouroboros",

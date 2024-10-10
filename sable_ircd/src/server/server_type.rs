@@ -1,7 +1,6 @@
 use super::*;
 use crate::connection_collection::ConnectionCollectionState;
 use anyhow::Context;
-use async_trait::async_trait;
 use client_listener::SavedListenerCollection;
 use sable_server::ServerSaveError;
 
@@ -17,7 +16,6 @@ pub struct ClientServerState {
     monitors: MonitorSet,
 }
 
-#[async_trait]
 impl sable_server::ServerType for ClientServer {
     type Config = RawClientServerConfig;
     type ProcessedConfig = config::ClientServerConfig;

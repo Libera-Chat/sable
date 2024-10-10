@@ -22,7 +22,6 @@ use sable_server::ServerType;
 use std::{collections::HashMap, convert::Infallible, sync::Arc};
 
 use anyhow::Context;
-use async_trait::async_trait;
 use serde::Deserialize;
 
 use tokio::sync::{broadcast, mpsc::UnboundedReceiver, Mutex};
@@ -51,7 +50,6 @@ pub struct ServicesServer<DB> {
     sasl_mechanisms: HashMap<String, Box<dyn sasl::SaslMechanism<DB>>>,
 }
 
-#[async_trait]
 impl<DB> ServerType for ServicesServer<DB>
 where
     DB: DatabaseConnection + Send + Sync + 'static,
