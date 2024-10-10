@@ -48,7 +48,7 @@ concurrent_log = { version = "0.2.4", features = [ "serde" ] }
 ipnet = { version = "2", features = [ "serde" ] }
 anyhow = "1.0"
 backoff = { version = "0.4.0", features = ["tokio"] }
-chert = { git = "https://github.com/jesopo/chert" }
+chert = { git = "https://github.com/jesopo/chert", rev = "8fd3090f9b47eabf2dd4e97df9e2a7f2fd64d8fb" }
 uuid = { version = "1.9.1", features = ["v7", "fast-rng", "serde"] }
 
 [dependencies.serde]
