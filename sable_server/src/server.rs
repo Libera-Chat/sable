@@ -98,7 +98,7 @@ where
         let (remote_send, remote_recv) = unbounded_channel();
 
         let policy = StandardPolicyService::new();
-        let epoch = EpochId::new(chrono::Utc::now().timestamp());
+        let epoch = chrono::Utc::now().timestamp() as EpochId;
 
         let log = Arc::new(ReplicatedEventLog::new(
             conf.server_id,

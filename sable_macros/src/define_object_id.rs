@@ -2,20 +2,19 @@ use super::*;
 
 use proc_macro2::Span;
 use quote::quote;
-use syn::{parse_macro_input, token, Ident, Result, Token, Type, TypeTuple};
+use syn::{parse_macro_input, token, Ident, Result, Token, TypeTuple};
 //use syn::punctuated::Punctuated;
-use convert_case::{Case, Casing};
 use syn::parse::{Parse, ParseStream};
 
 mod kw {
-    syn::custom_keyword!(sequential);
+    syn::custom_keyword!(snowflake);
 }
 
 struct ObjectIdDefn {
     typename: Ident,
     _colon: Token![:],
     contents: TypeTuple,
-    is_sequential: Option<kw::sequential>,
+    is_snowflake: Option<kw::snowflake>,
     _semi: Token![;],
 }
 
@@ -24,12 +23,12 @@ impl Parse for ObjectIdDefn {
         Ok(Self {
             typename: input.parse()?,
             _colon: input.parse()?,
-            contents: if input.peek(kw::sequential) {
-                syn::parse_str("(ServerId,EpochId,LocalId)")?
+            contents: if input.peek(kw::snowflake) {
+                syn::parse_str("(Snowflake,)")?
             } else {
                 input.parse()?
             },
-            is_sequential: input.parse()?,
+            is_snowflake: input.parse()?,
             _semi: input.parse()?,
         })
     }
@@ -78,10 +77,6 @@ pub fn object_ids(input: TokenStream) -> TokenStream {
     let generator_name = input.generator_name;
     let mut enum_variants = Vec::new();
     let mut all_typenames = Vec::new();
-    let mut generator_fields = Vec::new();
-    let mut generator_field_names = Vec::new();
-    let mut generator_methods = Vec::new();
-    let mut generator_initargs = Vec::new();
 
     for item in input.items {
         let typename = item.typename;
@@ -134,97 +129,20 @@ pub fn object_ids(input: TokenStream) -> TokenStream {
             }
         ));
 
-        if item.is_sequential.is_some() {
-            // Generators hold all but the last field
-            arg_types.pop();
-            arg_names.pop();
-            arg_list.pop();
-
-            let field_numbers: Vec<_> = (0..arg_types.len()).map(syn::Index::from).collect();
-            let counter_number = syn::Index::from(arg_types.len());
-
-            let generator_typename =
-                Ident::new(&format!("{}Generator", id_typename), Span::call_site());
-
-            let maybe_comma = if arg_list.is_empty() {
-                None
-            } else {
-                Some(token::Comma(Span::call_site()))
-            };
+        // If it's a single type, generate a From/Deref impl
+        if contents.elems.len() == 1 {
+            let inner_type = contents.elems.first().unwrap();
 
             output.extend(quote!(
-                impl #id_typename
-                {
-                    pub fn local(&self) -> i64 { self. #counter_number }
+                impl std::convert::From<#inner_type> for #id_typename {
+                    fn from(val: #inner_type) -> Self { Self(val) }
                 }
 
-                #[derive(Debug)]
-                #[derive(serde::Serialize,serde::Deserialize)]
-                pub struct #generator_typename(#( #arg_types ),* #maybe_comma std::sync::atomic::AtomicI64);
-
-                impl #generator_typename
-                {
-                    pub fn new(#( #arg_list ),* #maybe_comma start: i64) -> Self {
-                         Self(#( #arg_names ),* #maybe_comma std::sync::atomic::AtomicI64::new(start))
-                    }
-
-                    pub fn next(&self) -> #id_typename {
-                        #id_typename::new(
-                            #( self.#field_numbers ),* #maybe_comma
-                            self.#counter_number.fetch_add(1, std::sync::atomic::Ordering::SeqCst))
-                    }
-
-                    pub fn last(&self) -> #id_typename {
-                        #id_typename::new(
-                            #( self.#field_numbers ),* #maybe_comma
-                            self.#counter_number.load(std::sync::atomic::Ordering::SeqCst))
-                    }
-
-                    pub fn update_to(&self, next: i64)
-                    {
-                        self.#counter_number.store(next, std::sync::atomic::Ordering::SeqCst);
-                    }
+                impl Deref for #id_typename {
+                    type Target = #inner_type;
+                    fn deref(&self) -> &#inner_type { &self.0 }
                 }
             ));
-
-            let serverid_type = syn::parse::<Type>(quote!(ServerId).into()).unwrap();
-            let epochid_type = syn::parse::<Type>(quote!(EpochId).into()).unwrap();
-
-            if arg_types.len() == 2 && arg_types[0] == serverid_type && arg_types[1] == epochid_type
-            {
-                output.extend(quote!(
-                    impl #id_typename
-                    {
-                        pub fn server(&self) -> ServerId { self.0 }
-                        pub fn epoch(&self) -> EpochId { self.1 }
-                    }
-                ));
-
-                let generator_method_name = Ident::new(
-                    &format!("next_{}", &typename).to_case(Case::Snake),
-                    Span::call_site(),
-                );
-                let generator_field_name = Ident::new(
-                    &format!("{}_generator_field", &typename).to_case(Case::Snake),
-                    Span::call_site(),
-                );
-
-                generator_methods.push(quote!(
-                    pub fn #generator_method_name (&self) -> #id_typename {
-                        self. #generator_field_name . next()
-                    }
-                ));
-
-                generator_fields.push(quote!(
-                    #generator_field_name : #generator_typename
-                ));
-
-                generator_field_names.push(generator_field_name.clone());
-
-                generator_initargs.push(quote!(
-                    #generator_field_name: #generator_typename::new(server_id, epoch_id, 1)
-                ));
-            }
         }
     }
 
@@ -237,19 +155,70 @@ pub fn object_ids(input: TokenStream) -> TokenStream {
 
     if generator_name.is_some() {
         output.extend(quote!(
-            #[derive(serde::Serialize,serde::Deserialize)]
+            #[derive(PartialEq,Eq,PartialOrd,Ord,Hash,Debug,Clone,Copy,serde::Serialize,serde::Deserialize)]
+            #[serde(transparent)]
+            pub struct Snowflake(u64);
+
+            impl Snowflake {
+                pub fn server(&self) -> ServerId {
+                    ServerId(((self.0 >> 12) & 0x3ff) as u16)
+                }
+
+                pub fn timestamp(&self) -> u64 {
+                    self.0 >> 22
+                }
+
+                pub fn serial(&self) -> u16 {
+                    (self.0 & 0xfff) as u16
+                }
+
+                pub const ZERO: Self = Self(0);
+
+                pub fn from_parts(server: impl Into<ServerId>, timestamp: u64, serial: u16) -> Self {
+                    Self(timestamp << 22 | (server.into().0 as u64 & 0x3ff) << 12 | (serial as u64 & 0xfff))
+                }
+            }
+
+            impl AsRef<u64> for Snowflake {
+                fn as_ref(&self) -> &u64 {
+                    &self.0
+                }
+            }
+
+            #[derive(Debug,serde::Serialize,serde::Deserialize)]
             pub struct #generator_name {
-                #( #generator_fields ),*
+                server_id: u16,     // Actually 10 bits, enforced in new
+                serial: std::sync::atomic::AtomicU16,
+                                    // Format requires 12 bits, but we let this be 16 and ignore the top 4.
+                                    // See comment in `next()`
             }
 
             impl #generator_name {
-                #( #generator_methods )*
+                // Jan 1, 2020, as milliseconds since the unix epoch.
+                // I'd like this to be a chrono::DateTime but those are difficult to construct
+                // const-ly from a unix timestamp.
+                const SNOWFLAKE_EPOCH: u64 = 1577836800_000;
 
-                pub fn new(server_id: ServerId, epoch_id: EpochId) -> Self
+                pub fn new(server_id: ServerId) -> Self
                 {
                     Self {
-                        #( #generator_initargs ),*
+                        server_id: server_id.0 & 0x3ff, // 10-bit server ID
+                        serial: 0.into(),
                     }
+                }
+
+                pub fn next<T: From<Snowflake>>(&self) -> T {
+                    // `self.serial` is 16 bits, with fetch_add wrapping on overflow.
+                    // We need 12-bit wrapping, which we can have by just letting it wrap itself and
+                    // discarding the top bits. The output will wrap 16 times before the actual atomic
+                    // does, but the visible behaviour is the same.
+                    let next_serial = self.serial.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let next_serial = next_serial & 0xfff; // 12 bits only.
+
+                    let timestamp = (chrono::Utc::now().timestamp_millis() as u64 - Self::SNOWFLAKE_EPOCH);
+                    let timestamp = timestamp & 0x3ff_ffff_ffff; // 42 bits
+
+                    Snowflake(timestamp << 22 | (self.server_id as u64) << 12 | (next_serial as u64)).into()
                 }
             }
         ));

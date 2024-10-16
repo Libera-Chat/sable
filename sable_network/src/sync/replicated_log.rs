@@ -119,7 +119,7 @@ impl ReplicatedEventLog {
             server: (server_id, epoch),
             server_tombstones: RwLock::new(HashMap::new()),
             log: RwLock::new(EventLog::new(
-                EventIdGenerator::new(server_id, epoch, 0),
+                ObjectIdGenerator::new(server_id),
                 Some(log_send),
             )),
         });

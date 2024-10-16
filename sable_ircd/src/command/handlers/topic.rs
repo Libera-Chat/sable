@@ -18,7 +18,7 @@ async fn handle_topic(
             text: text.to_owned(),
             setter: source.id().into(),
         };
-        cmd.new_event_with_response(server.ids().next_channel_topic(), details)
+        cmd.new_event_with_response(server.ids().next::<ChannelTopicId>(), details)
             .await;
     } else if let Ok(topic) = net.topic_for_channel(channel.id()) {
         response.numeric(make_numeric!(TopicIs, &channel, topic.text()));

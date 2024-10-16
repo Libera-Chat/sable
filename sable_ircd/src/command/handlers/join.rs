@@ -36,7 +36,7 @@ async fn handle_join(
                     mode: state::ChannelMode::new(ChannelModeSet::default()),
                 };
 
-                let channel_id = server.ids().next_channel();
+                let channel_id = server.ids().next();
                 cmd.new_event_with_response(channel_id, details).await;
                 (channel_id, MembershipFlagFlag::Op.into())
             }

@@ -18,7 +18,7 @@ use tokio::sync::mpsc::UnboundedSender;
 pub struct EventLog {
     history: BTreeMap<ServerId, BTreeMap<EventId, Event>>,
     pending: HashMap<EventId, Event>,
-    id_gen: EventIdGenerator,
+    id_gen: ObjectIdGenerator,
     event_sender: Option<UnboundedSender<Event>>,
     last_event_clock: EventClock,
 }
@@ -26,7 +26,7 @@ pub struct EventLog {
 /// Saved state for an [EventLog], used to save and restore across an upgrade
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct EventLogState {
-    id_gen: EventIdGenerator,
+    id_gen: ObjectIdGenerator,
     clock: EventClock,
 }
 
@@ -34,14 +34,13 @@ pub struct EventLogState {
 pub struct EventLogStats {
     pub pending_events: usize,
     pub current_clock: EventClock,
-    pub last_event_id: EventId,
 }
 
 impl EventLog {
     /// Construct a new `EventLog`. `event_sender`, if `Some`, will receive
     /// notification of all new events as they are added to the log and become
     /// ready for processing by the [`Network`].
-    pub fn new(idgen: EventIdGenerator, event_sender: Option<UnboundedSender<Event>>) -> Self {
+    pub fn new(idgen: ObjectIdGenerator, event_sender: Option<UnboundedSender<Event>>) -> Self {
         Self {
             history: BTreeMap::new(),
             pending: HashMap::new(),
@@ -104,7 +103,6 @@ impl EventLog {
         EventLogStats {
             pending_events: self.pending.len(),
             current_clock: self.last_event_clock.clone(),
-            last_event_id: self.id_gen.last(),
         }
     }
 

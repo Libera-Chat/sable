@@ -94,7 +94,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
             net: RwLock::new(Arc::new(net)),
             epoch,
             event_log,
-            id_generator: ObjectIdGenerator::new(id, epoch),
+            id_generator: ObjectIdGenerator::new(id),
             rpc_receiver: Mutex::new(rpc_receiver),
             history_log: RwLock::new(NetworkHistoryLog::new()),
             subscriber,

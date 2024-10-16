@@ -9,7 +9,7 @@ impl Network {
             alias_users.insert(
                 user_config.nick,
                 state::User {
-                    id: UserId::new(ServerId::new(0), EpochId::new(0), id as LocalId),
+                    id: UserId::alias(id as u16),
                     serial: 0,
                     user: user_config.user,
                     visible_host: user_config.host,
@@ -46,8 +46,8 @@ impl Network {
     }
 
     pub fn user_is_alias(&self, id: UserId) -> Option<&config::AliasUser> {
-        if id.server() == ServerId::new(0) && id.epoch() == EpochId::new(0) {
-            self.config.alias_users.get(id.local() as usize)
+        if id.server() == ServerId::new(0) && id.timestamp() == 0 {
+            self.config.alias_users.get(id.serial() as usize)
         } else {
             None
         }

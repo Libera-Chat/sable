@@ -88,7 +88,7 @@ fn handle_ban(
     let timestamp = sable_network::utils::now();
     let expires = timestamp + new_ban_details.duration * 60;
 
-    let new_ban_id = server.ids().next_network_ban();
+    let new_ban_id: NetworkBanId = server.ids().next();
 
     let new_ban = event::details::NewNetworkBan {
         match_type,

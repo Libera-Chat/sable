@@ -8,8 +8,6 @@ use std::ops::Deref;
 use thiserror::Error;
 use uuid::Uuid;
 
-pub type LocalId = i64;
-
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Copy, Hash, Serialize, Deserialize)]
 pub struct Uuid7(Uuid);
 
@@ -31,20 +29,21 @@ impl Uuid7 {
 #[error("Mismatched object ID type for event")]
 pub struct WrongIdTypeError;
 
+pub type EpochId = u64;
+
 object_ids!(ObjectId (ObjectIdGenerator) {
-    Server: (LocalId,);
-    Epoch: (LocalId,);
-    Event: sequential;
-    User: sequential;
+    Server: (u16,);
+    Event: snowflake;
+    User: snowflake;
     HistoricUser: (UserId, u32);
-    UserConnection: sequential;
-    Channel: sequential;
-    ChannelTopic: sequential;
+    UserConnection: snowflake;
+    Channel: snowflake;
+    ChannelTopic: snowflake;
     ListMode: (ChannelId,ListModeType);
-    ListModeEntry: sequential;
+    ListModeEntry: snowflake;
     Message: (Uuid7,);
 
-    NetworkBan: sequential;
+    NetworkBan: snowflake;
 
     Nickname: (Nickname,);
     ChannelName: (ChannelName,);
@@ -52,17 +51,17 @@ object_ids!(ObjectId (ObjectIdGenerator) {
     Membership: (UserId, ChannelId);
     Invite: (UserId, ChannelId);
 
-    Config: (LocalId,);
-    AuditLogEntry: sequential;
+    Config: (u64,);
+    AuditLogEntry: snowflake;
 
-    Account: sequential;
-    NickRegistration: sequential;
-    ChannelRegistration: sequential;
+    Account: snowflake;
+    NickRegistration: snowflake;
+    ChannelRegistration: snowflake;
 
     ChannelAccess: (AccountId, ChannelRegistrationId);
-    ChannelRole: sequential;
+    ChannelRole: snowflake;
 
-    SaslSession: sequential;
+    SaslSession: snowflake;
 });
 
 impl HistoricUserId {
@@ -72,14 +71,6 @@ impl HistoricUserId {
 
     pub fn serial(&self) -> u32 {
         self.1
-    }
-}
-
-impl Deref for MessageId {
-    type Target = Uuid7;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 
@@ -122,5 +113,19 @@ impl ChannelAccessId {
     }
     pub fn channel(&self) -> ChannelRegistrationId {
         self.1
+    }
+}
+
+impl UserId {
+    /// Construct an ID for an alias user, based on a numeric configured ID.
+    /// The resulting snowflake will have timestamp and server portions set to 0,
+    /// with the provided `id` in the serial bits.
+    ///
+    /// Note that `id` must be less than 4096 - i.e. it must fit in 12 bits.
+    pub fn alias(id: u16) -> Self {
+        if id > 4095 {
+            panic!("Attempted to construct an alias user ID >4095")
+        }
+        Self(Snowflake(id as u64))
     }
 }

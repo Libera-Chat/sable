@@ -1,6 +1,6 @@
 use super::*;
 
-const DEFAULT_ROLE_ID: ChannelRoleId = ChannelRoleId::new(ServerId::new(0), EpochId::new(0), 0);
+const DEFAULT_ROLE_ID: ChannelRoleId = ChannelRoleId::new(Snowflake::ZERO);
 
 impl Network {
     pub(super) fn rebuild_default_role_cache(&mut self) {

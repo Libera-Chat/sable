@@ -15,12 +15,11 @@ fn drain_from(log: &mut UnboundedReceiver<Event>) -> Vec<Event> {
 #[test]
 fn simple() {
     let server_id = ServerId::new(1);
-    let epoch_id = EpochId::new(1);
-    let idgen = EventIdGenerator::new(server_id, epoch_id, 1);
+    let idgen = ObjectIdGenerator::new(server_id);
     let (sender, mut receiver) = unbounded_channel::<Event>();
     let mut log = EventLog::new(idgen, Some(sender));
 
-    let uid = UserId::new(server_id, epoch_id, 1);
+    let uid = UserId::new(Snowflake::from_parts(server_id, 0, 1));
 
     let e1 = log.create(
         uid,
@@ -48,12 +47,11 @@ fn simple() {
 #[test]
 fn out_of_order() {
     let server_id = ServerId::new(1);
-    let epoch_id = EpochId::new(1);
-    let idgen = EventIdGenerator::new(server_id, epoch_id, 1);
+    let idgen = ObjectIdGenerator::new(server_id);
     let (sender, mut receiver) = unbounded_channel::<Event>();
     let mut log = EventLog::new(idgen, Some(sender));
 
-    let uid = UserId::new(server_id, epoch_id, 1);
+    let uid = UserId::new(Snowflake::from_parts(server_id, 0, 1));
 
     let e1 = log.create(
         uid,
@@ -120,13 +118,12 @@ fn epochs()
 fn get_since() {
     let server_id = ServerId::new(1);
     let server_id2 = ServerId::new(2);
-    let epoch_id = EpochId::new(1);
-    let idgen = EventIdGenerator::new(server_id, epoch_id, 1);
-    let idgen2 = EventIdGenerator::new(server_id2, epoch_id, 1);
+    let idgen = ObjectIdGenerator::new(server_id);
+    let idgen2 = ObjectIdGenerator::new(server_id2);
     let mut log = EventLog::new(idgen, None);
     let log2 = EventLog::new(idgen2, None);
 
-    let uid = UserId::new(server_id, epoch_id, 1);
+    let uid = UserId::new(Snowflake::from_parts(server_id, 0, 1));
 
     let e1 = log.create(
         uid,

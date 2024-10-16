@@ -40,7 +40,7 @@ impl ClientServer {
             if let Some(pre_client) = conn.pre_client() {
                 // First check whether they're attaching, as that's an easier operation
                 if let Some(user_id) = pre_client.can_attach_to_user() {
-                    let user_connection_id = self.ids().next_user_connection();
+                    let user_connection_id = self.ids().next();
                     let user_connection = event::details::NewUserConnection {
                         user: user_id,
                         hostname: *pre_client.hostname.get().unwrap(),
@@ -62,7 +62,7 @@ impl ClientServer {
                     return;
                 }
 
-                let new_user_id = self.ids().next_user();
+                let new_user_id = self.ids().next();
 
                 if pre_client.can_register_new_user() {
                     let mut umodes = UserModeSet::new();
@@ -70,7 +70,7 @@ impl ClientServer {
                         umodes |= UserModeFlag::TlsConnection;
                     }
 
-                    let initial_connection_id = self.ids().next_user_connection();
+                    let initial_connection_id = self.ids().next();
                     let initial_connection = event::details::NewUserConnection {
                         user: new_user_id,
                         hostname: *pre_client.hostname.get().unwrap(),

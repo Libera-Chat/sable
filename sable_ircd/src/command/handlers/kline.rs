@@ -81,7 +81,7 @@ fn handle_kline(
         };
         server
             .node()
-            .submit_event(server.ids().next_network_ban(), new_kline);
+            .submit_event(server.ids().next::<NetworkBanId>(), new_kline);
     } else {
         response.notice("Invalid kline mask");
     }

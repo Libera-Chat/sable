@@ -51,7 +51,7 @@ async fn handle_authenticate(
 
         let mechanism = text.to_owned();
 
-        let session = server.ids().next_sasl_session();
+        let session = server.ids().next();
         source.sasl_session.set(session).ok();
 
         RemoteServerRequestType::BeginAuthenticate(session, mechanism)

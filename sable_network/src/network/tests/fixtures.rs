@@ -17,7 +17,7 @@ impl NetworkBuilder {
     pub fn new() -> Self {
         Self {
             net: Network::new(config::NetworkConfig::new()),
-            id_gen: ObjectIdGenerator::new(ServerId::new(1), EpochId::new(1)),
+            id_gen: ObjectIdGenerator::new(ServerId::new(1)),
         }
     }
 
@@ -30,7 +30,7 @@ impl NetworkBuilder {
     fn apply(&mut self, target: impl Into<ObjectId>, details: impl Into<EventDetails>) {
         let evt = Event {
             clock: EventClock::new(),
-            id: self.id_gen.next_event(),
+            id: self.id_gen.next(),
             target: target.into(),
             timestamp: 0,
             details: details.into(),
@@ -40,7 +40,7 @@ impl NetworkBuilder {
 
     pub fn add_channel(&mut self, name: ChannelName) {
         self.apply(
-            self.id_gen.next_channel(),
+            self.id_gen.next::<ChannelId>(),
             details::NewChannel {
                 mode: state::ChannelMode::new(ChannelModeSet::default()),
                 name,
@@ -50,7 +50,7 @@ impl NetworkBuilder {
 
     pub fn add_user(&mut self, nick: Nickname) {
         self.apply(
-            self.id_gen.next_user(),
+            self.id_gen.next::<UserId>(),
             details::NewUser {
                 mode: state::UserMode::new(UserModeSet::default()),
                 nickname: nick,

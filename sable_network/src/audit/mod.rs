@@ -122,7 +122,7 @@ impl<'a> AuditLoggerEntry<'a> {
     }
 
     pub fn log(self) {
-        let id = self.node.ids().next_audit_log_entry();
+        let id = self.node.ids().next();
         let timestamp = crate::utils::now();
 
         tracing::info!(target: "audit",
@@ -152,9 +152,7 @@ impl<'a> AuditLoggerEntry<'a> {
             target_duration: self.target_duration,
             reason: self.reason,
         };
-        self.node.submit_event(
-            self.node.ids().next_audit_log_entry(),
-            details::NewAuditLogEntry { entry },
-        );
+        self.node
+            .submit_event(entry.id, details::NewAuditLogEntry { entry });
     }
 }

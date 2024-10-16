@@ -186,7 +186,7 @@ async fn handle_channel_mode(
                         pattern: Pattern::new(mask.to_owned()),
                         setter: source.id(),
                     };
-                    cmd.new_event_with_response(server.ids().next_list_mode_entry(), detail)
+                    cmd.new_event_with_response(server.ids().next::<ListModeEntryId>(), detail)
                         .await;
                 } else {
                     // We've already tested for Direction::Query above, so this is definitely Remove

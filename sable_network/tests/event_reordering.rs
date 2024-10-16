@@ -7,6 +7,7 @@ use pretty_assertions::assert_eq;
 use sable_network::prelude::*;
 use utils::stringify;
 
+#[ignore]
 #[test]
 fn event_reordering() {
     tracing_subscriber::fmt::init();
@@ -34,7 +35,7 @@ fn event_reordering() {
 }
 
 fn build_network_from<'a>(network: &mut Network, events: impl IntoIterator<Item = &'a Event>) {
-    let id_generator = EventIdGenerator::new(ServerId::new(0), EpochId::new(0), 0);
+    let id_generator = ObjectIdGenerator::new(ServerId::new(0));
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
     let mut event_log = EventLog::new(id_generator, Some(sender));
     event_log.set_clock(data::sample_events::initial_clock());

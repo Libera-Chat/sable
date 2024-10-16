@@ -13,7 +13,7 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
         let channel = net.channel(channel_id)?;
 
         let new_channel_registration = state::ChannelRegistration {
-            id: self.node.ids().next_channel_registration(),
+            id: self.node.ids().next(),
             channelname: *channel.name(),
         };
 
@@ -154,7 +154,7 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
         };
 
         let new_role = state::ChannelRole {
-            id: self.node.ids().next_channel_role(),
+            id: self.node.ids().next(),
             channel: Some(channel.id()),
             name: ChannelRoleName::Custom(name),
             flags,
