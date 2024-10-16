@@ -32,7 +32,7 @@ impl ServerType for HistoryServer {
         Ok(config.clone())
     }
 
-    fn new(
+    async fn new(
         _config: Self::ProcessedConfig,
         _tls_data: &sable_network::config::TlsData,
         node: std::sync::Arc<sable_network::prelude::NetworkNode>,

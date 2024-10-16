@@ -64,7 +64,7 @@ where
         Ok(config.clone())
     }
 
-    fn new(
+    async fn new(
         config: Self::Config,
         _tls_data: &TlsData,
         node: Arc<NetworkNode>,

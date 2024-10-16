@@ -129,6 +129,7 @@ where
 
         let server = Arc::new(
             ST::new(server_conf, &tls_data, Arc::clone(&node), history_recv)
+                .await
                 .context("Could not initialize server")?,
         );
 

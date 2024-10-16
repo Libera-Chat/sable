@@ -40,7 +40,7 @@ pub trait ServerType: Send + Sync + Sized + 'static {
         tls_data: &TlsData,
         node: Arc<NetworkNode>,
         history_receiver: UnboundedReceiver<NetworkHistoryUpdate>,
-    ) -> anyhow::Result<Self>;
+    ) -> impl Future<Output = anyhow::Result<Self>>;
 
     /// Run the application logic. `shutdown_channel` will be signalled with an `ShutdownAction` when
     /// the server should be stopped.

@@ -34,7 +34,7 @@ impl sable_server::ServerType for ClientServer {
     }
 
     /// Create a new `ClientServer`
-    fn new(
+    async fn new(
         config: Self::ProcessedConfig,
         tls_data: &TlsData,
         node: Arc<NetworkNode>,
