@@ -4,7 +4,7 @@ const DEFAULT_COUNT: usize = 8; // Arbitrary value, that happens to match the ca
                                 // historic_nick_users
 
 #[command_handler("WHOWAS")]
-/// Syntax: WHOIS <target> [<count>]
+/// Syntax: WHOWAS \<target\> \[\<count\>\]
 fn whowas_handler(
     network: &Network,
     response: &dyn CommandResponse,

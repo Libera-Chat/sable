@@ -14,7 +14,7 @@ struct ObjectIdDefn {
     typename: Ident,
     _colon: Token![:],
     contents: TypeTuple,
-    is_snowflake: Option<kw::snowflake>,
+    _is_snowflake: Option<kw::snowflake>,
     _semi: Token![;],
 }
 
@@ -28,7 +28,7 @@ impl Parse for ObjectIdDefn {
             } else {
                 input.parse()?
             },
-            is_snowflake: input.parse()?,
+            _is_snowflake: input.parse()?,
             _semi: input.parse()?,
         })
     }

@@ -10,6 +10,7 @@ pub struct UserSource<'a> {
 pub struct PreClientSource(pub Arc<PreClient>);
 pub struct LoggedInUserSource<'a> {
     pub user: wrapper::User<'a>,
+    #[expect(unused)]
     pub user_connection: wrapper::UserConnection<'a>,
     pub account: wrapper::Account<'a>,
 }

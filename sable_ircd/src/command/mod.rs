@@ -76,10 +76,4 @@ mod handlers {
 
     // Services compatibility command layer
     mod services;
-
-    // Dev/test tools
-    #[cfg(debug)]
-    mod async_wait;
-    #[cfg(debug)]
-    mod sping;
 }

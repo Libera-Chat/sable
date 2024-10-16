@@ -1,12 +1,5 @@
 use super::*;
 
-/// Statistics to be exported via the management interface
-#[derive(serde::Serialize)]
-struct ServerStatistics {
-    connected_clients: usize,
-    event_stats: crate::sync::EventLogStats,
-}
-
 impl NetworkNode {
     pub async fn handle_management_command(&self, cmd: ServerManagementCommand) {
         use ServerManagementCommandType::*;

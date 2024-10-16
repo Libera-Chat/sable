@@ -148,7 +148,7 @@ impl HistoricNickStore {
         &'a self,
         nick: &Nickname,
         net: &'a Network,
-    ) -> impl Iterator<Item = &HistoricUser> + 'a {
+    ) -> impl Iterator<Item = &'a HistoricUser> + 'a {
         self.data
             .get(nick)
             .map(move |vec| vec.iter().filter_map(move |id| net.historic_users.get(id)))

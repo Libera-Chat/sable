@@ -65,6 +65,7 @@ pub struct ClientCommand {
     /// Arguments supplied
     pub args: Vec<String>,
     /// Tags provided by the client
+    #[expect(unused)]
     pub tags: InboundTagSet,
 
     // The response sink. labeled-response requires that this lives for the whole

@@ -103,7 +103,7 @@ impl MonitorSet {
 /// Trait of [`NetworkStateChange`] details that are relevant to connections using
 /// [IRCv3 MONITOR](https://ircv3.net/specs/extensions/monitor) to monitor users.
 pub(crate) trait MonitoredItem: std::fmt::Debug {
-    /// Same as [`try_notify_monitors`] but logs errors instead of returning `Result`.
+    /// Same as [`Self::try_notify_monitors`] but logs errors instead of returning `Result`.
     fn notify_monitors(&self, server: &ClientServer) {
         if let Err(e) = self.try_notify_monitors(server) {
             tracing::error!("Error while notifying monitors of {:?}: {}", self, e);

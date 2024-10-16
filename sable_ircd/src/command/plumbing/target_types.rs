@@ -45,7 +45,9 @@ impl<'a> PositionalArgument<'a> for TargetParameter<'a> {
 }
 
 pub struct RegisteredChannel<'a> {
+    #[expect(unused)]
     pub channel: wrapper::Channel<'a>,
+    #[expect(unused)]
     pub registration: wrapper::ChannelRegistration<'a>,
 }
 

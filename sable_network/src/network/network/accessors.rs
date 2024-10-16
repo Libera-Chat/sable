@@ -108,7 +108,7 @@ impl Network {
     pub fn users_by_nick_pattern<'a>(
         &'a self,
         pattern: &'a NicknameMatcher,
-    ) -> impl Iterator<Item = wrapper::User> + 'a {
+    ) -> impl Iterator<Item = wrapper::User<'a>> + 'a {
         let pattern = std::rc::Rc::new(pattern);
         let pattern2 = pattern.clone();
         let alias_users = self
