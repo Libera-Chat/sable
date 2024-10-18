@@ -172,6 +172,10 @@ pub fn object_ids(input: TokenStream) -> TokenStream {
                     (self.0 & 0xfff) as u16
                 }
 
+                pub fn as_u64(&self) -> u64 {
+                    self.0
+                }
+
                 pub const ZERO: Self = Self(0);
 
                 pub fn from_parts(server: impl Into<ServerId>, timestamp: u64, serial: u16) -> Self {
@@ -182,6 +186,12 @@ pub fn object_ids(input: TokenStream) -> TokenStream {
             impl AsRef<u64> for Snowflake {
                 fn as_ref(&self) -> &u64 {
                     &self.0
+                }
+            }
+
+            impl From<u64> for Snowflake {
+                fn from(value: u64) -> Self {
+                    Self(value)
                 }
             }
 

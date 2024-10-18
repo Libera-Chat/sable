@@ -21,3 +21,8 @@ parking_lot = { version = "0.12", features = [ "serde" ] }
 tracing = "0.1"
 anyhow = "1.0"
 clap = { version = "4.5", features = [ "derive" ] }
+chrono = "0.4"
+uuid = { version = "1.9.1", features = ["v7", "fast-rng", "serde"] }
+
+diesel = { version = "2.2", features = [ "postgres", "chrono", "uuid" ] }
+diesel-async = { version = "0.5", features = [ "postgres" ] }

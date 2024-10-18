@@ -1,11 +1,14 @@
 use std::convert::Infallible;
 
+use anyhow::Context;
 use sable_network::prelude::*;
 use sable_server::ServerType;
 use serde::Deserialize;
 use tokio::sync::{mpsc::UnboundedReceiver, Mutex};
 
 use std::sync::Arc;
+
+use diesel_async::{AsyncConnection, AsyncPgConnection};
 
 mod update_handler;
 
@@ -17,6 +20,7 @@ pub struct HistoryServerConfig {
 pub struct HistoryServer {
     node: Arc<NetworkNode>,
     history_receiver: Mutex<UnboundedReceiver<sable_network::rpc::NetworkHistoryUpdate>>,
+    database_connection: Mutex<AsyncPgConnection>,
 }
 
 impl ServerType for HistoryServer {
@@ -33,7 +37,7 @@ impl ServerType for HistoryServer {
     }
 
     async fn new(
-        _config: Self::ProcessedConfig,
+        config: Self::ProcessedConfig,
         _tls_data: &sable_network::config::TlsData,
         node: std::sync::Arc<sable_network::prelude::NetworkNode>,
         history_receiver: tokio::sync::mpsc::UnboundedReceiver<
@@ -43,6 +47,11 @@ impl ServerType for HistoryServer {
         Ok(Self {
             node,
             history_receiver: Mutex::new(history_receiver),
+            database_connection: Mutex::new(
+                AsyncPgConnection::establish(&config.database)
+                    .await
+                    .context("Couldn't connect to database")?,
+            ),
         })
     }
 
@@ -60,7 +69,9 @@ impl ServerType for HistoryServer {
                 {
                     let Some(update) = update else { break; };
 
-                    self.handle_history_update(update);
+                    if let Err(error) = self.handle_history_update(update).await {
+                        tracing::error!(?error, "Error return handling history update");
+                    }
                 }
             }
         }
