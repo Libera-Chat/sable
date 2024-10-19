@@ -528,7 +528,7 @@ impl TaskState {
         }
     }
 
-    #[tracing::instrument(skip(self, response))]
+    #[tracing::instrument(skip(self, evt, response))] // callers log evt themselves
     async fn handle_new_event(
         &mut self,
         evt: Event,

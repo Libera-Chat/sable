@@ -57,11 +57,19 @@ pub struct Message {
 }
 
 /// A network protocol request
-#[derive(Debug)]
 pub struct Request {
     pub received_from: ServerName,
     pub response: Sender<Message>,
     pub message: Message,
+}
+
+impl std::fmt::Debug for Request {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_struct("Request")
+            .field("received_from", &self.received_from)
+            .field("message", &self.message)
+            .finish()
+    }
 }
 
 impl Message {
