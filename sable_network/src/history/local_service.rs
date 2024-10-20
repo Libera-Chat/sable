@@ -21,7 +21,7 @@ fn target_id_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<Targ
 
 /// Implementation of [`HistoryService`] backed by [`NetworkNode`]
 impl HistoryService for NetworkHistoryLog {
-    fn list_targets(
+    async fn list_targets(
         &self,
         user: UserId,
         after_ts: Option<i64>,
@@ -54,7 +54,7 @@ impl HistoryService for NetworkHistoryLog {
         found_targets
     }
 
-    fn get_entries(
+    async fn get_entries(
         &self,
         user: UserId,
         target: TargetId,
