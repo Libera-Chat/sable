@@ -1,4 +1,4 @@
-use sable_network::rpc::{RemoteServerRequestType, RemoteServerResponse};
+use sable_network::rpc::{RemoteServerResponse, RemoteServicesServerRequestType};
 
 use super::*;
 
@@ -70,8 +70,11 @@ async fn cert_add(
         return Ok(());
     }
 
-    let req =
-        RemoteServerRequestType::AddAccountFingerprint(source.account.id(), fingerprint.to_owned());
+    let req = RemoteServicesServerRequestType::AddAccountFingerprint(
+        source.account.id(),
+        fingerprint.to_owned(),
+    )
+    .into();
 
     match services.send_remote_request(req).await {
         Ok(RemoteServerResponse::Success) => {
@@ -101,10 +104,11 @@ async fn cert_del(
 ) -> CommandResult {
     let fingerprint = param.require()?;
 
-    let req = RemoteServerRequestType::RemoveAccountFingerprint(
+    let req = RemoteServicesServerRequestType::RemoveAccountFingerprint(
         source.account.id(),
         fingerprint.to_owned(),
-    );
+    )
+    .into();
 
     match services.send_remote_request(req).await {
         Ok(RemoteServerResponse::Success) => {

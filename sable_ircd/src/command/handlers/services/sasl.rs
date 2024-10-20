@@ -1,6 +1,6 @@
 use sable_network::{
     network::ban::*,
-    rpc::{RemoteServerRequestType, RemoteServerResponse},
+    rpc::{RemoteServerResponse, RemoteServicesServerRequestType, RemoteServicesServerResponse},
 };
 
 use super::*;
@@ -19,14 +19,14 @@ async fn handle_authenticate(
     let authenticate_request = if let Some(session) = source.sasl_session.get() {
         // A session already exists, so the argument is "*" or base64-encoded session data
         if text == "*" {
-            RemoteServerRequestType::AbortAuthenticate(*session)
+            RemoteServicesServerRequestType::AbortAuthenticate(*session)
         } else {
             let Ok(data) = BASE64_STANDARD.decode(text) else {
                 response.notice("Invalid base64");
                 return Ok(());
             };
 
-            RemoteServerRequestType::Authenticate(*session, data)
+            RemoteServicesServerRequestType::Authenticate(*session, data)
         }
     } else {
         // No session, so the argument is the mechanism name
@@ -54,15 +54,15 @@ async fn handle_authenticate(
         let session = server.ids().next();
         source.sasl_session.set(session).ok();
 
-        RemoteServerRequestType::BeginAuthenticate(session, mechanism)
+        RemoteServicesServerRequestType::BeginAuthenticate(session, mechanism)
     };
 
     match services
         .require()?
-        .send_remote_request(authenticate_request)
+        .send_remote_request(authenticate_request.into())
         .await
     {
-        Ok(RemoteServerResponse::Authenticate(status)) => {
+        Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::Authenticate(status))) => {
             use rpc::AuthenticateStatus::*;
 
             match status {

@@ -75,19 +75,24 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
         let net = self.node.network();
         let source_account = net.account(source)?;
 
-        let source_access = source_account
-            .has_access_in(access_id.channel())
-            .ok_or(RemoteServerResponse::ChannelNotRegistered)?;
+        let source_access = source_account.has_access_in(access_id.channel()).ok_or(
+            RemoteServerResponse::Services(RemoteServicesServerResponse::ChannelNotRegistered),
+        )?;
 
         if !source_access.has(ChannelAccessFlag::AccessEdit) {
-            return Err(RemoteServerResponse::AccessDenied.into());
+            return Err(
+                RemoteServerResponse::Services(RemoteServicesServerResponse::AccessDenied).into(),
+            );
         }
 
         let target_account = net.account(access_id.account())?;
 
         if let Some(target_access) = target_account.has_access_in(access_id.channel()) {
             if !source_access.role()?.dominates(&target_access.role()?) {
-                return Err(RemoteServerResponse::AccessDenied.into());
+                return Err(RemoteServerResponse::Services(
+                    RemoteServicesServerResponse::AccessDenied,
+                )
+                .into());
             }
         }
 
@@ -97,7 +102,10 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
 
                 if !source_access.role()?.dominates(&target_role) {
                     // If the source user doesn't have all the flags they're trying to grant, deny
-                    return Err(RemoteServerResponse::AccessDenied.into());
+                    return Err(RemoteServerResponse::Services(
+                        RemoteServicesServerResponse::AccessDenied,
+                    )
+                    .into());
                 }
 
                 let new_access = state::ChannelAccess {
@@ -144,11 +152,17 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
 
         match source.has_access_in(channel.id()) {
             None => {
-                return Err(RemoteServerResponse::AccessDenied.into());
+                return Err(RemoteServerResponse::Services(
+                    RemoteServicesServerResponse::AccessDenied,
+                )
+                .into());
             }
             Some(access) => {
                 if !access.role()?.flags().is_set(ChannelAccessFlag::RoleEdit) {
-                    return Err(RemoteServerResponse::AccessDenied.into());
+                    return Err(RemoteServerResponse::Services(
+                        RemoteServicesServerResponse::AccessDenied,
+                    )
+                    .into());
                 }
             }
         };
@@ -188,11 +202,17 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
 
         match source.has_access_in(channel.id()) {
             None => {
-                return Err(RemoteServerResponse::AccessDenied.into());
+                return Err(RemoteServerResponse::Services(
+                    RemoteServicesServerResponse::AccessDenied,
+                )
+                .into());
             }
             Some(access) => {
                 if !access.role()?.flags().is_set(ChannelAccessFlag::RoleEdit) {
-                    return Err(RemoteServerResponse::AccessDenied.into());
+                    return Err(RemoteServerResponse::Services(
+                        RemoteServicesServerResponse::AccessDenied,
+                    )
+                    .into());
                 }
             }
         };

@@ -140,68 +140,71 @@ where
         tracing::debug!(?req, "Got remote request");
 
         use RemoteServerRequestType::*;
+        use RemoteServicesServerRequestType::*;
 
         let result = match req {
-            RegisterUser(account_name, password) => {
-                tracing::debug!(?account_name, "Got register request");
+            Services(req) => match req {
+                RegisterUser(account_name, password) => {
+                    tracing::debug!(?account_name, "Got register request");
 
-                self.register_user(account_name, password)
-            }
-            UserLogin(account_id, password) => {
-                tracing::debug!(?account_id, "Got login request");
+                    self.register_user(account_name, password)
+                }
+                UserLogin(account_id, password) => {
+                    tracing::debug!(?account_id, "Got login request");
 
-                self.user_login(account_id, password)
-            }
-            RegisterChannel(account_id, channel_id) => {
-                tracing::debug!(?account_id, ?channel_id, "Got channel register request");
+                    self.user_login(account_id, password)
+                }
+                RegisterChannel(account_id, channel_id) => {
+                    tracing::debug!(?account_id, ?channel_id, "Got channel register request");
 
-                self.register_channel(account_id, channel_id)
-            }
-            ModifyAccess { source, id, role } => {
-                tracing::debug!(?source, ?id, ?role, "Got channel access update");
+                    self.register_channel(account_id, channel_id)
+                }
+                ModifyAccess { source, id, role } => {
+                    tracing::debug!(?source, ?id, ?role, "Got channel access update");
 
-                self.modify_channel_access(source, id, role)
-            }
-            CreateRole {
-                source,
-                channel,
-                name,
-                flags,
-            } => {
-                tracing::debug!(?source, ?channel, ?name, ?flags, "Got role creation");
+                    self.modify_channel_access(source, id, role)
+                }
+                CreateRole {
+                    source,
+                    channel,
+                    name,
+                    flags,
+                } => {
+                    tracing::debug!(?source, ?channel, ?name, ?flags, "Got role creation");
 
-                self.create_role(source, channel, name, flags)
-            }
-            ModifyRole { source, id, flags } => {
-                tracing::debug!(?source, ?id, ?flags, "Got modify role");
+                    self.create_role(source, channel, name, flags)
+                }
+                ModifyRole { source, id, flags } => {
+                    tracing::debug!(?source, ?id, ?flags, "Got modify role");
 
-                self.modify_role(source, id, flags)
-            }
-            BeginAuthenticate(session, mechanism) => {
-                tracing::debug!(?session, ?mechanism, "Got begin authenticate");
+                    self.modify_role(source, id, flags)
+                }
+                BeginAuthenticate(session, mechanism) => {
+                    tracing::debug!(?session, ?mechanism, "Got begin authenticate");
 
-                self.begin_authenticate(session, mechanism)
-            }
-            Authenticate(session, data) => {
-                tracing::debug!(?session, ?data, "Got authenticate data");
+                    self.begin_authenticate(session, mechanism)
+                }
+                Authenticate(session, data) => {
+                    tracing::debug!(?session, ?data, "Got authenticate data");
 
-                self.authenticate(session, data)
-            }
-            AbortAuthenticate(session) => {
-                tracing::debug!(?session, "Got abort authenticate");
+                    self.authenticate(session, data)
+                }
+                AbortAuthenticate(session) => {
+                    tracing::debug!(?session, "Got abort authenticate");
 
-                self.abort_authenticate(session)
-            }
-            AddAccountFingerprint(acc, fp) => {
-                tracing::debug!(?acc, ?fp, "Got add fingerprint");
+                    self.abort_authenticate(session)
+                }
+                AddAccountFingerprint(acc, fp) => {
+                    tracing::debug!(?acc, ?fp, "Got add fingerprint");
 
-                self.user_add_fp(acc, fp)
-            }
-            RemoveAccountFingerprint(acc, fp) => {
-                tracing::debug!(?acc, ?fp, "Got remove fingerprint");
+                    self.user_add_fp(acc, fp)
+                }
+                RemoveAccountFingerprint(acc, fp) => {
+                    tracing::debug!(?acc, ?fp, "Got remove fingerprint");
 
-                self.user_del_fp(acc, fp)
-            }
+                    self.user_del_fp(acc, fp)
+                }
+            },
             Ping => {
                 tracing::warn!(?req, "Got unsupported request");
                 Ok(RemoteServerResponse::NotSupported)
@@ -212,10 +215,10 @@ where
             Ok(response) => response,
             Err(CommandError::LookupError(
                 LookupError::NoSuchAccount(_) | LookupError::NoSuchAccountNamed(_),
-            )) => RemoteServerResponse::NoAccount,
+            )) => RemoteServicesServerResponse::NoAccount.into(),
             Err(CommandError::LookupError(
                 LookupError::NoSuchChannelRegistration(_) | LookupError::ChannelNotRegistered(_),
-            )) => RemoteServerResponse::ChannelNotRegistered,
+            )) => RemoteServicesServerResponse::ChannelNotRegistered.into(),
             Err(e) => RemoteServerResponse::Error(e.to_string()),
         }
     }

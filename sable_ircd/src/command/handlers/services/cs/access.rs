@@ -1,7 +1,7 @@
 use sable_network::{
     network::state::ChannelRoleName,
     policy::RegistrationPolicyService,
-    rpc::{RemoteServerRequestType, RemoteServerResponse},
+    rpc::{RemoteServerResponse, RemoteServicesServerRequestType, RemoteServicesServerResponse},
 };
 
 use super::*;
@@ -87,11 +87,12 @@ async fn access_modify(
 
     let target_access_id = ChannelAccessId::new(source.account.id(), chan.id());
 
-    let request = RemoteServerRequestType::ModifyAccess {
+    let request = RemoteServicesServerRequestType::ModifyAccess {
         source: source.account.id(),
         id: target_access_id,
         role: Some(new_role.id()),
-    };
+    }
+    .into();
     let registration_response = cmd
         .server()
         .node()
@@ -104,7 +105,7 @@ async fn access_modify(
         Ok(RemoteServerResponse::Success) => {
             cmd.notice("Access successfully updated");
         }
-        Ok(RemoteServerResponse::AccessDenied) => {
+        Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::AccessDenied)) => {
             cmd.notice("Access denied");
         }
         Ok(response) => {
@@ -145,11 +146,12 @@ async fn access_delete(
         return Ok(());
     };
 
-    let request = RemoteServerRequestType::ModifyAccess {
+    let request = RemoteServicesServerRequestType::ModifyAccess {
         source: source.account.id(),
         id: target_access.id(),
         role: None,
-    };
+    }
+    .into();
     let registration_response = services_target.send_remote_request(request).await;
 
     tracing::debug!(?registration_response, "Got registration response");
@@ -157,7 +159,7 @@ async fn access_delete(
         Ok(RemoteServerResponse::Success) => {
             cmd.notice("Access successfully updated");
         }
-        Ok(RemoteServerResponse::AccessDenied) => {
+        Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::AccessDenied)) => {
             cmd.notice("Access denied");
         }
         Ok(response) => {
