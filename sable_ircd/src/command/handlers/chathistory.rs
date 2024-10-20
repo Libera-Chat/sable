@@ -45,9 +45,9 @@ fn parse_limit(s: &str) -> Result<usize, CommandError> {
 
 #[allow(clippy::too_many_arguments)]
 #[command_handler("CHATHISTORY")]
-fn handle_chathistory(
+async fn handle_chathistory(
     ctx: &dyn Command,
-    source: UserSource,
+    source: UserSource<'_>,
     server: &ClientServer,
     response: &dyn CommandResponse,
     subcommand: &str,
@@ -72,7 +72,8 @@ fn handle_chathistory(
                 Some(min(from_ts, to_ts)),
                 Some(max(from_ts, to_ts)),
                 Some(limit),
-            );
+            )
+            .await;
         }
         normalized_subcommand => {
             let target = arg_1;
@@ -136,7 +137,7 @@ fn handle_chathistory(
             };
 
             let log = server.node().history();
-            match log.get_entries(source.id(), target_id, request) {
+            match log.get_entries(source.id(), target_id, request).await {
                 Ok(entries) => send_history_entries(server, response, target, entries)?,
                 Err(HistoryError::InvalidTarget(_)) => Err(invalid_target_error())?,
             };
@@ -148,17 +149,17 @@ fn handle_chathistory(
 
 // For listing targets, we iterate backwards through time; this allows us to just collect the
 // first timestamp we see for each target and know that it's the most recent one
-fn list_targets(
+async fn list_targets(
     server: &ClientServer,
     into: impl MessageSink,
-    source: &wrapper::User,
+    source: &wrapper::User<'_>,
     from_ts: Option<i64>,
     to_ts: Option<i64>,
     limit: Option<usize>,
 ) {
     let log = server.node().history();
 
-    let found_targets = log.list_targets(source.id(), to_ts, from_ts, limit);
+    let found_targets = log.list_targets(source.id(), to_ts, from_ts, limit).await;
 
     // The appropriate cap here is Batch - chathistory is enabled because we got here,
     // but can be used without batch support.
