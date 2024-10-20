@@ -1,4 +1,5 @@
-use sable_network::{network::event::UserLogin, rpc::RemoteServerResponse};
+use sable_network::network::event::UserLogin;
+use sable_network::rpc::{RemoteServerResponse, RemoteServicesServerResponse};
 
 use super::*;
 
@@ -21,11 +22,12 @@ async fn handle_login(
     };
 
     let login_request =
-        rpc::RemoteServerRequestType::UserLogin(target_account.id(), password.to_string());
+        rpc::RemoteServicesServerRequestType::UserLogin(target_account.id(), password.to_string())
+            .into();
     let login_result = services.send_remote_request(login_request).await;
 
     match login_result {
-        Ok(RemoteServerResponse::LogUserIn(account)) => {
+        Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::LogUserIn(account))) => {
             if account == target_account.id() {
                 cmd.new_event(
                     source.id(),
@@ -44,7 +46,7 @@ async fn handle_login(
                 cmd.notice("Login failed (internal error)");
             }
         }
-        Ok(RemoteServerResponse::InvalidCredentials) => {
+        Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::InvalidCredentials)) => {
             let msg = format!("Invalid credentials for {}", target_account.name());
             cmd.notice(msg);
         }

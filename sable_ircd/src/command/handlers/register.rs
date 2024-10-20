@@ -73,7 +73,8 @@ async fn do_register_user(
     }
 
     let message =
-        rpc::RemoteServerRequestType::RegisterUser(requested_account, password.to_owned());
+        rpc::RemoteServicesServerRequestType::RegisterUser(requested_account, password.to_owned())
+            .into();
 
     match server
         .node()
@@ -81,7 +82,9 @@ async fn do_register_user(
         .send_remote_request(services_name, message)
         .await
     {
-        Ok(rpc::RemoteServerResponse::LogUserIn(account)) => {
+        Ok(rpc::RemoteServerResponse::Services(rpc::RemoteServicesServerResponse::LogUserIn(
+            account,
+        ))) => {
             server.add_action(CommandAction::state_change(
                 source.id(),
                 event::UserLogin {
@@ -94,7 +97,9 @@ async fn do_register_user(
                 "You have successfully registered",
             ));
         }
-        Ok(rpc::RemoteServerResponse::AlreadyExists) => {
+        Ok(rpc::RemoteServerResponse::Services(
+            rpc::RemoteServicesServerResponse::AlreadyExists,
+        )) => {
             response_to.send(message::Fail::new(
                 "REGISTER",
                 "ACCOUNT_EXISTS",

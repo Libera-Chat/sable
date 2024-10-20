@@ -33,11 +33,23 @@ pub struct RemoteServerRequest {
     pub response: oneshot::Sender<RemoteServerResponse>,
 }
 
-/// A message to be handled by a services node
+/// A message to be handled by a specific node
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum RemoteServerRequestType {
     /// Simple ping for communication tests
     Ping,
+    Services(RemoteServicesServerRequestType),
+}
+
+impl From<RemoteServicesServerRequestType> for RemoteServerRequestType {
+    fn from(req: RemoteServicesServerRequestType) -> Self {
+        RemoteServerRequestType::Services(req)
+    }
+}
+
+/// A message to be handled by a services node
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum RemoteServicesServerRequestType {
     /// User attempting registration
     /// Parameters: account name being registered, password provided
     RegisterUser(Nickname, String),
@@ -97,6 +109,21 @@ pub enum RemoteServerResponse {
     Success,
     /// Operation not supported by this server
     NotSupported,
+    /// Operation failed, with error message
+    Error(String),
+    /// Response type specific to services servers
+    Services(RemoteServicesServerResponse),
+}
+
+impl From<RemoteServicesServerResponse> for RemoteServerResponse {
+    fn from(resp: RemoteServicesServerResponse) -> Self {
+        RemoteServerResponse::Services(resp)
+    }
+}
+
+/// Remote services server response type
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum RemoteServicesServerResponse {
     /// Operation succeeded, user should be logged in to account
     LogUserIn(AccountId),
     /// SASL response
@@ -111,6 +138,4 @@ pub enum RemoteServerResponse {
     NoAccount,
     /// Channel isn't registered
     ChannelNotRegistered,
-    /// Operation failed, with error message
-    Error(String),
 }

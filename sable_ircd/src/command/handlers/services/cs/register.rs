@@ -1,4 +1,6 @@
-use sable_network::rpc::{RemoteServerRequestType, RemoteServerResponse};
+use sable_network::rpc::{
+    RemoteServerResponse, RemoteServicesServerRequestType, RemoteServicesServerResponse,
+};
 
 use super::*;
 
@@ -17,7 +19,8 @@ async fn handle_register(
         return Ok(());
     }
 
-    let request = RemoteServerRequestType::RegisterChannel(source.account.id(), channel.id());
+    let request =
+        RemoteServicesServerRequestType::RegisterChannel(source.account.id(), channel.id()).into();
     let registration_response = services_target.send_remote_request(request).await;
 
     tracing::debug!(?registration_response, "Got registration response");
@@ -28,7 +31,7 @@ async fn handle_register(
                 channel.name()
             ));
         }
-        Ok(RemoteServerResponse::AlreadyExists) => {
+        Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::AlreadyExists)) => {
             cmd.notice(format_args!(
                 "Channel {} is already registered",
                 channel.name()

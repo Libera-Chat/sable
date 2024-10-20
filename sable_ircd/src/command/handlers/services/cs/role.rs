@@ -1,7 +1,7 @@
 use sable_network::{
     network::state::ChannelAccessFlag,
     policy::RegistrationPolicyService,
-    rpc::{RemoteServerRequestType, RemoteServerResponse},
+    rpc::{RemoteServerResponse, RemoteServicesServerRequestType, RemoteServicesServerResponse},
 };
 
 use super::*;
@@ -98,11 +98,12 @@ async fn role_edit(
         .policy()
         .can_create_role(&source.account, &chan, &flags)?;
 
-    let request = RemoteServerRequestType::ModifyRole {
+    let request = RemoteServicesServerRequestType::ModifyRole {
         source: source.account.id(),
         id: target_role.id(),
         flags: Some(flags),
-    };
+    }
+    .into();
     let registration_response = services_target.send_remote_request(request).await;
 
     tracing::debug!(?registration_response, "Got registration response");
@@ -110,7 +111,7 @@ async fn role_edit(
         Ok(RemoteServerResponse::Success) => {
             cmd.notice("Role successfully updated");
         }
-        Ok(RemoteServerResponse::AccessDenied) => {
+        Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::AccessDenied)) => {
             cmd.notice("Access denied");
         }
         Ok(response) => {
@@ -150,12 +151,13 @@ async fn role_add(
         .policy()
         .can_create_role(&source.account, &chan, &flags)?;
 
-    let request = RemoteServerRequestType::CreateRole {
+    let request = RemoteServicesServerRequestType::CreateRole {
         source: source.account.id(),
         channel: chan.id(),
         name: target_role_name,
         flags,
-    };
+    }
+    .into();
     let registration_response = services_target.send_remote_request(request).await;
 
     tracing::debug!(?registration_response, "Got registration response");
@@ -163,7 +165,7 @@ async fn role_add(
         Ok(RemoteServerResponse::Success) => {
             cmd.notice("Role successfully updated");
         }
-        Ok(RemoteServerResponse::AccessDenied) => {
+        Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::AccessDenied)) => {
             cmd.notice("Access denied");
         }
         Ok(response) => {
@@ -196,11 +198,12 @@ async fn role_delete(
         .policy()
         .can_edit_role(&source.account, &chan, &target_role)?;
 
-    let request = RemoteServerRequestType::ModifyRole {
+    let request = RemoteServicesServerRequestType::ModifyRole {
         source: source.account.id(),
         id: target_role.id(),
         flags: None,
-    };
+    }
+    .into();
     let registration_response = services_target.send_remote_request(request).await;
 
     tracing::debug!(?registration_response, "Got registration response");
@@ -208,7 +211,7 @@ async fn role_delete(
         Ok(RemoteServerResponse::Success) => {
             cmd.notice("Role successfully updated");
         }
-        Ok(RemoteServerResponse::AccessDenied) => {
+        Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::AccessDenied)) => {
             cmd.notice("Access denied");
         }
         Ok(response) => {

@@ -37,11 +37,11 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
                         data: Some(new_account),
                     },
                 );
-                Ok(RemoteServerResponse::LogUserIn(id))
+                Ok(RemoteServicesServerResponse::LogUserIn(id).into())
             }
             Err(DatabaseError::DuplicateId | DatabaseError::DuplicateName) => {
                 tracing::debug!(?account_name, "Duplicate account name/id");
-                Ok(RemoteServerResponse::AlreadyExists)
+                Ok(RemoteServicesServerResponse::AlreadyExists.into())
             }
             Err(error) => {
                 tracing::error!(?error, "Error creating account");
@@ -59,11 +59,11 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
         match bcrypt::verify(password, &auth.password_hash) {
             Ok(true) => {
                 tracing::debug!("login successful");
-                Ok(RemoteServerResponse::LogUserIn(account_id))
+                Ok(RemoteServicesServerResponse::LogUserIn(account_id).into())
             }
             Ok(false) => {
                 tracing::debug!("wrong password");
-                Ok(RemoteServerResponse::InvalidCredentials)
+                Ok(RemoteServicesServerResponse::InvalidCredentials.into())
             }
             Err(_) => Err("Couldn't verify password".into()),
         }
