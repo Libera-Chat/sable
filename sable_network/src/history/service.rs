@@ -1,6 +1,7 @@
 //! History storage and retrieval
 
 use std::collections::HashMap;
+use std::future::Future;
 
 use thiserror::Error;
 
@@ -90,12 +91,12 @@ pub trait HistoryService {
         after_ts: Option<i64>,
         before_ts: Option<i64>,
         limit: Option<usize>,
-    ) -> HashMap<TargetId, i64>;
+    ) -> impl Future<Output = HashMap<TargetId, i64>> + Send;
 
     fn get_entries(
         &self,
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> Result<impl Iterator<Item = &HistoryLogEntry>, HistoryError>;
+    ) -> impl Future<Output = Result<impl Iterator<Item = &HistoryLogEntry>, HistoryError>> + Send;
 }
