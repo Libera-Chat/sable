@@ -64,8 +64,5 @@ pub trait ServerType: Send + Sync + Sized + 'static {
     ) -> std::io::Result<Self>;
 
     /// Handle a request originating from a remote server
-    fn handle_remote_command(
-        &self,
-        request: RemoteServerRequestType,
-    ) -> impl Future<Output = RemoteServerResponse> + Send;
+    fn handle_remote_command(&self, request: RemoteServerRequestType) -> RemoteServerResponse;
 }
