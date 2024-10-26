@@ -286,11 +286,17 @@ impl Network {
     }
 
     /// Retrieve the server name of the current active services
-    pub fn current_services_name(&self) -> Option<ServerName> {
-        self.current_services
-            .as_ref()
-            .and_then(|state| self.servers.get(&state.server_id))
-            .map(|s| s.name)
+    pub fn current_history_server_name(&self) -> Option<ServerName> {
+        Some(self.servers.get(&self.current_history_server_id?)?.name)
+    }
+
+    /// Retrieve the server name of the current active services
+    pub fn current_services_server_name(&self) -> Option<ServerName> {
+        Some(
+            self.servers
+                .get(&self.current_services.as_ref()?.server_id)?
+                .name,
+        )
     }
 
     /// Retrieve the current services data

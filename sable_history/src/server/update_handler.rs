@@ -34,6 +34,7 @@ impl HistoryServer {
             | NetworkStateChange::ServerQuit(_)
             | NetworkStateChange::NewAuditLogEntry(_)
             | NetworkStateChange::UserLoginChange(_)
+            | NetworkStateChange::HistoryServerUpdate(_)
             | NetworkStateChange::ServicesUpdate(_)
             | NetworkStateChange::EventComplete(_) => Ok(()),
         }

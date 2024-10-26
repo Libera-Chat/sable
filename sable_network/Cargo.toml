@@ -21,6 +21,7 @@ pretty_assertions = "1.4"
 [dependencies]
 sable_macros = { path = "../sable_macros" }
 
+async-trait = "0.1.83"
 tracing = "0.1"
 thiserror = "1"
 serde_json = "1"
@@ -42,7 +43,7 @@ rand = "0.8"
 arrayvec = { version = "0.7", features = [ "serde" ] }
 hashers = "1"
 serde_with = "1.11"
-parking_lot = { version = "0.12", features = [ "serde" ] }
+parking_lot = { version = "0.12.2", features = [ "serde", "arc_lock" ] }
 wildmatch = "2.1"
 concurrent_log = { version = "0.2.4", features = [ "serde" ] }
 ipnet = { version = "2", features = [ "serde" ] }

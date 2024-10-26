@@ -89,6 +89,7 @@ pub struct Network {
     channel_roles: HashMap<ChannelRoleId, state::ChannelRole>,
 
     current_services: Option<state::ServicesData>,
+    current_history_server_id: Option<ServerId>,
     config: config::NetworkConfig,
 
     clock: EventClock,
@@ -130,6 +131,7 @@ impl Network {
             channel_roles: HashMap::new(),
 
             current_services: None,
+            current_history_server_id: None,
             config,
 
             clock: EventClock::new(),
@@ -207,7 +209,8 @@ impl Network {
             NewAuditLogEntry => self.new_audit_log,
             EnablePersistentSession => self.enable_persistent_session,
             DisablePersistentSession => self.disable_persistent_session,
-            IntroduceServices => self.introduce_services,
+            IntroduceServicesServer => self.introduce_services_server,
+            IntroduceHistoryServer => self.introduce_history_server,
             AccountUpdate => self.update_account,
             NickRegistrationUpdate => self.update_nick_registration,
             ChannelRegistrationUpdate => self.update_channel_registration,
@@ -286,6 +289,7 @@ mod audit_log;
 mod ban_state;
 mod channel_state;
 mod config_state;
+mod history_state;
 mod message_state;
 mod oper_state;
 mod server_state;

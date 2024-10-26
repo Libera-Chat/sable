@@ -247,6 +247,10 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         Ok(Vec::new())
     }
 
+    fn handle_history_server_update(&self, _detail: &update::HistoryServerUpdate) -> HandleResult {
+        Ok(Vec::new())
+    }
+
     fn handle_services_update(&self, _detail: &update::ServicesUpdate) -> HandleResult {
         Ok(Vec::new())
     }
@@ -284,6 +288,7 @@ impl<Policy: crate::policy::PolicyService> NetworkUpdateReceiver for NetworkNode
             ServerQuit(detail) => self.handle_server_quit(detail),
             NewAuditLogEntry(detail) => self.report_audit_entry(detail),
             UserLoginChange(detail) => self.handle_user_login(detail),
+            HistoryServerUpdate(detail) => self.handle_history_server_update(detail),
             ServicesUpdate(detail) => self.handle_services_update(detail),
             // We don't need to do anything with EventComplete, just pass it along to the subscriber
             EventComplete(_) => Ok(Vec::new()),

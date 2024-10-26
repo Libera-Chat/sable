@@ -4,11 +4,11 @@ use crate::network::update::*;
 use crate::prelude::*;
 
 impl Network {
-    pub(super) fn introduce_services(
+    pub(super) fn introduce_services_server(
         &mut self,
         target: ServerId,
         event: &Event,
-        update: &IntroduceServices,
+        update: &IntroduceServicesServer,
         updates: &dyn NetworkUpdateReceiver,
     ) {
         self.current_services = Some(state::ServicesData {

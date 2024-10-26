@@ -184,6 +184,10 @@ NetworkStateChange => {
     struct ServicesUpdate {
     }
 
+    /// The current history node has changed
+    struct HistoryServerUpdate {
+    }
+
     /// A delimiter event to denote that an Event has been completely processed
     struct EventComplete { }
 });

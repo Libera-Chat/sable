@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use tracing::instrument;
+
 use crate::network::state::HistoricMessageTargetId;
 use crate::prelude::*;
 
@@ -20,12 +22,12 @@ fn target_id_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<Targ
 }
 
 /// Implementation of [`HistoryService`] backed by [`NetworkNode`]
-pub struct LocalHistoryService<'a> {
-    node: &'a NetworkNode,
+pub struct LocalHistoryService<'a, NetworkPolicy: policy::PolicyService> {
+    node: &'a NetworkNode<NetworkPolicy>,
 }
 
-impl<'a> LocalHistoryService<'a> {
-    pub fn new(node: &'a NetworkNode) -> Self {
+impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPolicy> {
+    pub fn new(node: &'a NetworkNode<NetworkPolicy>) -> Self {
         LocalHistoryService { node }
     }
 
@@ -116,7 +118,10 @@ impl<'a> LocalHistoryService<'a> {
     }
 }
 
-impl<'a> HistoryService for LocalHistoryService<'a> {
+impl<'a, NetworkPolicy: policy::PolicyService> HistoryService
+    for LocalHistoryService<'a, NetworkPolicy>
+{
+    #[instrument(skip(self))]
     async fn list_targets(
         &self,
         user: UserId,
@@ -147,16 +152,19 @@ impl<'a> HistoryService for LocalHistoryService<'a> {
             }
         }
 
+        tracing::trace!("list_targets local response: {found_targets:?}");
+
         found_targets
     }
 
+    #[instrument(skip(self))]
     async fn get_entries(
         &self,
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
     ) -> Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError> {
-        match request {
+        let res = match request {
             #[rustfmt::skip]
             HistoryRequest::Latest { to_ts, limit } => self.get_history_for_target(
                 user,
@@ -222,6 +230,8 @@ impl<'a> HistoryService for LocalHistoryService<'a> {
                     )
                 }
             }
-        }
+        };
+        tracing::trace!("get_entries local response: {}", res.is_ok());
+        res
     }
 }

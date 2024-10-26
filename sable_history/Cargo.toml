@@ -11,6 +11,7 @@ built = { version = "0.5", features = [ "git2" ] }
 sable_network = { path = "../sable_network" }
 sable_server = { path = "../sable_server" }
 
+futures = "0.3"
 tokio = { version = "1.14", features = [ "full" ] }
 serde = { version = "1", features = [ "derive" ] }
 serde_with = "1.11"

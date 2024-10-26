@@ -190,8 +190,12 @@ EventDetails => {
     }
 
     #[target_type(ServerId)]
-    struct IntroduceServices {
+    struct IntroduceServicesServer {
         pub sasl_mechanisms: Vec<String>,
+    }
+
+    #[target_type(ServerId)]
+    struct IntroduceHistoryServer {
     }
 
     #[target_type(AccountId)]

@@ -9,7 +9,7 @@ use crate::history::HistoryLogEntry;
 use crate::network::state::{HistoricMessageSourceId, HistoricMessageTargetId};
 use crate::prelude::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum TargetId {
     User(UserId),
     Channel(ChannelId),
@@ -50,6 +50,7 @@ impl TryFrom<&HistoricMessageTargetId> for TargetId {
     }
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum HistoryRequest {
     Latest {
         to_ts: Option<i64>,
@@ -74,7 +75,7 @@ pub enum HistoryRequest {
     },
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum HistoryError {
     #[error("invalid target: {0:?}")]
     InvalidTarget(TargetId),

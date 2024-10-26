@@ -136,7 +136,7 @@ async fn handle_chathistory(
                 }
             };
 
-            let history_service = LocalHistoryService::new(server.node());
+            let history_service = server.node().history_service();
             match history_service
                 .get_entries(source.id(), target_id, request)
                 .await
@@ -160,7 +160,7 @@ async fn list_targets<'a>(
     to_ts: Option<i64>,
     limit: Option<usize>,
 ) {
-    let history_service = LocalHistoryService::new(server.node());
+    let history_service = server.node().history_service();
 
     let found_targets = history_service
         .list_targets(source.id(), to_ts, from_ts, limit)

@@ -160,7 +160,7 @@ where
         // Finally, set ourselves as the active services node
         self.node.submit_event(
             self.node.id(),
-            IntroduceServices {
+            IntroduceServicesServer {
                 sasl_mechanisms: vec!["PLAIN".to_owned()],
             },
         );
