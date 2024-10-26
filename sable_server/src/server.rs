@@ -236,7 +236,7 @@ where
                 {
                     if let Some(request) = request
                     {
-                        let response = server.handle_remote_command(request.req).await;
+                        let response = server.handle_remote_command(request.req);
                         if let Err(e) = request.response.send(response)
                         {
                             tracing::error!(?e, "Couldn't send response to remote command");
