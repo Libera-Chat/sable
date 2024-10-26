@@ -99,7 +99,5 @@ pub trait HistoryService {
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> impl Future<Output = Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError>>
-           + Send
-           + Sync;
+    ) -> impl Future<Output = Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError>> + Send;
 }
