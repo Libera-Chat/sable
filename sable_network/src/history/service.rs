@@ -91,7 +91,7 @@ pub trait HistoryService {
         after_ts: Option<i64>,
         before_ts: Option<i64>,
         limit: Option<usize>,
-    ) -> impl Future<Output = HashMap<TargetId, i64>> + Send + Sync;
+    ) -> impl Future<Output = HashMap<TargetId, i64>> + Send;
 
     fn get_entries(
         &self,

@@ -54,7 +54,7 @@ pub(crate) fn call_handler_async<'ctx, 'handler, Amb, Pos>(
     ctx: &'ctx dyn Command,
     handler: &'handler impl AsyncHandlerFn<'ctx, Amb, Pos>,
     args: ArgListIter<'ctx>,
-) -> impl Future<Output = CommandResult> + Send + Sync + 'ctx
+) -> impl Future<Output = CommandResult> + Send + 'ctx
 where
     'handler: 'ctx,
 {

@@ -28,7 +28,7 @@ pub use plumbing::{ArgListIter, Command, LoggedInUserSource, PreClientSource, Us
 pub type CommandResult = Result<(), CommandError>;
 
 pub type AsyncHandler<'cmd> =
-    std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + Sync + 'cmd>>;
+    std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'cmd>>;
 
 mod handlers {
     // These are here so the handler modules can import everything easily

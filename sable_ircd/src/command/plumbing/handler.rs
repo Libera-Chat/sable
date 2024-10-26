@@ -23,7 +23,7 @@ pub trait AsyncHandlerFn<'ctx, Ambient, Positional>: Send + Sync {
         &'ctx self,
         ctx: &'ctx dyn Command,
         args: ArgListIter<'ctx>,
-    ) -> impl Future<Output = CommandResult> + Send + Sync + 'ctx;
+    ) -> impl Future<Output = CommandResult> + Send + 'ctx;
 }
 
 macro_rules! define_handler_fn
@@ -47,7 +47,6 @@ macro_rules! define_handler_fn
                         $pos::parse(ctx, &mut args)?
                     ),*
                 )
-
             }
         }
 
@@ -55,13 +54,13 @@ macro_rules! define_handler_fn
         impl<'ctx, T, F, $($ambient,)* $($pos),*> AsyncHandlerFn<'ctx, ($($ambient,)*), ($($pos,)*)> for T
             where T: Fn($($ambient,)* $($pos),*) -> F,
                   T: Send + Sync,
-                  F: Future<Output=CommandResult> + Send + Sync,
+                  F: Future<Output=CommandResult> + Send,
                   $( $ambient: AmbientArgument<'ctx> + Send + Sync, )*
                   $( $pos: PositionalArgument<'ctx> + Send + Sync ),*
         {
             // When this gets expanded with () as one of the argument lists these warnings will fire
             #[allow(unused_variables,unused_mut)]
-            fn call(&'ctx self, ctx: &'ctx dyn Command, mut args: ArgListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + Sync + 'ctx
+            fn call(&'ctx self, ctx: &'ctx dyn Command, mut args: ArgListIter<'ctx>) -> impl Future<Output=CommandResult> + Send + 'ctx
             {
                 async move {
                     self(
