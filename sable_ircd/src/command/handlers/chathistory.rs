@@ -136,8 +136,11 @@ async fn handle_chathistory(
                 }
             };
 
-            let log = server.node().history();
-            match log.get_entries(source.id(), target_id, request).await {
+            let history_service = LocalHistoryService::new(server.node());
+            match history_service
+                .get_entries(source.id(), target_id, request)
+                .await
+            {
                 Ok(entries) => send_history_entries(server, response, target, entries)?,
                 Err(HistoryError::InvalidTarget(_)) => Err(invalid_target_error())?,
             };
@@ -149,17 +152,19 @@ async fn handle_chathistory(
 
 // For listing targets, we iterate backwards through time; this allows us to just collect the
 // first timestamp we see for each target and know that it's the most recent one
-async fn list_targets(
-    server: &ClientServer,
-    into: impl MessageSink,
-    source: &wrapper::User<'_>,
+async fn list_targets<'a>(
+    server: &'a ClientServer,
+    into: impl MessageSink + 'a,
+    source: &'a wrapper::User<'_>,
     from_ts: Option<i64>,
     to_ts: Option<i64>,
     limit: Option<usize>,
 ) {
-    let log = server.node().history();
+    let history_service = LocalHistoryService::new(server.node());
 
-    let found_targets = log.list_targets(source.id(), to_ts, from_ts, limit).await;
+    let found_targets = history_service
+        .list_targets(source.id(), to_ts, from_ts, limit)
+        .await;
 
     // The appropriate cap here is Batch - chathistory is enabled because we got here,
     // but can be used without batch support.
@@ -195,7 +200,7 @@ fn send_history_entries<'a>(
     server: &ClientServer,
     into: impl MessageSink,
     target: &str,
-    entries: impl Iterator<Item = &'a HistoryLogEntry>,
+    entries: impl IntoIterator<Item = HistoryLogEntry>,
 ) -> CommandResult {
     let batch = into
         .batch("chathistory", ClientCapability::Batch)
@@ -205,7 +210,7 @@ fn send_history_entries<'a>(
     for entry in entries {
         // Ignore errors here; it's possible that a message has been expired out of network state
         // but a reference to it still exists in the history log
-        let _ = server.send_item(entry, &batch, entry);
+        let _ = server.send_item(&entry, &batch, &entry);
     }
 
     Ok(())

@@ -91,12 +91,14 @@ pub trait HistoryService {
         after_ts: Option<i64>,
         before_ts: Option<i64>,
         limit: Option<usize>,
-    ) -> impl Future<Output = HashMap<TargetId, i64>> + Send;
+    ) -> impl Future<Output = HashMap<TargetId, i64>> + Send + Sync;
 
     fn get_entries(
         &self,
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> impl Future<Output = Result<impl Iterator<Item = &HistoryLogEntry>, HistoryError>> + Send;
+    ) -> impl Future<Output = Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError>>
+           + Send
+           + Sync;
 }

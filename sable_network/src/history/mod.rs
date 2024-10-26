@@ -5,6 +5,7 @@ pub use service::*;
 mod local_service;
 
 use crate::network::NetworkStateChange;
+pub use local_service::LocalHistoryService;
 
 /// Implemented by types that provide metadata for a historic state change
 pub trait HistoryItem {

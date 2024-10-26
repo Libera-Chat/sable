@@ -10,7 +10,7 @@ use concurrent_log::ConcurrentLog;
 
 pub type LogEntryId = usize;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryLogEntry {
     pub id: LogEntryId,
     pub timestamp: i64,
