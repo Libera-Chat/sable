@@ -20,7 +20,103 @@ fn target_id_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<Targ
 }
 
 /// Implementation of [`HistoryService`] backed by [`NetworkNode`]
-impl HistoryService for NetworkHistoryLog {
+pub struct LocalHistoryService<'a> {
+    node: &'a NetworkNode,
+}
+
+impl<'a> LocalHistoryService<'a> {
+    pub fn new(node: &'a NetworkNode) -> Self {
+        LocalHistoryService { node }
+    }
+
+    fn get_history_for_target(
+        &self,
+        source: UserId,
+        target: TargetId,
+        from_ts: Option<i64>,
+        to_ts: Option<i64>,
+        backward_limit: usize,
+        forward_limit: usize,
+    ) -> Result<impl Iterator<Item = HistoryLogEntry>, HistoryError> {
+        let mut backward_entries = Vec::new();
+        let mut forward_entries = Vec::new();
+        let mut target_exists = false;
+
+        // Keep the lock on the NetworkHistoryLog between the backward and the forward
+        // search to make sure both have a consistent state
+        let log = self.node.history();
+
+        if backward_limit != 0 {
+            let from_ts = if forward_limit == 0 {
+                from_ts
+            } else {
+                // HACK: This is AROUND so we want to capture messages whose timestamp matches exactly
+                // (it's a message in the middle of the range)
+                from_ts.map(|from_ts| from_ts + 1)
+            };
+
+            for entry in log.entries_for_user_reverse(source) {
+                target_exists = true;
+                if matches!(from_ts, Some(ts) if entry.timestamp >= ts) {
+                    // Skip over until we hit the timestamp window we're interested in
+                    continue;
+                }
+                if matches!(to_ts, Some(ts) if entry.timestamp <= ts) {
+                    // If we hit this then we've passed the requested window and should stop
+                    break;
+                }
+
+                if let Some(event_target) = target_id_for_entry(source, entry) {
+                    if event_target == target {
+                        backward_entries.push(entry.clone());
+                    }
+                }
+
+                if backward_limit <= backward_entries.len() {
+                    break;
+                }
+            }
+        }
+
+        if forward_limit != 0 {
+            for entry in log.entries_for_user(source) {
+                target_exists = true;
+                if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
+                    // Skip over until we hit the timestamp window we're interested in
+                    continue;
+                }
+                if matches!(to_ts, Some(ts) if entry.timestamp >= ts) {
+                    // If we hit this then we've passed the requested window and should stop
+                    break;
+                }
+
+                if let Some(event_target) = target_id_for_entry(source, entry) {
+                    if event_target == target {
+                        forward_entries.push(entry.clone());
+                    }
+                }
+
+                if forward_limit <= forward_entries.len() {
+                    break;
+                }
+            }
+        }
+
+        if target_exists {
+            // "The order of returned messages within the batch is implementation-defined, but SHOULD be
+            // ascending time order or some approximation thereof, regardless of the subcommand used."
+            // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
+            Ok(backward_entries
+                .into_iter()
+                .rev()
+                .chain(forward_entries.into_iter()))
+        } else {
+            Err(HistoryError::InvalidTarget(target))
+        }
+    }
+}
+
+impl<'a> HistoryService for LocalHistoryService<'a> {
     async fn list_targets(
         &self,
         user: UserId,
@@ -30,7 +126,7 @@ impl HistoryService for NetworkHistoryLog {
     ) -> HashMap<TargetId, i64> {
         let mut found_targets = HashMap::new();
 
-        for entry in self.entries_for_user_reverse(user) {
+        for entry in self.node.history().entries_for_user_reverse(user) {
             if matches!(after_ts, Some(ts) if entry.timestamp >= ts) {
                 // Skip over until we hit the timestamp window we're interested in
                 continue;
@@ -59,11 +155,10 @@ impl HistoryService for NetworkHistoryLog {
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> Result<impl Iterator<Item = &HistoryLogEntry>, HistoryError> {
+    ) -> Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError> {
         match request {
             #[rustfmt::skip]
-            HistoryRequest::Latest { to_ts, limit } => get_history_for_target(
-                self,
+            HistoryRequest::Latest { to_ts, limit } => self.get_history_for_target(
                 user,
                 target,
                 None,
@@ -73,8 +168,7 @@ impl HistoryService for NetworkHistoryLog {
             ),
 
             HistoryRequest::Before { from_ts, limit } => {
-                get_history_for_target(
-                    self,
+                self.get_history_for_target(
                     user,
                     target,
                     Some(from_ts),
@@ -83,8 +177,7 @@ impl HistoryService for NetworkHistoryLog {
                     0, // Forward limit
                 )
             }
-            HistoryRequest::After { start_ts, limit } => get_history_for_target(
-                self,
+            HistoryRequest::After { start_ts, limit } => self.get_history_for_target(
                 user,
                 target,
                 Some(start_ts),
@@ -93,8 +186,7 @@ impl HistoryService for NetworkHistoryLog {
                 limit,
             ),
             HistoryRequest::Around { around_ts, limit } => {
-                get_history_for_target(
-                    self,
+                self.get_history_for_target(
                     user,
                     target,
                     Some(around_ts),
@@ -109,8 +201,7 @@ impl HistoryService for NetworkHistoryLog {
                 limit,
             } => {
                 if start_ts <= end_ts {
-                    get_history_for_target(
-                        self,
+                    self.get_history_for_target(
                         user,
                         target,
                         Some(start_ts),
@@ -121,8 +212,7 @@ impl HistoryService for NetworkHistoryLog {
                 } else {
                     // Search backward from start_ts instead of swapping start_ts and end_ts,
                     // because we want to match the last messages first in case we reach the limit
-                    get_history_for_target(
-                        self,
+                    self.get_history_for_target(
                         user,
                         target,
                         Some(start_ts),
@@ -133,87 +223,5 @@ impl HistoryService for NetworkHistoryLog {
                 }
             }
         }
-    }
-}
-
-fn get_history_for_target(
-    log: &NetworkHistoryLog,
-    source: UserId,
-    target: TargetId,
-    from_ts: Option<i64>,
-    to_ts: Option<i64>,
-    backward_limit: usize,
-    forward_limit: usize,
-) -> Result<impl Iterator<Item = &HistoryLogEntry>, HistoryError> {
-    let mut backward_entries = Vec::new();
-    let mut forward_entries = Vec::new();
-    let mut target_exists = false;
-
-    if backward_limit != 0 {
-        let from_ts = if forward_limit == 0 {
-            from_ts
-        } else {
-            // HACK: This is AROUND so we want to capture messages whose timestamp matches exactly
-            // (it's a message in the middle of the range)
-            from_ts.map(|from_ts| from_ts + 1)
-        };
-
-        for entry in log.entries_for_user_reverse(source) {
-            target_exists = true;
-            if matches!(from_ts, Some(ts) if entry.timestamp >= ts) {
-                // Skip over until we hit the timestamp window we're interested in
-                continue;
-            }
-            if matches!(to_ts, Some(ts) if entry.timestamp <= ts) {
-                // If we hit this then we've passed the requested window and should stop
-                break;
-            }
-
-            if let Some(event_target) = target_id_for_entry(source, entry) {
-                if event_target == target {
-                    backward_entries.push(entry);
-                }
-            }
-
-            if backward_limit <= backward_entries.len() {
-                break;
-            }
-        }
-    }
-
-    if forward_limit != 0 {
-        for entry in log.entries_for_user(source) {
-            target_exists = true;
-            if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
-                // Skip over until we hit the timestamp window we're interested in
-                continue;
-            }
-            if matches!(to_ts, Some(ts) if entry.timestamp >= ts) {
-                // If we hit this then we've passed the requested window and should stop
-                break;
-            }
-
-            if let Some(event_target) = target_id_for_entry(source, entry) {
-                if event_target == target {
-                    forward_entries.push(entry);
-                }
-            }
-
-            if forward_limit <= forward_entries.len() {
-                break;
-            }
-        }
-    }
-
-    if target_exists {
-        // "The order of returned messages within the batch is implementation-defined, but SHOULD be
-        // ascending time order or some approximation thereof, regardless of the subcommand used."
-        // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
-        Ok(backward_entries
-            .into_iter()
-            .rev()
-            .chain(forward_entries.into_iter()))
-    } else {
-        Err(HistoryError::InvalidTarget(target))
     }
 }
