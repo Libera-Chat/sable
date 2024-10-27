@@ -104,7 +104,7 @@ pub trait HistoryService {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum HistoricalEvent {
     Message {
-        id: Uuid7,
+        id: MessageId,
         source: String,
         source_account: Option<String>,
         target: String,

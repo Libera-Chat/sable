@@ -131,7 +131,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
                 let target = message.target().ok()?;
 
                 Some(HistoricalEvent::Message {
-                    id: *message.id(),
+                    id: message.id(),
                     message_type: message.message_type(),
                     source: source.nuh(),
                     source_account: source.account_name().map(|n| n.to_string()),

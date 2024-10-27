@@ -159,7 +159,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                             String,
                             _,
                         )| HistoricalEvent::Message {
-                            id: id.try_into().expect("Message id is a non-v7 UUID"),
+                            id: MessageId::new(id.try_into().expect("Message id is a non-v7 UUID")),
                             source: format!("{}!{}@{}", source_nick, source_ident, source_vhost),
                             source_account,
                             message_type: message_type.into(),
