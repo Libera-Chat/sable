@@ -9,8 +9,7 @@ use uuid::Uuid;
 
 use sable_network::prelude::*;
 
-use crate::schema::channels;
-use crate::schema::messages;
+use crate::schema::{channels, historic_users, messages};
 
 /// Implementation of [`HistoryService`] backed PostgreSQL
 pub struct PgHistoryService<'a> {
@@ -100,6 +99,18 @@ impl<'a> HistoryService for PgHistoryService<'a> {
             return Err(HistoryError::InvalidTarget(target));
         }
 
+        let base_query = messages::dsl::messages
+            .inner_join(historic_users::dsl::historic_users)
+            .select((
+                messages::dsl::id,
+                messages::dsl::message_type,
+                messages::dsl::text,
+                historic_users::dsl::nick,
+                historic_users::dsl::ident,
+                historic_users::dsl::vhost,
+                historic_users::dsl::account_name,
+            ))
+            .filter(messages::dsl::target_channel.eq(db_channel_id));
         match request {
             HistoryRequest::Latest { to_ts, limit } => {
                 let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
@@ -114,8 +125,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                         )
                         .into_uuid();
                         Box::new(
-                            messages::dsl::messages
-                                .filter(messages::dsl::target_channel.eq(db_channel_id))
+                            base_query
                                 .filter(messages::dsl::id.lt(to_uuid))
                                 .order(messages::dsl::id.desc())
                                 .limit(limit)
@@ -123,8 +133,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                         )
                     }
                     None => Box::new(
-                        messages::dsl::messages
-                            .filter(messages::dsl::target_channel.eq(db_channel_id))
+                        base_query
                             .order(messages::dsl::id.desc())
                             .limit(limit)
                             .load_stream(&mut *connection_lock),
@@ -133,30 +142,32 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                 .await
                 .expect("could not query messages")
                 .map(|row| {
-                    let row: crate::models::Message = match row {
-                        Ok(row) => row,
-                        Err(e) => return Err(e),
-                    };
-                    /*
-                    let crate::models::Message {
-                        id,
-                        source_user,
-                        target_channel,
-                        text,
-                    } = row?;
-                    }
-                    Ok(HistoryLogEntry {
-                        id: (),
-                        details: NetworkStateChange::NewMessage(update::NewMessage {
-                            message: (),
-                            source: (),
-                            target: (),
-                        }),
-                        source_event: (),
-                        timestamp: (),
-                    })
-                    */
-                    Ok((|| -> HistoricalEvent { todo!() })())
+                    row.map(
+                        |(
+                            id,
+                            message_type,
+                            text,
+                            source_nick,
+                            source_ident,
+                            source_vhost,
+                            source_account,
+                        ): (
+                            uuid::Uuid,
+                            crate::types::MessageType,
+                            String,
+                            String,
+                            String,
+                            String,
+                            _,
+                        )| HistoricalEvent::Message {
+                            id: id.try_into().expect("Message id is a non-v7 UUID"),
+                            source: format!("{}!{}@{}", source_nick, source_ident, source_vhost),
+                            source_account,
+                            message_type: message_type.into(),
+                            target, // assume it's the same
+                            text,
+                        },
+                    )
                 })
                 .try_collect::<Vec<_>>()
                 .await
