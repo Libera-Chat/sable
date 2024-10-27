@@ -106,8 +106,6 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
         }
 
         if target_exists {
-            use crate::network::update;
-
             // "The order of returned messages within the batch is implementation-defined, but SHOULD be
             // ascending time order or some approximation thereof, regardless of the subcommand used."
             // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
@@ -125,18 +123,19 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
         match entry.details {
             NetworkStateChange::NewMessage(update::NewMessage {
                 message,
-                source,
-                target,
+                source: _,
+                target: _,
             }) => {
                 let message = net.message(message).ok()?;
                 let source = message.source().ok()?;
+                let target = message.target().ok()?;
 
                 Some(HistoricalEvent::Message {
                     id: *message.id(),
                     message_type: message.message_type(),
                     source: source.nuh(),
                     source_account: source.account_name().map(|n| n.to_string()),
-                    target: todo!(),
+                    target: target.to_string(),
                     text: message.text().to_string(),
                 })
             }

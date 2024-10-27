@@ -87,17 +87,16 @@ impl<'a> HistoryService for PgHistoryService<'a> {
         let mut connection_lock = self.database_connection.lock().await;
 
         let db_channel_id = i64::try_from(channel_id.as_u64()).expect("channel id overflows u64");
-        if channels::dsl::channels
+        let Some(channel) = channels::dsl::channels
             .find(db_channel_id)
             .select(crate::models::Channel::as_select())
             .first(&mut *connection_lock)
             .await
             .optional()
             .expect("Could not check if channel exists")
-            .is_none()
-        {
+        else {
             return Err(HistoryError::InvalidTarget(target));
-        }
+        };
 
         let base_query = messages::dsl::messages
             .inner_join(historic_users::dsl::historic_users)
@@ -164,7 +163,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                             source: format!("{}!{}@{}", source_nick, source_ident, source_vhost),
                             source_account,
                             message_type: message_type.into(),
-                            target, // assume it's the same
+                            target: channel.name.clone(), // assume it's the same
                             text,
                         },
                     )

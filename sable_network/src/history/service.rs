@@ -107,7 +107,7 @@ pub enum HistoricalEvent {
         id: Uuid7,
         source: String,
         source_account: Option<String>,
-        target: TargetId,
+        target: String,
         message_type: MessageType,
         text: String,
     },
