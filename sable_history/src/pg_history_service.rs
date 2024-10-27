@@ -134,12 +134,18 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                 .await
                 .expect("could not query messages")
                 .map(|row| {
+                    let row: crate::models::Message = match row {
+                        Ok(row) => row,
+                        Err(e) => return Err(e),
+                    };
+                    /*
                     let crate::models::Message {
                         id,
                         source_user,
                         target_channel,
                         text,
                     } = row?;
+                    }
                     Ok(HistoryLogEntry {
                         id: (),
                         details: NetworkStateChange::NewMessage(update::NewMessage {
@@ -150,6 +156,8 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                         source_event: (),
                         timestamp: (),
                     })
+                    */
+                    Ok((|| -> HistoryLogEntry { todo!() })())
                 })
                 .try_collect::<Vec<_>>()
                 .await
