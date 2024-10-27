@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
@@ -102,6 +103,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
             .inner_join(historic_users::dsl::historic_users)
             .select((
                 messages::dsl::id,
+                messages::dsl::timestamp,
                 messages::dsl::message_type,
                 messages::dsl::text,
                 historic_users::dsl::nick,
@@ -115,26 +117,22 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                 let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
                 Ok(match to_ts {
                     Some(to_ts) => {
-                        // Highest UUIDv7 corresponding to the timestamp
-                        let to_uuid = uuid::Builder::from_unix_timestamp_millis(
-                            u64::try_from(to_ts)
-                                .unwrap_or(u64::MIN) // floor timestamps to Epoch
-                                .saturating_mul(1000)
-                                .saturating_add(999),
-                            &[u8::MAX; 10],
-                        )
-                        .into_uuid();
+                        let to_ts = DateTime::from_timestamp(to_ts, 999_999)
+                            .unwrap_or(DateTime::<Utc>::MIN_UTC)
+                            .naive_utc();
                         Box::new(
                             base_query
-                                .filter(messages::dsl::id.gt(to_uuid))
-                                .order(messages::dsl::id.desc())
+                                .filter(messages::dsl::timestamp.gt(to_ts))
+                                // total order, consistent across requests
+                                .order((messages::dsl::timestamp.desc(), messages::dsl::id.desc()))
                                 .limit(limit)
                                 .load_stream(&mut *connection_lock),
                         )
                     }
                     None => Box::new(
                         base_query
-                            .order(messages::dsl::id.desc())
+                            // total order, consistent across requests
+                            .order((messages::dsl::timestamp.desc(), messages::dsl::id.desc()))
                             .limit(limit)
                             .load_stream(&mut *connection_lock),
                     ),
@@ -145,6 +143,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                     row.map(
                         |(
                             id,
+                            timestamp,
                             message_type,
                             text,
                             source_nick,
@@ -153,6 +152,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                             source_account,
                         ): (
                             uuid::Uuid,
+                            NaiveDateTime,
                             crate::types::MessageType,
                             String,
                             String,
@@ -161,6 +161,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                             _,
                         )| HistoricalEvent::Message {
                             id: MessageId::new(id.try_into().expect("Message id is a non-v7 UUID")),
+                            timestamp: timestamp.and_utc().timestamp(),
                             source: format!("{}!{}@{}", source_nick, source_ident, source_vhost),
                             source_account,
                             message_type: message_type.into(),

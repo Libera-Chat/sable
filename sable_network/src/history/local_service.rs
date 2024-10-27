@@ -132,6 +132,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
 
                 Some(HistoricalEvent::Message {
                     id: message.id(),
+                    timestamp: entry.timestamp(), // update's timestamp, may differ from the message's timestamp
                     message_type: message.message_type(),
                     source: source.nuh(),
                     source_account: source.account_name().map(|n| n.to_string()),

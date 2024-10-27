@@ -105,6 +105,7 @@ pub trait HistoryService {
 pub enum HistoricalEvent {
     Message {
         id: MessageId,
+        timestamp: i64,
         source: String,
         source_account: Option<String>,
         target: String,

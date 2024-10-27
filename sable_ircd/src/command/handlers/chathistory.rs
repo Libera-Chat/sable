@@ -212,16 +212,13 @@ fn send_history_entries<'a>(
         match entry {
             HistoricalEvent::Message {
                 id,
+                timestamp,
                 source,
                 source_account,
                 target: _, // assume it's the same as the one we got as parameter
                 message_type,
                 text,
             } => {
-                let (timestamp, _) = id
-                    .get_timestamp()
-                    .expect("message has non-v7 UUID")
-                    .to_unix();
                 let msg = message::Message::new(&source, &target, message_type, &text)
                     .with_tag(server_time::server_time_tag(
                         i64::try_from(timestamp).unwrap_or(i64::MAX),

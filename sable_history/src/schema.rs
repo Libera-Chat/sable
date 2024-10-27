@@ -36,6 +36,7 @@ diesel::table! {
         target_channel -> Int8,
         text -> Varchar,
         message_type -> MessageType,
+        timestamp -> Timestamp,
     }
 }
 
