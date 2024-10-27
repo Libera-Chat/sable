@@ -39,7 +39,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
         to_ts: Option<i64>,
         backward_limit: usize,
         forward_limit: usize,
-    ) -> Result<impl Iterator<Item = HistoryLogEntry>, HistoryError> {
+    ) -> Result<impl Iterator<Item = HistoricalEvent>, HistoryError> {
         let mut backward_entries = Vec::new();
         let mut forward_entries = Vec::new();
         let mut target_exists = false;
@@ -105,13 +105,37 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
         }
 
         if target_exists {
+            use crate::network::update;
+
             // "The order of returned messages within the batch is implementation-defined, but SHOULD be
             // ascending time order or some approximation thereof, regardless of the subcommand used."
             // -- https://ircv3.net/specs/extensions/chathistory#returned-message-notes
             Ok(backward_entries
                 .into_iter()
                 .rev()
-                .chain(forward_entries.into_iter()))
+                .chain(forward_entries.into_iter())
+                .flat_map(
+                    move |HistoryLogEntry {
+                              id: _,
+                              timestamp: _,
+                              source_event: _,
+                              details,
+                          }| match details {
+                        NetworkStateChange::NewMessage(update::NewMessage {
+                            message,
+                            source,
+                            target: _, // assume it's the same as the argument we got
+                        }) => Some(HistoricalEvent::Message {
+                            id: *message,
+                            message_type: crate::network::state::MessageType::Notice, // TODO
+                            source: "".to_string(),                                   // TODO
+                            source_account: None,                                     // TODO
+                            target,
+                            text: "".to_string(), // TODO
+                        }),
+                        _ => None,
+                    },
+                ))
         } else {
             Err(HistoryError::InvalidTarget(target))
         }
@@ -163,7 +187,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> HistoryService
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError> {
+    ) -> Result<impl IntoIterator<Item = HistoricalEvent>, HistoryError> {
         let res = match request {
             #[rustfmt::skip]
             HistoryRequest::Latest { to_ts, limit } => self.get_history_for_target(

@@ -156,6 +156,7 @@ impl HistoryServer {
             id: **net_message.id(),
             source_user: db_source.id,
             target_channel: db_channel.id,
+            message_type: net_message.message_type().into(),
             text: net_message.text().to_string(),
         };
 

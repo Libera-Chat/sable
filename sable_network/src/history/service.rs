@@ -5,8 +5,7 @@ use std::future::Future;
 
 use thiserror::Error;
 
-use crate::history::HistoryLogEntry;
-use crate::network::state::{HistoricMessageSourceId, HistoricMessageTargetId};
+use crate::network::state::{HistoricMessageSourceId, HistoricMessageTargetId, MessageType};
 use crate::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -99,5 +98,17 @@ pub trait HistoryService {
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> impl Future<Output = Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError>> + Send;
+    ) -> impl Future<Output = Result<impl IntoIterator<Item = HistoricalEvent>, HistoryError>> + Send;
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum HistoricalEvent {
+    Message {
+        id: Uuid7,
+        source: String,
+        source_account: Option<String>,
+        target: TargetId,
+        message_type: MessageType,
+        text: String,
+    },
 }

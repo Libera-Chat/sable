@@ -73,7 +73,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> HistoryService
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError> {
+    ) -> Result<impl IntoIterator<Item = HistoricalEvent>, HistoryError> {
         let res = self
             .node
             .sync_log()

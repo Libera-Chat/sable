@@ -5,3 +5,4 @@ pub use server::*;
 
 mod models;
 mod schema;
+mod types;

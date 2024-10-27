@@ -10,4 +10,5 @@ pub struct Message {
     pub source_user: i32,
     pub target_channel: i64,
     pub text: String,
+    pub message_type: crate::types::MessageType,
 }

@@ -1,5 +1,5 @@
 use crate::{
-    history::{HistoryError, HistoryLogEntry, HistoryRequest},
+    history::{HistoricalEvent, HistoryError, HistoryRequest},
     id::*,
     network::{event::*, state::ChannelAccessSet, Network},
     validated::*,
@@ -181,5 +181,5 @@ pub enum RemoteHistoryServerResponse {
     /// TODO: switch to HashMap when we move away from JSON as the wire format,
     /// to be consistent with [`HistoryService`]
     TargetList(Vec<(crate::history::TargetId, i64)>),
-    Entries(Result<Vec<HistoryLogEntry>, HistoryError>),
+    Entries(Result<Vec<HistoricalEvent>, HistoryError>),
 }

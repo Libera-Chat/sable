@@ -1,9 +1,8 @@
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 
 use diesel::dsl::sql;
 use diesel::prelude::*;
-use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use futures::stream::{StreamExt, TryStreamExt};
 use tokio::sync::Mutex;
 use uuid::Uuid;
@@ -79,7 +78,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
         _user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError> {
+    ) -> Result<impl IntoIterator<Item = HistoricalEvent>, HistoryError> {
         // TODO: access control
         let TargetId::Channel(channel_id) = target else {
             // TODO: PMs
@@ -157,7 +156,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                         timestamp: (),
                     })
                     */
-                    Ok((|| -> HistoryLogEntry { todo!() })())
+                    Ok((|| -> HistoricalEvent { todo!() })())
                 })
                 .try_collect::<Vec<_>>()
                 .await

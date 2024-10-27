@@ -1,5 +1,3 @@
-use sable_network::network::wrapper::ObjectWrapper;
-
 use super::*;
 use crate::server::event::IntroduceHistoryServer;
 

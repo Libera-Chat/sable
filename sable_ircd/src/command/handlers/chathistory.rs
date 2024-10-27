@@ -1,9 +1,10 @@
-use super::*;
-use crate::{capability::ClientCapability, utils};
-use messages::send_history::SendHistoryItem;
+use std::cmp::{max, min};
+
 use sable_network::history::{HistoryError, HistoryRequest, HistoryService, TargetId};
 
-use std::cmp::{max, min};
+use super::*;
+use crate::capability::server_time;
+use crate::{capability::ClientCapability, utils};
 
 fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<i64, CommandError> {
     match msgref.split_once('=') {
@@ -197,20 +198,48 @@ async fn list_targets<'a>(
 }
 
 fn send_history_entries<'a>(
-    server: &ClientServer,
-    into: impl MessageSink,
+    _server: &ClientServer,
+    conn: impl MessageSink,
     target: &str,
-    entries: impl IntoIterator<Item = HistoryLogEntry>,
+    entries: impl IntoIterator<Item = HistoricalEvent>,
 ) -> CommandResult {
-    let batch = into
+    let batch = conn
         .batch("chathistory", ClientCapability::Batch)
         .with_arguments(&[target])
         .start();
 
     for entry in entries {
-        // Ignore errors here; it's possible that a message has been expired out of network state
-        // but a reference to it still exists in the history log
-        let _ = server.send_item(&entry, &batch, &entry);
+        match entry {
+            HistoricalEvent::Message {
+                id,
+                source,
+                source_account,
+                target: _, // assume it's the same as the one we got as parameter
+                message_type,
+                text,
+            } => {
+                let (timestamp, _) = id
+                    .get_timestamp()
+                    .expect("message has non-v7 UUID")
+                    .to_unix();
+                let msg = message::Message::new(&source, &target, message_type, &text)
+                    .with_tag(server_time::server_time_tag(
+                        i64::try_from(timestamp).unwrap_or(i64::MAX),
+                    ))
+                    .with_tag(OutboundMessageTag::new(
+                        "msgid",
+                        Some(id.to_string()),
+                        ClientCapability::MessageTags,
+                    ))
+                    .with_tag(OutboundMessageTag::new(
+                        "account",
+                        source_account,
+                        ClientCapability::AccountTag,
+                    ));
+
+                batch.send(msg);
+            }
+        }
     }
 
     Ok(())

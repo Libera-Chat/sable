@@ -63,7 +63,7 @@ impl<FastService: HistoryService + Send + Sync, SlowService: HistoryService + Se
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError> {
+    ) -> Result<impl IntoIterator<Item = HistoricalEvent>, HistoryError> {
         // It's tempting to return Box<dyn IntoIterator> here instead of collecting into a
         // temporary Vec, but we can't because IntoIterator::IntoIter potentially differs
         match (&self.fast_service, &self.slow_service) {

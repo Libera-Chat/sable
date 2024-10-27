@@ -103,6 +103,12 @@ impl MessageTarget for String {
     }
 }
 
+impl MessageTarget for &str {
+    fn format(&self) -> String {
+        self.to_string()
+    }
+}
+
 impl MessageTarget for state::HistoricUser {
     fn format(&self) -> String {
         self.nickname.to_string()

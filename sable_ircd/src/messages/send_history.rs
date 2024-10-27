@@ -1,6 +1,6 @@
 use crate::capability::ClientCapability;
 use crate::capability::WithSupportedTags;
-use crate::errors::{HandleResult, HandlerError};
+use crate::errors::HandleResult;
 use crate::messages::MessageSink;
 use crate::prelude::numeric;
 use crate::server::ClientServer;
@@ -10,57 +10,14 @@ use sable_network::utils::*;
 
 use super::message;
 
-type Result<T> = std::result::Result<T, HandlerError>;
-
-/// Extension trait to translate a network history entry into an intermediate representation
-/// ([`HistoryMessage`]) then to client protocol messages
+/// Extension trait to translate a network history entry into client protocol messages
 pub(crate) trait SendHistoryItem<Item> {
-    /// Shorthand for [`Self::make_history_message`] followed by [`Self::send_history_message`]
     fn send_item(
         &self,
         item: &Item,
         conn: impl MessageSink,
         from_entry: &impl HistoryItem,
     ) -> HandleResult;
-}
-
-impl<Item> SendHistoryItem<Item> for ClientServer
-where
-    ClientServer: MakeHistoryMessage<Item>,
-{
-    fn send_item(
-        &self,
-        item: &Item,
-        conn: impl MessageSink,
-        from_entry: &impl HistoryItem,
-    ) -> HandleResult {
-        for message in self.make_history_messages(item, &conn, from_entry)? {
-            self.send_history_message(message, &conn)?;
-        }
-
-        Ok(())
-    }
-}
-
-/// Extension trait to translate a network history entry into an intermediate representation
-/// ([`HistoryMessage`])
-pub(crate) trait MakeHistoryMessage<Item> {
-    fn make_history_messages(
-        &self,
-        item: &Item,
-        conn: &impl MessageSink,
-        from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>>;
-}
-
-impl ClientServer {
-    fn send_history_message(
-        &self,
-        message: HistoryMessage,
-        conn: &impl MessageSink,
-    ) -> HandleResult {
-        match message {}
-    }
 }
 
 impl SendHistoryItem<NetworkHistoryUpdate> for ClientServer {
@@ -104,7 +61,7 @@ impl SendHistoryItem<HistoryLogEntry> for ClientServer {
     fn send_item(
         &self,
         item: &HistoryLogEntry,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         _from_entry: &impl HistoryItem,
     ) -> HandleResult {
         match &item.details {
@@ -137,13 +94,13 @@ impl SendHistoryItem<HistoryLogEntry> for ClientServer {
     }
 }
 
-impl MakeHistoryMessage<update::UserAwayChange> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::UserAwayChange> for ClientServer {
+    fn send_item(
         &self,
         item: &update::UserAwayChange,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.historic_user(item.user)?;
 
@@ -153,40 +110,45 @@ impl MakeHistoryMessage<update::UserAwayChange> for ClientServer {
                 None => numeric::Unaway::new(),
                 Some(_) => numeric::NowAway::new(),
             };
-            Ok([message.format_for(self, source)])
+            conn.send(message.format_for(self, source));
         } else {
             // Tell other users sharing a channel if they enabled away-notify
             let message = match item.new_reason {
                 None => message::Unaway::new(source),
                 Some(reason) => message::Away::new(source, reason.value()),
             };
-            Ok([message.with_tags_from(from_entry, &net)])
+            let message = message.with_tags_from(from_entry, &net);
+            conn.send(message.with_required_capabilities(ClientCapability::AwayNotify));
         }
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::UserNickChange> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::UserNickChange> for ClientServer {
+    fn send_item(
         &self,
         item: &update::UserNickChange,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.historic_user(item.user)?;
         let message = message::Nick::new(source, &item.new_nick).with_tags_from(from_entry, &net);
 
-        Ok([message])
+        conn.send(message);
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::UserModeChange> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::UserModeChange> for ClientServer {
+    fn send_item(
         &self,
         item: &update::UserModeChange,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.historic_user(item.user)?;
         let message = message::Mode::new(
@@ -196,32 +158,36 @@ impl MakeHistoryMessage<update::UserModeChange> for ClientServer {
         )
         .with_tags_from(from_entry, &net);
 
-        Ok([message])
+        conn.send(message);
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::UserQuit> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::UserQuit> for ClientServer {
+    fn send_item(
         &self,
         item: &update::UserQuit,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.historic_user(item.user)?;
         let message = message::Quit::new(source, &item.message).with_tags_from(from_entry, &net);
 
-        Ok([message])
+        conn.send(message);
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::ChannelModeChange> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::ChannelModeChange> for ClientServer {
+    fn send_item(
         &self,
         item: &update::ChannelModeChange,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.changed_by)?;
         let channel = net.channel(item.channel)?;
@@ -235,17 +201,19 @@ impl MakeHistoryMessage<update::ChannelModeChange> for ClientServer {
         let message =
             message::Mode::new(&source, &channel, &changes).with_tags_from(from_entry, &net);
 
-        Ok([message])
+        conn.send(message);
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::ChannelTopicChange> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::ChannelTopicChange> for ClientServer {
+    fn send_item(
         &self,
         item: &update::ChannelTopicChange,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.setter)?;
         let channel = net.channel(item.channel)?;
@@ -253,51 +221,55 @@ impl MakeHistoryMessage<update::ChannelTopicChange> for ClientServer {
         let message = message::Topic::new(&source, &channel.name(), &item.new_text)
             .with_tags_from(from_entry, &net);
 
-        Ok([message])
+        conn.send(message);
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::ListModeAdded> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::ListModeAdded> for ClientServer {
+    fn send_item(
         &self,
         item: &update::ListModeAdded,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.set_by)?;
         let channel = net.channel(item.channel)?;
 
         let text = format!("+{} {}", item.list_type.mode_char(), item.pattern);
         let message = message::Mode::new(&source, &channel, &text).with_tags_from(from_entry, &net);
-        Ok([message])
+        conn.send(message);
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::ListModeRemoved> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::ListModeRemoved> for ClientServer {
+    fn send_item(
         &self,
         item: &update::ListModeRemoved,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.removed_by)?;
         let channel = net.channel(item.channel)?;
 
         let text = format!("-{} {}", item.list_type.mode_char(), item.pattern);
         let message = message::Mode::new(&source, &channel, &text).with_tags_from(from_entry, &net);
-        Ok([message])
+        conn.send(message);
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::MembershipFlagChange> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::MembershipFlagChange> for ClientServer {
+    fn send_item(
         &self,
         item: &update::MembershipFlagChange,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.changed_by)?;
         let user = net.historic_user(item.user)?;
@@ -312,24 +284,27 @@ impl MakeHistoryMessage<update::MembershipFlagChange> for ClientServer {
         let message =
             message::Mode::new(&source, &channel, &changes).with_tags_from(from_entry, &net);
 
-        Ok([message])
+        conn.send(message);
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::ChannelJoin> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::ChannelJoin> for ClientServer {
+    fn send_item(
         &self,
         item: &update::ChannelJoin,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let user = net.historic_user(item.user)?;
         let membership = net.membership(item.membership)?;
         let channel = membership.channel()?;
 
-        let mut messages =
-            vec![message::Join::new(user, &channel.name()).with_tags_from(from_entry, &net)];
+        let message = message::Join::new(user, &channel.name()).with_tags_from(from_entry, &net);
+
+        conn.send(message);
 
         if !membership.permissions().is_empty() {
             let (mut changes, args) = format_channel_perm_changes(
@@ -342,27 +317,27 @@ impl MakeHistoryMessage<update::ChannelJoin> for ClientServer {
             changes += &args.join(" ");
 
             let msg = message::Mode::new(user, &channel, &changes);
-            messages.push(msg);
+            conn.send(msg);
         }
 
         if let Some(away_reason) = user.away_reason() {
             let message =
                 message::Away::new(user, away_reason.value()).with_tags_from(from_entry, &net);
 
-            messages.push(message.with_required_capabilities(ClientCapability::AwayNotify));
+            conn.send(message.with_required_capabilities(ClientCapability::AwayNotify));
         }
 
-        Ok(message)
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::ChannelKick> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::ChannelKick> for ClientServer {
+    fn send_item(
         &self,
         item: &update::ChannelKick,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.source)?;
         let user = net.historic_user(item.user)?;
@@ -371,17 +346,19 @@ impl MakeHistoryMessage<update::ChannelKick> for ClientServer {
         let message = message::Kick::new(&source, user, &channel.name(), &item.message)
             .with_tags_from(from_entry, &net);
 
-        Ok([message])
+        conn.send(message);
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::ChannelPart> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::ChannelPart> for ClientServer {
+    fn send_item(
         &self,
         item: &update::ChannelPart,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let user = net.historic_user(item.user)?;
         let channel = net.channel(item.membership.channel)?;
@@ -391,17 +368,19 @@ impl MakeHistoryMessage<update::ChannelPart> for ClientServer {
         let message = message::Part::new(user, &channel.name(), &item.message)
             .with_tags_from(from_entry, &net);
 
-        Ok([message])
+        conn.send(message);
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::ChannelInvite> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::ChannelInvite> for ClientServer {
+    fn send_item(
         &self,
         item: &update::ChannelInvite,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.source)?;
         let user = net.historic_user(item.user)?;
@@ -410,30 +389,32 @@ impl MakeHistoryMessage<update::ChannelInvite> for ClientServer {
         let message =
             message::Invite::new(&source, user, &channel.name()).with_tags_from(from_entry, &net);
 
-        Ok([message])
+        conn.send(message);
+
+        Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::ChannelRename> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::ChannelRename> for ClientServer {
+    fn send_item(
         &self,
         _item: &update::ChannelRename,
-        _conn: &impl MessageSink,
+        _conn: impl MessageSink,
         _from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         // Not part of history, so it is handled entirely in send_realtime.rs.
         // See https://github.com/ircv3/ircv3-specifications/issues/532
         Ok(())
     }
 }
 
-impl MakeHistoryMessage<update::NewMessage> for ClientServer {
-    fn make_history_messages(
+impl SendHistoryItem<update::NewMessage> for ClientServer {
+    fn send_item(
         &self,
         item: &update::NewMessage,
-        conn: &impl MessageSink,
+        conn: impl MessageSink,
         from_entry: &impl HistoryItem,
-    ) -> Result<impl IntoIterator<Item = HistoryMessage>> {
+    ) -> HandleResult {
         let net = self.network();
         let source = net.message_source(&item.source)?;
         let target = net.message_target(&item.target)?;
@@ -450,12 +431,14 @@ impl MakeHistoryMessage<update::NewMessage> for ClientServer {
                 if conn.user_id() == Some(*user.user())
                     && item.target.user().map(|id| id.user()) != Some(user.user())
                 {
-                    Ok([message.with_required_capabilities(ClientCapability::EchoMessage)])
+                    conn.send(message.with_required_capabilities(ClientCapability::EchoMessage));
                 } else {
-                    Ok([message])
+                    conn.send(message);
                 }
             }
-            _ => Ok([message]),
+            _ => conn.send(message),
         }
+
+        Ok(())
     }
 }
