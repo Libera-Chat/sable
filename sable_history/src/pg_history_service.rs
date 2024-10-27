@@ -115,17 +115,18 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                 let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
                 Ok(match to_ts {
                     Some(to_ts) => {
-                        // Lowest UUIDv7 corresponding to the timestamp
+                        // Highest UUIDv7 corresponding to the timestamp
                         let to_uuid = uuid::Builder::from_unix_timestamp_millis(
                             u64::try_from(to_ts)
                                 .unwrap_or(u64::MIN) // floor timestamps to Epoch
-                                .saturating_mul(1000),
-                            &[u8::MIN; 10],
+                                .saturating_mul(1000)
+                                .saturating_add(999),
+                            &[u8::MAX; 10],
                         )
                         .into_uuid();
                         Box::new(
                             base_query
-                                .filter(messages::dsl::id.lt(to_uuid))
+                                .filter(messages::dsl::id.gt(to_uuid))
                                 .order(messages::dsl::id.desc())
                                 .limit(limit)
                                 .load_stream(&mut *connection_lock),
@@ -170,7 +171,10 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                 })
                 .try_collect::<Vec<_>>()
                 .await
-                .expect("could not parse all records"))
+                .expect("could not parse all records")
+                .into_iter()
+                .rev() // need to reverse *after* applying the SQL LIMIT
+                .collect::<Vec<_>>())
             }
             HistoryRequest::Before { from_ts, limit } => {
                 todo!("before")
