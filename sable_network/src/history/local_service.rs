@@ -47,6 +47,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
         // Keep the lock on the NetworkHistoryLog between the backward and the forward
         // search to make sure both have a consistent state
         let log = self.node.history();
+        let net = self.node.network();
 
         if backward_limit != 0 {
             let from_ts = if forward_limit == 0 {
@@ -114,30 +115,32 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
                 .into_iter()
                 .rev()
                 .chain(forward_entries.into_iter())
-                .flat_map(
-                    move |HistoryLogEntry {
-                              id: _,
-                              timestamp: _,
-                              source_event: _,
-                              details,
-                          }| match details {
-                        NetworkStateChange::NewMessage(update::NewMessage {
-                            message,
-                            source,
-                            target: _, // assume it's the same as the argument we got
-                        }) => Some(HistoricalEvent::Message {
-                            id: *message,
-                            message_type: crate::network::state::MessageType::Notice, // TODO
-                            source: "".to_string(),                                   // TODO
-                            source_account: None,                                     // TODO
-                            target,
-                            text: "".to_string(), // TODO
-                        }),
-                        _ => None,
-                    },
-                ))
+                .flat_map(move |entry| Self::translate_log_entry(entry, &net)))
         } else {
             Err(HistoryError::InvalidTarget(target))
+        }
+    }
+
+    fn translate_log_entry(entry: HistoryLogEntry, net: &Network) -> Option<HistoricalEvent> {
+        match entry.details {
+            NetworkStateChange::NewMessage(update::NewMessage {
+                message,
+                source,
+                target,
+            }) => {
+                let message = net.message(message).ok()?;
+                let source = message.source().ok()?;
+
+                Some(HistoricalEvent::Message {
+                    id: *message.id(),
+                    message_type: message.message_type(),
+                    source: source.nuh(),
+                    source_account: source.account_name().map(|n| n.to_string()),
+                    target: todo!(),
+                    text: message.text().to_string(),
+                })
+            }
+            _ => None,
         }
     }
 }
