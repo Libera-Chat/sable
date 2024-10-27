@@ -1,22 +1,29 @@
 use std::convert::Infallible;
+use std::sync::Arc;
 
 use anyhow::Context;
-use sable_network::prelude::*;
-use sable_server::ServerType;
+use diesel::migration::MigrationSource;
+use diesel::prelude::*;
+use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
+use diesel_async::{AsyncConnection, AsyncPgConnection};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use itertools::Itertools;
 use serde::Deserialize;
 use tokio::sync::{mpsc::UnboundedReceiver, Mutex};
 use tracing::instrument;
 
-use std::sync::Arc;
-
-use diesel_async::{AsyncConnection, AsyncPgConnection};
+use sable_network::prelude::*;
+use sable_server::ServerType;
 
 mod sync;
 mod update_handler;
 
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct HistoryServerConfig {
     pub database: String,
+    pub auto_run_migrations: bool,
 }
 
 pub struct HistoryServer {
@@ -46,6 +53,38 @@ impl ServerType for HistoryServer {
             sable_network::rpc::NetworkHistoryUpdate,
         >,
     ) -> anyhow::Result<Self> {
+        let database = config.database.clone();
+        if config.auto_run_migrations {
+            tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+                // run_pending_migrations only support sync connections
+                let mut conn = AsyncConnectionWrapper::<AsyncPgConnection>::establish(&database)
+                    .context("Couldn't connect to database")?;
+                tracing::info!("Running database migrations");
+                tracing::trace!(
+                    "Required migrations: {}",
+                    MIGRATIONS
+                        .migrations()
+                        .map_err(|e| anyhow::anyhow!("Couldn't get migrations: {e}"))?
+                        .iter()
+                        .map(diesel::migration::Migration::<diesel::pg::Pg>::name)
+                        .join(", ")
+                );
+                let migrations = conn
+                    .run_pending_migrations(MIGRATIONS)
+                    .map_err(|e| anyhow::anyhow!("Database migrations failed: {e}"))?;
+                if migrations.is_empty() {
+                    tracing::info!("No database migrations to run");
+                } else {
+                    tracing::info!(
+                        "Applied database migrations: {}",
+                        migrations.iter().map(ToString::to_string).join(", ")
+                    )
+                }
+                Ok(())
+            })
+            .await
+            .context("Couldn't join migration task")??;
+        }
         Ok(Self {
             node,
             history_receiver: Mutex::new(history_receiver),

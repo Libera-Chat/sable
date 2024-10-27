@@ -23,7 +23,9 @@ tracing = "0.1"
 anyhow = "1.0"
 clap = { version = "4.5", features = [ "derive" ] }
 chrono = "0.4"
+itertools = "0.10"
 uuid = { version = "1.9.1", features = ["v7", "fast-rng", "serde"] }
 
 diesel = { version = "2.2", features = [ "postgres", "chrono", "uuid" ] }
-diesel-async = { version = "0.5", features = [ "postgres" ] }
+diesel-async = { version = "0.5", features = [ "postgres", "tokio", "async-connection-wrapper" ] }
+diesel_migrations = "2.2.0"
