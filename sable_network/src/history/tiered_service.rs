@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::hash_map::{Entry, HashMap};
 
 use tracing::instrument;
 
@@ -40,15 +40,37 @@ impl<FastService: HistoryService + Send + Sync, SlowService: HistoryService + Se
         limit: Option<usize>,
     ) -> HashMap<TargetId, i64> {
         match (&self.fast_service, &self.slow_service) {
-            (_, Some(slow_service)) => {
-                tracing::info!("list_target slow");
-                // TODO: implement fallback
+            (Some(fast_service), Some(slow_service)) => {
+                let (mut targets1, mut targets2) = futures::join!(
+                    slow_service.list_targets(user, after_ts, before_ts, limit),
+                    fast_service.list_targets(user, after_ts, before_ts, limit)
+                );
+
+                // merge targets, taking the most recent timestamp for those present
+                // in both backends
+                if targets1.len() < targets2.len() {
+                    (targets1, targets2) = (targets2, targets1);
+                }
+                for (target, ts) in targets2.drain() {
+                    match targets1.entry(target) {
+                        Entry::Occupied(mut entry) => {
+                            if *entry.get() < ts {
+                                entry.insert(ts);
+                            }
+                        }
+                        Entry::Vacant(entry) => {
+                            entry.insert(ts);
+                        }
+                    }
+                }
+                targets1
+            }
+            (None, Some(slow_service)) => {
                 slow_service
                     .list_targets(user, after_ts, before_ts, limit)
                     .await
             }
             (Some(fast_service), None) => {
-                tracing::info!("list_target fast");
                 fast_service
                     .list_targets(user, after_ts, before_ts, limit)
                     .await
