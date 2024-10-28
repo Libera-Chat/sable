@@ -139,37 +139,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                 }
                 .await
                 .expect("could not query messages")
-                .map(|row| {
-                    row.map(
-                        |(
-                            id,
-                            timestamp,
-                            message_type,
-                            text,
-                            source_nick,
-                            source_ident,
-                            source_vhost,
-                            source_account,
-                        ): (
-                            uuid::Uuid,
-                            NaiveDateTime,
-                            crate::types::MessageType,
-                            String,
-                            String,
-                            String,
-                            String,
-                            _,
-                        )| HistoricalEvent::Message {
-                            id: MessageId::new(id.try_into().expect("Message id is a non-v7 UUID")),
-                            timestamp: timestamp.and_utc().timestamp(),
-                            source: format!("{}!{}@{}", source_nick, source_ident, source_vhost),
-                            source_account,
-                            message_type: message_type.into(),
-                            target: channel.name.clone(), // assume it's the same
-                            text,
-                        },
-                    )
-                })
+                .map_ok(|row| make_historical_event(&channel, row))
                 .try_collect::<Vec<_>>()
                 .await
                 .expect("could not parse all records")
@@ -194,5 +164,29 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                 todo!("between")
             }
         }
+    }
+}
+
+fn make_historical_event(
+    channel: &crate::models::Channel,
+    (id, timestamp, message_type, text, source_nick, source_ident, source_vhost, source_account): (
+        uuid::Uuid,
+        NaiveDateTime,
+        crate::types::MessageType,
+        String,
+        String,
+        String,
+        String,
+        Option<String>,
+    ),
+) -> HistoricalEvent {
+    HistoricalEvent::Message {
+        id: MessageId::new(id.try_into().expect("Message id is a non-v7 UUID")),
+        timestamp: timestamp.and_utc().timestamp(),
+        source: format!("{}!{}@{}", source_nick, source_ident, source_vhost),
+        source_account,
+        message_type: message_type.into(),
+        target: channel.name.clone(), // assume it's the same
+        text,
     }
 }
