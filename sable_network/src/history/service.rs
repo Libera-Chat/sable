@@ -98,7 +98,8 @@ pub trait HistoryService {
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> impl Future<Output = Result<impl IntoIterator<Item = HistoricalEvent>, HistoryError>> + Send;
+    ) -> impl Future<Output = Result<impl IntoIterator<Item = HistoricalEvent> + Send, HistoryError>>
+           + Send;
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

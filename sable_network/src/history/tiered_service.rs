@@ -1,5 +1,6 @@
 use std::collections::hash_map::{Entry, HashMap};
 
+use futures::TryFutureExt;
 use tracing::instrument;
 
 use crate::prelude::*;
@@ -88,15 +89,80 @@ impl<FastService: HistoryService + Send + Sync, SlowService: HistoryService + Se
     ) -> Result<impl IntoIterator<Item = HistoricalEvent>, HistoryError> {
         // It's tempting to return Box<dyn IntoIterator> here instead of collecting into a
         // temporary Vec, but we can't because IntoIterator::IntoIter potentially differs
+
+        macro_rules! get_entries {
+            ($service:expr, $user:expr, $target:expr, $request:expr) => {
+                $service
+                    .get_entries($user, $target, $request)
+                    .map_ok(|entries| -> Vec<_> { entries.into_iter().collect() })
+                    .await
+            };
+        }
+
         match (&self.fast_service, &self.slow_service) {
-            (_, Some(slow_service)) => {
-                // TODO: implement fallback
-                tracing::info!("get_entries slow");
+            (Some(fast_service), Some(slow_service)) => {
+                match request {
+                    HistoryRequest::Latest { limit, .. } | HistoryRequest::Before { limit, .. } => {
+                        let mut entries = get_entries!(fast_service, user, target, request.clone())
+                            .unwrap_or_else(|e| {
+                                tracing::error!("Could not get history from fast service: {e}");
+                                vec![]
+                            });
+                        if entries.len() < limit {
+                            // TODO: send a BEFORE request, and merge lists together
+                            entries = get_entries!(slow_service, user, target, request)?;
+                        }
+                        Ok(entries)
+                    }
+                    HistoryRequest::After { start_ts, .. } => {
+                        // Check if the fast-but-shortlived backend still has messages up to that
+                        // timestamp
+                        match fast_service
+                            .get_entries(
+                                user,
+                                target,
+                                HistoryRequest::Before {
+                                    from_ts: start_ts,
+                                    limit: 1,
+                                },
+                            )
+                            .await
+                        {
+                            Ok(entries) => {
+                                if entries.into_iter().count() > 0 {
+                                    // Yes, it does, so we don't need the slow_service to fulfill
+                                    // the request
+                                    match get_entries!(fast_service, user, target, request.clone())
+                                    {
+                                        Ok(entries) => Ok(entries),
+                                        Err(e) => {
+                                            tracing::error!(
+                                                "Could not get history from fast service: {e}"
+                                            );
+                                            get_entries!(slow_service, user, target, request)
+                                        }
+                                    }
+                                } else {
+                                    get_entries!(slow_service, user, target, request)
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!("Could not get history from fast service: {e}");
+                                get_entries!(slow_service, user, target, request)
+                            }
+                        }
+                    }
+                    HistoryRequest::Around { .. } | HistoryRequest::Between { .. } => {
+                        // TODO: try to use the fast_service when possible
+                        get_entries!(slow_service, user, target, request)
+                    }
+                }
+            }
+            (None, Some(slow_service)) => {
                 let entries = slow_service.get_entries(user, target, request).await?;
                 Ok(entries.into_iter().collect())
             }
             (Some(fast_service), None) => {
-                tracing::info!("get_entries fast");
                 let entries = fast_service.get_entries(user, target, request).await?;
                 Ok(entries.into_iter().collect())
             }
