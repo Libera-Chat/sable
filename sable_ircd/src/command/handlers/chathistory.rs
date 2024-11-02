@@ -144,6 +144,12 @@ async fn handle_chathistory(
             {
                 Ok(entries) => send_history_entries(server, response, target, entries)?,
                 Err(HistoryError::InvalidTarget(_)) => Err(invalid_target_error())?,
+                Err(HistoryError::InternalError(e)) => Err(CommandError::Fail {
+                    command: "CHATHISTORY",
+                    code: "MESSAGE_ERROR",
+                    context: format!("{} {}", subcommand, target),
+                    description: e,
+                })?,
             };
         }
     }

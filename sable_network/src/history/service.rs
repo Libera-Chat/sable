@@ -78,6 +78,8 @@ pub enum HistoryRequest {
 pub enum HistoryError {
     #[error("invalid target: {0:?}")]
     InvalidTarget(TargetId),
+    #[error("internal server error: {0:?}")]
+    InternalError(String),
 }
 
 /// A backend implementation of [IRCv3 CHATHISTORY](https://ircv3.net/specs/extensions/chathistory)
