@@ -102,6 +102,8 @@ pub trait HistoryService {
            + Send;
 }
 
+/// A more concrete representation of `sable_ircd`'s `HistoryItem`, with all its fields
+/// inflated to strings that will be sent to the client
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum HistoricalEvent {
     Message {

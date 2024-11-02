@@ -26,7 +26,3 @@ impl HistoryItem for HistoryLogEntry {
         &self.details
     }
 }
-
-/// A more concrete representation of [`HistoryItem`], with all its fields inflated
-/// to strings that will be sent to the client
-pub enum HistoryMessage {}
