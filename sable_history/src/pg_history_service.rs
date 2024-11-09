@@ -119,7 +119,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                 historic_users::dsl::account_name,
             ))
             .filter(messages::dsl::target_channel.eq(db_channel_id));
-        Ok(match request {
+        match request {
             HistoryRequest::Latest { to_ts, limit } => {
                 let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
                 match to_ts {
@@ -127,93 +127,65 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                         let to_ts = DateTime::from_timestamp(to_ts, 999_999)
                             .unwrap_or(DateTime::<Utc>::MIN_UTC)
                             .naive_utc();
-                        Box::new(
+                        collect_query(
+                            connection_lock,
+                            &channel,
+                            true, // reverse
                             base_query
                                 .filter(messages::dsl::timestamp.gt(to_ts))
                                 // total order, consistent across requests
                                 .order((messages::dsl::timestamp.desc(), messages::dsl::id.desc()))
-                                .limit(limit)
-                                .load_stream(&mut *connection_lock),
+                                .limit(limit),
                         )
+                        .await
                     }
-                    None => Box::new(
-                        base_query
-                            // total order, consistent across requests
-                            .order((messages::dsl::timestamp.desc(), messages::dsl::id.desc()))
-                            .limit(limit)
-                            .load_stream(&mut *connection_lock),
-                    ),
+                    None => {
+                        collect_query(
+                            connection_lock,
+                            &channel,
+                            true, // reverse
+                            base_query
+                                // total order, consistent across requests
+                                .order((messages::dsl::timestamp.desc(), messages::dsl::id.desc()))
+                                .limit(limit),
+                        )
+                        .await
+                    }
                 }
-                .await
-                .map_err(|e| {
-                    tracing::error!("Could not query messages: {e}");
-                    HistoryError::InternalError("Could not query messages".to_string())
-                })?
-                .map_ok(|row| make_historical_event(&channel, row))
-                .try_collect::<Vec<_>>()
-                .await
-                .map_err(|e| {
-                    tracing::error!("Could not parse messages: {e}");
-                    HistoryError::InternalError("Could not parse message".to_string())
-                })?
-                .into_iter()
-                .rev() // need to reverse *after* applying the SQL LIMIT
-                .collect::<Vec<_>>()
             }
             HistoryRequest::Before { from_ts, limit } => {
                 let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
                 let from_ts = DateTime::from_timestamp(from_ts, 0)
                     .unwrap_or(DateTime::<Utc>::MAX_UTC)
                     .naive_utc();
-                Box::new(
+                collect_query(
+                    connection_lock,
+                    &channel,
+                    true, // reverse
                     base_query
                         .filter(messages::dsl::timestamp.lt(from_ts))
                         // total order, consistent across requests
                         .order((messages::dsl::timestamp.desc(), messages::dsl::id.desc()))
-                        .limit(limit)
-                        .load_stream(&mut *connection_lock),
+                        .limit(limit),
                 )
                 .await
-                .map_err(|e| {
-                    tracing::error!("Could not query messages: {e}");
-                    HistoryError::InternalError("Could not query messages".to_string())
-                })?
-                .map_ok(|row| make_historical_event(&channel, row))
-                .try_collect::<Vec<_>>()
-                .await
-                .map_err(|e| {
-                    tracing::error!("Could not parse messages: {e}");
-                    HistoryError::InternalError("Could not parse message".to_string())
-                })?
-                .into_iter()
-                .rev() // need to reverse *after* applying the SQL LIMIT
-                .collect::<Vec<_>>()
             }
             HistoryRequest::After { start_ts, limit } => {
                 let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
                 let start_ts = DateTime::from_timestamp(start_ts, 999_999)
                     .unwrap_or(DateTime::<Utc>::MIN_UTC)
                     .naive_utc();
-                Box::new(
+                collect_query(
+                    connection_lock,
+                    &channel,
+                    false, // don't reverse
                     base_query
                         .filter(messages::dsl::timestamp.gt(start_ts))
                         // total order, consistent across requests
                         .order((messages::dsl::timestamp, messages::dsl::id))
-                        .limit(limit)
-                        .load_stream(&mut *connection_lock),
+                        .limit(limit),
                 )
                 .await
-                .map_err(|e| {
-                    tracing::error!("Could not query messages: {e}");
-                    HistoryError::InternalError("Could not query messages".to_string())
-                })?
-                .map_ok(|row| make_historical_event(&channel, row))
-                .try_collect::<Vec<_>>()
-                .await
-                .map_err(|e| {
-                    tracing::error!("Could not parse messages: {e}");
-                    HistoryError::InternalError("Could not parse message".to_string())
-                })?
             }
             HistoryRequest::Around { around_ts, limit } => {
                 todo!("around")
@@ -231,27 +203,18 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                         .unwrap_or(DateTime::<Utc>::MAX_UTC)
                         .naive_utc();
                     let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
-                    Box::new(
+                    collect_query(
+                        connection_lock,
+                        &channel,
+                        false, // don't reverse
                         base_query
                             .filter(messages::dsl::timestamp.gt(start_ts))
                             .filter(messages::dsl::timestamp.lt(end_ts))
                             // total order, consistent across requests
                             .order((messages::dsl::timestamp, messages::dsl::id))
-                            .limit(limit)
-                            .load_stream(&mut *connection_lock),
+                            .limit(limit),
                     )
                     .await
-                    .map_err(|e| {
-                        tracing::error!("Could not query messages: {e}");
-                        HistoryError::InternalError("Could not query messages".to_string())
-                    })?
-                    .map_ok(|row| make_historical_event(&channel, row))
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .map_err(|e| {
-                        tracing::error!("Could not parse messages: {e}");
-                        HistoryError::InternalError("Could not parse message".to_string())
-                    })?
                 } else {
                     let start_ts = DateTime::from_timestamp(start_ts, 0)
                         .unwrap_or(DateTime::<Utc>::MAX_UTC)
@@ -260,48 +223,67 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                         .unwrap_or(DateTime::<Utc>::MIN_UTC)
                         .naive_utc();
                     let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
-                    Box::new(
+                    collect_query(
+                        connection_lock,
+                        &channel,
+                        true, // reverse
                         base_query
                             .filter(messages::dsl::timestamp.gt(end_ts))
                             .filter(messages::dsl::timestamp.lt(start_ts))
                             // total order, consistent across requests
                             .order((messages::dsl::timestamp.desc(), messages::dsl::id.desc()))
-                            .limit(limit)
-                            .load_stream(&mut *connection_lock),
+                            .limit(limit),
                     )
                     .await
-                    .map_err(|e| {
-                        tracing::error!("Could not query messages: {e}");
-                        HistoryError::InternalError("Could not query messages".to_string())
-                    })?
-                    .map_ok(|row| make_historical_event(&channel, row))
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .map_err(|e| {
-                        tracing::error!("Could not parse messages: {e}");
-                        HistoryError::InternalError("Could not parse message".to_string())
-                    })?
-                    .into_iter()
-                    .rev() // need to reverse *after* applying the SQL LIMIT
-                    .collect::<Vec<_>>()
                 }
             }
-        })
+        }
     }
+}
+
+type JoinedMessageRow = (
+    uuid::Uuid,
+    NaiveDateTime,
+    crate::types::MessageType,
+    String,
+    String,
+    String,
+    String,
+    Option<String>,
+);
+
+async fn collect_query<'query>(
+    mut connection: tokio::sync::MutexGuard<'_, AsyncPgConnection>,
+    channel: &crate::models::Channel,
+    reverse: bool,
+    query: impl diesel_async::RunQueryDsl<AsyncPgConnection>
+        + diesel_async::methods::LoadQuery<'query, AsyncPgConnection, JoinedMessageRow>
+        + 'query,
+) -> Result<Vec<HistoricalEvent>, HistoryError> {
+    let events = query
+        .load_stream(&mut *connection)
+        .await
+        .map_err(|e| {
+            tracing::error!("Could not query messages: {e}");
+            HistoryError::InternalError("Could not query messages".to_string())
+        })?
+        .map_ok(|row| make_historical_event(channel, row))
+        .try_collect::<Vec<_>>()
+        .await
+        .map_err(|e| {
+            tracing::error!("Could not parse messages: {e}");
+            HistoryError::InternalError("Could not parse message".to_string())
+        })?;
+    Ok(if reverse {
+        events.into_iter().rev().collect()
+    } else {
+        events
+    })
 }
 
 fn make_historical_event(
     channel: &crate::models::Channel,
-    (id, timestamp, message_type, text, source_nick, source_ident, source_vhost, source_account): (
-        uuid::Uuid,
-        NaiveDateTime,
-        crate::types::MessageType,
-        String,
-        String,
-        String,
-        String,
-        Option<String>,
-    ),
+    (id, timestamp, message_type, text, source_nick, source_ident, source_vhost, source_account): JoinedMessageRow,
 ) -> HistoricalEvent {
     HistoricalEvent::Message {
         id: MessageId::new(id.try_into().expect("Message id is a non-v7 UUID")),
