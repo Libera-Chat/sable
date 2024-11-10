@@ -188,7 +188,36 @@ impl<'a> HistoryService for PgHistoryService<'a> {
                 .await
             }
             HistoryRequest::Around { around_ts, limit } => {
-                todo!("around")
+                let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
+                let around_ts = DateTime::from_timestamp(around_ts, 0)
+                    .unwrap_or(DateTime::<Utc>::MIN_UTC)
+                    .naive_utc();
+                collect_query(
+                    connection_lock,
+                    &channel,
+                    false, // don't reverse
+                    CombineDsl::union(
+                        base_query
+                            .filter(messages::dsl::timestamp.le(around_ts))
+                            // total order, consistent across requests
+                            .order((messages::dsl::timestamp.desc(), messages::dsl::id.desc()))
+                            .limit(limit),
+                        base_query
+                            .filter(messages::dsl::timestamp.gt(around_ts))
+                            // total order, consistent across requests
+                            .order((messages::dsl::timestamp, messages::dsl::id))
+                            .limit(limit),
+                    ),
+                )
+                .await
+                .map(|mut events| {
+                    // TODO: make postgresql sort it, it may be able to do it directly from
+                    // the index scan instead of sorting after the union
+                    events.sort_unstable_by_key(|event| match event {
+                        HistoricalEvent::Message { id, timestamp, .. } => (*timestamp, *id),
+                    });
+                    events
+                })
             }
             HistoryRequest::Between {
                 start_ts,
