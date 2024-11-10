@@ -1,7 +1,9 @@
-use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::Hash;
+
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
@@ -14,7 +16,7 @@ use crate::prelude::*;
 /// these, a server receiving a remote event can determine whether the incoming
 /// event can be applied immediately, or whether missing dependencies need to
 /// be requested.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct EventClock(pub HashMap<ServerId, EventId>);
 
 impl EventClock {
@@ -110,5 +112,17 @@ impl PartialOrd for EventClock {
         } else {
             None
         }
+    }
+}
+
+impl std::fmt::Debug for EventClock {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut entries: Vec<_> = self.0.iter().collect();
+        entries.sort_unstable();
+        let entries = entries
+            .into_iter()
+            .map(|(k, v)| format!("{} => {}", **k, v.as_u64()))
+            .join(", ");
+        write!(f, "EventClock({})", entries)
     }
 }
