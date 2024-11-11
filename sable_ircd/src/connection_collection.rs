@@ -214,7 +214,7 @@ impl ConnectionCollection {
     }
 }
 
-impl<'a> Iterator for UserConnectionIter<'a> {
+impl Iterator for UserConnectionIter<'_> {
     type Item = Arc<ClientConnection>;
 
     fn next(&mut self) -> Option<Self::Item> {

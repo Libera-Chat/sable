@@ -112,7 +112,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
             Ok(backward_entries
                 .into_iter()
                 .rev()
-                .chain(forward_entries.into_iter())
+                .chain(forward_entries)
                 .flat_map(move |entry| Self::translate_log_entry(entry, &net)))
         } else {
             Err(HistoryError::InvalidTarget(target))
@@ -145,8 +145,8 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
     }
 }
 
-impl<'a, NetworkPolicy: policy::PolicyService> HistoryService
-    for LocalHistoryService<'a, NetworkPolicy>
+impl<NetworkPolicy: policy::PolicyService> HistoryService
+    for LocalHistoryService<'_, NetworkPolicy>
 {
     #[instrument(skip(self))]
     async fn list_targets(

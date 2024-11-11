@@ -72,6 +72,7 @@ where
 
 // The async entry point for the application. Because `run_server` can fork into the background
 // depending on options, it needs to initialise the tokio runtime after doing so
+#[allow(clippy::too_many_arguments)]
 async fn do_run_server<ST>(
     server_conf_path: impl AsRef<Path>,
     server_config: ServerConfig<ST>,

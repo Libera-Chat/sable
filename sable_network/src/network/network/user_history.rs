@@ -60,7 +60,7 @@ impl HistoricUserStore {
     pub fn update(&mut self, user: &mut state::User, timestamp: i64) -> HistoricUserId {
         let old_id = HistoricUserId::new(user.id, user.serial);
 
-        let Some(existing) = self.get_user(&user) else {
+        let Some(existing) = self.get_user(user) else {
             return old_id;
         };
 
@@ -80,7 +80,7 @@ impl HistoricUserStore {
     ) -> HistoricUserId {
         let old_id = HistoricUserId::new(user.id, user.serial);
 
-        let Some(existing) = self.get_user(&user) else {
+        let Some(existing) = self.get_user(user) else {
             return old_id;
         };
 
@@ -99,7 +99,7 @@ impl HistoricUserStore {
     ) -> HistoricUserId {
         let old_id = HistoricUserId::new(user.id, user.serial);
 
-        let Some(existing) = self.get_user(&user) else {
+        let Some(existing) = self.get_user(user) else {
             return old_id;
         };
 

@@ -26,7 +26,7 @@ impl<'a> ServicesCommand<'a> {
     }
 }
 
-impl<'a> Command for ServicesCommand<'a> {
+impl Command for ServicesCommand<'_> {
     fn source(&self) -> CommandSource<'_> {
         self.outer.source()
     }

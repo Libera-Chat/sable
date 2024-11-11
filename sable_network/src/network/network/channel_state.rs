@@ -259,7 +259,7 @@ impl Network {
                 updates.notify(
                     update::MembershipFlagChange {
                         membership: target,
-                        user: self.translate_historic_user_id(&user),
+                        user: self.translate_historic_user_id(user),
                         added: details.added,
                         removed: details.removed,
                         changed_by: self.translate_state_change_source(details.changed_by),
@@ -288,7 +288,7 @@ impl Network {
         if let Some(user) = self.users.get(&target.user()) {
             let update = update::ChannelJoin {
                 membership: target,
-                user: self.translate_historic_user_id(&user),
+                user: self.translate_historic_user_id(user),
             };
             updates.notify(update, event);
         }
@@ -314,7 +314,7 @@ impl Network {
                 let update = update::ChannelKick {
                     membership: removed_membership,
                     source: self.translate_state_change_source(details.source.into()),
-                    user: self.translate_historic_user_id(&user),
+                    user: self.translate_historic_user_id(user),
                     message: details.message.clone(),
                 };
                 updates.notify(update, event);
@@ -341,7 +341,7 @@ impl Network {
             if let Some(user) = self.users.get(&target.user()) {
                 let update = update::ChannelPart {
                     membership: removed_membership,
-                    user: self.translate_historic_user_id(&user),
+                    user: self.translate_historic_user_id(user),
                     message: details.message.clone(),
                 };
                 updates.notify(update, event);
@@ -380,7 +380,7 @@ impl Network {
             let update = update::ChannelInvite {
                 invite: target,
                 source: self.translate_state_change_source(details.source.into()),
-                user: self.translate_historic_user_id(&user),
+                user: self.translate_historic_user_id(user),
             };
             updates.notify(update, event);
         }

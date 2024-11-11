@@ -6,6 +6,12 @@ pub struct AsyncHandlerCollection<'a> {
     futures: FuturesUnordered<AsyncHandler<'a>>,
 }
 
+impl Default for AsyncHandlerCollection<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a> AsyncHandlerCollection<'a> {
     pub fn new() -> Self {
         Self {

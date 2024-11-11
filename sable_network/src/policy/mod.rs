@@ -56,6 +56,7 @@ pub trait PolicyService:
 }
 
 /// The standard implementation of a [`PolicyService`]
+#[allow(clippy::duplicated_attributes)] // false positive on `target = "oper_policy"`
 #[derive(Delegate)]
 #[delegate(ChannelPolicyService, target = "channel_policy")]
 #[delegate(UserPolicyService, target = "user_policy")]

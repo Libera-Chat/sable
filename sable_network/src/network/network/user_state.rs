@@ -384,7 +384,7 @@ impl Network {
         if let Some(user) = self.users.get(&detail.user) {
             updates.notify(
                 update::NewUserConnection {
-                    user: self.translate_historic_user_id(&user),
+                    user: self.translate_historic_user_id(user),
                     connection: connection.id,
                 },
                 event,
@@ -403,7 +403,7 @@ impl Network {
             if let Some(user) = self.users.get(&user_connection.user) {
                 updates.notify(
                     update::UserConnectionDisconnected {
-                        user: self.translate_historic_user_id(&user),
+                        user: self.translate_historic_user_id(user),
                         connection: user_connection,
                     },
                     event,

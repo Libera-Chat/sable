@@ -132,7 +132,7 @@ impl<T: std::fmt::Debug> ThrottledQueue<T> {
     }
 }
 
-impl<'a, T: std::fmt::Debug> Iterator for ThrottledQueueIterator<'a, T> {
+impl<T: std::fmt::Debug> Iterator for ThrottledQueueIterator<'_, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {

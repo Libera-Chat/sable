@@ -35,7 +35,9 @@ fn write_head_date(root: String, dest: path::PathBuf) -> Result<(), git2::Error>
                 && e.code() == git2::ErrorCode::NotFound =>
         {
             f.write_all(
-                format!("\npub const GIT_COMMIT_TIME_UTC: Option<&str> = None;\n").as_bytes(),
+                "\npub const GIT_COMMIT_TIME_UTC: Option<&str> = None;\n"
+                    .to_string()
+                    .as_bytes(),
             )
             .expect("could not write to built.rs");
             Ok(())

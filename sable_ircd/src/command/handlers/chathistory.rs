@@ -203,7 +203,7 @@ async fn list_targets<'a>(
     }
 }
 
-fn send_history_entries<'a>(
+fn send_history_entries(
     _server: &ClientServer,
     conn: impl MessageSink,
     target: &str,
@@ -226,9 +226,7 @@ fn send_history_entries<'a>(
                 text,
             } => {
                 let msg = message::Message::new(&source, &target, message_type, &text)
-                    .with_tag(server_time::server_time_tag(
-                        i64::try_from(timestamp).unwrap_or(i64::MAX),
-                    ))
+                    .with_tag(server_time::server_time_tag(timestamp))
                     .with_tag(OutboundMessageTag::new(
                         "msgid",
                         Some(id.to_string()),

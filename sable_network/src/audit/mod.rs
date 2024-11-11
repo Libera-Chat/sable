@@ -88,7 +88,7 @@ impl<'a> AuditLogger<'a> {
     }
 }
 
-impl<'a> AuditLoggerEntry<'a> {
+impl AuditLoggerEntry<'_> {
     pub fn source(mut self, id: Option<UserId>, ip: Option<IpAddr>) -> Self {
         self.source_id = id;
         self.source_str = format_source(self.node, id, ip);

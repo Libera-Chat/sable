@@ -129,6 +129,12 @@ impl ClientCapabilitySet {
 #[derive(Debug)]
 pub struct AtomicCapabilitySet(AtomicU64);
 
+impl Default for AtomicCapabilitySet {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AtomicCapabilitySet {
     pub fn new() -> Self {
         Self(AtomicU64::new(0))

@@ -1,6 +1,7 @@
 use super::*;
 use crate::prelude::*;
 
+#[allow(clippy::large_enum_variant)] // https://github.com/Libera-Chat/sable/issues/121
 /// Describes a message's source
 pub enum MessageSource<'a> {
     /// A user currently in the network state
@@ -43,24 +44,24 @@ pub enum MessageTarget<'a> {
 impl MessageTarget<'_> {
     pub fn user(&self) -> Option<&User> {
         match self {
-            Self::User(u) => Some(&u),
+            Self::User(u) => Some(u),
             _ => None,
         }
     }
 
     pub fn channel(&self) -> Option<&Channel> {
         match self {
-            Self::Channel(c) => Some(&c),
+            Self::Channel(c) => Some(c),
             _ => None,
         }
     }
 }
 
-impl ToString for MessageTarget<'_> {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for MessageTarget<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::User(u) => u.nuh(),
-            Self::Channel(c) => c.name().to_string(),
+            Self::User(u) => u.nuh().fmt(f),
+            Self::Channel(c) => c.name().fmt(f),
         }
     }
 }
