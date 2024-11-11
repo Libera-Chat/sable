@@ -47,7 +47,7 @@ async fn cert_add(
     cmd: &dyn Command,
     param: Conditional<&str>,
 ) -> CommandResult {
-    let fingerprint = match param.is_present() {
+    let fingerprint = match param.present() {
         Some(fp) => fp,
         None => {
             if let Some(fp) = cmd

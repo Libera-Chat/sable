@@ -55,7 +55,7 @@ impl<T> Conditional<T> {
     }
 
     /// Return the argument, if it was successfully parsed
-    pub fn is_present(self) -> Option<T> {
+    pub fn present(self) -> Option<T> {
         self.0.ok()
     }
 }
