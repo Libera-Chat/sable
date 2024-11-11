@@ -45,8 +45,8 @@ jobs:
       #    command: doc
       #    args: ${{ matrix.features }}
 
-  fmt:
-    name: Check formatting
+  lint:
+    name: Linting
     runs-on: ubuntu-latest
 
     steps:
@@ -67,3 +67,8 @@ jobs:
           command: fmt
           args: -- --check
 
+      - name: cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets
