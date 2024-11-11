@@ -249,7 +249,7 @@ impl Network {
     ) -> state::HistoricMessageSourceId {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                state::HistoricMessageSourceId::User(self.translate_historic_user_id(&user))
+                state::HistoricMessageSourceId::User(self.translate_historic_user_id(user))
             }),
             ObjectId::Server(server_id) => Some(state::HistoricMessageSourceId::Server(server_id)),
             _ => None,
@@ -266,7 +266,7 @@ impl Network {
     pub(crate) fn translate_message_target(&self, id: ObjectId) -> state::HistoricMessageTargetId {
         match id {
             ObjectId::User(user_id) => self.users.get(&user_id).map(|user| {
-                state::HistoricMessageTargetId::User(self.translate_historic_user_id(&user))
+                state::HistoricMessageTargetId::User(self.translate_historic_user_id(user))
             }),
             ObjectId::Channel(channel_id) => {
                 Some(state::HistoricMessageTargetId::Channel(channel_id))

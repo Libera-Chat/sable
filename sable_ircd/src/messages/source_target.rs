@@ -44,7 +44,7 @@ impl MessageSource for wrapper::User<'_> {
     }
 }
 
-impl<'a> MessageSource for wrapper::HistoricMessageSource<'a> {
+impl MessageSource for wrapper::HistoricMessageSource<'_> {
     fn format(&self) -> String {
         match self {
             Self::User(historic_user) => MessageSource::format(*historic_user),
@@ -115,7 +115,7 @@ impl MessageTarget for state::HistoricUser {
     }
 }
 
-impl<'a> MessageTarget for wrapper::HistoricMessageTarget<'a> {
+impl MessageTarget for wrapper::HistoricMessageTarget<'_> {
     fn format(&self) -> String {
         match self {
             Self::Channel(c) => c.name().to_string(),
@@ -127,7 +127,7 @@ impl<'a> MessageTarget for wrapper::HistoricMessageTarget<'a> {
 
 // This may seem counter-intuitive, but there are times we need to
 // format a message source as if it were a target
-impl<'a> MessageTarget for wrapper::HistoricMessageSource<'a> {
+impl MessageTarget for wrapper::HistoricMessageSource<'_> {
     fn format(&self) -> String {
         match self {
             Self::Server(s) => s.name().to_string(),

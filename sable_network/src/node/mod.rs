@@ -69,7 +69,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     /// - `rpc_receiver`: channel to receive messages from the network synchronisation.
     ///   Should be shared with the `ReplicatedEventLog`.
     /// - `subscriber`: channel to send out network state changes for consumption
-    /// = `policy_service`: a policy service
+    /// - `policy_service`: a policy service
     ///
     pub fn new(
         id: ServerId,

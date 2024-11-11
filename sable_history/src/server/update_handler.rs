@@ -53,7 +53,7 @@ impl HistoryServer {
         let mut connection_lock = self.database_connection.lock().await;
 
         if let Some(existing) = historic_users
-            .filter(HistoricUser::with_network_id(&huid))
+            .filter(HistoricUser::with_network_id(huid))
             .select(HistoricUser::as_select())
             .first(&mut *connection_lock)
             .await
@@ -103,9 +103,9 @@ impl HistoryServer {
         }
     }
 
-    async fn get_or_create_channel<'a>(
+    async fn get_or_create_channel(
         &self,
-        data: wrapper::Channel<'a>,
+        data: wrapper::Channel<'_>,
     ) -> anyhow::Result<crate::models::Channel> {
         use crate::schema::channels::dsl::*;
 
@@ -154,9 +154,7 @@ impl HistoryServer {
         };
         let net_message = net.message(new_message.message)?;
 
-        let db_source = self
-            .get_or_create_historic_user(&source_id, &source)
-            .await?;
+        let db_source = self.get_or_create_historic_user(&source_id, source).await?;
         let db_channel = self.get_or_create_channel(channel).await?;
 
         let db_message = crate::models::Message {

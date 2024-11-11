@@ -51,7 +51,7 @@ where
                 message = lines.next_line() => match message {
                     Ok(None) => { break; },
                     Ok(Some(m)) => {
-                        if m.as_bytes().len() as u64 > crate::MAX_MSG_SIZE {
+                        if m.len() as u64 > crate::MAX_MSG_SIZE { // in bytes
                             if self.event_channel.send(InternalConnectionEventType::Event(InternalConnectionEvent::ConnectionError(self.id, ConnectionError::InputLineTooLong))).await.is_err() {
                             tracing::error!("Error notifying socket error on connection {:?}", self.id);
                             }

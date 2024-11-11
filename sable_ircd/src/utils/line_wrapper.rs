@@ -36,7 +36,8 @@ impl<const JOINER: char, Item: AsRef<str>, Iter: Iterator<Item = Item>> Iterator
 
         for item in self.iter.by_ref() {
             let item = item.as_ref();
-            if buf.as_bytes().len() + JOINER.len_utf8() + item.as_bytes().len() <= self.line_length
+            if buf.len() + JOINER.len_utf8() + item.len() <= self.line_length
+            // in bytes
             {
                 buf.push(JOINER);
                 buf.push_str(item);

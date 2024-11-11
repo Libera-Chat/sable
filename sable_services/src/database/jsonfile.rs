@@ -49,7 +49,7 @@ where
     iter: std::collections::hash_map::Values<'this, K, V>,
 }
 
-impl<'a, K, V> Iterator for LockedHashMapValueIterator<'a, K, V>
+impl<K, V> Iterator for LockedHashMapValueIterator<'_, K, V>
 where
     K: 'static,
     V: 'static + Clone,

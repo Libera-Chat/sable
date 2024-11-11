@@ -218,7 +218,7 @@ impl SendHistoryItem<update::ChannelTopicChange> for ClientServer {
         let source = net.message_source(&item.setter)?;
         let channel = net.channel(item.channel)?;
 
-        let message = message::Topic::new(&source, &channel.name(), &item.new_text)
+        let message = message::Topic::new(&source, channel.name(), &item.new_text)
             .with_tags_from(from_entry, &net);
 
         conn.send(message);
@@ -302,7 +302,7 @@ impl SendHistoryItem<update::ChannelJoin> for ClientServer {
         let membership = net.membership(item.membership)?;
         let channel = membership.channel()?;
 
-        let message = message::Join::new(user, &channel.name()).with_tags_from(from_entry, &net);
+        let message = message::Join::new(user, channel.name()).with_tags_from(from_entry, &net);
 
         conn.send(message);
 
@@ -343,7 +343,7 @@ impl SendHistoryItem<update::ChannelKick> for ClientServer {
         let user = net.historic_user(item.user)?;
         let channel = net.channel(item.membership.channel)?;
 
-        let message = message::Kick::new(&source, user, &channel.name(), &item.message)
+        let message = message::Kick::new(&source, user, channel.name(), &item.message)
             .with_tags_from(from_entry, &net);
 
         conn.send(message);
@@ -365,7 +365,7 @@ impl SendHistoryItem<update::ChannelPart> for ClientServer {
 
         // If editing this behaviour, make sure that the faked version in the channel rename
         // handler stays in sync
-        let message = message::Part::new(user, &channel.name(), &item.message)
+        let message = message::Part::new(user, channel.name(), &item.message)
             .with_tags_from(from_entry, &net);
 
         conn.send(message);
@@ -387,7 +387,7 @@ impl SendHistoryItem<update::ChannelInvite> for ClientServer {
         let channel = net.channel(item.invite.channel())?;
 
         let message =
-            message::Invite::new(&source, user, &channel.name()).with_tags_from(from_entry, &net);
+            message::Invite::new(&source, user, channel.name()).with_tags_from(from_entry, &net);
 
         conn.send(message);
 

@@ -67,11 +67,11 @@ async fn do_restart(
     let fd = to_memfd(data).unwrap();
 
     tracing::debug!("executing restart");
-    Command::new(current_exe().unwrap())
+    let e = Command::new(current_exe().unwrap())
         .args([fd.to_string()])
         .exec();
 
-    panic!("Couldn't exec?");
+    panic!("Couldn't exec: {:?}", e);
 }
 
 #[tokio::main]

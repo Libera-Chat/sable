@@ -21,8 +21,8 @@ impl<'a, NetworkPolicy: policy::PolicyService> RemoteHistoryService<'a, NetworkP
     }
 }
 
-impl<'a, NetworkPolicy: policy::PolicyService> HistoryService
-    for RemoteHistoryService<'a, NetworkPolicy>
+impl<NetworkPolicy: policy::PolicyService> HistoryService
+    for RemoteHistoryService<'_, NetworkPolicy>
 {
     #[instrument(skip(self))]
     async fn list_targets(

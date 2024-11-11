@@ -26,7 +26,7 @@ impl<'a> PgHistoryService<'a> {
     }
 }
 
-impl<'a> HistoryService for PgHistoryService<'a> {
+impl HistoryService for PgHistoryService<'_> {
     async fn list_targets(
         &self,
         _user: UserId,
@@ -48,7 +48,7 @@ impl<'a> HistoryService for PgHistoryService<'a> {
         {
             Err(e) => {
                 tracing::error!("Could not get history channels: {e}");
-                return HashMap::new();
+                HashMap::new()
             }
             Ok(rows) => rows
                 .map(|row| -> Result<(TargetId, i64)> {

@@ -25,7 +25,7 @@ impl<'a> AmbientArgument<'a> for ServicesTarget<'a> {
     }
 }
 
-impl<'a> ServicesTarget<'a> {
+impl ServicesTarget<'_> {
     pub async fn send_remote_request(
         &self,
         req: RemoteServerRequestType,
