@@ -71,6 +71,14 @@ impl Network {
                 }
             }
 
+            // ditto for the history server
+            if let Some(history_server_id) = self.current_history_server_id {
+                if removed.id == history_server_id {
+                    self.current_history_server_id = None;
+                    updates.notify(update::HistoryServerUpdate {}, event);
+                }
+            }
+
             // Collect all the user connections that were on the departing server
             let removed_connections: Vec<_> = self
                 .user_connections

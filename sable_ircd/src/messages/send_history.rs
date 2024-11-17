@@ -50,6 +50,7 @@ impl SendHistoryItem<NetworkHistoryUpdate> for ClientServer {
             | NetworkStateChange::ServerQuit(_)
             | NetworkStateChange::NewAuditLogEntry(_)
             | NetworkStateChange::UserLoginChange(_)
+            | NetworkStateChange::HistoryServerUpdate(_)
             | NetworkStateChange::ServicesUpdate(_)
             | NetworkStateChange::EventComplete(_) => Ok(()),
         }
@@ -86,6 +87,7 @@ impl SendHistoryItem<HistoryLogEntry> for ClientServer {
             | NetworkStateChange::ServerQuit(_)
             | NetworkStateChange::NewAuditLogEntry(_)
             | NetworkStateChange::UserLoginChange(_)
+            | NetworkStateChange::HistoryServerUpdate(_)
             | NetworkStateChange::ServicesUpdate(_)
             | NetworkStateChange::EventComplete(_) => Ok(()),
         }

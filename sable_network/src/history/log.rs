@@ -165,6 +165,7 @@ impl NetworkHistoryLog {
             | NewAuditLogEntry(_)
             | UserLoginChange(_)
             | ServicesUpdate(_)
+            | HistoryServerUpdate(_)
             | EventComplete(_) => None,
 
             UserNickChange(_)

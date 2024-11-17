@@ -2412,6 +2412,7 @@ dependencies = [
  "diesel",
  "diesel-async",
  "diesel_migrations",
+ "futures",
  "itertools",
  "parking_lot 0.12.3",
  "sable_network",

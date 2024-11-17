@@ -22,11 +22,10 @@ use sable_server::ServerType;
 use std::{collections::HashMap, convert::Infallible, sync::Arc};
 
 use anyhow::Context;
-use serde::Deserialize;
-
-use tokio::sync::{broadcast, mpsc::UnboundedReceiver, Mutex};
-
 use dashmap::DashMap;
+use serde::Deserialize;
+use tokio::sync::{broadcast, mpsc::UnboundedReceiver, Mutex};
+use tracing::instrument;
 
 mod command;
 mod roles;
@@ -136,7 +135,8 @@ where
         unimplemented!("services can't hot-upgrade");
     }
 
-    fn handle_remote_command(&self, req: RemoteServerRequestType) -> RemoteServerResponse {
+    #[instrument(skip_all)]
+    async fn handle_remote_command(&self, req: RemoteServerRequestType) -> RemoteServerResponse {
         tracing::debug!(?req, "Got remote request");
 
         use RemoteServerRequestType::*;
@@ -205,8 +205,12 @@ where
                     self.user_del_fp(acc, fp)
                 }
             },
+            History(_) => {
+                tracing::warn!(?req, "Got unsupported request (history)");
+                Ok(RemoteServerResponse::NotSupported)
+            }
             Ping => {
-                tracing::warn!(?req, "Got unsupported request");
+                tracing::warn!(?req, "Got unsupported request (ping)");
                 Ok(RemoteServerResponse::NotSupported)
             }
         };

@@ -5,11 +5,10 @@ use std::future::Future;
 
 use thiserror::Error;
 
-use crate::history::HistoryLogEntry;
-use crate::network::state::{HistoricMessageSourceId, HistoricMessageTargetId};
+use crate::network::state::{HistoricMessageSourceId, HistoricMessageTargetId, MessageType};
 use crate::prelude::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum TargetId {
     User(UserId),
     Channel(ChannelId),
@@ -50,6 +49,7 @@ impl TryFrom<&HistoricMessageTargetId> for TargetId {
     }
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum HistoryRequest {
     Latest {
         to_ts: Option<i64>,
@@ -74,10 +74,12 @@ pub enum HistoryRequest {
     },
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum HistoryError {
     #[error("invalid target: {0:?}")]
     InvalidTarget(TargetId),
+    #[error("internal server error: {0:?}")]
+    InternalError(String),
 }
 
 /// A backend implementation of [IRCv3 CHATHISTORY](https://ircv3.net/specs/extensions/chathistory)
@@ -98,5 +100,21 @@ pub trait HistoryService {
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> impl Future<Output = Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError>> + Send;
+    ) -> impl Future<Output = Result<impl IntoIterator<Item = HistoricalEvent> + Send, HistoryError>>
+           + Send;
+}
+
+/// A more concrete representation of `sable_ircd`'s `HistoryItem`, with all its fields
+/// inflated to strings that will be sent to the client
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum HistoricalEvent {
+    Message {
+        id: MessageId,
+        timestamp: i64,
+        source: String,
+        source_account: Option<String>,
+        target: String,
+        message_type: MessageType,
+        text: String,
+    },
 }

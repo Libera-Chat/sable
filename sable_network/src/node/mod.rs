@@ -148,6 +148,17 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
         self.history_log.read()
     }
 
+    /// Access the long-term history, potentially backed by RPC calls to the
+    /// history server
+    pub fn history_service(&self) -> impl HistoryService + use<'_, Policy> {
+        let local_service = LocalHistoryService::new(self);
+        let remote_service = self
+            .network()
+            .current_history_server_name()
+            .map(|history_server_name| RemoteHistoryService::new(self, history_server_name));
+        TieredHistoryService::new(Some(local_service), remote_service)
+    }
+
     /// Access the event log.
     pub fn event_log(&self) -> std::sync::RwLockReadGuard<EventLog> {
         self.event_log.event_log()

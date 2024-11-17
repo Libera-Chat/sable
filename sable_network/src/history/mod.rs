@@ -3,9 +3,13 @@ pub use log::*;
 mod service;
 pub use service::*;
 mod local_service;
+pub use local_service::LocalHistoryService;
+mod remote_service;
+pub use remote_service::RemoteHistoryService;
+mod tiered_service;
+pub use tiered_service::TieredHistoryService;
 
 use crate::network::NetworkStateChange;
-pub use local_service::LocalHistoryService;
 
 /// Implemented by types that provide metadata for a historic state change
 pub trait HistoryItem {

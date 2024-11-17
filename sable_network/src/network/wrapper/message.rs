@@ -56,6 +56,15 @@ impl MessageTarget<'_> {
     }
 }
 
+impl ToString for MessageTarget<'_> {
+    fn to_string(&self) -> String {
+        match self {
+            Self::User(u) => u.nuh(),
+            Self::Channel(c) => c.name().to_string(),
+        }
+    }
+}
+
 /// A wrapper around a [`state::Message`]
 pub struct Message<'a> {
     network: &'a Network,

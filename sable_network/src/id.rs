@@ -25,6 +25,18 @@ impl Uuid7 {
     }
 }
 
+impl TryFrom<Uuid> for Uuid7 {
+    type Error = ();
+
+    fn try_from(uuid: Uuid) -> Result<Self, Self::Error> {
+        if uuid.get_version() == Some(uuid::Version::SortRand) {
+            Ok(Self(uuid))
+        } else {
+            Err(())
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 #[error("Mismatched object ID type for event")]
 pub struct WrongIdTypeError;

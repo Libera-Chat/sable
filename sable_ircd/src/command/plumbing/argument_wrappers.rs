@@ -18,7 +18,7 @@ impl<'a> AmbientArgument<'a> for ServicesTarget<'a> {
         Ok(Self {
             name: ctx
                 .network()
-                .current_services_name()
+                .current_services_server_name()
                 .ok_or(CommandError::ServicesNotAvailable)?,
             server: ctx.server(),
         })

@@ -1,4 +1,5 @@
 use crate::{
+    history::{HistoricalEvent, HistoryError, HistoryRequest},
     id::*,
     network::{event::*, state::ChannelAccessSet, Network},
     validated::*,
@@ -38,12 +39,21 @@ pub struct RemoteServerRequest {
 pub enum RemoteServerRequestType {
     /// Simple ping for communication tests
     Ping,
+    /// A message to be handled by a services node
     Services(RemoteServicesServerRequestType),
+    /// A message to be handled by a history node
+    History(RemoteHistoryServerRequestType),
 }
 
 impl From<RemoteServicesServerRequestType> for RemoteServerRequestType {
     fn from(req: RemoteServicesServerRequestType) -> Self {
         RemoteServerRequestType::Services(req)
+    }
+}
+
+impl From<RemoteHistoryServerRequestType> for RemoteServerRequestType {
+    fn from(req: RemoteHistoryServerRequestType) -> Self {
+        RemoteServerRequestType::History(req)
     }
 }
 
@@ -89,6 +99,23 @@ pub enum RemoteServicesServerRequestType {
     RemoveAccountFingerprint(AccountId, String),
 }
 
+/// A message to be handled by a services node
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum RemoteHistoryServerRequestType {
+    ListTargets {
+        user: UserId,
+        after_ts: Option<i64>,
+        before_ts: Option<i64>,
+        limit: Option<usize>,
+    },
+
+    GetEntries {
+        user: UserId,
+        target: crate::history::TargetId,
+        request: HistoryRequest,
+    },
+}
+
 /// A SASL authentication response
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum AuthenticateStatus {
@@ -113,11 +140,19 @@ pub enum RemoteServerResponse {
     Error(String),
     /// Response type specific to services servers
     Services(RemoteServicesServerResponse),
+    /// Response type specific to history servers
+    History(RemoteHistoryServerResponse),
 }
 
 impl From<RemoteServicesServerResponse> for RemoteServerResponse {
     fn from(resp: RemoteServicesServerResponse) -> Self {
         RemoteServerResponse::Services(resp)
+    }
+}
+
+impl From<RemoteHistoryServerResponse> for RemoteServerResponse {
+    fn from(resp: RemoteHistoryServerResponse) -> Self {
+        RemoteServerResponse::History(resp)
     }
 }
 
@@ -138,4 +173,13 @@ pub enum RemoteServicesServerResponse {
     NoAccount,
     /// Channel isn't registered
     ChannelNotRegistered,
+}
+
+/// Remote history server response type
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum RemoteHistoryServerResponse {
+    /// TODO: switch to HashMap when we move away from JSON as the wire format,
+    /// to be consistent with [`HistoryService`]
+    TargetList(Vec<(crate::history::TargetId, i64)>),
+    Entries(Result<Vec<HistoricalEvent>, HistoryError>),
 }

@@ -27,6 +27,7 @@ fn account_for_tag(update: &NetworkStateChange, net: &Network) -> Option<String>
         NetworkStateChange::NewServer(_) => None,
         NetworkStateChange::ServerQuit(_) => None,
         NetworkStateChange::NewAuditLogEntry(_) => None,
+        NetworkStateChange::HistoryServerUpdate(_) => None,
         NetworkStateChange::ServicesUpdate(_) => None,
         NetworkStateChange::EventComplete(_) => None,
     }?;

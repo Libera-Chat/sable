@@ -35,7 +35,7 @@ async fn do_register_user(
     _email: &str,
     password: &str,
 ) -> CommandResult {
-    let Some(services_name) = network.current_services_name() else {
+    let Some(services_name) = network.current_services_server_name() else {
         response_to.send(message::Fail::new(
             "REGISTER",
             "TEMPORARILY_UNAVAILABLE",

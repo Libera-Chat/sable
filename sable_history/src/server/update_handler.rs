@@ -1,3 +1,6 @@
+use chrono::DateTime;
+use diesel_async::RunQueryDsl;
+
 use super::*;
 
 use crate::models::HistoricUser;
@@ -5,13 +8,13 @@ use rpc::NetworkHistoryUpdate;
 use state::HistoricMessageSourceId;
 use wrapper::HistoricMessageTarget;
 
-use diesel::prelude::*;
-use diesel_async::RunQueryDsl;
-
 impl HistoryServer {
     pub async fn handle_history_update(&self, update: NetworkHistoryUpdate) -> anyhow::Result<()> {
+        let update_timestamp = update.timestamp();
         match update.change {
-            NetworkStateChange::NewMessage(detail) => self.handle_new_message(detail).await,
+            NetworkStateChange::NewMessage(detail) => {
+                self.handle_new_message(detail, update_timestamp).await
+            }
 
             NetworkStateChange::NewUser(_)
             | NetworkStateChange::UserNickChange(_)
@@ -34,6 +37,7 @@ impl HistoryServer {
             | NetworkStateChange::ServerQuit(_)
             | NetworkStateChange::NewAuditLogEntry(_)
             | NetworkStateChange::UserLoginChange(_)
+            | NetworkStateChange::HistoryServerUpdate(_)
             | NetworkStateChange::ServicesUpdate(_)
             | NetworkStateChange::EventComplete(_) => Ok(()),
         }
@@ -131,7 +135,11 @@ impl HistoryServer {
         }
     }
 
-    async fn handle_new_message(&self, new_message: update::NewMessage) -> anyhow::Result<()> {
+    async fn handle_new_message(
+        &self,
+        new_message: update::NewMessage,
+        update_timestamp: i64,
+    ) -> anyhow::Result<()> {
         use crate::schema::messages::dsl::*;
 
         let net = self.node.network();
@@ -153,8 +161,12 @@ impl HistoryServer {
 
         let db_message = crate::models::Message {
             id: **net_message.id(),
+            timestamp: DateTime::from_timestamp(update_timestamp, 0)
+                .context("Timestamp overflowed")?
+                .naive_utc(), // may differ from the message's timestamp
             source_user: db_source.id,
             target_channel: db_channel.id,
+            message_type: net_message.message_type().into(),
             text: net_message.text().to_string(),
         };
 
@@ -163,6 +175,8 @@ impl HistoryServer {
             .values(&db_message)
             .execute(&mut *connection_lock)
             .await?;
+
+        tracing::trace!("Persisted message: {db_message:?}");
 
         Ok(())
     }

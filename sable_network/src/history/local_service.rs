@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use tracing::instrument;
+
 use crate::network::state::HistoricMessageTargetId;
 use crate::prelude::*;
 
@@ -20,12 +22,12 @@ fn target_id_for_entry(for_user: UserId, entry: &HistoryLogEntry) -> Option<Targ
 }
 
 /// Implementation of [`HistoryService`] backed by [`NetworkNode`]
-pub struct LocalHistoryService<'a> {
-    node: &'a NetworkNode,
+pub struct LocalHistoryService<'a, NetworkPolicy: policy::PolicyService> {
+    node: &'a NetworkNode<NetworkPolicy>,
 }
 
-impl<'a> LocalHistoryService<'a> {
-    pub fn new(node: &'a NetworkNode) -> Self {
+impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPolicy> {
+    pub fn new(node: &'a NetworkNode<NetworkPolicy>) -> Self {
         LocalHistoryService { node }
     }
 
@@ -37,7 +39,7 @@ impl<'a> LocalHistoryService<'a> {
         to_ts: Option<i64>,
         backward_limit: usize,
         forward_limit: usize,
-    ) -> Result<impl Iterator<Item = HistoryLogEntry>, HistoryError> {
+    ) -> Result<impl Iterator<Item = HistoricalEvent>, HistoryError> {
         let mut backward_entries = Vec::new();
         let mut forward_entries = Vec::new();
         let mut target_exists = false;
@@ -45,6 +47,7 @@ impl<'a> LocalHistoryService<'a> {
         // Keep the lock on the NetworkHistoryLog between the backward and the forward
         // search to make sure both have a consistent state
         let log = self.node.history();
+        let net = self.node.network();
 
         if backward_limit != 0 {
             let from_ts = if forward_limit == 0 {
@@ -109,14 +112,43 @@ impl<'a> LocalHistoryService<'a> {
             Ok(backward_entries
                 .into_iter()
                 .rev()
-                .chain(forward_entries.into_iter()))
+                .chain(forward_entries.into_iter())
+                .flat_map(move |entry| Self::translate_log_entry(entry, &net)))
         } else {
             Err(HistoryError::InvalidTarget(target))
         }
     }
+
+    fn translate_log_entry(entry: HistoryLogEntry, net: &Network) -> Option<HistoricalEvent> {
+        match entry.details {
+            NetworkStateChange::NewMessage(update::NewMessage {
+                message,
+                source: _,
+                target: _,
+            }) => {
+                let message = net.message(message).ok()?;
+                let source = message.source().ok()?;
+                let target = message.target().ok()?;
+
+                Some(HistoricalEvent::Message {
+                    id: message.id(),
+                    timestamp: entry.timestamp(), // update's timestamp, may differ from the message's timestamp
+                    message_type: message.message_type(),
+                    source: source.nuh(),
+                    source_account: source.account_name().map(|n| n.to_string()),
+                    target: target.to_string(),
+                    text: message.text().to_string(),
+                })
+            }
+            _ => None,
+        }
+    }
 }
 
-impl<'a> HistoryService for LocalHistoryService<'a> {
+impl<'a, NetworkPolicy: policy::PolicyService> HistoryService
+    for LocalHistoryService<'a, NetworkPolicy>
+{
+    #[instrument(skip(self))]
     async fn list_targets(
         &self,
         user: UserId,
@@ -147,16 +179,19 @@ impl<'a> HistoryService for LocalHistoryService<'a> {
             }
         }
 
+        tracing::trace!("list_targets local response: {found_targets:?}");
+
         found_targets
     }
 
+    #[instrument(skip(self))]
     async fn get_entries(
         &self,
         user: UserId,
         target: TargetId,
         request: HistoryRequest,
-    ) -> Result<impl IntoIterator<Item = HistoryLogEntry>, HistoryError> {
-        match request {
+    ) -> Result<impl IntoIterator<Item = HistoricalEvent>, HistoryError> {
+        let res = match request {
             #[rustfmt::skip]
             HistoryRequest::Latest { to_ts, limit } => self.get_history_for_target(
                 user,
@@ -222,6 +257,8 @@ impl<'a> HistoryService for LocalHistoryService<'a> {
                     )
                 }
             }
-        }
+        };
+        tracing::trace!("get_entries local response: {}", res.is_ok());
+        res
     }
 }

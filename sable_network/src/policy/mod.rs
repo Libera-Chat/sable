@@ -50,6 +50,8 @@ pub trait PolicyService:
     + OperAuthenticationService
     + OperPolicyService
     + RegistrationPolicyService
+    + Sync
+    + Send
 {
 }
 

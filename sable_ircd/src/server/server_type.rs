@@ -1,9 +1,11 @@
-use super::*;
-use crate::connection_collection::ConnectionCollectionState;
 use anyhow::Context;
+use tracing::instrument;
+
 use client_listener::SavedListenerCollection;
 use sable_server::ServerSaveError;
 
+use super::*;
+use crate::connection_collection::ConnectionCollectionState;
 use crate::monitor::MonitorSet;
 
 /// Saved state of a [`ClientServer`] for later resumption
@@ -168,7 +170,8 @@ impl sable_server::ServerType for ClientServer {
         }
     }
 
-    fn handle_remote_command(&self, cmd: RemoteServerRequestType) -> RemoteServerResponse {
+    #[instrument(skip_all)]
+    async fn handle_remote_command(&self, cmd: RemoteServerRequestType) -> RemoteServerResponse {
         match cmd {
             RemoteServerRequestType::Ping => RemoteServerResponse::Success,
             _ => RemoteServerResponse::NotSupported,
