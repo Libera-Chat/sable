@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use tracing::instrument;
 
 use crate::network::state::HistoricMessageTargetId;
+use crate::network::wrapper::MessageTarget;
 use crate::prelude::*;
 
 /// Helper to extract the target name for chathistory purposes from a given event.
@@ -113,13 +114,17 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
                 .into_iter()
                 .rev()
                 .chain(forward_entries)
-                .flat_map(move |entry| Self::translate_log_entry(entry, &net)))
+                .flat_map(move |entry| Self::translate_log_entry(entry, &net, source)))
         } else {
             Err(HistoryError::InvalidTarget(target))
         }
     }
 
-    fn translate_log_entry(entry: HistoryLogEntry, net: &Network) -> Option<HistoricalEvent> {
+    fn translate_log_entry(
+        entry: HistoryLogEntry,
+        net: &Network,
+        history_request_source: UserId,
+    ) -> Option<HistoricalEvent> {
         match entry.details {
             NetworkStateChange::NewMessage(update::NewMessage {
                 message,
@@ -129,6 +134,28 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
                 let message = net.message(message).ok()?;
                 let source = message.source().ok()?;
                 let target = message.target().ok()?;
+                tracing::error!(
+                    "requested by {:?}, source: {:?}, target: {}",
+                    history_request_source,
+                    source,
+                    target
+                );
+                let target = if let MessageTarget::User(target_user) = &target {
+                    tracing::error!("target: {:?}", target_user.id());
+                    if target_user.id() == history_request_source {
+                        tracing::error!("equal");
+                        // This is a DM, and the message was sent by the user this history item will be sent to,
+                        // so the the target needs to be rewritten
+                        None
+                    } else {
+                        tracing::error!("not equal");
+                        // This is a DM, and the message was sent to the user this history item will be sent to
+                        Some(target.to_string())
+                    }
+                } else {
+                    // Not a DM
+                    Some(target.to_string())
+                };
 
                 Some(HistoricalEvent::Message {
                     id: message.id(),
@@ -136,7 +163,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
                     message_type: message.message_type(),
                     source: source.nuh(),
                     source_account: source.account_name().map(|n| n.to_string()),
-                    target: target.to_string(),
+                    target,
                     text: message.text().to_string(),
                 })
             }
