@@ -113,7 +113,8 @@ pub enum HistoricalEvent {
         timestamp: i64,
         source: String,
         source_account: Option<String>,
-        target: String,
+        /// If `None`, it should be replaced by the recipient's current nick
+        target: Option<String>,
         message_type: MessageType,
         text: String,
     },

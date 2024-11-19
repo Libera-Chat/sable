@@ -2,6 +2,7 @@ use super::*;
 use crate::prelude::*;
 
 /// A wrapper around a [`state::User`]
+#[derive(Debug)]
 pub struct User<'a> {
     network: &'a Network,
     data: &'a state::User,

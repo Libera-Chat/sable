@@ -320,7 +320,7 @@ fn make_historical_event(
         source: format!("{}!{}@{}", source_nick, source_ident, source_vhost),
         source_account,
         message_type: message_type.into(),
-        target: channel.name.clone(), // assume it's the same
+        target: Some(channel.name.clone()), // assume it's the same
         text,
     }
 }

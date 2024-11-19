@@ -60,7 +60,7 @@ impl MessageTarget<'_> {
 impl std::fmt::Display for MessageTarget<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::User(u) => u.nuh().fmt(f),
+            Self::User(u) => u.nick().fmt(f),
             Self::Channel(c) => c.name().fmt(f),
         }
     }

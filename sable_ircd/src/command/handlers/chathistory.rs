@@ -204,7 +204,7 @@ async fn list_targets<'a>(
 }
 
 fn send_history_entries(
-    _server: &ClientServer,
+    server: &ClientServer,
     conn: impl MessageSink,
     target: &str,
     entries: impl IntoIterator<Item = HistoricalEvent>,
@@ -221,10 +221,38 @@ fn send_history_entries(
                 timestamp,
                 source,
                 source_account,
-                target: _, // assume it's the same as the one we got as parameter
+                target,
                 message_type,
                 text,
             } => {
+                let target = match target {
+                    None => {
+                        // DM sent by the user requesting history
+                        let Some(user_id) = conn.user_id() else {
+                            return Err(CommandError::Fail {
+                                command: "CHATHISTORY",
+                                code: "MESSAGE_ERROR",
+                                context: "".to_owned(),
+                                description: "Could not format chathistory for non-user".to_owned(),
+                            });
+                        };
+                        server
+                            .network()
+                            .user(user_id)
+                            .map_err(|e| CommandError::Fail {
+                                command: "CHATHISTORY",
+                                code: "MESSAGE_ERROR",
+                                context: "".to_owned(),
+                                description: e.to_string(),
+                            })?
+                            .nick()
+                            .to_string()
+                    }
+                    Some(target) => {
+                        // Not a DM, or not sent by the user requesting history
+                        target
+                    }
+                };
                 let msg = message::Message::new(&source, &target, message_type, &text)
                     .with_tag(server_time::server_time_tag(timestamp))
                     .with_tag(OutboundMessageTag::new(
