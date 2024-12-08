@@ -48,6 +48,7 @@ mod handlers {
     mod kick;
     mod kill;
     mod kline;
+    mod links;
     mod mode;
     mod monitor;
     mod motd;
