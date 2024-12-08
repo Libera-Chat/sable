@@ -51,6 +51,9 @@ define_messages! {
                                                 => "{chname} {user} {host} * {nick} {status} :{hopcount} {realname}" },
     353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)
                                                                 => "{is_pub} {chan} :{content}" },
+    364(Links)                  => { (server_name: &ServerName, hopcount: u64, server_info: &str)
+                                                                => "* {server_name} :{hopcount} {server_info}" },
+    365(EndOfLinks)             => { ()                         => "* :End of /LINKS list" },
     366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
 
     369(EndOfWhowas)            => { (nick: &Nickname)          => "{nick} :End of /WHOWAS" },

@@ -22,6 +22,10 @@ mod oper_policy;
 pub use oper_policy::*;
 
 #[macro_use]
+mod debugging_policy;
+pub use debugging_policy::*;
+
+#[macro_use]
 mod registration_policy;
 pub use registration_policy::*;
 
@@ -33,6 +37,9 @@ pub use standard_user_policy::*;
 
 mod standard_oper_policy;
 pub use standard_oper_policy::*;
+
+mod standard_debugging_policy;
+pub use standard_debugging_policy::*;
 
 mod standard_registration_policy;
 pub use standard_registration_policy::*;
@@ -49,6 +56,7 @@ pub trait PolicyService:
     + UserPolicyService
     + OperAuthenticationService
     + OperPolicyService
+    + DebuggingPolicyService
     + RegistrationPolicyService
     + Sync
     + Send
@@ -61,12 +69,14 @@ pub trait PolicyService:
 #[delegate(ChannelPolicyService, target = "channel_policy")]
 #[delegate(UserPolicyService, target = "user_policy")]
 #[delegate(OperPolicyService, target = "oper_policy")]
+#[delegate(DebuggingPolicyService, target = "debugging_policy")]
 #[delegate(OperAuthenticationService, target = "oper_policy")]
 #[delegate(RegistrationPolicyService, target = "registration_policy")]
 pub struct StandardPolicyService {
     channel_policy: StandardChannelPolicy,
     user_policy: StandardUserPolicy,
     oper_policy: StandardOperPolicy,
+    debugging_policy: StandardDebuggingPolicy,
     registration_policy: StandardRegistrationPolicy,
 }
 
@@ -76,6 +86,7 @@ impl StandardPolicyService {
             channel_policy: StandardChannelPolicy::new(),
             user_policy: StandardUserPolicy::new(),
             oper_policy: StandardOperPolicy::new(),
+            debugging_policy: StandardDebuggingPolicy::new(),
             registration_policy: StandardRegistrationPolicy::new(),
         }
     }
