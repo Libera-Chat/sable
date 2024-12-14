@@ -51,8 +51,8 @@ define_messages! {
                                                 => "{chname} {user} {host} * {nick} {status} :{hopcount} {realname}" },
     353(NamesReply)             => { (is_pub: char, chan: &Channel.name(), content: &str)
                                                                 => "{is_pub} {chan} :{content}" },
-    364(Links)                  => { (server_name: &ServerName, hopcount: u64, server_info: &str)
-                                                                => "* {server_name} :{hopcount} {server_info}" },
+    364(Links)                  => { (remote_server_name: &ServerName, local_server_name: &ServerName, hopcount: u64, remote_server_info: &str)
+                                                                => "{remote_server_name} {local_server_name} :{hopcount} {remote_server_info}" },
     365(EndOfLinks)             => { ()                         => "* :End of /LINKS list" },
     366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
 
