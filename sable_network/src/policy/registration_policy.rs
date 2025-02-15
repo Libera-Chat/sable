@@ -1,6 +1,8 @@
 use super::*;
 
-/// A `ChannelPolicyService` makes access decisions regarding channel permissions
+/// A `ChannelPolicyService` makes access decisions regarding persistent channel
+/// permissions (roles rather than modes) of persistent users (accounts rather than
+/// sessions).
 #[delegatable_trait]
 pub trait RegistrationPolicyService {
     /// Determine whether the given user can view the access list for a channel
