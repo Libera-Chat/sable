@@ -145,7 +145,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
                     if target_user.id() == history_request_source {
                         tracing::error!("equal");
                         // This is a DM, and the message was sent by the user this history item will be sent to,
-                        // so the the target needs to be rewritten
+                        // so the target needs to be rewritten
                         None
                     } else {
                         tracing::error!("not equal");
@@ -200,7 +200,7 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
                 found_targets.entry(target_id).or_insert(entry.timestamp);
             }
 
-            // If this pushes us past the the requested limit, stop
+            // If this pushes us past the requested limit, stop
             if matches!(limit, Some(limit) if limit <= found_targets.len()) {
                 break;
             }
