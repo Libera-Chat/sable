@@ -1,4 +1,5 @@
 use std::cmp::{max, min};
+use std::num::NonZeroUsize;
 
 use sable_network::history::{HistoryError, HistoryRequest, HistoryService, TargetId};
 
@@ -35,7 +36,7 @@ fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<
     }
 }
 
-fn parse_limit(s: &str) -> Result<usize, CommandError> {
+fn parse_limit(s: &str) -> Result<NonZeroUsize, CommandError> {
     s.parse().map_err(|_| CommandError::Fail {
         command: "CHATHISTORY",
         code: "INVALID_PARAMS",
@@ -165,7 +166,7 @@ async fn list_targets<'a>(
     source: &'a wrapper::User<'_>,
     from_ts: Option<i64>,
     to_ts: Option<i64>,
-    limit: Option<usize>,
+    limit: Option<NonZeroUsize>,
 ) {
     let history_service = server.node().history_service();
 

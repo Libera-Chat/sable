@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 
 use tracing::instrument;
 
@@ -30,7 +31,7 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
         user: UserId,
         after_ts: Option<i64>,
         before_ts: Option<i64>,
-        limit: Option<usize>,
+        limit: Option<NonZeroUsize>,
     ) -> HashMap<TargetId, i64> {
         let res = self
             .node
