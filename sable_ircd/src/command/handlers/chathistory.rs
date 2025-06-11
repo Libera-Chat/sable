@@ -169,9 +169,14 @@ async fn list_targets<'a>(
 ) {
     let history_service = server.node().history_service();
 
-    let found_targets = history_service
+    let mut found_targets: Vec<_> = history_service
         .list_targets(source.id(), to_ts, from_ts, limit)
-        .await;
+        .await
+        .into_iter()
+        .collect();
+
+    // Required by the spec
+    found_targets.sort_unstable_by_key(|&(_target, timestamp)| timestamp);
 
     // The appropriate cap here is Batch - chathistory is enabled because we got here,
     // but can be used without batch support.
