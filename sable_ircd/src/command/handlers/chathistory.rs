@@ -60,7 +60,7 @@ async fn handle_chathistory(
     let source = source.deref();
 
     match subcommand.to_ascii_uppercase().as_str() {
-        "TARGET" => {
+        "TARGETS" => {
             let from_ts = parse_msgref(subcommand, None, arg_1)?;
             let to_ts = parse_msgref(subcommand, None, arg_2)?;
             let limit = parse_limit(arg_3)?;
@@ -176,7 +176,7 @@ async fn list_targets<'a>(
     // The appropriate cap here is Batch - chathistory is enabled because we got here,
     // but can be used without batch support.
     let batch = into
-        .batch("chathistory-targets", ClientCapability::Batch)
+        .batch("draft/chathistory-targets", ClientCapability::Batch)
         .start();
 
     for (target, timestamp) in found_targets {
