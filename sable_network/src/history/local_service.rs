@@ -197,7 +197,7 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
             }
 
             if let Some(target_id) = target_id_for_entry(user, entry) {
-                found_targets.entry(target_id).or_insert(entry.timestamp);
+                found_targets.insert(target_id, entry.timestamp);
             }
 
             // If this pushes us past the requested limit, stop
