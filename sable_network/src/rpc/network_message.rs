@@ -1,3 +1,5 @@
+use std::num::NonZeroUsize;
+
 use crate::{
     history::{HistoricalEvent, HistoryError, HistoryRequest},
     id::*,
@@ -106,7 +108,7 @@ pub enum RemoteHistoryServerRequestType {
         user: UserId,
         after_ts: Option<i64>,
         before_ts: Option<i64>,
-        limit: Option<usize>,
+        limit: Option<NonZeroUsize>,
     },
 
     GetEntries {

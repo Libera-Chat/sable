@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 
 use tracing::instrument;
 
@@ -38,8 +39,8 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
         target: TargetId,
         from_ts: Option<i64>,
         to_ts: Option<i64>,
-        backward_limit: usize,
-        forward_limit: usize,
+        backward_limit: Option<NonZeroUsize>,
+        forward_limit: Option<NonZeroUsize>,
     ) -> Result<impl Iterator<Item = HistoricalEvent>, HistoryError> {
         let mut backward_entries = Vec::new();
         let mut forward_entries = Vec::new();
@@ -50,13 +51,14 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
         let log = self.node.history();
         let net = self.node.network();
 
-        if backward_limit != 0 {
-            let from_ts = if forward_limit == 0 {
-                from_ts
-            } else {
-                // HACK: This is AROUND so we want to capture messages whose timestamp matches exactly
-                // (it's a message in the middle of the range)
-                from_ts.map(|from_ts| from_ts + 1)
+        if let Some(backward_limit) = backward_limit {
+            let from_ts = match forward_limit {
+                None => from_ts,
+                Some(_forward_limit) => {
+                    // HACK: This is AROUND so we want to capture messages whose timestamp matches exactly
+                    // (it's a message in the middle of the range)
+                    from_ts.map(|from_ts| from_ts + 1)
+                }
             };
 
             for entry in log.entries_for_user_reverse(source) {
@@ -76,13 +78,13 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
                     }
                 }
 
-                if backward_limit <= backward_entries.len() {
+                if usize::from(backward_limit) <= backward_entries.len() {
                     break;
                 }
             }
         }
 
-        if forward_limit != 0 {
+        if let Some(forward_limit) = forward_limit {
             for entry in log.entries_for_user(source) {
                 target_exists = true;
                 if matches!(from_ts, Some(ts) if entry.timestamp <= ts) {
@@ -100,7 +102,7 @@ impl<'a, NetworkPolicy: policy::PolicyService> LocalHistoryService<'a, NetworkPo
                     }
                 }
 
-                if forward_limit <= forward_entries.len() {
+                if usize::from(forward_limit) <= forward_entries.len() {
                     break;
                 }
             }
@@ -181,7 +183,7 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
         user: UserId,
         after_ts: Option<i64>,
         before_ts: Option<i64>,
-        limit: Option<usize>,
+        limit: Option<NonZeroUsize>,
     ) -> HashMap<TargetId, i64> {
         let mut found_targets = HashMap::new();
 
@@ -201,7 +203,7 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
             }
 
             // If this pushes us past the requested limit, stop
-            if matches!(limit, Some(limit) if limit <= found_targets.len()) {
+            if matches!(limit, Some(limit) if usize::from(limit) <= found_targets.len()) {
                 break;
             }
         }
@@ -225,8 +227,8 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
                 target,
                 None,
                 to_ts,
-                limit,
-                0, // Forward limit
+                Some(limit),
+                None, // Forward limit
             ),
 
             HistoryRequest::Before { from_ts, limit } => {
@@ -235,8 +237,8 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
                     target,
                     Some(from_ts),
                     None,
-                    limit,
-                    0, // Forward limit
+                    Some(limit),
+                    None, // Forward limit
                 )
             }
             HistoryRequest::After { start_ts, limit } => self.get_history_for_target(
@@ -244,17 +246,19 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
                 target,
                 Some(start_ts),
                 None,
-                0, // Backward limit
-                limit,
+                None, // Backward limit
+                Some(limit),
             ),
             HistoryRequest::Around { around_ts, limit } => {
+                let backward_limit = usize::from(limit) / 2;
+                let forward_limit = usize::from(limit) - backward_limit;
                 self.get_history_for_target(
                     user,
                     target,
                     Some(around_ts),
                     None,
-                    limit / 2, // Backward limit
-                    limit / 2, // Forward limit
+                    NonZeroUsize::try_from(backward_limit).ok(),
+                    NonZeroUsize::try_from(forward_limit).ok(),
                 )
             }
             HistoryRequest::Between {
@@ -268,8 +272,8 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
                         target,
                         Some(start_ts),
                         Some(end_ts),
-                        0, // Backward limit
-                        limit,
+                        None, // Backward limit
+                        Some(limit),
                     )
                 } else {
                     // Search backward from start_ts instead of swapping start_ts and end_ts,
@@ -279,8 +283,8 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
                         target,
                         Some(start_ts),
                         Some(end_ts),
-                        limit,
-                        0, // Forward limit
+                        Some(limit),
+                        None, // Forward limit
                     )
                 }
             }
