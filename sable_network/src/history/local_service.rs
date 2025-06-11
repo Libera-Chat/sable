@@ -185,13 +185,13 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
     ) -> HashMap<TargetId, i64> {
         let mut found_targets = HashMap::new();
 
-        for entry in self.node.history().entries_for_user_reverse(user) {
-            if matches!(after_ts, Some(ts) if entry.timestamp >= ts) {
+        for entry in self.node.history().entries_for_user(user) {
+            if matches!(before_ts, Some(ts) if entry.timestamp <= ts) {
                 // Skip over until we hit the timestamp window we're interested in
                 continue;
             }
-            if matches!(before_ts, Some(ts) if entry.timestamp <= ts) {
-                // We're iterating backwards through time; if we hit this then we've
+            if matches!(after_ts, Some(ts) if entry.timestamp >= ts) {
+                // We're iterating forwards through time; if we hit this then we've
                 // passed the requested window and should stop
                 break;
             }
