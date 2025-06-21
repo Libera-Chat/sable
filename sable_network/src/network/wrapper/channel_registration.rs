@@ -15,7 +15,7 @@ impl ChannelRegistration<'_> {
         &self.data.channelname
     }
 
-    pub fn access_entries(&self) -> impl Iterator<Item = ChannelAccess> {
+    pub fn access_entries(&self) -> impl Iterator<Item = ChannelAccess<'_>> {
         let my_id = self.data.id;
         self.network
             .channel_accesses()
@@ -23,7 +23,7 @@ impl ChannelRegistration<'_> {
     }
 
     /// Access the list of roles defined for this channel
-    pub fn roles(&self) -> impl Iterator<Item = ChannelRole> {
+    pub fn roles(&self) -> impl Iterator<Item = ChannelRole<'_>> {
         let my_id = self.data.id;
         self.network
             .channel_roles()
@@ -31,7 +31,7 @@ impl ChannelRegistration<'_> {
     }
 
     /// Look up a role by name
-    pub fn role_named(&self, name: &state::ChannelRoleName) -> Option<ChannelRole> {
+    pub fn role_named(&self, name: &state::ChannelRoleName) -> Option<ChannelRole<'_>> {
         self.roles().find(|r| r.name() == name)
     }
 }

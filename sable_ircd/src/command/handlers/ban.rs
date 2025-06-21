@@ -79,7 +79,7 @@ fn handle_ban(
                 "BAN",
                 "INVALID_BAN_PATTERN",
                 "",
-                &format!("{:?}", e),
+                &format!("{e:?}"),
             ));
             return Ok(());
         }

@@ -45,7 +45,7 @@ fn format_source(node: &NetworkNode, id: Option<UserId>, ip: Option<IpAddr>) -> 
         "<unregistered user>".to_string()
     };
     if let Some(ip) = ip {
-        write!(ret, "{{{}}}", ip).expect("failed to write to string?");
+        write!(ret, "{{{ip}}}").expect("failed to write to string?");
     }
     ret
 }

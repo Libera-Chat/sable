@@ -34,7 +34,7 @@ async fn cert_list(source: LoggedInUserSource<'_>, cmd: &dyn Command) -> Command
         ));
 
         for fp in fingerprints.iter() {
-            cmd.notice(format_args!(" - {}", fp));
+            cmd.notice(format_args!(" - {fp}"));
         }
     }
     Ok(())
@@ -79,8 +79,7 @@ async fn cert_add(
     match services.send_remote_request(req).await {
         Ok(RemoteServerResponse::Success) => {
             cmd.notice(format_args!(
-                "Fingerprint {} has been added to your account",
-                fingerprint
+                "Fingerprint {fingerprint} has been added to your account"
             ));
         }
         Ok(response) => {
@@ -113,8 +112,7 @@ async fn cert_del(
     match services.send_remote_request(req).await {
         Ok(RemoteServerResponse::Success) => {
             cmd.notice(format_args!(
-                "Fingerprint {} has been removed from your account",
-                fingerprint
+                "Fingerprint {fingerprint} has been removed from your account"
             ));
         }
         Ok(response) => {

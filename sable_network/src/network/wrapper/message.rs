@@ -13,7 +13,7 @@ pub enum MessageSource<'a> {
 }
 
 impl MessageSource<'_> {
-    pub fn user(&self) -> Option<&User> {
+    pub fn user(&self) -> Option<&User<'_>> {
         match self {
             Self::User(u) => Some(u),
             _ => None,
@@ -42,14 +42,14 @@ pub enum MessageTarget<'a> {
 }
 
 impl MessageTarget<'_> {
-    pub fn user(&self) -> Option<&User> {
+    pub fn user(&self) -> Option<&User<'_>> {
         match self {
             Self::User(u) => Some(u),
             _ => None,
         }
     }
 
-    pub fn channel(&self) -> Option<&Channel> {
+    pub fn channel(&self) -> Option<&Channel<'_>> {
         match self {
             Self::Channel(c) => Some(c),
             _ => None,
@@ -80,7 +80,7 @@ pub trait WrappedMessage {
     fn source(&self) -> LookupResult<impl WrappedUser>;
 
     /// The target to which the message was sent
-    fn target(&self) -> LookupResult<MessageTarget>;
+    fn target(&self) -> LookupResult<MessageTarget<'_>>;
 
     /// Whether this is a privmsg or a notice
     fn message_type(&self) -> state::MessageType;
@@ -98,11 +98,11 @@ impl WrappedMessage for Message<'_> {
     }
 
     #[allow(refining_impl_trait)]
-    fn source(&self) -> LookupResult<User> {
+    fn source(&self) -> LookupResult<User<'_>> {
         self.network.user(self.data.source)
     }
 
-    fn target(&self) -> LookupResult<MessageTarget> {
+    fn target(&self) -> LookupResult<MessageTarget<'_>> {
         match self.data.target {
             ObjectId::User(id) => Ok(MessageTarget::User(self.network.user(id)?)),
             ObjectId::Channel(id) => Ok(MessageTarget::Channel(self.network.channel(id)?)),
