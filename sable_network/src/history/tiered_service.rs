@@ -1,4 +1,5 @@
 use std::collections::hash_map::{Entry, HashMap};
+use std::num::NonZeroUsize;
 
 use futures::TryFutureExt;
 use tracing::instrument;
@@ -38,7 +39,7 @@ impl<FastService: HistoryService + Send + Sync, SlowService: HistoryService + Se
         user: UserId,
         after_ts: Option<i64>,
         before_ts: Option<i64>,
-        limit: Option<usize>,
+        limit: Option<NonZeroUsize>,
     ) -> HashMap<TargetId, i64> {
         match (&self.fast_service, &self.slow_service) {
             (Some(fast_service), Some(slow_service)) => {
@@ -108,7 +109,7 @@ impl<FastService: HistoryService + Send + Sync, SlowService: HistoryService + Se
                                 tracing::error!("Could not get history from fast service: {e}");
                                 vec![]
                             });
-                        if entries.len() < limit {
+                        if entries.len() < limit.into() {
                             // TODO: send a BEFORE request, and merge lists together
                             entries = get_entries!(slow_service, user, target, request)?;
                         }
@@ -123,7 +124,7 @@ impl<FastService: HistoryService + Send + Sync, SlowService: HistoryService + Se
                                 target,
                                 HistoryRequest::Before {
                                     from_ts: start_ts,
-                                    limit: 1,
+                                    limit: NonZeroUsize::try_from(1).unwrap(),
                                 },
                             )
                             .await
