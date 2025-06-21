@@ -63,7 +63,7 @@ async fn role_edit(
     mut args: ArgList<'_>,
 ) -> CommandResult {
     let Some(target_role) = chan.role_named(&target_role_name) else {
-        cmd.notice(format_args!("No such role {}", target_role_name));
+        cmd.notice(format_args!("No such role {target_role_name}"));
         return Ok(());
     };
 
@@ -82,7 +82,7 @@ async fn role_edit(
         };
 
         let Ok(flag) = ChannelAccessFlag::from_str(flag_name) else {
-            cmd.notice(format_args!("Invalid access flag {}", flag_name));
+            cmd.notice(format_args!("Invalid access flag {flag_name}"));
             return Ok(());
         };
 
@@ -139,7 +139,7 @@ async fn role_add(
 
     while let Ok(flag_str) = args.next::<&str>() {
         let Ok(flag) = ChannelAccessFlag::from_str(flag_str) else {
-            cmd.notice(format_args!("Invalid access flag {}", flag_str));
+            cmd.notice(format_args!("Invalid access flag {flag_str}"));
             return Ok(());
         };
 
@@ -189,7 +189,7 @@ async fn role_delete(
     target_role_name: state::ChannelRoleName,
 ) -> CommandResult {
     let Some(target_role) = chan.role_named(&target_role_name) else {
-        cmd.notice(format_args!("No such role {}", target_role_name));
+        cmd.notice(format_args!("No such role {target_role_name}"));
         return Ok(());
     };
 

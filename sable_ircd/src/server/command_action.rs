@@ -14,10 +14,7 @@ impl ClientServer {
                     conn.send(message::Notice::new(
                         self,
                         &UnknownTarget,
-                        &format!(
-                            "You must authenticate via SASL to use this server ({})",
-                            reason
-                        ),
+                        &format!("You must authenticate via SASL to use this server ({reason})"),
                     ));
                 } else {
                     conn.send(message::Notice::new(

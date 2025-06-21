@@ -19,18 +19,18 @@ impl<'a> Channel<'a> {
     }
 
     /// The [ChannelMode] for this channel
-    pub fn mode(&self) -> ChannelMode {
+    pub fn mode(&self) -> ChannelMode<'_> {
         ChannelMode::wrap(self.network, &self.data.mode)
     }
 
     /// Get the list mode object belonging to this channel of the given type
-    pub fn list(&self, list_type: ListModeType) -> ListMode {
+    pub fn list(&self, list_type: ListModeType) -> ListMode<'_> {
         let list_id = ListModeId::new(self.data.id, list_type);
         self.network.list_mode(list_id)
     }
 
     /// Iterate over the channel's members
-    pub fn members(&self) -> impl Iterator<Item = Membership> {
+    pub fn members(&self) -> impl Iterator<Item = Membership<'_>> {
         let my_id = self.data.id;
         self.network
             .raw_memberships()
@@ -39,12 +39,12 @@ impl<'a> Channel<'a> {
     }
 
     /// Test whether the given user is a member of this channel
-    pub fn has_member(&self, u: UserId) -> Option<Membership> {
+    pub fn has_member(&self, u: UserId) -> Option<Membership<'_>> {
         self.members().find(|m| m.user_id() == u)
     }
 
     /// Retrieve the channel's topic, if any
-    pub fn topic(&self) -> Option<ChannelTopic> {
+    pub fn topic(&self) -> Option<ChannelTopic<'_>> {
         self.network.topic_for_channel(self.data.id).ok()
     }
 
@@ -56,7 +56,7 @@ impl<'a> Channel<'a> {
     }
 
     /// Search for a role with the given name applicable to this channel
-    pub fn has_role_named(&self, name: &state::ChannelRoleName) -> Option<ChannelRole> {
+    pub fn has_role_named(&self, name: &state::ChannelRoleName) -> Option<ChannelRole<'_>> {
         match self.is_registered() {
             Some(registration) => {
                 // We'd like to just do `registration.role_named(name)` here, but can't

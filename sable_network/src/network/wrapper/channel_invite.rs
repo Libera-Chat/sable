@@ -14,17 +14,17 @@ impl ChannelInvite<'_> {
     }
 
     /// Return the [User] who was invited
-    pub fn user(&self) -> LookupResult<User> {
+    pub fn user(&self) -> LookupResult<User<'_>> {
         self.network.user(self.data.id.user())
     }
 
     /// Return the [Channel] to which this invite applies
-    pub fn channel(&self) -> LookupResult<Channel> {
+    pub fn channel(&self) -> LookupResult<Channel<'_>> {
         self.network.channel(self.data.id.channel())
     }
 
     /// Return the user ID who sent the invite
-    pub fn source(&self) -> LookupResult<User> {
+    pub fn source(&self) -> LookupResult<User<'_>> {
         self.network.user(self.data.source)
     }
 

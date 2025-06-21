@@ -15,7 +15,7 @@ impl Account<'_> {
         self.data.name
     }
 
-    pub fn users(&self) -> impl Iterator<Item = wrapper::User> {
+    pub fn users(&self) -> impl Iterator<Item = wrapper::User<'_>> {
         let my_id = self.data.id;
         self.network
             .raw_users()
@@ -23,14 +23,17 @@ impl Account<'_> {
             .wrap(self.network)
     }
 
-    pub fn channel_accesses(&self) -> impl Iterator<Item = wrapper::ChannelAccess> {
+    pub fn channel_accesses(&self) -> impl Iterator<Item = wrapper::ChannelAccess<'_>> {
         let my_id = self.data.id;
         self.network
             .channel_accesses()
             .filter(move |a| a.id().account() == my_id)
     }
 
-    pub fn has_access_in(&self, channel: ChannelRegistrationId) -> Option<wrapper::ChannelAccess> {
+    pub fn has_access_in(
+        &self,
+        channel: ChannelRegistrationId,
+    ) -> Option<wrapper::ChannelAccess<'_>> {
         let access_id = ChannelAccessId::new(self.data.id, channel);
         self.network.channel_access(access_id).ok()
     }

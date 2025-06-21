@@ -181,7 +181,7 @@ impl Command for ClientCommand {
         &self.command
     }
 
-    fn args(&self) -> ArgListIter {
+    fn args(&self) -> ArgListIter<'_> {
         ArgListIter::new(&self.args)
     }
 
@@ -257,11 +257,11 @@ impl ClientCommand {
                 None
             }
             CommandError::ChannelNotRegistered(c) => {
-                self.notice(format_args!("Channel {} is not registered", c));
+                self.notice(format_args!("Channel {c} is not registered"));
                 None
             }
             CommandError::InvalidArgument(arg, ty) => {
-                self.notice(format_args!("{} is not a valid {}", arg, ty));
+                self.notice(format_args!("{arg} is not a valid {ty}"));
                 None
             }
             CommandError::Permission(pe) => {

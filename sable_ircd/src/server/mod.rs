@@ -213,10 +213,7 @@ impl ClientServer {
             .map(|m| m.mode_char())
             .iter()
             .collect();
-        let chanmodes = format!(
-            "{},{},{},{}",
-            list_modes, key_modes, param_modes, simple_modes
-        );
+        let chanmodes = format!("{list_modes},{key_modes},{param_modes},{simple_modes}");
 
         ret.add(ISupportEntry::string("CHANMODES", &chanmodes));
 
@@ -233,7 +230,7 @@ impl ClientServer {
             .iter()
             .collect();
 
-        let prefix = format!("({}){}", prefix_modes, prefix_chars);
+        let prefix = format!("({prefix_modes}){prefix_chars}");
         ret.add(ISupportEntry::string("PREFIX", &prefix));
 
         ret
@@ -501,7 +498,7 @@ impl ClientServer {
                                 if let Some(pc) = conn.pre_client() {
                                     if let Some(hostname) = msg.hostname {
                                         conn.send(message::Notice::new(&self, &UnknownTarget,
-                                                        &format!("*** Found your hostname: {}", hostname)));
+                                                        &format!("*** Found your hostname: {hostname}")));
 
                                         pc.hostname.set(hostname).ok();
                                     } else {

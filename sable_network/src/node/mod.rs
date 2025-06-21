@@ -64,7 +64,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     ///   as the epoch ID provided to the event log
     /// - `name`: The server's name
     /// - `net`: the initial network state, either received from the network via initial
-    ///    sync (in normal operation) or empty (if bootstrapping)
+    ///   sync (in normal operation) or empty (if bootstrapping)
     /// - `event_log`: A `ReplicatedEventLog` that syncs to the network
     /// - `rpc_receiver`: channel to receive messages from the network synchronisation.
     ///   Should be shared with the `ReplicatedEventLog`.
@@ -144,7 +144,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     }
 
     /// Access the network history
-    pub fn history(&self) -> RwLockReadGuard<NetworkHistoryLog> {
+    pub fn history(&self) -> RwLockReadGuard<'_, NetworkHistoryLog> {
         self.history_log.read()
     }
 
@@ -160,7 +160,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     }
 
     /// Access the event log.
-    pub fn event_log(&self) -> std::sync::RwLockReadGuard<EventLog> {
+    pub fn event_log(&self) -> std::sync::RwLockReadGuard<'_, EventLog> {
         self.event_log.event_log()
     }
 
@@ -191,7 +191,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 
     fn build_version() -> String {
         let git_version = crate::build_data::GIT_COMMIT_HASH
-            .map(|s| format!("-{}", s))
+            .map(|s| format!("-{s}"))
             .unwrap_or_default();
         let git_dirty = if matches!(crate::build_data::GIT_DIRTY, Some(true)) {
             "-dirty".to_string()
@@ -249,7 +249,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 
         Arc::make_mut(&mut *self.net.write())
             .apply(&event, &update_queue)
-            .unwrap_or_else(|_| panic!("Event {:?} failed to apply", event));
+            .unwrap_or_else(|_| panic!("Event {event:?} failed to apply"));
 
         update_queue.playback(self);
     }

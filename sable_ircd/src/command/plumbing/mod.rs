@@ -14,7 +14,7 @@ pub trait Command: Send + Sync {
     fn command(&self) -> &str;
 
     /// The arguments supplied to the command
-    fn args(&self) -> ArgListIter;
+    fn args(&self) -> ArgListIter<'_>;
 
     /// Access the [`ClientServer`]
     fn server(&self) -> &Arc<ClientServer>;

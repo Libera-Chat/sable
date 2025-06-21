@@ -61,7 +61,7 @@ impl Command for ServicesCommand<'_> {
         self.command
     }
 
-    fn args(&self) -> ArgListIter {
+    fn args(&self) -> ArgListIter<'_> {
         self.args.clone()
     }
 
@@ -86,27 +86,27 @@ impl Command for ServicesCommand<'_> {
             }
             CommandError::LookupError(le) => match le {
                 LookupError::NoSuchNick(nick) => {
-                    self.notice(format_args!("There is no such nick {}", nick))
+                    self.notice(format_args!("There is no such nick {nick}"))
                 }
                 LookupError::NoSuchChannelName(name) => {
-                    self.notice(format_args!("Channel {} does not exist", name))
+                    self.notice(format_args!("Channel {name} does not exist"))
                 }
                 LookupError::NoSuchAccountNamed(name) => {
-                    self.notice(format_args!("{} is not registered", name))
+                    self.notice(format_args!("{name} is not registered"))
                 }
                 LookupError::ChannelNotRegistered(name) => {
-                    self.notice(format_args!("{} is not registered", name))
+                    self.notice(format_args!("{name} is not registered"))
                 }
-                err => self.notice(format_args!("Unknown error: {}", err)),
+                err => self.notice(format_args!("Unknown error: {err}")),
             },
             CommandError::InvalidNickname(name) => {
-                self.notice(format_args!("Invalid nickname {}", name));
+                self.notice(format_args!("Invalid nickname {name}"));
             }
             CommandError::InvalidUsername(name) => {
-                self.notice(format_args!("Invalid username {}", name));
+                self.notice(format_args!("Invalid username {name}"));
             }
             CommandError::InvalidChannelName(name) => {
-                self.notice(format_args!("Invalid channel name {}", name));
+                self.notice(format_args!("Invalid channel name {name}"));
             }
             CommandError::ServicesNotAvailable => {
                 self.notice("Services are currently unavailable");
@@ -115,10 +115,10 @@ impl Command for ServicesCommand<'_> {
                 self.notice("You are not logged in");
             }
             CommandError::ChannelNotRegistered(c) => {
-                self.notice(format_args!("Channel {} is not registered", c));
+                self.notice(format_args!("Channel {c} is not registered"));
             }
             CommandError::InvalidArgument(arg, ty) => {
-                self.notice(format_args!("{} is not a valid {}", arg, ty));
+                self.notice(format_args!("{arg} is not a valid {ty}"));
             }
             CommandError::Permission(pe) => {
                 match pe {
@@ -135,7 +135,7 @@ impl Command for ServicesCommand<'_> {
                     {
                         use ChannelPermissionError::*;
                         match ce {
-                            NotRegistered => { self.notice(format_args!("{} is not registered", chan)) },
+                            NotRegistered => { self.notice(format_args!("{chan} is not registered")) },
                             NoAccess => { self.notice("Access denied") }
                             _ => {}
                         }
@@ -173,8 +173,7 @@ impl Command for ServicesCommand<'_> {
                     description
                 );
                 self.notice(format_args!(
-                    "Unknown error: {} {} {} :{}",
-                    command, code, context, description
+                    "Unknown error: {command} {code} {context} :{description}"
                 ));
             }
         }

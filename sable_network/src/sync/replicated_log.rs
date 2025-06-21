@@ -380,7 +380,7 @@ impl ReplicatedEventLog {
         tokio::spawn(async move { task_state.lock().await.sync_task(shutdown).await })
     }
 
-    pub fn event_log(&self) -> std::sync::RwLockReadGuard<EventLog> {
+    pub fn event_log(&self) -> std::sync::RwLockReadGuard<'_, EventLog> {
         self.shared_state.log.read().unwrap()
     }
 

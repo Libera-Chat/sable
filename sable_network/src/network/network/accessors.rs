@@ -15,13 +15,13 @@ impl Network {
     }
 
     /// Look up a user by ID.
-    pub fn user(&self, id: UserId) -> LookupResult<wrapper::User> {
+    pub fn user(&self, id: UserId) -> LookupResult<wrapper::User<'_>> {
         let r: LookupResult<&state::User> = self.users.get(&id).ok_or(NoSuchUser(id));
         r.wrap(self)
     }
 
     /// Return an iterator over all users.
-    pub fn users(&self) -> impl std::iter::Iterator<Item = wrapper::User> + '_ {
+    pub fn users(&self) -> impl std::iter::Iterator<Item = wrapper::User<'_>> + '_ {
         self.raw_users().wrap(self)
     }
 
@@ -31,7 +31,10 @@ impl Network {
     }
 
     /// Look up a user connection by ID
-    pub fn user_connection(&self, id: UserConnectionId) -> LookupResult<wrapper::UserConnection> {
+    pub fn user_connection(
+        &self,
+        id: UserConnectionId,
+    ) -> LookupResult<wrapper::UserConnection<'_>> {
         self.user_connections
             .get(&id)
             .ok_or(NoSuchConnection(id))
@@ -41,7 +44,7 @@ impl Network {
     /// Return an iterator over all user connections.
     pub fn user_connections(
         &self,
-    ) -> impl std::iter::Iterator<Item = wrapper::UserConnection> + '_ {
+    ) -> impl std::iter::Iterator<Item = wrapper::UserConnection<'_>> + '_ {
         self.raw_user_connections().wrap(self)
     }
 
@@ -51,7 +54,7 @@ impl Network {
     }
 
     /// Return a nickname binding for the given nick.
-    pub fn nick_binding(&self, nick: &Nickname) -> LookupResult<wrapper::NickBinding> {
+    pub fn nick_binding(&self, nick: &Nickname) -> LookupResult<wrapper::NickBinding<'_>> {
         self.nick_bindings
             .get(nick)
             .ok_or_else(|| NoSuchNick(nick.to_string()))
@@ -64,12 +67,12 @@ impl Network {
     }
 
     /// Iterate over nickname bindings
-    pub fn nick_bindings(&self) -> impl std::iter::Iterator<Item = wrapper::NickBinding> {
+    pub fn nick_bindings(&self) -> impl std::iter::Iterator<Item = wrapper::NickBinding<'_>> {
         self.nick_bindings.values().wrap(self)
     }
 
     /// Return the current nick binding information for a given user ID
-    pub fn nick_binding_for_user(&self, user: UserId) -> LookupResult<wrapper::NickBinding> {
+    pub fn nick_binding_for_user(&self, user: UserId) -> LookupResult<wrapper::NickBinding<'_>> {
         self.raw_nick_bindings()
             .find(|b| b.user == user)
             .ok_or(NoNickForUser(user))
@@ -89,7 +92,7 @@ impl Network {
     }
 
     /// Look up the user currently using the given nickname
-    pub fn user_by_nick(&self, nick: &Nickname) -> LookupResult<wrapper::User> {
+    pub fn user_by_nick(&self, nick: &Nickname) -> LookupResult<wrapper::User<'_>> {
         self.get_alias_users()
             .get(nick)
             .ok_or_else(|| NoSuchNick(nick.to_string()))
@@ -138,7 +141,7 @@ impl Network {
     pub fn message_source(
         &self,
         id: &state::HistoricMessageSourceId,
-    ) -> LookupResult<wrapper::HistoricMessageSource> {
+    ) -> LookupResult<wrapper::HistoricMessageSource<'_>> {
         match id {
             state::HistoricMessageSourceId::User(id) => Ok(wrapper::HistoricMessageSource::User(
                 self.historic_user(*id)?,
@@ -154,7 +157,7 @@ impl Network {
     pub fn message_target(
         &self,
         id: &state::HistoricMessageTargetId,
-    ) -> LookupResult<wrapper::HistoricMessageTarget> {
+    ) -> LookupResult<wrapper::HistoricMessageTarget<'_>> {
         match id {
             state::HistoricMessageTargetId::User(id) => Ok(wrapper::HistoricMessageTarget::User(
                 self.historic_user(*id)?,
@@ -167,12 +170,12 @@ impl Network {
     }
 
     /// Look up a channel by ID
-    pub fn channel(&self, id: ChannelId) -> LookupResult<wrapper::Channel> {
+    pub fn channel(&self, id: ChannelId) -> LookupResult<wrapper::Channel<'_>> {
         self.channels.get(&id).ok_or(NoSuchChannel(id)).wrap(self)
     }
 
     /// Iterate over channels
-    pub fn channels(&self) -> impl std::iter::Iterator<Item = wrapper::Channel> + '_ {
+    pub fn channels(&self) -> impl std::iter::Iterator<Item = wrapper::Channel<'_>> + '_ {
         self.raw_channels().wrap(self)
     }
 
@@ -190,7 +193,7 @@ impl Network {
     }
 
     /// Look up a channel by name.
-    pub fn channel_by_name(&self, name: &ChannelName) -> LookupResult<wrapper::Channel> {
+    pub fn channel_by_name(&self, name: &ChannelName) -> LookupResult<wrapper::Channel<'_>> {
         self.channels
             .values()
             .find(|x| &x.name == name)
@@ -199,12 +202,12 @@ impl Network {
     }
 
     /// Look up a ban-type list by ID
-    pub fn list_mode(&self, id: ListModeId) -> wrapper::ListMode {
+    pub fn list_mode(&self, id: ListModeId) -> wrapper::ListMode<'_> {
         wrapper::ListMode::new(self, id)
     }
 
     /// Find the channel mode entry corresponding to a given banlist
-    pub fn channel_for_list(&self, id: ListModeId) -> LookupResult<wrapper::Channel> {
+    pub fn channel_for_list(&self, id: ListModeId) -> LookupResult<wrapper::Channel<'_>> {
         self.channels
             .get(&id.channel())
             .ok_or(NoChannelForList(id))
@@ -215,7 +218,7 @@ impl Network {
     pub fn entries_for_list(
         &self,
         id: ListModeId,
-    ) -> impl std::iter::Iterator<Item = wrapper::ListModeEntry> {
+    ) -> impl std::iter::Iterator<Item = wrapper::ListModeEntry<'_>> {
         self.list_mode_entries
             .values()
             .filter(move |x| x.list == id)
@@ -223,7 +226,7 @@ impl Network {
     }
 
     /// Look up a channel topic by ID.
-    pub fn channel_topic(&self, id: ChannelTopicId) -> LookupResult<wrapper::ChannelTopic> {
+    pub fn channel_topic(&self, id: ChannelTopicId) -> LookupResult<wrapper::ChannelTopic<'_>> {
         self.channel_topics
             .get(&id)
             .ok_or(NoSuchChannelTopic(id))
@@ -231,7 +234,7 @@ impl Network {
     }
 
     /// Find the topic associated with a given channel, if any.
-    pub fn topic_for_channel(&self, id: ChannelId) -> LookupResult<wrapper::ChannelTopic> {
+    pub fn topic_for_channel(&self, id: ChannelId) -> LookupResult<wrapper::ChannelTopic<'_>> {
         self.channel_topics
             .values()
             .find(|t| t.channel == id)
@@ -240,7 +243,7 @@ impl Network {
     }
 
     /// Look up a membership by ID.
-    pub fn membership(&self, id: MembershipId) -> LookupResult<wrapper::Membership> {
+    pub fn membership(&self, id: MembershipId) -> LookupResult<wrapper::Membership<'_>> {
         self.memberships
             .get(&id)
             .ok_or(NoSuchMembership(id))
@@ -248,7 +251,7 @@ impl Network {
     }
 
     /// Iterate over all memberships.
-    pub fn memberships(&self) -> impl std::iter::Iterator<Item = wrapper::Membership> + '_ {
+    pub fn memberships(&self) -> impl std::iter::Iterator<Item = wrapper::Membership<'_>> + '_ {
         self.raw_memberships().wrap(self)
     }
 
@@ -258,7 +261,7 @@ impl Network {
     }
 
     /// Look up an invite by ID
-    pub fn channel_invite(&self, id: InviteId) -> LookupResult<wrapper::ChannelInvite> {
+    pub fn channel_invite(&self, id: InviteId) -> LookupResult<wrapper::ChannelInvite<'_>> {
         self.channel_invites
             .get(&id)
             .ok_or(NoSuchInvite(id))
@@ -266,17 +269,17 @@ impl Network {
     }
 
     /// Look up a server by ID
-    pub fn server(&self, id: ServerId) -> LookupResult<wrapper::Server> {
+    pub fn server(&self, id: ServerId) -> LookupResult<wrapper::Server<'_>> {
         self.servers.get(&id).ok_or(NoSuchServer(id)).wrap(self)
     }
 
     /// Iterate over servers
-    pub fn servers(&self) -> impl std::iter::Iterator<Item = wrapper::Server> {
+    pub fn servers(&self) -> impl std::iter::Iterator<Item = wrapper::Server<'_>> {
         self.servers.values().wrap(self)
     }
 
     /// Look up a message by ID
-    pub fn message(&self, id: MessageId) -> LookupResult<wrapper::Message> {
+    pub fn message(&self, id: MessageId) -> LookupResult<wrapper::Message<'_>> {
         self.messages.get(&id).ok_or(NoSuchMessage(id)).wrap(self)
     }
 
@@ -300,7 +303,7 @@ impl Network {
     }
 
     /// Retrieve the current services data
-    pub fn current_services(&self) -> Option<wrapper::ServicesData> {
+    pub fn current_services(&self) -> Option<wrapper::ServicesData<'_>> {
         self.current_services.as_ref().wrap(self)
     }
 
@@ -315,12 +318,12 @@ impl Network {
     }
 
     /// Retrieve an account
-    pub fn account(&self, id: AccountId) -> LookupResult<wrapper::Account> {
+    pub fn account(&self, id: AccountId) -> LookupResult<wrapper::Account<'_>> {
         self.accounts.get(&id).ok_or(NoSuchAccount(id)).wrap(self)
     }
 
     /// Retrieve an account by name
-    pub fn account_by_name(&self, name: &Nickname) -> LookupResult<wrapper::Account> {
+    pub fn account_by_name(&self, name: &Nickname) -> LookupResult<wrapper::Account<'_>> {
         self.accounts
             .values()
             .find(|a| &a.name == name)
@@ -329,7 +332,7 @@ impl Network {
     }
 
     /// Retrieve an account with the given authorised fingerprint
-    pub fn account_with_fingerprint(&self, fp: &str) -> Option<wrapper::Account> {
+    pub fn account_with_fingerprint(&self, fp: &str) -> Option<wrapper::Account<'_>> {
         self.accounts
             .values()
             .find(|a| a.authorised_fingerprints.iter().any(|f| f == fp))
@@ -337,7 +340,7 @@ impl Network {
     }
 
     /// Iterate over accounts
-    pub fn accounts(&self) -> impl Iterator<Item = wrapper::Account> {
+    pub fn accounts(&self) -> impl Iterator<Item = wrapper::Account<'_>> {
         self.accounts.values().wrap(self)
     }
 
@@ -345,7 +348,7 @@ impl Network {
     pub fn nick_registration(
         &self,
         id: NickRegistrationId,
-    ) -> LookupResult<wrapper::NickRegistration> {
+    ) -> LookupResult<wrapper::NickRegistration<'_>> {
         self.nick_registrations
             .get(&id)
             .ok_or(NoSuchNickRegistration(id))
@@ -353,7 +356,7 @@ impl Network {
     }
 
     /// Iterate over nick registrations
-    pub fn nick_registrations(&self) -> impl Iterator<Item = wrapper::NickRegistration> {
+    pub fn nick_registrations(&self) -> impl Iterator<Item = wrapper::NickRegistration<'_>> {
         self.nick_registrations.values().wrap(self)
     }
 
@@ -361,7 +364,7 @@ impl Network {
     pub fn channel_registration(
         &self,
         id: ChannelRegistrationId,
-    ) -> LookupResult<wrapper::ChannelRegistration> {
+    ) -> LookupResult<wrapper::ChannelRegistration<'_>> {
         self.channel_registrations
             .get(&id)
             .ok_or(NoSuchChannelRegistration(id))
@@ -372,7 +375,7 @@ impl Network {
     pub fn channel_registration_by_name(
         &self,
         name: ChannelName,
-    ) -> LookupResult<wrapper::ChannelRegistration> {
+    ) -> LookupResult<wrapper::ChannelRegistration<'_>> {
         self.channel_registrations
             .values()
             .find(|c| c.channelname == name)
@@ -381,12 +384,12 @@ impl Network {
     }
 
     /// Iterate over channel registrations
-    pub fn channel_registrations(&self) -> impl Iterator<Item = wrapper::ChannelRegistration> {
+    pub fn channel_registrations(&self) -> impl Iterator<Item = wrapper::ChannelRegistration<'_>> {
         self.channel_registrations.values().wrap(self)
     }
 
     /// Retrieve a channel access entry
-    pub fn channel_access(&self, id: ChannelAccessId) -> LookupResult<wrapper::ChannelAccess> {
+    pub fn channel_access(&self, id: ChannelAccessId) -> LookupResult<wrapper::ChannelAccess<'_>> {
         self.channel_accesses
             .get(&id)
             .ok_or(NoSuchChannelAccess(id))
@@ -394,12 +397,12 @@ impl Network {
     }
 
     /// Iterate over channel access entries
-    pub fn channel_accesses(&self) -> impl Iterator<Item = wrapper::ChannelAccess> {
+    pub fn channel_accesses(&self) -> impl Iterator<Item = wrapper::ChannelAccess<'_>> {
         self.channel_accesses.values().wrap(self)
     }
 
     /// Retrieve a channel role
-    pub fn channel_role(&self, id: ChannelRoleId) -> LookupResult<wrapper::ChannelRole> {
+    pub fn channel_role(&self, id: ChannelRoleId) -> LookupResult<wrapper::ChannelRole<'_>> {
         self.channel_roles
             .get(&id)
             .ok_or(NoSuchChannelRole(id))
@@ -407,7 +410,7 @@ impl Network {
     }
 
     /// Iterate over all channel roles
-    pub fn channel_roles(&self) -> impl Iterator<Item = wrapper::ChannelRole> {
+    pub fn channel_roles(&self) -> impl Iterator<Item = wrapper::ChannelRole<'_>> {
         self.channel_roles.values().wrap(self)
     }
 }

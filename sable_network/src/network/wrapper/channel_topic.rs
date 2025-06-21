@@ -14,7 +14,7 @@ impl ChannelTopic<'_> {
     }
 
     /// Return the `Channel` to which this mode object is attached
-    pub fn channel(&self) -> LookupResult<Channel> {
+    pub fn channel(&self) -> LookupResult<Channel<'_>> {
         self.network.channel(self.data.channel)
     }
 

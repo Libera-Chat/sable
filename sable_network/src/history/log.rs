@@ -125,7 +125,7 @@ impl NetworkHistoryLog {
         }
     }
 
-    pub fn entries_for_user(&self, user: UserId) -> UserHistoryLogIterator {
+    pub fn entries_for_user(&self, user: UserId) -> UserHistoryLogIterator<'_> {
         let user_log = RwLockReadGuard::try_map(self.user_logs.read(), |logs| logs.get(&user)).ok();
 
         UserHistoryLogIterator {
@@ -135,7 +135,7 @@ impl NetworkHistoryLog {
         }
     }
 
-    pub fn entries_for_user_reverse(&self, user: UserId) -> ReverseUserHistoryLogIterator {
+    pub fn entries_for_user_reverse(&self, user: UserId) -> ReverseUserHistoryLogIterator<'_> {
         let user_log = RwLockReadGuard::try_map(self.user_logs.read(), |logs| logs.get(&user)).ok();
 
         ReverseUserHistoryLogIterator {

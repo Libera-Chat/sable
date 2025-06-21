@@ -123,6 +123,6 @@ impl std::fmt::Debug for EventClock {
             .into_iter()
             .map(|(k, v)| format!("{} => {}", **k, v.as_u64()))
             .join(", ");
-        write!(f, "EventClock({})", entries)
+        write!(f, "EventClock({entries})")
     }
 }

@@ -10,7 +10,7 @@ impl ChannelRole<'_> {
         self.data.id
     }
 
-    pub fn channel(&self) -> Option<wrapper::ChannelRegistration> {
+    pub fn channel(&self) -> Option<wrapper::ChannelRegistration<'_>> {
         self.data
             .channel
             .and_then(|id| self.network.channel_registration(id).ok())

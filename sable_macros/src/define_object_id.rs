@@ -80,7 +80,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream {
 
     for item in input.items {
         let typename = item.typename;
-        let id_typename = Ident::new(&format!("{}Id", typename), Span::call_site());
+        let id_typename = Ident::new(&format!("{typename}Id"), Span::call_site());
         let contents = item.contents;
 
         let mut arg_types = Vec::new();
@@ -88,7 +88,7 @@ pub fn object_ids(input: TokenStream) -> TokenStream {
         let mut arg_list = Vec::new();
 
         for (argtype, n) in contents.elems.iter().zip(1..) {
-            let argname = Ident::new(&format!("arg{}", n), Span::call_site());
+            let argname = Ident::new(&format!("arg{n}"), Span::call_site());
             arg_types.push(argtype.clone());
             arg_names.push(argname.clone());
             arg_list.push(quote!(#argname: #argtype));

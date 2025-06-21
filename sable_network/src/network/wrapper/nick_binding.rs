@@ -12,7 +12,7 @@ impl NickBinding<'_> {
         self.data.nick
     }
 
-    pub fn user(&self) -> LookupResult<wrapper::User> {
+    pub fn user(&self) -> LookupResult<wrapper::User<'_>> {
         self.network.user(self.data.user)
     }
 

@@ -55,8 +55,8 @@ pub fn define_validated(input: TokenStream) -> TokenStream {
         let typename = def.utype;
         let body = def.body;
 
-        let error = Ident::new(&format!("Invalid{}Error", name), Span::call_site());
-        let error_str = format!("Invalid value for {}: {{0}}", name);
+        let error = Ident::new(&format!("Invalid{name}Error"), Span::call_site());
+        let error_str = format!("Invalid value for {name}: {{0}}");
 
         let extra_derives = if def.casefolded.is_none() {
             quote!( #[derive(PartialEq,Eq,Hash,PartialOrd,Ord)] )

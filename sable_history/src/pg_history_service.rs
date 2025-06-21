@@ -317,7 +317,7 @@ fn make_historical_event(
     HistoricalEvent::Message {
         id: MessageId::new(id.try_into().expect("Message id is a non-v7 UUID")),
         timestamp: timestamp.and_utc().timestamp(),
-        source: format!("{}!{}@{}", source_nick, source_ident, source_vhost),
+        source: format!("{source_nick}!{source_ident}@{source_vhost}"),
         source_account,
         message_type: message_type.into(),
         target: Some(channel.name.clone()), // assume it's the same
