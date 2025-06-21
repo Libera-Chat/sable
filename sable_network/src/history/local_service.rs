@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::num::NonZeroUsize;
 
+use itertools::Itertools;
 use tracing::instrument;
 
 use crate::network::state::HistoricMessageTargetId;
@@ -185,32 +186,47 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
         before_ts: Option<i64>,
         limit: Option<NonZeroUsize>,
     ) -> HashMap<TargetId, i64> {
+        // Targets that have an entry whose timestamp is after after_ts
+        let mut excluded_targets = HashSet::new();
+
         let mut found_targets = HashMap::new();
 
-        for entry in self.node.history().entries_for_user(user) {
-            if matches!(before_ts, Some(ts) if entry.timestamp <= ts) {
-                // Skip over until we hit the timestamp window we're interested in
+        for entry in self.node.history().entries_for_user_reverse(user) {
+            if matches!(after_ts, Some(ts) if entry.timestamp >= ts) {
+                // Skip over until we hit the timestamp window we're interested in;
+                // and exclude all targets we find in that window, because they have
+                // an entry that is more recent than requested
+                if let Some(target_id) = target_id_for_entry(user, entry) {
+                    excluded_targets.insert(target_id);
+                }
                 continue;
             }
-            if matches!(after_ts, Some(ts) if entry.timestamp >= ts) {
-                // We're iterating forwards through time; if we hit this then we've
+            if matches!(before_ts, Some(ts) if entry.timestamp <= ts) {
+                // We're iterating backwards through time; if we hit this then we've
                 // passed the requested window and should stop
                 break;
             }
 
             if let Some(target_id) = target_id_for_entry(user, entry) {
-                found_targets.insert(target_id, entry.timestamp);
-            }
-
-            // If this pushes us past the requested limit, stop
-            if matches!(limit, Some(limit) if usize::from(limit) <= found_targets.len()) {
-                break;
+                if !excluded_targets.contains(&target_id) {
+                    // if the target is already listed, keep the existing timestamp
+                    // (which is newer than the one of the current entry)
+                    found_targets.entry(target_id).or_insert(entry.timestamp);
+                }
             }
         }
 
         tracing::trace!("list_targets local response: {found_targets:?}");
 
-        found_targets
+        if let Some(limit) = limit {
+            // Sort by ascending timestamp, and keep the smallest ones (ie. oldest)
+            found_targets
+                .into_iter()
+                .k_smallest_relaxed_by_key(usize::from(limit), |(_target_id, ts)| *ts)
+                .collect()
+        } else {
+            found_targets
+        }
     }
 
     #[instrument(skip(self))]
