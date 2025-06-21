@@ -87,6 +87,24 @@ pub trait HistoryService {
     /// Returns a list of list of history logs the given user has access to
     ///
     /// And the timestamp of the last known message in that log.
+    ///
+    /// `after_ts` and `before_ts` are matched against that timestamp,
+    /// and they are ordered by that timestamp in ascending order before
+    /// applying the `limit`.
+    ///
+    /// In pseudo-SQL, this means:
+    ///
+    /// ```text
+    /// SELECT target_id, last_timestamp
+    /// FROM (
+    ///     SELECT target_id, MAX(timestamp)
+    ///     FROM entries
+    ///     GROUP BY target_id
+    /// )
+    /// WHERE :before_ts < last_timestamp AND last_timestamp < :after_ts
+    /// ORDER BY last_timestamp
+    /// LIMIT :limit
+    /// ```
     fn list_targets(
         &self,
         user: UserId,
