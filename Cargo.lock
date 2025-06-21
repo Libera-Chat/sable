@@ -1510,6 +1510,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2176,7 +2185,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5d2d8d10f3c6ded6da8b05b5fb3b8a5082514344d56c9f871412d29b4e075b4"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.10.5",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -2413,7 +2422,7 @@ dependencies = [
  "diesel-async",
  "diesel_migrations",
  "futures",
- "itertools",
+ "itertools 0.10.5",
  "parking_lot 0.12.3",
  "sable_network",
  "sable_server",
@@ -2451,7 +2460,7 @@ dependencies = [
  "concurrent-queue",
  "futures",
  "inventory",
- "itertools",
+ "itertools 0.10.5",
  "parking_lot 0.12.3",
  "pwhash",
  "rand",
@@ -2500,7 +2509,7 @@ dependencies = [
  "hashers",
  "hex",
  "ipnet",
- "itertools",
+ "itertools 0.14.0",
  "json5",
  "parking_lot 0.12.3",
  "pretty_assertions",
