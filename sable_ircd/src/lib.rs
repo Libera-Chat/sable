@@ -1,6 +1,5 @@
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(incomplete_features)]
-#![feature(trait_upcasting)]
 
 //! IRC client server logic.
 //!
