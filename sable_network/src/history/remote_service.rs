@@ -5,7 +5,7 @@ use tracing::instrument;
 use crate::prelude::*;
 use crate::rpc::*;
 
-/// Implementation of [`HistoryService`] that forwards requests to a [`HistoryServer`]
+/// Implementation of [`HistoryService`] that forwards requests to a `HistoryServer`
 /// through the RPC.
 pub struct RemoteHistoryService<'a, NetworkPolicy: policy::PolicyService> {
     node: &'a NetworkNode<NetworkPolicy>,
