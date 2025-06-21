@@ -52,4 +52,8 @@ impl UserPolicyService for StandardUserPolicy {
 
         Err(PermissionError::User(Invisible))
     }
+
+    fn auto_attach_session(&self, _user: &wrapper::User) -> bool {
+        true
+    }
 }

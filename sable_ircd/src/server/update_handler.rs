@@ -4,6 +4,7 @@ use sable_network::prelude::state::{HistoricMessageSourceId, HistoricMessageTarg
 use super::*;
 use crate::errors::HandleResult;
 use crate::monitor::MonitoredItem;
+use sable_network::network::update::UserAwayChange;
 
 impl ClientServer {
     pub(super) fn handle_history_update(&self, update: NetworkHistoryUpdate) -> HandleResult {
@@ -169,6 +170,40 @@ impl ClientServer {
 
             connection.send(message::Notice::new(&self.node.name().to_string(), &user,
                     "The network is currently running in debug mode. Do not send any sensitive information such as passwords."));
+
+            if let Some(&away_reason) = user.away_reason() {
+                let fake_log_entry = NetworkHistoryUpdate {
+                    timestamp: 0,                                                       // XXX
+                    event: EventId::new(Snowflake::from_parts(self.node().id(), 0, 0)), // XXX
+                    change: NetworkStateChange::UserAwayChange(UserAwayChange {
+                        user: user.historic_id(),
+                        old_reason: None,
+                        new_reason: Some(away_reason),
+                    }),
+                    users_to_notify: vec![],
+                };
+
+                // Set away status if user has away-notify capability
+                // FIXME: suffers from https://github.com/Libera-Chat/sable/issues/155
+                self.send_now(&fake_log_entry, &connection, &fake_log_entry)?;
+            }
+
+            for membership in user.channels() {
+                let fake_join = update::ChannelJoin {
+                    membership: membership.id(),
+                    user: user.historic_id(),
+                };
+
+                let fake_log_entry = NetworkHistoryUpdate {
+                    timestamp: 0,                                                       // XXX
+                    event: EventId::new(Snowflake::from_parts(self.node().id(), 0, 0)), // XXX
+                    change: NetworkStateChange::ChannelJoin(fake_join),
+                    users_to_notify: vec![],
+                };
+
+                // Send join + topic + names
+                self.send_now(&fake_log_entry, &connection, &fake_log_entry)?;
+            }
         }
         Ok(())
     }
