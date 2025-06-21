@@ -266,9 +266,6 @@ impl ClientCommand {
             }
             CommandError::Permission(pe) => {
                 match pe {
-                    // These have no corresponding numerics
-                    PermissionError::User(_) => None,
-                    PermissionError::Registration(_) => None,
                     // These ones we can translate
                     PermissionError::Channel(channel_name, channel_err) => {
                         use ChannelPermissionError::*;
@@ -288,6 +285,12 @@ impl ClientCommand {
                         }
                     }
                     PermissionError::InternalError(_) => None,
+                    PermissionError::User(UserPermissionError::NotOper) => {
+                        Some(make_numeric!(NotOper))
+                    }
+                    // These have no corresponding numerics
+                    PermissionError::User(_) => None,
+                    PermissionError::Registration(_) => None,
                 }
             }
             CommandError::Numeric(n) => Some(n),
