@@ -13,7 +13,7 @@ impl ListModeEntry<'_> {
     }
 
     /// The mode list to which this belongs
-    pub fn channel(&self) -> LookupResult<wrapper::Channel> {
+    pub fn channel(&self) -> LookupResult<wrapper::Channel<'_>> {
         self.network.channel(self.data.list.channel())
     }
 

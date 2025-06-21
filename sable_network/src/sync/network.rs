@@ -502,7 +502,7 @@ impl NetworkTaskState {
             .ok_or_else(|| NetworkError::InternalError("No peer certificates?".to_string()))?;
 
         let (_, cert) = X509Certificate::from_der(&peer_certs[0].0)
-            .map_err(|e| NetworkError::InternalError(format!("Invalid peer certificate? {}", e)))?;
+            .map_err(|e| NetworkError::InternalError(format!("Invalid peer certificate? {e}")))?;
 
         let peer_name = cert
             .subject()
@@ -554,8 +554,7 @@ impl NetworkTaskState {
 
         if &remote_fingerprint != expected_fingerprint {
             return Err(NetworkError::AuthzError(format!(
-                "Certificate doesn't match ({}/{})",
-                remote_fingerprint, expected_fingerprint
+                "Certificate doesn't match ({remote_fingerprint}/{expected_fingerprint})"
             )));
         }
 

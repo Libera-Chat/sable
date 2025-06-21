@@ -156,7 +156,7 @@ impl ClientConnection {
 
     /// Close this connection with an error message
     pub fn error(&self, msg: &str) {
-        self.connection.send(format!("ERROR :{}", msg));
+        self.connection.send(format!("ERROR :{msg}"));
         self.connection.close();
     }
 

@@ -72,7 +72,7 @@ async fn access_modify(
     new_role_name: ChannelRoleName,
 ) -> CommandResult {
     let Some(new_role) = chan.role_named(&new_role_name) else {
-        cmd.notice(format_args!("Role {} does not exist", new_role_name));
+        cmd.notice(format_args!("Role {new_role_name} does not exist"));
         return Ok(());
     };
 

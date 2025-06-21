@@ -8,7 +8,7 @@ pub struct ServicesData<'a> {
 }
 
 impl ServicesData<'_> {
-    pub fn server(&self) -> LookupResult<Server> {
+    pub fn server(&self) -> LookupResult<Server<'_>> {
         self.network.server(self.data.server_id)
     }
 

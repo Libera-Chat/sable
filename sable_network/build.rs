@@ -21,11 +21,8 @@ fn write_head_date(root: String, dest: path::PathBuf) -> Result<(), git2::Error>
             let head_secs = head.seconds() + (head.offset_minutes() as i64 * 60);
             let head_time = DateTime::from_timestamp(head_secs, 0).map(|dt| dt.to_rfc2822());
             f.write_all(
-                format!(
-                    "\npub const GIT_COMMIT_TIME_UTC: Option<&str> = {:?};\n",
-                    head_time
-                )
-                .as_bytes(),
+                format!("\npub const GIT_COMMIT_TIME_UTC: Option<&str> = {head_time:?};\n")
+                    .as_bytes(),
             )
             .expect("could not write to built.rs");
             Ok(())

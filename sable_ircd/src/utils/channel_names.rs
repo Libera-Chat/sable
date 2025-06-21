@@ -59,7 +59,7 @@ pub fn send_channel_names(
             lines.push(current_line);
             current_line = String::new();
         }
-        current_line.write_fmt(format_args!("{}{} ", p, n))?;
+        current_line.write_fmt(format_args!("{p}{n} "))?;
     }
     current_line.pop(); // Remove trailing space
     lines.push(current_line);

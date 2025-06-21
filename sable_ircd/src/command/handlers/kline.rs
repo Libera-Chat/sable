@@ -28,23 +28,23 @@ fn handle_kline(
         let user_condition = if user == "*" {
             None
         } else {
-            Some(format!("user == \"{}\"", user))
+            Some(format!("user == \"{user}\""))
         };
 
         let host_condition = if host.parse::<std::net::IpAddr>().is_ok() {
-            format!("ip == {}", host)
+            format!("ip == {host}")
         } else if let Some((first, second)) = host.rsplit_once('/') {
             if second.parse::<u8>().is_ok() && first.parse::<std::net::IpAddr>().is_ok() {
-                format!("ip in {}", host)
+                format!("ip in {host}")
             } else {
-                format!("host == \"{}\"", host)
+                format!("host == \"{host}\"")
             }
         } else {
-            format!("host == \"{}\"", host)
+            format!("host == \"{host}\"")
         };
 
         let condition = if let Some(user_condition) = user_condition {
-            format!("{} && {}", user_condition, host_condition)
+            format!("{user_condition} && {host_condition}")
         } else {
             host_condition
         };

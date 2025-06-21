@@ -18,7 +18,7 @@ fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<
             command: "CHATHISTORY",
             code: "INVALID_MSGREFTYPE",
             context: match target {
-                Some(target) => format!("{} {}", subcommand, target),
+                Some(target) => format!("{subcommand} {target}"),
                 None => subcommand.to_string(),
             },
             description: "msgid-based history requests are not supported yet".to_string(),
@@ -27,10 +27,10 @@ fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<
             command: "CHATHISTORY",
             code: "INVALID_MSGREFTYPE",
             context: match target {
-                Some(target) => format!("{} {}", subcommand, target),
+                Some(target) => format!("{subcommand} {target}"),
                 None => subcommand.to_string(),
             },
-            description: format!("{:?} is not a valid message reference", msgref),
+            description: format!("{msgref:?} is not a valid message reference"),
         }),
     }
 }
@@ -81,8 +81,8 @@ async fn handle_chathistory(
             let invalid_target_error = || CommandError::Fail {
                 command: "CHATHISTORY",
                 code: "INVALID_TARGET",
-                context: format!("{} {}", subcommand, target),
-                description: format!("Cannot fetch history from {}", target),
+                context: format!("{subcommand} {target}"),
+                description: format!("Cannot fetch history from {target}"),
             };
             let target_id = TargetParameter::parse_str(ctx, target)
                 .map_err(|_| invalid_target_error())?
@@ -147,7 +147,7 @@ async fn handle_chathistory(
                 Err(HistoryError::InternalError(e)) => Err(CommandError::Fail {
                     command: "CHATHISTORY",
                     code: "MESSAGE_ERROR",
-                    context: format!("{} {}", subcommand, target),
+                    context: format!("{subcommand} {target}"),
                     description: e,
                 })?,
             };

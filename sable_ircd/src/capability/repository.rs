@@ -107,7 +107,7 @@ impl CapabilityRepository {
         for entry in &self.supported_caps {
             if entry.cap == cap {
                 entry.available.store(true, Ordering::Relaxed);
-                std::mem::swap(entry.values.write().as_mut(), &mut values.to_owned())
+                *entry.values.write().as_mut() = values.to_owned()
             }
         }
         self.update_supported_lists();

@@ -86,17 +86,17 @@ impl WrappedUser for User<'_> {
 
 impl<'a> User<'a> {
     /// Return the nickname binding currently active for this user
-    pub fn nick_binding(&self) -> LookupResult<NickBinding> {
+    pub fn nick_binding(&self) -> LookupResult<NickBinding<'_>> {
         self.network.nick_binding_for_user(self.data.id)
     }
 
     /// The user's current modes
-    pub fn mode(&self) -> UserMode {
+    pub fn mode(&self) -> UserMode<'_> {
         UserMode::wrap(self.network, &self.data.mode)
     }
 
     /// Iterate over the user's connections
-    pub fn connections(&self) -> impl Iterator<Item = UserConnection> + '_ {
+    pub fn connections(&self) -> impl Iterator<Item = UserConnection<'_>> + '_ {
         let my_id = self.data.id;
         self.network
             .raw_user_connections()
@@ -105,7 +105,7 @@ impl<'a> User<'a> {
     }
 
     /// Iterate over the user's channel memberships
-    pub fn channels(&self) -> impl Iterator<Item = Membership> {
+    pub fn channels(&self) -> impl Iterator<Item = Membership<'_>> {
         let my_id = self.data.id;
         self.network
             .raw_memberships()
@@ -114,12 +114,12 @@ impl<'a> User<'a> {
     }
 
     /// Test whether the user is in a given channel
-    pub fn is_in_channel(&self, c: ChannelId) -> Option<Membership> {
+    pub fn is_in_channel(&self, c: ChannelId) -> Option<Membership<'_>> {
         self.channels().find(|m| m.channel_id() == c)
     }
 
     /// Test whether an invite exists for this user to a given channel
-    pub fn has_invite_for(&self, c: ChannelId) -> Option<ChannelInvite> {
+    pub fn has_invite_for(&self, c: ChannelId) -> Option<ChannelInvite<'_>> {
         self.network
             .channel_invite(InviteId::new(self.data.id, c))
             .ok()
