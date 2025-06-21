@@ -15,7 +15,7 @@ fn handle_session(
             let key_input = format!("{:?}{}", user.id(), rand::random::<u64>());
             let key_hash = sha256::digest(key_input);
 
-            response.notice(&format!("Your session resumption token is {}", key_hash));
+            response.notice(&format!("Your session resumption token is {key_hash}"));
 
             server.node().submit_event(
                 user.id(),

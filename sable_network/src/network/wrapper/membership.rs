@@ -20,7 +20,7 @@ impl Membership<'_> {
     }
 
     /// The associated user object
-    pub fn user(&self) -> LookupResult<User> {
+    pub fn user(&self) -> LookupResult<User<'_>> {
         self.network.user(self.data.user)
     }
 
@@ -30,7 +30,7 @@ impl Membership<'_> {
     }
 
     /// The associated channel object
-    pub fn channel(&self) -> LookupResult<Channel> {
+    pub fn channel(&self) -> LookupResult<Channel<'_>> {
         self.network.channel(self.data.channel)
     }
 

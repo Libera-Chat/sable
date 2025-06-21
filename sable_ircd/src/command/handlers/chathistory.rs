@@ -1,4 +1,5 @@
 use std::cmp::{max, min};
+use std::num::NonZeroUsize;
 
 use sable_network::history::{HistoryError, HistoryRequest, HistoryService, TargetId};
 
@@ -18,7 +19,7 @@ fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<
             command: "CHATHISTORY",
             code: "INVALID_MSGREFTYPE",
             context: match target {
-                Some(target) => format!("{} {}", subcommand, target),
+                Some(target) => format!("{subcommand} {target}"),
                 None => subcommand.to_string(),
             },
             description: "msgid-based history requests are not supported yet".to_string(),
@@ -27,15 +28,15 @@ fn parse_msgref(subcommand: &str, target: Option<&str>, msgref: &str) -> Result<
             command: "CHATHISTORY",
             code: "INVALID_MSGREFTYPE",
             context: match target {
-                Some(target) => format!("{} {}", subcommand, target),
+                Some(target) => format!("{subcommand} {target}"),
                 None => subcommand.to_string(),
             },
-            description: format!("{:?} is not a valid message reference", msgref),
+            description: format!("{msgref:?} is not a valid message reference"),
         }),
     }
 }
 
-fn parse_limit(s: &str) -> Result<usize, CommandError> {
+fn parse_limit(s: &str) -> Result<NonZeroUsize, CommandError> {
     s.parse().map_err(|_| CommandError::Fail {
         command: "CHATHISTORY",
         code: "INVALID_PARAMS",
@@ -81,8 +82,8 @@ async fn handle_chathistory(
             let invalid_target_error = || CommandError::Fail {
                 command: "CHATHISTORY",
                 code: "INVALID_TARGET",
-                context: format!("{} {}", subcommand, target),
-                description: format!("Cannot fetch history from {}", target),
+                context: format!("{subcommand} {target}"),
+                description: format!("Cannot fetch history from {target}"),
             };
             let target_id = TargetParameter::parse_str(ctx, target)
                 .map_err(|_| invalid_target_error())?
@@ -147,7 +148,7 @@ async fn handle_chathistory(
                 Err(HistoryError::InternalError(e)) => Err(CommandError::Fail {
                     command: "CHATHISTORY",
                     code: "MESSAGE_ERROR",
-                    context: format!("{} {}", subcommand, target),
+                    context: format!("{subcommand} {target}"),
                     description: e,
                 })?,
             };
@@ -165,7 +166,7 @@ async fn list_targets<'a>(
     source: &'a wrapper::User<'_>,
     from_ts: Option<i64>,
     to_ts: Option<i64>,
-    limit: Option<usize>,
+    limit: Option<NonZeroUsize>,
 ) {
     let history_service = server.node().history_service();
 

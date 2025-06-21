@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::future::Future;
+use std::num::NonZeroUsize;
 
 use thiserror::Error;
 
@@ -53,24 +54,24 @@ impl TryFrom<&HistoricMessageTargetId> for TargetId {
 pub enum HistoryRequest {
     Latest {
         to_ts: Option<i64>,
-        limit: usize,
+        limit: NonZeroUsize,
     },
     Before {
         from_ts: i64,
-        limit: usize,
+        limit: NonZeroUsize,
     },
     After {
         start_ts: i64,
-        limit: usize,
+        limit: NonZeroUsize,
     },
     Around {
         around_ts: i64,
-        limit: usize,
+        limit: NonZeroUsize,
     },
     Between {
         start_ts: i64,
         end_ts: i64,
-        limit: usize,
+        limit: NonZeroUsize,
     },
 }
 
@@ -110,7 +111,7 @@ pub trait HistoryService {
         user: UserId,
         after_ts: Option<i64>,
         before_ts: Option<i64>,
-        limit: Option<usize>,
+        limit: Option<NonZeroUsize>,
     ) -> impl Future<Output = HashMap<TargetId, i64>> + Send;
 
     fn get_entries(

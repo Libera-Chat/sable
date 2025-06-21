@@ -38,7 +38,10 @@ impl Network {
         }
     }
 
-    pub fn find_default_role(&self, name: &state::ChannelRoleName) -> Option<wrapper::ChannelRole> {
+    pub fn find_default_role(
+        &self,
+        name: &state::ChannelRoleName,
+    ) -> Option<wrapper::ChannelRole<'_>> {
         use super::wrapper::WrapOption;
 
         self.get_default_role_cache().get(name).wrap(self)

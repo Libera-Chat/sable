@@ -108,7 +108,7 @@ impl Parse for MessageDefn {
             (
                 true,
                 i.to_string(),
-                Ident::new(&format!("Numeric{}", i), Span::call_site()),
+                Ident::new(&format!("Numeric{i}"), Span::call_site()),
             )
         } else {
             let ident: Ident = input.parse()?;

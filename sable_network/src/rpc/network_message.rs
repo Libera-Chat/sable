@@ -1,3 +1,5 @@
+use std::num::NonZeroUsize;
+
 use crate::{
     history::{HistoricalEvent, HistoryError, HistoryRequest},
     id::*,
@@ -106,7 +108,7 @@ pub enum RemoteHistoryServerRequestType {
         user: UserId,
         after_ts: Option<i64>,
         before_ts: Option<i64>,
-        limit: Option<usize>,
+        limit: Option<NonZeroUsize>,
     },
 
     GetEntries {
@@ -179,7 +181,7 @@ pub enum RemoteServicesServerResponse {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum RemoteHistoryServerResponse {
     /// TODO: switch to HashMap when we move away from JSON as the wire format,
-    /// to be consistent with [`HistoryService`]
+    /// to be consistent with [`HistoryService`](crate::history::HistoryService)
     TargetList(Vec<(crate::history::TargetId, i64)>),
     Entries(Result<Vec<HistoricalEvent>, HistoryError>),
 }

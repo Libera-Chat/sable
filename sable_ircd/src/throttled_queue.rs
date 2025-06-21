@@ -96,7 +96,7 @@ impl<T: std::fmt::Debug> ThrottledQueue<T> {
 
     /// Return an iterator that repeatedly calls `next()` on this queue to drain
     /// elements that are ready for processing.
-    pub fn iter(&self) -> ThrottledQueueIterator<T> {
+    pub fn iter(&self) -> ThrottledQueueIterator<'_, T> {
         ThrottledQueueIterator(self)
     }
 

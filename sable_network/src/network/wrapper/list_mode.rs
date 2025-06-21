@@ -18,12 +18,12 @@ impl<'a> ListMode<'a> {
     }
 
     /// The corresponding channel object
-    pub fn channel(&self) -> LookupResult<wrapper::Channel> {
+    pub fn channel(&self) -> LookupResult<wrapper::Channel<'_>> {
         self.network.channel(self.id.channel())
     }
 
     /// The entries in the list
-    pub fn entries(&self) -> impl Iterator<Item = wrapper::ListModeEntry> {
+    pub fn entries(&self) -> impl Iterator<Item = wrapper::ListModeEntry<'_>> {
         self.network.entries_for_list(self.id)
     }
 

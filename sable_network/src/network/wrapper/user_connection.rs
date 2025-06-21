@@ -14,7 +14,7 @@ impl UserConnection<'_> {
         self.data.id
     }
 
-    pub fn user(&self) -> LookupResult<User> {
+    pub fn user(&self) -> LookupResult<User<'_>> {
         self.network.user(self.data.user)
     }
 
@@ -26,7 +26,7 @@ impl UserConnection<'_> {
         &self.data.hostname
     }
 
-    pub fn server(&self) -> LookupResult<Server> {
+    pub fn server(&self) -> LookupResult<Server<'_>> {
         self.network.server(self.data.id.server())
     }
 }

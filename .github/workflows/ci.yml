@@ -38,12 +38,16 @@ jobs:
           command: test
           args: ${{ matrix.features }}
 
-      # fails to build:
-      #- name: Doc
-      #  uses: actions-rs/cargo@v1
-      #  with:
-      #    command: doc
-      #    args: ${{ matrix.features }}
+      - name: Doc
+        run: RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo doc ${{ matrix.features }} --no-deps
+
+      - name: Upload documentation
+        uses: actions/upload-pages-artifact@v3
+        id: gh-pages-documentation
+        # don't run on pull requests
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+        with:
+          path: "target/doc"
 
   lint:
     name: Linting
@@ -72,3 +76,19 @@ jobs:
         with:
           command: clippy
           args: --all-targets
+
+  deploy:
+    name: Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    # don't run on pull requests
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: gh-pages-documentation
+        uses: actions/deploy-pages@v4

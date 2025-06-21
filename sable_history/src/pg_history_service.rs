@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 
 use anyhow::{bail, Result};
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -32,7 +33,7 @@ impl HistoryService for PgHistoryService<'_> {
         _user: UserId,
         _after_ts: Option<i64>,
         _before_ts: Option<i64>,
-        _limit: Option<usize>,
+        _limit: Option<NonZeroUsize>,
     ) -> HashMap<TargetId, i64> {
         // TODO: access control
         // TODO: after_ts, before_ts, limit
@@ -121,7 +122,7 @@ impl HistoryService for PgHistoryService<'_> {
             .filter(messages::dsl::target_channel.eq(db_channel_id));
         match request {
             HistoryRequest::Latest { to_ts, limit } => {
-                let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
+                let limit = i64::min(10000, i64::try_from(usize::from(limit)).unwrap_or(i64::MAX));
                 match to_ts {
                     Some(to_ts) => {
                         let to_ts = DateTime::from_timestamp(to_ts, 999_999)
@@ -154,7 +155,7 @@ impl HistoryService for PgHistoryService<'_> {
                 }
             }
             HistoryRequest::Before { from_ts, limit } => {
-                let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
+                let limit = i64::min(10000, i64::try_from(usize::from(limit)).unwrap_or(i64::MAX));
                 let from_ts = DateTime::from_timestamp(from_ts, 0)
                     .unwrap_or(DateTime::<Utc>::MAX_UTC)
                     .naive_utc();
@@ -171,7 +172,7 @@ impl HistoryService for PgHistoryService<'_> {
                 .await
             }
             HistoryRequest::After { start_ts, limit } => {
-                let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
+                let limit = i64::min(10000, i64::try_from(usize::from(limit)).unwrap_or(i64::MAX));
                 let start_ts = DateTime::from_timestamp(start_ts, 999_999)
                     .unwrap_or(DateTime::<Utc>::MIN_UTC)
                     .naive_utc();
@@ -188,7 +189,7 @@ impl HistoryService for PgHistoryService<'_> {
                 .await
             }
             HistoryRequest::Around { around_ts, limit } => {
-                let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
+                let limit = i64::min(10000, i64::try_from(usize::from(limit)).unwrap_or(i64::MAX));
                 let around_ts = DateTime::from_timestamp(around_ts, 0)
                     .unwrap_or(DateTime::<Utc>::MIN_UTC)
                     .naive_utc();
@@ -231,7 +232,8 @@ impl HistoryService for PgHistoryService<'_> {
                     let end_ts = DateTime::from_timestamp(end_ts, 0)
                         .unwrap_or(DateTime::<Utc>::MAX_UTC)
                         .naive_utc();
-                    let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
+                    let limit =
+                        i64::min(10000, i64::try_from(usize::from(limit)).unwrap_or(i64::MAX));
                     collect_query(
                         connection_lock,
                         &channel,
@@ -251,7 +253,8 @@ impl HistoryService for PgHistoryService<'_> {
                     let end_ts = DateTime::from_timestamp(end_ts, 999_999)
                         .unwrap_or(DateTime::<Utc>::MIN_UTC)
                         .naive_utc();
-                    let limit = i64::min(10000, i64::try_from(limit).unwrap_or(i64::MAX));
+                    let limit =
+                        i64::min(10000, i64::try_from(usize::from(limit)).unwrap_or(i64::MAX));
                     collect_query(
                         connection_lock,
                         &channel,
@@ -317,7 +320,7 @@ fn make_historical_event(
     HistoricalEvent::Message {
         id: MessageId::new(id.try_into().expect("Message id is a non-v7 UUID")),
         timestamp: timestamp.and_utc().timestamp(),
-        source: format!("{}!{}@{}", source_nick, source_ident, source_vhost),
+        source: format!("{source_nick}!{source_ident}@{source_vhost}"),
         source_account,
         message_type: message_type.into(),
         target: Some(channel.name.clone()), // assume it's the same

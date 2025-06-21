@@ -10,15 +10,15 @@ impl ChannelAccess<'_> {
         self.data.id
     }
 
-    pub fn user(&self) -> LookupResult<wrapper::Account> {
+    pub fn user(&self) -> LookupResult<wrapper::Account<'_>> {
         self.network.account(self.data.id.account())
     }
 
-    pub fn channel(&self) -> LookupResult<wrapper::ChannelRegistration> {
+    pub fn channel(&self) -> LookupResult<wrapper::ChannelRegistration<'_>> {
         self.network.channel_registration(self.data.id.channel())
     }
 
-    pub fn role(&self) -> LookupResult<wrapper::ChannelRole> {
+    pub fn role(&self) -> LookupResult<wrapper::ChannelRole<'_>> {
         self.network.channel_role(self.data.role)
     }
 

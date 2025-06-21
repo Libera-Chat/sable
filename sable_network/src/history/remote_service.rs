@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 
 use tracing::instrument;
 
 use crate::prelude::*;
 use crate::rpc::*;
 
-/// Implementation of [`HistoryService`] that forwards requests to a [`HistoryServer`]
+/// Implementation of [`HistoryService`] that forwards requests to a `HistoryServer`
 /// through the RPC.
 pub struct RemoteHistoryService<'a, NetworkPolicy: policy::PolicyService> {
     node: &'a NetworkNode<NetworkPolicy>,
@@ -30,7 +31,7 @@ impl<NetworkPolicy: policy::PolicyService> HistoryService
         user: UserId,
         after_ts: Option<i64>,
         before_ts: Option<i64>,
-        limit: Option<usize>,
+        limit: Option<NonZeroUsize>,
     ) -> HashMap<TargetId, i64> {
         let res = self
             .node
