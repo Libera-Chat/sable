@@ -253,14 +253,17 @@ impl PreClient {
     pub fn can_register(&self) -> bool {
         let can_register_new = self.can_register_new_user();
         let can_attach = self.can_attach_to_user().is_some();
+        let is_negotiating_caps =
+            self.progress_flags.load(Ordering::Relaxed) & ProgressFlag::CapNegotiation as u32 != 0;
 
         tracing::trace!(
             ?self,
             can_register_new,
             can_attach,
+            is_negotiating_caps,
             "PreClient::can_register"
         );
-        can_register_new || can_attach
+        (can_register_new || can_attach) && !is_negotiating_caps
     }
 
     /// Determine whether this connection is ready to register as a new user
