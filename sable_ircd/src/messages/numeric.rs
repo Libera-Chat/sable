@@ -68,7 +68,7 @@ define_messages! {
     372(Motd)                   => { (line: &str)               => ":{line}"},
     376(EndOfMotd)              => { ()                         => ":End of MOTD" },
 
-    381(YoureOper)              => { ()                         => "You are now an IRC operator" },
+    381(YoureOper)              => { ()                         => ":You are now an IRC operator" },
 
     371(Info)                   => { (line: &str)               => ":{line}" },
     374(EndOfInfo)              => { ()                         => ":End of /INFO list" },
