@@ -74,6 +74,7 @@ define_messages! {
     374(EndOfInfo)              => { ()                         => ":End of /INFO list" },
 
 
+    400(UnknownError)           => { (reason: &str)             => ":{reason}" },
     401(NoSuchTarget)           => { (unknown: &str)            => "{unknown} :No such nick/channel" },
     402(NoSuchServer)           => { (server_name: &ServerName) => "{server_name} :No such server" },
     403(NoSuchChannel)          => { (chname: &ChannelName)     => "{chname} :No such channel" },
