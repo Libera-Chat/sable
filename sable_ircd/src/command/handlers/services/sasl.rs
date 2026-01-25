@@ -6,8 +6,6 @@ use sable_network::{
 use super::*;
 use base64::prelude::*;
 
-const DEFAULT_SASL_FAIL: &str = "SASL authentication failed";
-
 #[command_handler("AUTHENTICATE")]
 async fn handle_authenticate(
     source: PreClientSource,
@@ -24,7 +22,7 @@ async fn handle_authenticate(
             RemoteServicesServerRequestType::AbortAuthenticate(*session)
         } else {
             let Ok(data) = BASE64_STANDARD.decode(text) else {
-                response.numeric(make_numeric!(SaslFail, "Invalid Base64"));
+                response.numeric(make_numeric!(SaslFail));
                 return Ok(());
             };
 
@@ -41,7 +39,7 @@ async fn handle_authenticate(
 
         for ban in net.network_bans().find_pre_sasl(&user_details) {
             if let NetworkBanAction::DenySasl = ban.action {
-                response.numeric(make_numeric!(SaslFail, DEFAULT_SASL_FAIL));
+                response.numeric(make_numeric!(SaslFail));
                 return Ok(());
             }
         }
@@ -90,7 +88,7 @@ async fn handle_authenticate(
                     response.numeric(make_numeric!(SaslSuccess));
                 }
                 Fail => {
-                    response.numeric(make_numeric!(SaslFail, DEFAULT_SASL_FAIL));
+                    response.numeric(make_numeric!(SaslFail));
                 }
                 Aborted => {
                     response.numeric(make_numeric!(SaslAborted));
@@ -118,6 +116,6 @@ fn do_sasl_external(
         }
     }
 
-    response.numeric(make_numeric!(SaslFail, DEFAULT_SASL_FAIL));
+    response.numeric(make_numeric!(SaslFail));
     Ok(())
 }
