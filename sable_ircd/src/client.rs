@@ -80,8 +80,8 @@ pub struct PreClient {
     pub realname: OnceLock<Realname>,
     #[serde_as(as = "WrapOption<Hostname>")]
     pub hostname: OnceLock<Hostname>,
-    #[serde_as(as = "WrapOption<SaslSessionId>")]
-    pub sasl_session: OnceLock<SaslSessionId>,
+    #[serde(skip, default = "Default::default")]
+    pub sasl_session: tokio::sync::Mutex<Option<SaslSessionId>>,
     #[serde_as(as = "WrapOption<AccountId>")]
     pub sasl_account: OnceLock<AccountId>,
 
@@ -240,7 +240,7 @@ impl PreClient {
             nick: OnceLock::new(),
             realname: OnceLock::new(),
             hostname: OnceLock::new(),
-            sasl_session: OnceLock::new(),
+            sasl_session: tokio::sync::Mutex::new(None),
             sasl_account: OnceLock::new(),
             progress_flags: AtomicU32::new(0),
         }

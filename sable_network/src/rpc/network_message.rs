@@ -72,8 +72,10 @@ pub enum RemoteServicesServerRequestType {
     BeginAuthenticate(SaslSessionId, String),
     /// SASL traffic
     Authenticate(SaslSessionId, Vec<u8>),
-    /// Abort a SASL session
+    /// Abort a SASL session, sends error to client
     AbortAuthenticate(SaslSessionId),
+    /// Abort a SASL session, don't send error to client
+    FailAuthenticate(SaslSessionId),
     /// Register a channel
     RegisterChannel(AccountId, ChannelId),
     /// Add, modify or remove a channel access (None to delete)

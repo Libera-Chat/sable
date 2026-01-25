@@ -194,6 +194,11 @@ where
 
                     self.abort_authenticate(session)
                 }
+                FailAuthenticate(session) => {
+                    tracing::debug!(?session, "Got fail authenticate");
+
+                    self.fail_authenticate(session)
+                }
                 AddAccountFingerprint(acc, fp) => {
                     tracing::debug!(?acc, ?fp, "Got add fingerprint");
 
