@@ -59,7 +59,7 @@ async fn handle_authenticate(
 
     match services
         .require()?
-        .send_remote_request(authenticate_request.into())
+        .send_remote_request(authenticate_request.clone().into())
         .await
     {
         Ok(RemoteServerResponse::Services(RemoteServicesServerResponse::Authenticate(status))) => {
@@ -95,8 +95,9 @@ async fn handle_authenticate(
                 }
             }
         }
-        _ => {
-            response.numeric(make_numeric!(SaslAborted));
+        msg => {
+            tracing::error!("Unexpected services response to {authenticate_request:?}: {msg:?}");
+            response.numeric(make_numeric!(UnknownError, "Unknown SASL error"));
         }
     }
     Ok(())
