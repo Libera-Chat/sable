@@ -7,6 +7,8 @@ use AuthenticateStatus::*;
 pub type SaslResult = Result<AuthenticateStatus, CommandError>;
 
 pub trait SaslMechanism<DB>: Send + Sync + 'static {
+    fn name(&self) -> String;
+
     fn step(&self, server: &ServicesServer<DB>, session: &SaslSession, data: Vec<u8>)
         -> SaslResult;
 }
