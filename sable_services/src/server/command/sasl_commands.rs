@@ -50,4 +50,9 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
         self.sasl_sessions.remove(&session_id);
         Ok(Authenticate(Aborted).into())
     }
+
+    pub fn fail_authenticate(&self, session_id: SaslSessionId) -> CommandResult {
+        self.sasl_sessions.remove(&session_id);
+        Ok(Authenticate(Fail).into())
+    }
 }

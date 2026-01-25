@@ -16,17 +16,17 @@ async fn handle_authenticate(
     services: Conditional<ServicesTarget<'_>>,
     text: &str,
 ) -> CommandResult {
-    let authenticate_request = if let Some(session) = source.sasl_session.get() {
+    let mut session_ref = source.sasl_session.lock().await;
+    let authenticate_request = if let Some(session) = *session_ref {
         // A session already exists, so the argument is "*" or base64-encoded session data
+        tracing::debug!(?session, "Resuming SASL session");
         if text == "*" {
-            RemoteServicesServerRequestType::AbortAuthenticate(*session)
+            RemoteServicesServerRequestType::AbortAuthenticate(session)
         } else {
-            let Ok(data) = BASE64_STANDARD.decode(text) else {
-                response.numeric(make_numeric!(SaslFail));
-                return Ok(());
-            };
-
-            RemoteServicesServerRequestType::Authenticate(*session, data)
+            match BASE64_STANDARD.decode(text) {
+                Err(_) => RemoteServicesServerRequestType::FailAuthenticate(session),
+                Ok(data) => RemoteServicesServerRequestType::Authenticate(session, data),
+            }
         }
     } else {
         // No session, so the argument is the mechanism name
@@ -46,13 +46,15 @@ async fn handle_authenticate(
 
         // Special case for EXTERNAL, which we can handle without going to services
         if text == "EXTERNAL" {
+            drop(session_ref); // release lock, which borrows 'source'
             return do_sasl_external(source, cmd.connection(), net, response);
         }
 
         let mechanism = text.to_owned();
 
         let session = server.ids().next();
-        source.sasl_session.set(session).ok();
+        *session_ref = Some(session);
+        tracing::debug!(?session, "Beginning new SASL session ");
 
         RemoteServicesServerRequestType::BeginAuthenticate(session, mechanism)
     };
@@ -88,9 +90,11 @@ async fn handle_authenticate(
                     response.numeric(make_numeric!(SaslSuccess));
                 }
                 Fail => {
+                    *session_ref = None;
                     response.numeric(make_numeric!(SaslFail));
                 }
                 Aborted => {
+                    *session_ref = None;
                     response.numeric(make_numeric!(SaslAborted));
                 }
             }
