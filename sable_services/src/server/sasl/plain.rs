@@ -6,6 +6,10 @@ use sable_network::prelude::*;
 pub struct SaslPlain;
 
 impl<DB: DatabaseConnection> SaslMechanism<DB> for SaslPlain {
+    fn name(&self) -> String {
+        "PLAIN".to_string()
+    }
+
     fn step(
         &self,
         server: &ServicesServer<DB>,

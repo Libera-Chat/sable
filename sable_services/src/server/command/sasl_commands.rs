@@ -23,18 +23,27 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
     }
 
     pub fn authenticate(&self, session_id: SaslSessionId, data: Vec<u8>) -> CommandResult {
-        let Some(session) = self.sasl_sessions.get(&session_id) else {
+        let session_entry = self.sasl_sessions.entry(session_id);
+        let dashmap::mapref::entry::Entry::Occupied(session_entry) = session_entry else {
             return Ok(Authenticate(Fail).into());
         };
+        let session = session_entry.get();
 
         let Some(mechanism) = self.sasl_mechanisms.get(&session.mechanism) else {
             self.sasl_sessions.remove(&session_id);
             return Ok(Authenticate(Fail).into());
         };
 
-        let response = mechanism.step(self, &session, data)?;
-
-        Ok(Authenticate(response).into())
+        match mechanism.step(self, &session, data) {
+            Ok(response) => Ok(Authenticate(response).into()),
+            Err(e) => {
+                tracing::debug!(?session_id, "SASL {} step failed: {e}", mechanism.name());
+                // Equivalent to self.fail_authenticate(session_id) but we can't call it here
+                // because we already have the lock.
+                session_entry.remove();
+                Ok(Authenticate(Fail).into())
+            }
+        }
     }
 
     pub fn abort_authenticate(&self, session_id: SaslSessionId) -> CommandResult {
