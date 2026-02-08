@@ -30,11 +30,11 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
         let session = session_entry.get();
 
         let Some(mechanism) = self.sasl_mechanisms.get(&session.mechanism) else {
-            self.sasl_sessions.remove(&session_id);
+            session_entry.remove();
             return Ok(Authenticate(Fail).into());
         };
 
-        match mechanism.step(self, &session, data) {
+        match mechanism.step(self, session, data) {
             Ok(response) => Ok(Authenticate(response).into()),
             Err(e) => {
                 tracing::debug!(?session_id, "SASL {} step failed: {e}", mechanism.name());
