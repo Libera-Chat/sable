@@ -16,6 +16,8 @@ pub struct NetworkConfig {
     pub alias_users: Vec<AliasUser>,
 
     pub object_expiry: i64,
+    /// How long from sending a server ping before we force it to quit from the network
+    pub pingout_duration: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +44,7 @@ impl NetworkConfig {
             default_roles: HashMap::new(),
             alias_users: Vec::new(),
             object_expiry: 0,
+            pingout_duration: 240,
         }
     }
 }

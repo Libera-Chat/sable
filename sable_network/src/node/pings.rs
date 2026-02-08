@@ -2,8 +2,6 @@ use wrapper::ObjectWrapper as _;
 
 use super::*;
 
-const PINGOUT_DURATION: i64 = 240;
-
 impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
     pub(super) fn check_pings(&self) {
         let now = utils::now();
@@ -13,7 +11,7 @@ impl<Policy: crate::policy::PolicyService> NetworkNode<Policy> {
 
         for server in self.net.read().servers() {
             let last_ping = server.last_ping();
-            if now - last_ping > PINGOUT_DURATION {
+            if now - last_ping > self.net.read().config().pingout_duration {
                 let data = server.raw();
                 tracing::info!(?last_ping, ?now, ?data, "Pinging out server");
 

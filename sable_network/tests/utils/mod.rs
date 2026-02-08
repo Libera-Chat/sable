@@ -11,6 +11,7 @@ pub fn empty_network_config() -> NetworkConfig {
         default_roles: HashMap::new(),
         alias_users: Vec::new(),
         object_expiry: 0,
+        pingout_duration: 240,
     }
 }
 
