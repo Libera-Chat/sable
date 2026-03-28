@@ -140,7 +140,7 @@ impl AwayReason {
 
 impl Nickname {
     /// Maximum length, in bytes
-    pub const LENGTH: usize = 15;
+    pub const LENGTH: usize = 16;
 
     /// Create a new Nickname, bypassing normal validation. This is only for internal use, and only when created
     /// nicknames for collided users
