@@ -61,6 +61,5 @@ EXPOSE 6667 6697 6668 8888 9999
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -fks https://localhost:8888/ || exit 1
 
-# Set entrypoint and default command
+# Set entrypoint (entrypoint script builds command args)
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["-n", "/sable/config/network.conf", "-s", "/sable/config/server.conf", "--foreground"]
