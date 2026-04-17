@@ -496,19 +496,16 @@ impl ClientServer {
                                                                                 msg.hostname
                                                                                 );
                                 if let Some(pc) = conn.pre_client() {
+                                    // Use cloaked hostname to hide user IPs
+                                    let cloaked = Hostname::new_coerce("user").unwrap();
+                                    pc.hostname.set(cloaked).ok();
+
                                     if let Some(hostname) = msg.hostname {
                                         conn.send(message::Notice::new(&self, &UnknownTarget,
                                                         &format!("*** Found your hostname: {hostname}")));
-
-                                        pc.hostname.set(hostname).ok();
                                     } else {
                                         conn.send(message::Notice::new(&self, &UnknownTarget,
                                                         "*** Couldn't look up your hostname"));
-                                        let no_hostname = Hostname::convert(conn.remote_addr());
-                                        match no_hostname {
-                                            Ok(n) => { pc.hostname.set(n).ok(); }
-                                            Err(e) => { conn.error(&e.to_string()); }
-                                        }
                                     }
                                     if pc.can_register() {
                                         let res = self.action_submitter.send(CommandAction::RegisterClient(conn.id()));
