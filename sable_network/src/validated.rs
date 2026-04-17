@@ -186,6 +186,14 @@ impl Realname {
 impl Hostname {
     /// Maximum length, in bytes
     pub const LENGTH: usize = 64;
+
+    /// Coerce the provided value into a valid `Hostname` by truncating to the permitted length.
+    pub fn new_coerce(s: &str) -> <Self as Validated>::Result {
+        let mut s = s.to_string();
+        s.truncate(s.floor_char_boundary(Self::LENGTH));
+        let val = ArrayString::try_from(s.as_str()).expect("Failed to convert string");
+        Self::validate(&val).map(|()| Self(val))
+    }
 }
 
 impl ChannelKey {
