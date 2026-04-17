@@ -56,6 +56,9 @@ define_messages! {
     365(EndOfLinks)             => { ()                         => "* :End of /LINKS list" },
     366(EndOfNames)             => { (chname: &str)             => "{chname} :End of names list" },
 
+    322(ListReply)              => { (chan: &Channel.name(), count: usize, topic: &str) => "{chan} {count} :{topic}" },
+    323(EndOfList)              => { ()                         => ":End of /LIST" },
+
     369(EndOfWhowas)            => { (nick: &Nickname)          => "{nick} :End of /WHOWAS" },
 
     256(AdminMe)                => { (server_name: &ServerName) => "{server_name} :Administrative Info"},
