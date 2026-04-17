@@ -180,7 +180,28 @@ apt install -y certbot
 # Stop port 80/443 if needed
 certbot certonly --standalone -d irc.yourdomain.com
 ```
+Or use the DNS challenge instead
+```bash
+certbot certonly --dns-<provider> -d irc.yourdomain.com
+```
+Or use Cloudflare DNS if you have it
+```bash
+# Install the plugin
+pip install certbot-dns-cloudflare
 
+# Create creds file
+mkdir -p /etc/letsencrypt
+cat > /etc/letsencrypt/cloudflare.ini << EOF
+dns_cloudflare_api_token = YOUR_CF_API_TOKEN
+EOF
+chmod 600 /etc/letsencrypt/cloudflare.ini
+
+# Issue cert
+certbot certonly \
+  --dns-cloudflare \
+  --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
+  -d irc.yourdomain.com
+```
 #### Copy Certificates to Project Directory
 
 ```bash
