@@ -96,3 +96,25 @@ is static, and read only at startup. This is what's in the `network.conf` file, 
 between all server nodes. Runtime configuration currently consists of operator credentials, and is
 contained in a separate file (`network_config.json` in the examples). This can be loaded via the command
 line when bootstrapping a new network, or updated at runtime via the `config_loader` utility.
+
+## New implementations
+
+This fork includes several enhancements beyond the upstream Libera-Chat/sable:
+
+### IRC Commands
+
+- **LIST command** (`/LIST`) - Lists all channels on the server or a specific channel. Shows channel name, visible member count, and topic. Respects secret (+s) mode by only showing secret channels to members.
+
+### Privacy Features
+
+- **Hash-based hostname cloaking** - Client IP addresses are automatically cloaked using a one-way hash function. This hides user IPs from other users while maintaining consistent cloaked hostnames for the same user.
+
+### Deployment
+
+- **Docker Compose infrastructure** - Complete Docker deployment setup with Caddy for automatic TLS certificate management via Let's Encrypt
+- **Single-node bootstrap mode** - Simplified bootstrap process for standalone server deployment
+- **Configuration templates** - Production config files renamed to `.example` suffix to prevent accidental credential commits
+
+### Installation
+
+See `INSTALLATION.md` for detailed deployment instructions, including Docker setup, certificate management, and troubleshooting common issues.
