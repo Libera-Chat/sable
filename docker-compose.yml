@@ -31,6 +31,7 @@ services:
     environment:
       - RUST_LOG=info
       - RUST_BACKTRACE=1
+      - BOOTSTRAP_NETWORK=true
     networks:
       - sable-net
     restart: unless-stopped
