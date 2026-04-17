@@ -282,7 +282,7 @@ openssl x509 -noout -fingerprint -sha1 -in client.crt
 ```bash
 # Option A: Clone from git (if available)
 cd /home/sable
-git clone https://github.com/your-repo/sable.git sable-docker
+git clone https://github.com/gfnord/sable.git sable-docker
 cd sable-docker
 
 # Option B: Upload manually
