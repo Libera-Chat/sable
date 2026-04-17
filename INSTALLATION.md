@@ -166,6 +166,10 @@ irc.yourdomain.com        A    123.45.67.89
 
 ## TLS Certificate Setup
 
+**Important:** Sable IRC server only supports RSA private keys. If using EC keys (from Caddy or some ACME clients), you must either:
+- Configure your ACME client to request RSA certificates (`key_type rsa4096` for Caddy)
+- Convert EC keys to PKCS8 format: `openssl pkcs8 -topk8 -nocrypt -in ec.key -out server.key`
+
 ### Option 1: Let's Encrypt (Recommended for Production)
 
 #### Install Certbot
@@ -217,6 +221,10 @@ cp /etc/letsencrypt/live/irc.yourdomain.com/chain.pem /home/sable/sable-docker/c
 chmod 644 /home/sable/sable-docker/certs/server.crt
 chmod 600 /home/sable/sable-docker/certs/server.key
 chmod 644 /home/sable/sable-docker/certs/ca_cert.pem
+
+# Note: If using Caddy-managed certificates mounted directly into the container,
+# ensure the host files are readable by the container (chmod 644 or chown appropriately)
+```
 ```
 
 #### Get Certificate Fingerprint
@@ -295,9 +303,39 @@ cd /home/sable
 tar xzf sable-docker.tar.gz
 mv sable-docker sable-docker
 cd sable-docker
+
+# Create required directories
+mkdir -p configs certs data
 ```
 
-### 2. Generate Operator Password Hash
+### 2. Configure Docker Compose
+
+Edit `docker-compose.yml` to add required environment variables and verify volume mounts:
+
+```yaml
+services:
+  sable-ircd-1:
+    environment:
+      - RUST_LOG=info
+      - RUST_BACKTRACE=1
+      - BOOTSTRAP_NETWORK=/sable/config/network_config.json  # Required for single-node deployment
+    volumes:
+      - ./configs/network.conf:/sable/config/network.conf:ro
+      - ./configs/server.conf:/sable/config/server.conf:ro
+      - ./configs/network_config.json:/sable/config/network_config.json:ro
+      - ./certs/server.crt:/sable/certs/server.crt:ro
+      - ./certs/server.key:/sable/certs/server.key:ro
+      - ./certs/ca_cert.pem:/sable/certs/ca_cert.pem:ro
+      - ./data:/sable/data
+```
+
+**Important:** The data directory must be owned by UID 999 (the container user):
+
+```bash
+sudo chown -R 999:999 /home/sable/sable-docker/data/
+```
+
+----
 
 ```bash
 # On VPS or any Linux machine
@@ -308,7 +346,7 @@ openssl passwd -6
 ### 3. Create Network Configuration
 
 ```bash
-cd /home/sable/sable-docker/config
+cd /home/sable/sable-docker/configs
 cp network.conf.example network.conf
 nano network.conf
 ```
@@ -688,7 +726,7 @@ cat > /home/sable/backup-sable.sh << 'EOF'
 #!/bin/bash
 BACKUP_DIR="/home/sable/backups/$(date +%Y%m%d)"
 mkdir -p "$BACKUP_DIR"
-cp -r /home/sable/sable-docker/config "$BACKUP_DIR/"
+cp -r /home/sable/sable-docker/configs "$BACKUP_DIR/"
 cp -r /home/sable/sable-docker/certs "$BACKUP_DIR/"
 tar czf "$BACKUP_DIR.tar.gz" "$BACKUP_DIR"
 rm -rf "$BACKUP_DIR"
@@ -727,12 +765,12 @@ docker system prune -a
 docker compose logs
 
 # Verify configuration files exist
-ls -la config/
+ls -la configs/
 ls -la certs/
 
 # Test configuration syntax
-cat config/network.conf | jq .
-cat config/server.conf | jq .
+cat configs/network.conf | jq .
+cat configs/server.conf | jq .
 ```
 
 ### Can't Connect to IRC
@@ -775,6 +813,46 @@ cat config/server.conf | jq .
    openssl x509 -in certs/server.crt -noout -dates
    ```
 
+### Permission Denied Errors
+
+**Error:** `Permission denied (os error 13)` when accessing certificates or data directory.
+
+**Solutions:**
+```bash
+# Fix data directory ownership (container runs as UID 999)
+sudo chown -R 999:999 /home/sable/sable-docker/data/
+
+# Fix certificate permissions if using external ACME (like Caddy)
+sudo chmod 644 /path/to/certificates/server.crt
+sudo chmod 644 /path/to/certificates/server.key
+```
+
+### EC Key Format Error
+
+**Error:** `No private key in file` or `failed to parse private key`
+
+**Solution:** Sable only supports RSA keys. Convert EC key to PKCS8:
+```bash
+openssl pkcs8 -topk8 -nocrypt -in ec_private.key -out server.key
+```
+
+Or configure your ACME client (Caddy) to use RSA keys:
+```caddy
+tls {
+    key_type rsa4096
+}
+```
+
+### Single-Node Bootstrap Error
+
+**Error:** `No peer available to sync` or `did not pass the --bootstrap-network option`
+
+**Solution:** Add `BOOTSTRAP_NETWORK` environment variable to docker-compose.yml:
+```yaml
+environment:
+  - BOOTSTRAP_NETWORK=/sable/config/network_config.json
+```
+
 ### Container Crashes on Restart
 
 ```bash
@@ -804,7 +882,7 @@ docker stats
 
 1. **Check operator credentials in network_config.json:**
    ```bash
-   cat config/network_config.json | jq .opers
+   cat configs/network_config.json | jq .opers
    ```
 
 2. **Verify password hash:**
@@ -824,7 +902,7 @@ docker stats
 
 ### 1. Disable Plain Text IRC (Production Only)
 
-Edit `server.conf` and remove the port 6667 listener:
+Edit `configs/server.conf` and remove the port 6667 listener:
 
 ```json
 "server": {
@@ -904,7 +982,7 @@ docker compose logs -f
 git pull && docker compose build && docker compose up -d
 
 # Backup
-tar czf backup-$(date +%Y%m%d).tar.gz config/ certs/
+tar czf backup-$(date +%Y%m%d).tar.gz configs/ certs/
 
 # Certificate renewal
 certbot renew
@@ -912,7 +990,7 @@ certbot renew
 
 ### File Locations
 
-- Config: `/home/sable/sable-docker/config/`
+- Config: `/home/sable/sable-docker/configs/`
 - Certificates: `/home/sable/sable-docker/certs/`
 - Logs: `/home/sable/sable-docker/data/logs/`
 - Docker Compose: `/home/sable/sable-docker/docker-compose.yml`
