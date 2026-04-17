@@ -22,6 +22,12 @@ use memfd::*;
 use crate::ServerState;
 
 fn read_upgrade_state<ST: ServerType>(fd: RawFd) -> ServerState<ST> {
+    // SAFETY: The `fd` parameter is a valid file descriptor that was:
+    //   1. Created by `prepare_upgrade()` using `Memfd::into_raw_fd()` in a prior process
+    //   2. Passed through `exec` via the `--upgrade-state-fd` command-line argument
+    //   3. Not closed or duplicated elsewhere
+    // Taking ownership with `from_raw_fd` is safe because we are the exclusive owner
+    // of this fd and the Memfd type will properly close it when dropped.
     let memfd = unsafe { Memfd::from_raw_fd(fd) };
     let file = memfd.as_file();
 

@@ -1,0 +1,32 @@
+{
+    // Network configuration for Sable IRC
+    // This file is shared across all servers in the network
+
+    // Fanout value for event propagation (recommended: 2-3)
+    "fanout": 2,
+
+    // Path to the CA certificate for server-to-server authentication
+    // All servers must trust the same CA
+    "ca_file": "/sable/certs/ca_cert.pem",
+
+    // List of peer servers in the network
+    // Each server needs to know about all other servers
+    "peers": [
+        {
+            // Unique server name
+            "name": "server1.example.com",
+            // Address for server-to-server gossip protocol (port 6668)
+            // Use 'sable-ircd-1' as hostname when running in Docker
+            "address": "sable-ircd-1:6668",
+            // SHA-1 fingerprint of this server's TLS certificate
+            // Get with: openssl x509 -noout -fingerprint -sha1 -in server.crt
+            "fingerprint": "CHANGE_THIS_SERVER_FINGERPRINT"
+        }
+        // Add more peers for multi-server networks
+        // {
+        //     "name": "server2.example.com",
+        //     "address": "sable-ircd-2:6668",
+        //     "fingerprint": "CHANGE_THIS_SERVER_FINGERPRINT"
+        // }
+    ]
+}

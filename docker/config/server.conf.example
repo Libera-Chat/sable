@@ -1,0 +1,123 @@
+{
+    // Server-specific configuration for Sable IRC
+    // Each server in the network should have a unique server_id and server_name
+
+    // Unique numeric ID for this server (must be unique across the network)
+    "server_id": 1,
+
+    // Full server name (must match DNS/hostname)
+    "server_name": "server1.example.com",
+
+    // Management interface configuration
+    // HTTPS API requiring client certificate authentication
+    "management": {
+        // Address to bind the management API (inside Docker)
+        "address": "0.0.0.0:8888",
+        // Path to CA certificate for verifying client certificates
+        "client_ca": "/sable/certs/ca_cert.pem",
+        // List of authorised client certificates (by fingerprint)
+        "authorised_fingerprints": [
+            {
+                "name": "admin",
+                // SHA-1 fingerprint of the admin client certificate
+                // Get with: openssl x509 -noout -fingerprint -sha1 -in client.crt
+                "fingerprint": "CHANGE_THIS_CLIENT_FINGERPRINT"
+            }
+        ]
+    },
+
+    // IRC server configuration
+    "server": {
+        // Client listeners
+        "listeners": [
+            // Plain text IRC (for development/testing only)
+            {
+                "address": "0.0.0.0:6667"
+            },
+            // TLS-secured IRC (recommended for production)
+            {
+                "address": "0.0.0.0:6697",
+                "tls": true
+            }
+        ],
+        // Path to Message of the Day file
+        "motd": "/sable/config/motd.txt",
+        // Server administrator information
+        "admin": {
+            "server_location": "Example Location",
+            "description": "Sable IRC Server",
+            "email": "admin@example.com"
+        }
+    },
+
+    // Event log configuration
+    "event_log": {
+        // Time in seconds before events expire from the log
+        // 300 = 5 minutes (adjust for your needs)
+        "event_expiry": 300
+    },
+
+    // TLS configuration for client connections
+    "tls_config": {
+        "key_file": "/sable/certs/server.key",
+        "cert_file": "/sable/certs/server.crt"
+    },
+
+    // Node configuration for server-to-server communication
+    "node_config": {
+        // Address for inter-server gossip protocol
+        "listen_addr": "0.0.0.0:6668",
+        // TLS certificate for server-to-server authentication
+        "cert_file": "/sable/certs/server.crt",
+        "key_file": "/sable/certs/server.key"
+    },
+
+    // Logging configuration
+    "log": {
+        // Directory for log files
+        "dir": "/sable/data/logs",
+        // Optional: redirect stdout/stderr to files
+        // "stdout": "stdout.log",
+        // "stderr": "stderr.log",
+        // "pidfile": "sable.pid",
+
+        // Module-specific log levels
+        "module-levels": {
+            "tokio": "warn",
+            "runtime": "warn",
+            "rustls": "error",
+            "tracing": "warn",
+            "sable": "info",
+            "": "info"
+        },
+
+        // Log targets
+        "targets": [
+            {
+                "target": "stdout",
+                "level": "info",
+                "modules": ["sable", "audit"]
+            },
+            {
+                "target": { "filename": "sable.log" },
+                "level": "info"
+            },
+            {
+                "target": { "filename": "audit.log" },
+                "category": "audit",
+                "level": "info"
+            }
+        ],
+
+        // Tokio console address for debugging (optional)
+        // "console-address": "0.0.0.0:9999"
+    },
+
+    // History storage configuration (optional)
+    // "history": {
+    //     "storage": {
+    //         "type": "sqlite",
+    //         "path": "/sable/data/history.db"
+    //     }
+    // }
+}

@@ -158,9 +158,16 @@ impl ClientCommand {
         match source {
             InternalCommandSource::PreClient(pc) => CommandSource::PreClient(Arc::clone(pc)),
             InternalCommandSource::User(user_pointer, conn_pointer) => {
-                // Safety: user_pointer points to data inside the object managed by `self.net`,
-                // so will always survive at least as long as `self`. The returned `CommandSource`
-                // creates a borrow of `self.net`, so it can't be removed while that exists.
+                // SAFETY: user_pointer and conn_pointer are raw pointers derived from `net.user()` and
+                // `net.user_connection()` respectively. These pointers reference data stored within the
+                // `Network` object (inside DashMap tables), which is guaranteed to outlive this function
+                // call because:
+                //   1. The `Network` is owned by `ClientCommand` (via Arc) and cannot be dropped while
+                //      any `ClientCommand` instance exists
+                //   2. DashMap only removes entries when explicitly deleted, which requires exclusive
+                //      access or happens through well-defined lifecycle points (user quit)
+                //   3. The returned `CommandSource` captures a borrow of `net`, tying the returned
+                //      references' lifetime to the Network's lifetime
                 let user: &'_ state::User = unsafe { &**user_pointer };
                 let user_conn: &'_ state::UserConnection = unsafe { &**conn_pointer };
                 let user_wrapper = <wrapper::User as wrapper::ObjectWrapper>::wrap(net, user);

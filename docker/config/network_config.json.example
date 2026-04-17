@@ -1,0 +1,91 @@
+{
+    // Network bootstrap configuration
+    // This file defines the initial network state
+
+    // Object expiry time in seconds
+    "object_expiry": 300,
+
+    // Ping timeout duration in seconds
+    "pingout_duration": 240,
+
+    // IRC operators (server administrators)
+    "opers": [
+        {
+            "name": "admin",
+            // Password hash (generate with: openssl passwd -6)
+            "hash": "$6$CHANGE_THIS_HASH_WITH_REAL_PASSWORD_HASH"
+        }
+    ],
+
+    // Service bots (NickServ, ChanServ, etc.)
+    "alias_users": [
+        {
+            "nick": "ChanServ",
+            "user": "ChanServ",
+            "host": "services.",
+            "realname": "Channel services compatibility layer",
+            "command_alias": "CS"
+        },
+        {
+            "nick": "NickServ",
+            "user": "NickServ",
+            "host": "services.",
+            "realname": "Account services compatibility layer",
+            "command_alias": "NS"
+        },
+        {
+            "nick": "OperServ",
+            "user": "OperServ",
+            "host": "services.",
+            "realname": "Operator services compatibility layer",
+            "command_alias": "OS"
+        }
+    ],
+
+    // Default channel roles and permissions
+    "default_roles": {
+        "builtin:op": [
+            "always_send",
+            "op_self",
+            "op_grant",
+            "voice_self",
+            "voice_grant",
+            "receive_op",
+            "receive_voice",
+            "receive_opmod",
+            "topic",
+            "kick",
+            "set_simple_mode",
+            "set_key",
+            "rename",
+            "ban_view",
+            "ban_add",
+            "ban_remove_any",
+            "quiet_view",
+            "quiet_add",
+            "quiet_remove_any",
+            "exempt_view",
+            "exempt_add",
+            "exempt_remove_any",
+            "invite_self",
+            "invite_other",
+            "invex_view",
+            "invex_add",
+            "invex_remove_any"
+        ],
+        "builtin:voice": [
+            "always_send",
+            "voice_self",
+            "receive_voice",
+            "ban_view",
+            "quiet_view"
+        ],
+        "builtin:all": [
+            "ban_view",
+            "quiet_view"
+        ]
+    },
+
+    // Debug mode (disable in production)
+    "debug_mode": false
+}
