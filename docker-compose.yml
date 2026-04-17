@@ -18,8 +18,12 @@ services:
       - ./configs/server.conf:/sable/config/server.conf:ro
       # Mount network bootstrap config
       - ./configs/network_config.json:/sable/config/network_config.json:ro
-      # Mount TLS certificates
-      - ./certs:/sable/certs:ro
+      # Mount TLS certificates - server cert and key from Caddy, CA and client certs from local certs dir
+      - /data/caddy/data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/irc.the14.xyz/irc.the14.xyz.crt:/sable/certs/server.crt:ro
+      - /data/caddy/data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/irc.the14.xyz/irc.the14.xyz.key:/sable/certs/server.key:ro
+      - ./certs/ca_cert.pem:/sable/certs/ca_cert.pem:ro
+      - ./certs/client.crt:/sable/certs/client.crt:ro
+      - ./certs/client.key:/sable/certs/client.key:ro
       # Mount data directory for logs and persistence
       - ./data:/sable/data
       # Mount MOTD file (optional)
@@ -55,7 +59,11 @@ services:
   #     - ./configs/network.conf:/sable/config/network.conf:ro
   #     - ./configs/server2.conf:/sable/config/server.conf:ro
   #     - ./configs/network_config.json:/sable/config/network_config.json:ro
-  #     - ./certs:/sable/certs:ro
+  #     - /data/caddy/data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/irc.the14.xyz/irc.the14.xyz.crt:/sable/certs/server.crt:ro
+  #     - /data/caddy/data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/irc.the14.xyz/irc.the14.xyz.key:/sable/certs/server.key:ro
+  #     - ./certs/ca_cert.pem:/sable/certs/ca_cert.pem:ro
+  #     - ./certs/client.crt:/sable/certs/client.crt:ro
+  #     - ./certs/client.key:/sable/certs/client.key:ro
   #     - ./data/server2:/sable/data
   #   environment:
   #     - RUST_LOG=info
