@@ -14,6 +14,33 @@ pub struct CommandRegistration {
     pub(super) handler: CommandHandlerWrapper,
 }
 
+/// A free-form help topic not tied to a command handler.
+///
+/// Use this for topics that describe concepts rather than commands — for example
+/// channel modes, user modes, or any other subject a user might query with `HELP`.
+///
+/// Register a topic at the call site with [`inventory::submit!`]:
+///
+/// ```rust,ignore
+/// inventory::submit!(HelpTopic {
+///     topic: "CMODE_SECRET",
+///     lines: &[
+///         "CMODE_SECRET (+s)",
+///         "",
+///         "Marks the channel as secret. Secret channels are hidden from /LIST",
+///         "and /WHOIS for users who are not members.",
+///     ],
+/// });
+/// ```
+///
+/// Topics are looked up case-insensitively via [`CommandDispatcher::get_help_topic`].
+pub struct HelpTopic {
+    /// The name of the topic, matched case-insensitively against the argument to `HELP`.
+    pub topic: &'static str,
+    /// Lines of help text returned to the client.
+    pub lines: &'static [&'static str],
+}
+
 /// A command dispatcher. Collects registered command handlers and allows lookup by
 /// command name.
 pub struct CommandDispatcher {
@@ -21,6 +48,7 @@ pub struct CommandDispatcher {
 }
 
 inventory::collect!(CommandRegistration);
+inventory::collect!(HelpTopic);
 
 impl CommandDispatcher {
     /// Construct a default `CommandDispatcher`.
@@ -66,5 +94,20 @@ impl CommandDispatcher {
                 None
             }
         }
+    }
+
+    /// Look up a free-form [`HelpTopic`] by name (case-insensitive).
+    ///
+    /// Returns the topic's lines of text, or `None` if no topic with that name was registered.
+    pub fn get_help_topic(&self, topic: &str) -> Option<&'static [&'static str]> {
+        inventory::iter::<HelpTopic>
+            .into_iter()
+            .find(|t| t.topic.eq_ignore_ascii_case(topic))
+            .map(|t| t.lines)
+    }
+
+    /// Iterate over all registered free-form [`HelpTopic`] entries.
+    pub fn iter_help_topics(&self) -> impl Iterator<Item = &'static HelpTopic> {
+        inventory::iter::<HelpTopic>.into_iter()
     }
 }

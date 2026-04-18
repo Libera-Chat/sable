@@ -143,6 +143,20 @@ impl ClientServer {
         &self.client_caps
     }
 
+    /// Look up a free-form help topic by name (case-insensitive).
+    ///
+    /// Returns the help lines registered via [`command::HelpTopic`], or `None` if no matching
+    /// topic was found. Command handlers that implement `HELP` should query this alongside
+    /// the command registry to cover both command docs and concept topics (modes, etc.).
+    pub fn get_help_topic(&self, topic: &str) -> Option<&'static [&'static str]> {
+        self.command_dispatcher.get_help_topic(topic)
+    }
+
+    /// Iterate over all free-form help topics registered via [`command::HelpTopic`].
+    pub fn iter_help_topics(&self) -> impl Iterator<Item = &'static command::HelpTopic> {
+        self.command_dispatcher.iter_help_topics()
+    }
+
     /// Store a [`MessageSink`] to use when processing updates caused by the given event
     pub(crate) fn store_response_sink(
         &self,
