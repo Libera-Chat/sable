@@ -26,8 +26,8 @@ async fn handle_authenticate(
             // IRC spec limits AUTHENTICATE base64 payload to 400 bytes
             const MAX_SASL_BASE64_SIZE: usize = 400;
             if text.len() > MAX_SASL_BASE64_SIZE {
-                tracing::warn!(len = text.len(), "SASL base64 data exceeds 400-byte spec limit");
-                RemoteServicesServerRequestType::FailAuthenticate(session)
+                response.numeric(make_numeric!(SaslTooLong));
+                return Ok(());
             } else {
                 match BASE64_STANDARD.decode(text) {
                     Err(_) => RemoteServicesServerRequestType::FailAuthenticate(session),

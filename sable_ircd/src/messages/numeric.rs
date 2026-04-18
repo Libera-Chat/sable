@@ -140,5 +140,6 @@ define_messages! {
     900(LoggedIn)           => { (account: &Nickname) => "* {account} :You are now logged in as {account}" },  // TODO: <nick>!<ident>@<host> instead of *
     903(SaslSuccess)        => { () => ":SASL authentication successful" },
     904(SaslFail)           => { () => ":SASL authentication failed" },
+    905(SaslTooLong)        => { () => ":SASL message too long" },
     906(SaslAborted)        => { () => ":SASL authentication aborted" }
 }
