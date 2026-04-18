@@ -25,11 +25,20 @@ impl<DB: DatabaseConnection> ServicesServer<DB> {
     pub fn authenticate(&self, session_id: SaslSessionId, data: Vec<u8>) -> CommandResult {
         let session_entry = self.sasl_sessions.entry(session_id);
         let dashmap::mapref::entry::Entry::Occupied(session_entry) = session_entry else {
+            tracing::debug!(
+                ?session_id,
+                "Cannot resume SASL session: unknown session id"
+            );
             return Ok(Authenticate(Fail).into());
         };
         let session = session_entry.get();
 
         let Some(mechanism) = self.sasl_mechanisms.get(&session.mechanism) else {
+            tracing::error!(
+                ?session_id,
+                "Cannot resume SASL session: unknown mechanism {}",
+                session.mechanism
+            );
             session_entry.remove();
             return Ok(Authenticate(Fail).into());
         };
