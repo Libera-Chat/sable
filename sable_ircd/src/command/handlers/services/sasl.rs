@@ -25,7 +25,17 @@ async fn handle_authenticate(
         } else {
             match BASE64_STANDARD.decode(text) {
                 Err(_) => RemoteServicesServerRequestType::FailAuthenticate(session),
-                Ok(data) => RemoteServicesServerRequestType::Authenticate(session, data),
+                Ok(data) => {
+                    // RFC 4422 specifies that SASL data should be reasonably bounded.
+                    // 8192 bytes is a reasonable limit for authentication data.
+                    const MAX_SASL_DATA_SIZE: usize = 8192;
+                    if data.len() > MAX_SASL_DATA_SIZE {
+                        tracing::warn!(len = data.len(), "SASL data exceeds maximum size");
+                        RemoteServicesServerRequestType::FailAuthenticate(session)
+                    } else {
+                        RemoteServicesServerRequestType::Authenticate(session, data)
+                    }
+                }
             }
         }
     } else {
