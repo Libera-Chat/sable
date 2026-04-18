@@ -48,6 +48,11 @@ impl OperPolicyService for StandardOperPolicy {
 
 impl OperAuthenticationService for StandardOperPolicy {
     fn authenticate(&self, oper_config: &OperConfig, user: &str, pass: &str) -> bool {
-        user == oper_config.name && unix::verify(pass, &oper_config.hash)
+        // Always verify password first to prevent username enumeration via timing attacks
+        // unix::verify is designed to be constant-time
+        let password_ok = unix::verify(pass, &oper_config.hash);
+        let name_ok = user == oper_config.name;
+
+        password_ok && name_ok
     }
 }
