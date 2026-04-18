@@ -21,7 +21,9 @@ use tokio::{
 };
 
 use std::{
+    collections::hash_map::DefaultHasher,
     collections::VecDeque,
+    hash::{Hash, Hasher},
     sync::{Arc, Weak},
     time::Duration,
 };
@@ -56,6 +58,22 @@ struct MyInfo {
     user_modes: String,
     chan_modes: String,
     chan_modes_with_a_parameter: String,
+}
+
+/// Generate a cloaked hostname from an IP address using a one-way hash
+///
+/// This provides consistent cloaks for the same IP while hiding the actual address.
+/// Format: <hash-prefix>.cloaked
+fn cloak_hostname(ip: std::net::IpAddr) -> Hostname {
+    let mut hasher = DefaultHasher::new();
+    ip.hash(&mut hasher);
+    let hash = hasher.finish();
+
+    // Convert hash to hex and take first 8 characters for the cloak
+    let cloak_prefix = format!("{:08x}", hash);
+    let cloaked = format!("{}{}", &cloak_prefix[..8], ".cloaked");
+
+    Hostname::new_coerce(&cloaked).unwrap_or_else(|_| Hostname::new_coerce("cloaked").unwrap())
 }
 
 /// A client server.
@@ -496,19 +514,16 @@ impl ClientServer {
                                                                                 msg.hostname
                                                                                 );
                                 if let Some(pc) = conn.pre_client() {
+                                    // Use cloaked hostname to hide user IPs (hash-based)
+                                    let cloaked = cloak_hostname(conn.remote_addr());
+                                    pc.hostname.set(cloaked).ok();
+
                                     if let Some(hostname) = msg.hostname {
                                         conn.send(message::Notice::new(&self, &UnknownTarget,
                                                         &format!("*** Found your hostname: {hostname}")));
-
-                                        pc.hostname.set(hostname).ok();
                                     } else {
                                         conn.send(message::Notice::new(&self, &UnknownTarget,
                                                         "*** Couldn't look up your hostname"));
-                                        let no_hostname = Hostname::convert(conn.remote_addr());
-                                        match no_hostname {
-                                            Ok(n) => { pc.hostname.set(n).ok(); }
-                                            Err(e) => { conn.error(&e.to_string()); }
-                                        }
                                     }
                                     if pc.can_register() {
                                         let res = self.action_submitter.send(CommandAction::RegisterClient(conn.id()));
