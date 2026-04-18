@@ -18,6 +18,9 @@ pub struct NetworkConfig {
     pub object_expiry: i64,
     /// How long from sending a server ping before we force it to quit from the network
     pub pingout_duration: i64,
+    /// Secret key used to generate deterministic hostname cloaks
+    #[serde(default)]
+    pub cloak_key: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,6 +48,7 @@ impl NetworkConfig {
             alias_users: Vec::new(),
             object_expiry: 0,
             pingout_duration: 240,
+            cloak_key: String::new(),
         }
     }
 }

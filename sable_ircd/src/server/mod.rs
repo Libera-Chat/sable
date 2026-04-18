@@ -21,9 +21,7 @@ use tokio::{
 };
 
 use std::{
-    collections::hash_map::DefaultHasher,
     collections::VecDeque,
-    hash::{Hash, Hasher},
     sync::{Arc, Weak},
     time::Duration,
 };
@@ -60,20 +58,12 @@ struct MyInfo {
     chan_modes_with_a_parameter: String,
 }
 
-/// Generate a cloaked hostname from an IP address using a one-way hash
-///
-/// This provides consistent cloaks for the same IP while hiding the actual address.
-/// Format: <hash-prefix>.cloaked
-fn cloak_hostname(ip: std::net::IpAddr) -> Hostname {
-    let mut hasher = DefaultHasher::new();
-    ip.hash(&mut hasher);
-    let hash = hasher.finish();
-
-    // Convert hash to hex and take first 8 characters for the cloak
-    let cloak_prefix = format!("{:08x}", hash);
-    let cloaked = format!("{}{}", &cloak_prefix[..8], ".cloaked");
-
-    Hostname::new_coerce(&cloaked).unwrap_or_else(|_| Hostname::new_coerce("cloaked").unwrap())
+/// Generate a cloaked hostname from an IP address using SHA-256 with a secret key.
+/// Format: <8-hex-chars>.cloaked
+fn cloak_hostname(ip: std::net::IpAddr, key: &str) -> Hostname {
+    let hash = sha256::digest(format!("{}{}", key, ip));
+    let cloak = format!("{}.cloaked", &hash[..8]);
+    Hostname::convert(cloak).expect("cloaked hostname is always valid")
 }
 
 /// A client server.
@@ -514,8 +504,8 @@ impl ClientServer {
                                                                                 msg.hostname
                                                                                 );
                                 if let Some(pc) = conn.pre_client() {
-                                    // Use cloaked hostname to hide user IPs (hash-based)
-                                    let cloaked = cloak_hostname(conn.remote_addr());
+                                    let cloak_key = self.network().config().cloak_key.clone();
+                                    let cloaked = cloak_hostname(conn.remote_addr(), &cloak_key);
                                     pc.hostname.set(cloaked).ok();
 
                                     if let Some(hostname) = msg.hostname {
