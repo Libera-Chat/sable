@@ -27,6 +27,11 @@ async fn handle_authenticate(
             const MAX_SASL_BASE64_SIZE: usize = 400;
             if text.len() > MAX_SASL_BASE64_SIZE {
                 response.numeric(make_numeric!(SaslTooLong));
+                *session_ref = None;
+                drop(session_ref);
+                services.require()?.send_remote_request(
+                    RemoteServicesServerRequestType::FailAuthenticate(session).into()
+                ).await.ok();
                 return Ok(());
             } else {
                 match BASE64_STANDARD.decode(text) {
