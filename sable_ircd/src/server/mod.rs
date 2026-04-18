@@ -59,10 +59,10 @@ struct MyInfo {
 }
 
 /// Generate a cloaked hostname from an IP address using SHA-256 with a secret key.
-/// Format: <8-hex-chars>.cloaked
+/// Format: <32-hex-chars>.cloaked
 fn cloak_hostname(ip: std::net::IpAddr, key: &str) -> Hostname {
     let hash = sha256::digest(format!("{}{}", key, ip));
-    let cloak = format!("{}.cloaked", &hash[..8]);
+    let cloak = format!("{}.cloaked", &hash[..32]);
     Hostname::convert(cloak).expect("cloaked hostname is always valid")
 }
 
