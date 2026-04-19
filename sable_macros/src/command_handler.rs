@@ -59,7 +59,9 @@ pub fn command_docs(attrs: &[Attribute]) -> Vec<String> {
             })) => Some(s.value()),
             _ => None,
         })
-        .map(|s| s.strip_prefix(' ').unwrap_or(&s).trim_end().to_owned())
+        // XXX: markdown-stripping could be a bit more robust
+        .map(|s| s.strip_prefix(' ').unwrap_or(&s).trim_end()
+             .replace(r"\[", "[").replace(r"\]", "]").replace(r"\<", "<").replace(r"\>", ">"))
         .collect()
 }
 

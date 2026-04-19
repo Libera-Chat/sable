@@ -74,7 +74,7 @@ pub struct ClientServer {
     stored_response_sinks: RwLock<MessageSinkRepository>,
 
     action_submitter: UnboundedSender<CommandAction>,
-    command_dispatcher: command::CommandDispatcher,
+    pub command_dispatcher: command::CommandDispatcher,
 
     connections: RwLock<ConnectionCollection>,
     /// Connections which either did not complete registration or completed it recently,
