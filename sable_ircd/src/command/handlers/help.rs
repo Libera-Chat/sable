@@ -55,11 +55,18 @@ fn cs_help_handler(
     send_help(&dispatcher, topic, is_oper, response)
 }
 
-fn send_help(dispatcher: &CommandDispatcher, topic: Option<&str>, is_oper: bool, response: &dyn CommandResponse) -> CommandResult {
+fn send_help(
+    dispatcher: &CommandDispatcher,
+    topic: Option<&str>,
+    is_oper: bool,
+    response: &dyn CommandResponse,
+) -> CommandResult {
     match topic {
         Some(t) => {
             let topic = t.to_ascii_uppercase();
-            let topic = topic.split_once(' ').map_or(topic.clone(), |(t, _)| t.to_string());
+            let topic = topic
+                .split_once(' ')
+                .map_or(topic.clone(), |(t, _)| t.to_string());
             if let Some(mut lines) = get_help(&dispatcher, &topic, is_oper) {
                 response.numeric(make_numeric!(
                     HelpStart,

@@ -60,8 +60,15 @@ pub fn command_docs(attrs: &[Attribute]) -> Vec<String> {
             _ => None,
         })
         // XXX: markdown-stripping could be a bit more robust
-        .map(|s| s.strip_prefix(' ').unwrap_or(&s).trim_end()
-             .replace(r"\[", "[").replace(r"\]", "]").replace(r"\<", "<").replace(r"\>", ">"))
+        .map(|s| {
+            s.strip_prefix(' ')
+                .unwrap_or(&s)
+                .trim_end()
+                .replace(r"\[", "[")
+                .replace(r"\]", "]")
+                .replace(r"\<", "<")
+                .replace(r"\>", ">")
+        })
         .collect()
 }
 
