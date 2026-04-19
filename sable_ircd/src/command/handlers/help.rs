@@ -18,53 +18,44 @@ fn help_handler(
     // TODO: better restricted mechanism?
     // TODO: non-command help topics
     let is_oper = command.command().to_ascii_uppercase() != "UHELP" && source.is_oper();
-
-    match topic {
-        Some(t) => {
-            let topic = t.to_ascii_uppercase();
-            let topic = topic.split_once(' ').map_or(topic.clone(), |(t, _)| t.to_string());
-            if let Some(mut lines) = get_help(&server.command_dispatcher, &topic, is_oper) {
-                response.numeric(make_numeric!(
-                    HelpStart,
-                    &topic,
-                    lines.next().unwrap().as_ref()
-                ));
-                for line in lines {
-                    response.numeric(make_numeric!(HelpText, &topic, line.as_ref()));
-                }
-                response.numeric(make_numeric!(EndOfHelp, &topic));
-                return Ok(());
-            } else {
-                response.numeric(make_numeric!(HelpNotFound, &topic));
-            }
-        }
-        None => {
-            let topic = "*";
-            response.numeric(make_numeric!(HelpStart, &topic, "Available help topics:"));
-            response.numeric(make_numeric!(HelpText, &topic, ""));
-            for line in list_help(&server.command_dispatcher, is_oper) {
-                response.numeric(make_numeric!(HelpText, &topic, line.as_ref()));
-            }
-            response.numeric(make_numeric!(EndOfHelp, &topic));
-        }
-    };
-    Ok(())
+    send_help(&server.command_dispatcher, topic, is_oper, response)
 }
 
 #[command_handler("HELP", "UHELP", in("NS"))]
 /// NS HELP \[\<topic\>\]
 ///
 /// Displays information about the topic requested.
+/// If no topic is requested, it will list available
+/// help topics.
 fn ns_help_handler(
     command: &dyn Command,
     response: &dyn CommandResponse,
-    server: &ClientServer,
     source: UserSource,
     topic: Option<&str>,
 ) -> CommandResult {
     let is_oper = command.command().to_ascii_uppercase() != "UHELP" && source.is_oper();
     let dispatcher = CommandDispatcher::with_category("NS");
+    send_help(&dispatcher, topic, is_oper, response)
+}
 
+#[command_handler("HELP", "UHELP", in("CS"))]
+/// CS HELP \[\<topic\>\]
+///
+/// Displays information about the topic requested.
+/// If no topic is requested, it will list available
+/// help topics.
+fn cs_help_handler(
+    command: &dyn Command,
+    response: &dyn CommandResponse,
+    source: UserSource,
+    topic: Option<&str>,
+) -> CommandResult {
+    let is_oper = command.command().to_ascii_uppercase() != "UHELP" && source.is_oper();
+    let dispatcher = CommandDispatcher::with_category("CS");
+    send_help(&dispatcher, topic, is_oper, response)
+}
+
+fn send_help(dispatcher: &CommandDispatcher, topic: Option<&str>, is_oper: bool, response: &dyn CommandResponse) -> CommandResult {
     match topic {
         Some(t) => {
             let topic = t.to_ascii_uppercase();
