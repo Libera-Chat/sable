@@ -4,7 +4,7 @@ use sable_network::network::ban::*;
 
 const DEFAULT_KLINE_DURATION: u32 = 1440;
 
-#[command_handler("KLINE")]
+#[command_handler("KLINE", restricted)]
 fn handle_kline(
     server: &ClientServer,
     response: &dyn CommandResponse,

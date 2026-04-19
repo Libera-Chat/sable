@@ -3,9 +3,11 @@ use sable_network::rpc::{RemoteServerResponse, RemoteServicesServerResponse};
 
 use super::*;
 
-#[command_handler("LOGIN", in("NS"))]
-#[command_handler("IDENTIFY", in("NS"))]
-#[command_handler("ID", in("NS"))]
+#[command_handler("LOGIN", "IDENTIFY", "ID", in("NS"))]
+/// LOGIN \[\<account name\>\] \<password\>
+///
+/// Log into the specified account. If \<account name\> is not specified,
+/// the current nickname is used.
 async fn handle_login(
     net: &Network,
     source: UserSource<'_>,

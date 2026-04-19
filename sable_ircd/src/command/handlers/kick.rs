@@ -1,6 +1,12 @@
 use super::*;
 
 #[command_handler("KICK")]
+/// KICK <channel> <user> :[<msg>]
+///
+/// The KICK command will remove the specified user
+/// from the specified channel, using the optional
+/// kick message. You must be a channel operator to
+/// use this command.
 async fn handle_kick(
     server: &ClientServer,
     cmd: &dyn Command,

@@ -1,7 +1,8 @@
 use super::*;
 use event::*;
 
-#[command_handler("OPER")]
+#[command_handler("OPER", restricted)]
+/// OPER \<name\> \<password\>
 fn handle_oper(
     response: &dyn CommandResponse,
     server: &ClientServer,

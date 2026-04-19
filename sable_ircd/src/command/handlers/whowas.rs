@@ -4,7 +4,17 @@ const DEFAULT_COUNT: usize = 8; // Arbitrary value, that happens to match the ca
                                 // historic_nick_users
 
 #[command_handler("WHOWAS")]
-/// Syntax: WHOWAS \<target\> \[\<count\>\]
+/// WHOWAS \<target\> \[\<count\>\]
+///
+/// WHOWAS will show you the last known host and whois
+/// information for the specified target nick. Depending on
+/// the number of times they have connected to the network,
+/// there may be more than one listing for a specific user.
+///
+/// If a count is specified, WHOWAS will not show more
+/// than that many listings.
+///
+/// The WHOWAS data will expire after some time.
 fn whowas_handler(
     network: &Network,
     response: &dyn CommandResponse,
