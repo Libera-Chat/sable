@@ -1,7 +1,13 @@
 use super::*;
 use event::*;
 
-#[command_handler("KILL")]
+#[command_handler("KILL", restricted)]
+/// KILL <user> :[<reason>]
+///
+/// Disconnects the specified user from the IRC server
+/// they are connected to with reason <reason>.
+///
+/// (TODO) Requires Oper Priv: oper:kill
 fn handle_kill(
     server: &ClientServer,
     source: UserSource,

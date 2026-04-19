@@ -21,7 +21,7 @@ use tokio::{
 };
 
 use std::{
-    collections::VecDeque,
+    collections::{hash_map, VecDeque},
     sync::{Arc, Weak},
     time::Duration,
 };
@@ -74,7 +74,7 @@ pub struct ClientServer {
     stored_response_sinks: RwLock<MessageSinkRepository>,
 
     action_submitter: UnboundedSender<CommandAction>,
-    command_dispatcher: command::CommandDispatcher,
+    pub command_dispatcher: command::CommandDispatcher,
 
     connections: RwLock<ConnectionCollection>,
     /// Connections which either did not complete registration or completed it recently,
@@ -114,6 +114,16 @@ impl ClientServer {
     /// This server's name
     pub fn name(&self) -> &ServerName {
         self.node.name()
+    }
+
+    /// Get a command from the server's dispatcher
+    pub fn get_command(&self, cmd: &str) -> Option<&CommandRegistration> {
+        self.command_dispatcher.get_command(cmd)
+    }
+
+    /// Get a command from the server's dispatcher
+    pub fn iter_commands(&self) -> hash_map::Iter<'_, String, CommandRegistration> {
+        self.command_dispatcher.iter_commands()
     }
 
     /// Submit a command action to process in the next loop iteration.

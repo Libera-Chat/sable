@@ -1,6 +1,10 @@
 use super::*;
 
 #[command_handler("INVITE")]
+/// INVITE <user> <channel>
+
+/// INVITE sends a notice to the specified user that
+/// you have asked them to come to the specified channel.
 fn handle_invite(
     server: &ClientServer,
     source: UserSource,
