@@ -84,7 +84,19 @@ fn send_help(
         }
         None => {
             let topic = "*";
-            response.numeric(make_numeric!(HelpStart, &topic, "Available help topics:"));
+            if is_oper {
+                response.numeric(make_numeric!(
+                    HelpStart,
+                    &topic,
+                    "Help topics available to opers:"
+                ));
+            } else {
+                response.numeric(make_numeric!(
+                    HelpStart,
+                    &topic,
+                    "Help topics available to users:"
+                ));
+            }
             response.numeric(make_numeric!(HelpText, &topic, ""));
             for line in list_help(&dispatcher, is_oper) {
                 response.numeric(make_numeric!(HelpText, &topic, line.as_ref()));
