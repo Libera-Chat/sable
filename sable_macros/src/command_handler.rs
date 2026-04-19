@@ -48,8 +48,8 @@ impl Parse for CommandHandlerAttr {
     }
 }
 
-pub fn command_docs(attrs: &[Attribute]) -> Vec<String> {
-    attrs
+pub fn command_docs(attrs: &[Attribute], aliases: &Vec<LitStr>) -> Vec<String> {
+    let mut lines: Vec<String> = attrs
         .iter()
         .filter(|a| a.path.is_ident("doc"))
         .filter_map(|a| match a.parse_meta() {
@@ -59,7 +59,7 @@ pub fn command_docs(attrs: &[Attribute]) -> Vec<String> {
             })) => Some(s.value()),
             _ => None,
         })
-        // XXX: markdown-stripping could be a bit more robust
+        // XXX: markdown-stripping could be a bit more robust/extensive
         .map(|s| {
             s.strip_prefix(' ')
                 .unwrap_or(&s)
@@ -69,7 +69,26 @@ pub fn command_docs(attrs: &[Attribute]) -> Vec<String> {
                 .replace(r"\<", "<")
                 .replace(r"\>", ">")
         })
-        .collect()
+        .collect();
+    if aliases.len() > 0 {
+        let mut first = true;
+        let mut extra_lines = vec![String::new()];
+        for chunk in aliases.chunks(6) {
+            let line = chunk
+                .into_iter()
+                .map(LitStr::value)
+                .reduce(|acc, s| format!("{acc}, {s}"))
+                .unwrap_or_default();
+            if first {
+                extra_lines.push(format!("Aliases: {line}"));
+                first = false;
+            } else {
+                extra_lines.push(format!("   {line}"));
+            }
+        }
+        lines.extend(extra_lines);
+    }
+    lines
 }
 
 pub fn command_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -103,7 +122,7 @@ pub fn command_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let restricted = input.restricted;
 
-    let docs = command_docs(&item.attrs);
+    let docs = command_docs(&item.attrs, &aliases);
 
     let body = if asyncness.is_none() {
         quote!(
